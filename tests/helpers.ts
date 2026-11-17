@@ -83,7 +83,11 @@ export async function resolveTicket(app: Express, key: string, filedBy: Actor) {
   await admin(app)
     .put(`/api/tickets/${key}/change-link`)
     .send({ change_url: "https://example.com/change/1" });
-  await admin(app).post(`/api/tickets/${key}/ready`).send({ try_url: "https://example.com/try" });
-  const answered = await as(app, filedBy).post(`/api/tickets/${key}/answer`).send({ fixed: "yes" });
+  const ready = await admin(app)
+    .post(`/api/tickets/${key}/ready`)
+    .send({ try_url: "https://example.com/try" });
+  const answered = await as(app, filedBy)
+    .post(`/api/tickets/${key}/answer`)
+    .send({ fixed: "yes", ready_token: ready.body.ready_token });
   if (answered.status !== 200) throw new Error(`Could not resolve ${key}: ${answered.text}`);
 }
