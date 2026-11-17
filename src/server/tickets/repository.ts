@@ -16,6 +16,7 @@ export type TicketRow = {
   agent_id: string | null;
   created_at: string;
   updated_at: string;
+  archived_at: string | null;
 };
 
 export type EventRow = {
@@ -69,14 +70,51 @@ export function findTicket(db: Db, id: number): TicketRow | undefined {
   return db.prepare("SELECT * FROM tickets WHERE id = ?").get(id) as TicketRow | undefined;
 }
 
-/** Newest first. Pass undefined to get every status. */
+/** Tickets that are not archived, newest first. Pass undefined to get every status. */
 export function listTickets(db: Db, status: TicketStatus | undefined): TicketRow[] {
   if (status === undefined) {
-    return db.prepare("SELECT * FROM tickets ORDER BY id DESC").all() as TicketRow[];
+    return db
+      .prepare("SELECT * FROM tickets WHERE archived_at IS NULL ORDER BY id DESC")
+      .all() as TicketRow[];
   }
   return db
-    .prepare("SELECT * FROM tickets WHERE status = ? ORDER BY id DESC")
+    .prepare("SELECT * FROM tickets WHERE archived_at IS NULL AND status = ? ORDER BY id DESC")
     .all(status) as TicketRow[];
+}
+
+/** Archived tickets only, newest first. */
+export function listArchivedTickets(db: Db): TicketRow[] {
+  return db
+    .prepare("SELECT * FROM tickets WHERE archived_at IS NOT NULL ORDER BY id DESC")
+    .all() as TicketRow[];
+}
+
+export type TicketText = {
+  title: string;
+  description: string;
+  whereUrl: string | null;
+  fixCheck: string | null;
+};
+
+export function updateTicketText(db: Db, id: number, text: TicketText, now: string): void {
+  db.prepare(
+    `UPDATE tickets SET title = ?, description = ?, where_url = ?, fix_check = ?, updated_at = ?
+     WHERE id = ?`,
+  ).run(text.title, text.description, text.whereUrl, text.fixCheck, now, id);
+}
+
+/** Pass a time to archive the ticket, or null to restore it. */
+export function updateTicketArchived(
+  db: Db,
+  id: number,
+  archivedAt: string | null,
+  now: string,
+): void {
+  db.prepare("UPDATE tickets SET archived_at = ?, updated_at = ? WHERE id = ?").run(
+    archivedAt,
+    now,
+    id,
+  );
 }
 
 export function updateTicketStatus(db: Db, id: number, status: TicketStatus, now: string): void {
