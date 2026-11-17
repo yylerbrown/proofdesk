@@ -43,11 +43,11 @@ cp .env.example .env   # then fill it in; npm run dev reads it
 npm run dev
 ```
 
-| Role        | What they can do                                                            |
-| ----------- | --------------------------------------------------------------------------- |
-| Customer    | File tickets. See, edit and archive only their own. Cannot change a status. |
-| Team member | See, edit, archive and change the status of every ticket.                   |
-| Admin       | Everything a team member can, plus see archived tickets and restore them.   |
+| Role        | What they can do                                                                               |
+| ----------- | ---------------------------------------------------------------------------------------------- |
+| Customer    | File tickets. See, edit and archive only their own. Cannot change a status.                    |
+| Team member | See, edit, archive and change the status of every ticket. See and restore archived tickets.    |
+| Admin       | Everything a team member can. Permanent deletion, when it is built, will be for an admin only. |
 
 One function, `can()` in `src/server/permissions.ts`, answers every permission question, and
 the ticket service asks it on every call. A ticket someone may not see answers 404, the same
@@ -95,8 +95,9 @@ More routes change a ticket. Each one writes an event in the same transaction.
 | `POST /api/tickets/:key/restore` | Brings an archived ticket back.                                        |
 
 An archived ticket is left out of every list except `GET /api/tickets?status=archived`, and it
-cannot be edited or change status until it is restored (409 `ticket_archived`). Only an admin
-can see an archived ticket or restore it. For everyone else it answers 404.
+cannot be edited or change status until it is restored (409 `ticket_archived`). A team member
+or admin can see an archived ticket and restore it. For a customer it answers 404. Archiving
+from a page asks first, on a page that says what will happen.
 
 Creating a ticket needs `title` (3 to 120 characters) and `description` (1 to 5000). It also
 accepts `where_url` (an http or https URL, at most 500 characters) and `fix_check` (at most 500).
