@@ -62,10 +62,12 @@
   <% } %>
   <form method="post" action="/tickets/<%= ticket.key %>/answer">
     <input type="hidden" name="fixed" value="yes" />
+    <input type="hidden" name="ready_token" value="<%= ticket.ready_token %>" />
     <button type="submit">Yes, it is fixed</button>
   </form>
   <form method="post" action="/tickets/<%= ticket.key %>/answer">
     <input type="hidden" name="fixed" value="no" />
+    <input type="hidden" name="ready_token" value="<%= ticket.ready_token %>" />
     <label>
       No, it is not fixed. What is still wrong?
       <textarea name="comment" rows="3" required></textarea>

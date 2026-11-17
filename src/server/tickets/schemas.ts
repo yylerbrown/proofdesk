@@ -59,6 +59,8 @@ export const markReadySchema = z.object({ try_url: httpLink });
 // The customer's answer. A "no" needs a comment, which the service checks.
 export const answerSchema = z.object({
   fixed: z.enum(["yes", "no"]),
+  // The token of the question the customer was shown.
+  ready_token: z.string().min(1, "Reload the ticket and answer again."),
   comment: z.string().trim().max(5000, "Must be at most 5000 characters.").optional(),
 });
 
