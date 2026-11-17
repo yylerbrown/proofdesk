@@ -171,10 +171,16 @@ unless another is named):
 - **https in production.** The server refuses to start in production unless `BETTER_AUTH_URL`
   starts with `https://`, so the session cookie is always marked Secure there.
 
-Not in place yet, and part of the deploy step: behind a host's proxy the server does not know the
-visitor's real address until Express's `trust proxy` and the sign-in library's
-`advanced.ipAddress` setting are made. Until then both rate limiters count everyone behind the
-proxy as one address.
+- **The visitor's address behind a proxy.** With `CLIENT_IP_HEADER` set, both rate limiters read
+  the visitor's address from that header instead of the connection, which behind a host's proxy
+  is always the proxy. `fly.toml` sets it to Fly's `fly-client-ip`; the first deploy must check
+  that a visitor cannot set it themselves (see `docs/DEPLOY.md`).
+
+## Deploying
+
+The hosted copy runs on Fly.io: one machine, always on, with a disk for the SQLite file. The
+settings are in `fly.toml` and every step is in `docs/DEPLOY.md`. The **Deploy** workflow runs only
+when started by hand.
 
 ## Tests and checks
 
