@@ -1,17 +1,56 @@
+import { fromNodeHeaders } from "better-auth/node";
 import { Router } from "express";
 import { DEV_ACTORS, DEV_COOKIE } from "../actor.js";
+import type { Auth } from "../auth.js";
 import type { Config } from "../config.js";
 import { HttpError } from "../errors.js";
 
-// The sign-in page. Today its only way in is the development entrance: a list of made-up
-// people to act as, with no password. It is offered only when DEV_SIGN_IN is on, and the
-// configuration refuses that setting in production.
-export function signInRouter(config: Config): Router {
+// The sign-in page and its two ways in: GitHub, when its settings are present, and the
+// development entrance, when DEV_SIGN_IN is on. The configuration refuses the development
+// entrance in production.
+/**
+ * Where to go after signing in. Only an address on this site is accepted, such as
+ * "/tickets/SUP-1". Anything else, for example "https://elsewhere" or "//elsewhere", falls
+ * back to the ticket list, so the sign-in page cannot be used to send people to another site.
+ */
+export function safeNext(value: unknown): string {
+  const isLocalPath =
+    typeof value === "string" &&
+    value.startsWith("/") &&
+    !value.startsWith("//") &&
+    !value.includes("\\");
+  return isLocalPath ? value : "/tickets";
+}
+
+export function signInRouter(config: Config, auth: Auth | null): Router {
   const router = Router();
 
-  router.get("/sign-in", (_req, res) => {
+  router.get("/sign-in", (req, res) => {
     const people = config.devSignIn ? DEV_ACTORS : [];
-    res.render("sign-in", { title: "Sign in", people });
+    const next = safeNext(req.query.next);
+    res.render("sign-in", { title: "Sign in", people, github: auth !== null, next });
+  });
+
+  // Starts a GitHub sign-in. The library answers with the GitHub address to go to and a
+  // short-lived cookie it uses to recognise the browser when GitHub sends it back to
+  // /api/auth/callback/github. The library handles that return itself.
+  router.post("/sign-in/github", async (req, res) => {
+    if (auth === null) {
+      throw new HttpError(404, "not_found", "There is no page at this address.");
+    }
+    const started = await auth.api.signInSocial({
+      body: {
+        provider: "github",
+        callbackURL: safeNext(req.body?.next),
+        errorCallbackURL: "/sign-in",
+      },
+      returnHeaders: true,
+    });
+    if (started.response.url === undefined) {
+      throw new Error("The sign-in library did not return an address to go to.");
+    }
+    res.setHeader("Set-Cookie", started.headers.getSetCookie());
+    res.redirect(303, started.response.url);
   });
 
   router.post("/sign-in/dev", (req, res) => {
@@ -26,10 +65,18 @@ export function signInRouter(config: Config): Router {
     // httpOnly keeps the cookie away from scripts. sameSite stops another site from
     // sending it along with a form post.
     res.cookie(DEV_COOKIE, person.id, { httpOnly: true, sameSite: "lax" });
-    res.redirect(303, "/tickets");
+    res.redirect(303, safeNext(req.body?.next));
   });
 
-  router.post("/sign-out", (_req, res) => {
+  // Ends both kinds of sign-in. The library deletes the session row and clears its cookie.
+  router.post("/sign-out", async (req, res) => {
+    if (auth !== null) {
+      const ended = await auth.api.signOut({
+        headers: fromNodeHeaders(req.headers),
+        returnHeaders: true,
+      });
+      res.setHeader("Set-Cookie", ended.headers.getSetCookie());
+    }
     res.clearCookie(DEV_COOKIE);
     res.redirect(303, "/sign-in");
   });

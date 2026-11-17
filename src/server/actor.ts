@@ -1,5 +1,8 @@
+import { fromNodeHeaders } from "better-auth/node";
 import type { RequestHandler } from "express";
+import { githubIdOf, roleOf, type Auth } from "./auth.js";
 import type { Config } from "./config.js";
+import type { Db } from "./db.js";
 import { HttpError } from "./errors.js";
 
 export type Role = "customer" | "team" | "admin";
@@ -41,14 +44,30 @@ declare global {
 }
 
 /**
- * The one place that decides who is acting. It reads only the sign-in cookie, never a field
- * of the request body or the address, so a caller cannot name themselves. Today the only
- * way in is the development entrance. Real sign-in will add a second way here.
+ * The one place that decides who is acting. It reads only cookies, never a field of the
+ * request body or the address, so a caller cannot name themselves.
+ *
+ * There are two ways in. A GitHub sign-in leaves a session cookie that the sign-in library
+ * checks against the database. The development entrance leaves a cookie naming a made-up
+ * person, and counts only when DEV_SIGN_IN is on.
+ *
+ * The function is async because asking the library is: "await" waits for its answer.
  */
-export function actorMiddleware(config: Config): RequestHandler {
-  return (req, res, next) => {
+export function actorMiddleware(config: Config, auth: Auth | null, db: Db): RequestHandler {
+  return async (req, res, next) => {
     req.actor = null;
-    if (config.devSignIn) {
+    if (auth !== null) {
+      const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
+      if (session !== null) {
+        req.actor = {
+          id: session.user.id,
+          kind: "person",
+          role: roleOf(config, githubIdOf(db, session.user.id)),
+          name: session.user.name,
+        };
+      }
+    }
+    if (req.actor === null && config.devSignIn) {
       const id: unknown = req.cookies[DEV_COOKIE];
       req.actor = DEV_ACTORS.find((actor) => actor.id === id) ?? null;
     }
