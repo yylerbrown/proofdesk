@@ -206,6 +206,16 @@ export function pagesRouter(service: TicketService): Router {
     }
   });
 
+  router.post("/tickets/:key/take", (req, res) => {
+    const ticket = service.takeTicket(req.params.key, signedIn(req));
+    res.redirect(303, `/tickets/${ticket.key}`);
+  });
+
+  router.post("/tickets/:key/release", (req, res) => {
+    const ticket = service.releaseTicket(req.params.key, signedIn(req));
+    res.redirect(303, `/tickets/${ticket.key}`);
+  });
+
   router.post("/tickets/:key/restore", (req, res) => {
     const actor = signedIn(req);
     const ticket = service.restoreTicket(req.params.key, actor);

@@ -30,6 +30,7 @@ export type Ticket = {
   fix_check: string | null;
   created_by: string | null;
   owner_id: string | null;
+  owner_name: string | null;
   agent_id: string | null;
   created_at: string;
   updated_at: string;
@@ -96,6 +97,7 @@ export function createTicketService(db: Db, prefix: string) {
       fix_check: row.fix_check,
       created_by: row.created_by,
       owner_id: row.owner_id,
+      owner_name: row.owner_name,
       agent_id: row.agent_id,
       created_at: row.created_at,
       updated_at: row.updated_at,
@@ -161,6 +163,26 @@ export function createTicketService(db: Db, prefix: string) {
     }
   }
 
+  /** Changes the owner and writes the history entry. Call it inside a transaction. */
+  function setOwner(
+    before: repository.TicketRow,
+    ownerId: string | null,
+    ownerName: string | null,
+    actor: Actor,
+  ): repository.TicketRow {
+    const now = new Date().toISOString();
+    repository.updateTicketOwner(db, before.id, ownerId, ownerName, now);
+    repository.insertEvent(db, {
+      ticketId: before.id,
+      actor: actor.id,
+      actorKind: actor.kind,
+      type: "owner_changed",
+      data: { from: before.owner_name, to: ownerName },
+      now,
+    });
+    return { ...before, owner_id: ownerId, owner_name: ownerName, updated_at: now };
+  }
+
   /** Throws 409 when the ticket is archived. Used before any change to its content. */
   function requireNotArchived(key: string, row: repository.TicketRow): void {
     if (row.archived_at !== null) {
@@ -223,6 +245,13 @@ export function createTicketService(db: Db, prefix: string) {
         requirePermission(actor, "change_status", before);
         requireNotArchived(key, before);
         if (before.status === status) return before; // nothing changes, so nothing is logged
+        if (status === "in_progress" && before.owner_id === null) {
+          throw new HttpError(
+            409,
+            "needs_owner",
+            `Take ticket ${key} before moving it to In Progress.`,
+          );
+        }
         const now = new Date().toISOString();
         repository.updateTicketStatus(db, before.id, status, now);
         repository.insertEvent(db, {
@@ -283,6 +312,37 @@ export function createTicketService(db: Db, prefix: string) {
           now,
         });
         return { ...before, ...after, updated_at: now };
+      })();
+      return toTicket(row);
+    },
+
+    /** Makes the actor the owner of the ticket, also when someone else owned it before. */
+    takeTicket(key: string, actor: Actor): Ticket {
+      const row = db.transaction(() => {
+        const before = requireRow(key, actor);
+        requirePermission(actor, "take", before);
+        requireNotArchived(key, before);
+        if (before.owner_id === actor.id) return before; // already theirs
+        return setOwner(before, actor.id, actor.name, actor);
+      })();
+      return toTicket(row);
+    },
+
+    /** Leaves the ticket without an owner. Not while it is in progress. */
+    releaseTicket(key: string, actor: Actor): Ticket {
+      const row = db.transaction(() => {
+        const before = requireRow(key, actor);
+        requirePermission(actor, "release", before);
+        requireNotArchived(key, before);
+        if (before.owner_id === null) return before; // nobody owns it
+        if (before.status === "in_progress") {
+          throw new HttpError(
+            409,
+            "needs_owner",
+            `Ticket ${key} is in progress, so it must keep an owner. Someone else can take it.`,
+          );
+        }
+        return setOwner(before, null, null, actor);
       })();
       return toTicket(row);
     },
@@ -408,6 +468,12 @@ export function createTicketService(db: Db, prefix: string) {
         archive: !archived && can(actor, "archive", ticket),
         restore: archived && can(actor, "restore", ticket),
         delete: can(actor, "delete", ticket),
+        take: !archived && can(actor, "take", ticket) && ticket.owner_id !== actor.id,
+        release:
+          !archived &&
+          can(actor, "release", ticket) &&
+          ticket.owner_id !== null &&
+          ticket.status !== "in_progress",
         reply: !archived && can(actor, "reply", ticket),
         note: !archived && can(actor, "note", ticket),
       };

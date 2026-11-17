@@ -3,7 +3,7 @@
 
 <hgroup>
   <h1><%= ticket.title %></h1>
-  <p><%= ticket.key %>, <%= statusLabels[ticket.status] %>, filed <%= formatTime(ticket.created_at) %></p>
+  <p><%= ticket.key %>, <%= statusLabels[ticket.status] %>, filed <%= formatTime(ticket.created_at) %>, <% if (ticket.owner_name) { %>owner <%= ticket.owner_name %><% } else { %>no owner yet<% } %></p>
 </hgroup>
 
 <% if (ticket.archived_at) { %>
@@ -28,6 +28,22 @@
 <% if (ticket.fix_check) { %>
 <h2>How will we know it's fixed?</h2>
 <blockquote class="user-text"><%= ticket.fix_check %></blockquote>
+<% } %>
+
+<% if (allowed.take || allowed.release) { %>
+<h2>Owner</h2>
+<div role="group">
+  <% if (allowed.take) { %>
+  <form method="post" action="/tickets/<%= ticket.key %>/take">
+    <button type="submit"><% if (ticket.owner_name) { %>Take over from <%= ticket.owner_name %><% } else { %>Take this ticket<% } %></button>
+  </form>
+  <% } %>
+  <% if (allowed.release) { %>
+  <form method="post" action="/tickets/<%= ticket.key %>/release">
+    <button type="submit" class="secondary">Release it</button>
+  </form>
+  <% } %>
+</div>
 <% } %>
 
 <% if (allowed.changeStatus) { %>
