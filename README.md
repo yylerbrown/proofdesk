@@ -54,6 +54,22 @@ the ticket service asks it on every call. A ticket someone may not see answers 4
 as a ticket that does not exist. Who is acting comes only from the sign-in cookie, never from
 a field of the request.
 
+## The demo
+
+A public demo runs as its own server with `DEMO=on`: a labelled entrance offering a demo customer,
+team member and admin, a banner on every page, and a few sample tickets added to an empty
+database at start. The demo admin can see everything and change nothing, so no visitor can archive
+or delete the sample data. The server refuses `DEMO=on` together with the GitHub sign-in settings,
+so a demo can never hold a real account.
+
+```sh
+DEMO=on DATABASE_PATH=./data/demo.db npm run dev
+```
+
+The sample data is shared by every visitor. To reset it, stop the server, delete its database
+file and start it again. Hosting the demo needs a second Fly.io app with its own disk; that is not
+set up.
+
 ## Pages
 
 The pages are HTML built on the server from the templates in `views/`. They call the same
