@@ -29,10 +29,10 @@ describe("runMigrations", () => {
   it("applies the bundled migrations once and records them", () => {
     const db = memoryDb();
     const first = runMigrations(db);
-    expect(first).toEqual(["0001_app_meta.sql"]);
+    expect(first).toEqual(["0001_app_meta.sql", "0002_tickets.sql"]);
     db.prepare("INSERT INTO app_meta (key, value) VALUES (?, ?)").run("k", "v");
     const rows = db.prepare("SELECT name FROM schema_migrations").all();
-    expect(rows).toEqual([{ name: "0001_app_meta.sql" }]);
+    expect(rows).toEqual([{ name: "0001_app_meta.sql" }, { name: "0002_tickets.sql" }]);
   });
 
   it("is idempotent on a second run", () => {
@@ -40,7 +40,7 @@ describe("runMigrations", () => {
     runMigrations(db);
     db.prepare("INSERT INTO app_meta (key, value) VALUES (?, ?)").run("k", "v");
     expect(runMigrations(db)).toEqual([]);
-    expect(db.prepare("SELECT COUNT(*) AS n FROM schema_migrations").get()).toEqual({ n: 1 });
+    expect(db.prepare("SELECT COUNT(*) AS n FROM schema_migrations").get()).toEqual({ n: 2 });
     expect(db.prepare("SELECT COUNT(*) AS n FROM app_meta").get()).toEqual({ n: 1 });
   });
 

@@ -5,6 +5,10 @@ const schema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   DATABASE_PATH: z.string().min(1).default("./data/app.db"),
   GIT_COMMIT: z.string().min(1).optional(),
+  TICKET_PREFIX: z
+    .string()
+    .regex(/^[A-Z]{2,6}$/, "must be 2 to 6 capital letters")
+    .default("SUP"),
 });
 
 export type Config = {
@@ -12,6 +16,7 @@ export type Config = {
   port: number;
   databasePath: string;
   gitCommit: string | undefined;
+  ticketPrefix: string;
 };
 
 /** Parses and validates environment variables. Throws a readable error when invalid. */
@@ -21,6 +26,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     PORT: env.PORT || undefined,
     DATABASE_PATH: env.DATABASE_PATH || undefined,
     GIT_COMMIT: env.GIT_COMMIT || undefined,
+    TICKET_PREFIX: env.TICKET_PREFIX || undefined,
   });
   if (!result.success) {
     const details = result.error.issues
@@ -34,5 +40,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     port: data.PORT,
     databasePath: data.DATABASE_PATH,
     gitCommit: data.GIT_COMMIT,
+    ticketPrefix: data.TICKET_PREFIX,
   };
 }
