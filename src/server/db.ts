@@ -12,6 +12,9 @@ export function openDatabase(databasePath: string): Db {
   const db = new Database(databasePath);
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
+  // Overwrite deleted content with zeros instead of leaving it in free space in the file.
+  // Permanent deletion of a ticket relies on this.
+  db.pragma("secure_delete = ON");
   return db;
 }
 
