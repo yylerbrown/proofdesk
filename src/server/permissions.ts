@@ -45,6 +45,14 @@ const READ_ONLY_ACTIONS: Action[] = ["list_all", "list_archived", "read", "read_
 
 export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean {
   if (actor.readOnly === true && !READ_ONLY_ACTIONS.includes(action)) return false;
+  // On the demo, tickets are never archived, restored or deleted, so one visitor cannot empty
+  // the sample data for the next.
+  if (
+    actor.demo === true &&
+    (action === "archive" || action === "restore" || action === "delete")
+  ) {
+    return false;
+  }
   const isStaff = actor.role === "team" || actor.role === "admin";
 
   if (action === "create") return true;

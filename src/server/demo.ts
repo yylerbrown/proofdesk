@@ -9,6 +9,7 @@ export function seedDemo(service: TicketService): void {
   // The three demo people, in the order DEMO_ACTORS lists them.
   const customer = DEMO_ACTORS[0]!;
   const team = DEMO_ACTORS[1]!;
+  // Demo people cannot archive, so the sample data has no archived ticket.
   const admin = DEMO_ACTORS[2]!;
   if (service.listTickets("all", admin).length > 0) return;
 
@@ -45,9 +46,8 @@ export function seedDemo(service: TicketService): void {
     customer,
   );
 
-  const old = service.createTicket(
+  service.createTicket(
     { title: "Test ticket, please ignore", description: "Filed by mistake." },
     customer,
   );
-  service.archiveTicket(old.key, team);
 }
