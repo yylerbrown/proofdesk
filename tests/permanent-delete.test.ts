@@ -2,7 +2,8 @@ import fs from "node:fs";
 import { openDatabase } from "../src/server/db.js";
 import { describe, expect, it } from "vitest";
 import { TICKET_TABLES } from "../src/server/tickets/repository.js";
-import { admin, as, buildTestApp, customerOne, teamActor } from "./helpers.js";
+import { createTicketService } from "../src/server/tickets/service.js";
+import { admin, adminActor, as, buildTestApp, customerOne, teamActor } from "./helpers.js";
 
 type TestDb = ReturnType<typeof buildTestApp>["db"];
 
@@ -202,5 +203,56 @@ describe("when the files on disk cannot be cleaned at once", () => {
       reader.prepare("COMMIT").run();
       reader.close();
     }
+  });
+});
+
+describe("permanent deletion covers every column that holds text", () => {
+  it("leaves the marker nowhere on disk, wherever it was written", () => {
+    const { db } = buildTestApp();
+    const service = createTicketService(db, "SUP");
+    const mark = "EVERYCOLUMN-5be1";
+    // A team member whose name carries the marker, so it lands in owner_name too.
+    const team = {
+      id: "team-x",
+      kind: "person" as const,
+      role: "team" as const,
+      name: `Sam ${mark}`,
+    };
+    const customer = {
+      id: "cust-x",
+      kind: "person" as const,
+      role: "customer" as const,
+      name: "C",
+    };
+    service.createTicket(
+      {
+        title: `T ${mark}`,
+        description: `D ${mark}`,
+        where_url: `https://example.com/${mark}`,
+        fix_check: `C ${mark}`,
+      },
+      customer,
+    );
+    service.takeTicket("SUP-1", team);
+    service.changeStatus("SUP-1", { status: "in_progress" }, team);
+    service.agreeCheck("SUP-1", { agreed_check: `A ${mark}` }, team);
+    service.addEntry("SUP-1", { kind: "note", body: `N ${mark}` }, team);
+    service.linkChange("SUP-1", { change_url: `https://example.com/change/${mark}` }, team);
+    const ready = service.markReady("SUP-1", { try_url: `https://example.com/try/${mark}` }, team);
+    service.answer(
+      "SUP-1",
+      { fixed: "no", comment: `Still broken ${mark}`, ready_token: ready.ready_token },
+      customer,
+    );
+    const onDisk = () =>
+      [db.name, `${db.name}-wal`]
+        .filter(fs.existsSync)
+        .some((file) => fs.readFileSync(file).includes(mark));
+    db.pragma("wal_checkpoint(PASSIVE)");
+    expect(onDisk()).toBe(true);
+
+    const result = service.deleteTicket("SUP-1", { confirm: "SUP-1" }, adminActor);
+    expect(result.filesCleaned).toBe(true);
+    expect(onDisk()).toBe(false);
   });
 });
