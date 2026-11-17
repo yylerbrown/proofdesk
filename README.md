@@ -196,9 +196,11 @@ unless another is named):
 - **Sign-in cannot send people elsewhere.** After signing in, the browser returns to the page
   that was asked for, and only an address on this site is accepted.
 - **Flooding.** The `express-rate-limit` library limits one person to 20 new tickets in ten
-  minutes and one address to 10 sign-in starts a minute. The sign-in library limits its own
+  minutes and one address to 10 sign-in starts a minute. A refused ticket, for example a form with a mistake in it, does not count. The sign-in library limits its own
   routes in production. The counts are kept in memory, so they reset when the server restarts.
 
+- **GitHub tokens are stored encrypted.** The token GitHub hands over at sign-in is only kept
+  encrypted with the secret, so a copy of the database holds no working GitHub token.
 - **One person, one GitHub account.** The sign-in library's account linking is off, so a
   second GitHub account showing the same email address cannot take over a person or their role.
 - **https in production.** The server refuses to start in production unless `BETTER_AUTH_URL`
