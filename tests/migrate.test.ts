@@ -38,6 +38,7 @@ const ALL = [
   "0009_ticket_entries.sql",
   "0010_ticket_owner.sql",
   "0011_agreed_check.sql",
+  "0012_confirmation.sql",
 ];
 
 describe("runMigrations", () => {

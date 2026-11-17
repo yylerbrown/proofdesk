@@ -18,7 +18,7 @@ async function setup() {
     fix_check: `It works with ${SECRET}`,
   });
   await one.put("/api/tickets/SUP-1").send({ title: `Card ${SECRET} again`, description: SECRET });
-  await admin(built.app).patch("/api/tickets/SUP-1").send({ status: "resolved" });
+  await admin(built.app).post("/api/tickets/SUP-1/take");
   await admin(built.app).post("/api/tickets").send(valid);
   return built;
 }

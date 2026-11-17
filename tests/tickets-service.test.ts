@@ -34,15 +34,16 @@ describe("ticket service transactions", () => {
     const { db } = buildTestApp();
     const service = createTicketService(db, "SUP");
     service.createTicket(input, actor);
+    service.takeTicket("SUP-1", actor);
     const before = service.getTicket("SUP-1", actor);
 
     breakEventInserts(db);
-    expect(() => service.changeStatus("SUP-1", { status: "resolved" }, actor)).toThrow(
+    expect(() => service.changeStatus("SUP-1", { status: "in_progress" }, actor)).toThrow(
       /event insert failed/,
     );
 
     expect(service.getTicket("SUP-1", actor)).toEqual(before);
-    expect(count(db, "ticket_events")).toBe(1);
+    expect(count(db, "ticket_events")).toBe(2);
   });
 
   it("leaves both tables empty when the creation event fails", () => {
@@ -136,7 +137,7 @@ describe("ticket service actor", () => {
     const service = createTicketService(db, "SUP");
     const agent: Actor = { id: "helper-1", kind: "agent", role: "team", name: "Helper" };
     service.createTicket(input, agent);
-    service.changeStatus("SUP-1", { status: "resolved" }, actor);
+    service.takeTicket("SUP-1", actor);
     expect(service.listEvents("SUP-1", actor).map((e) => e.actor)).toEqual([
       "helper-1",
       "dev-admin-1",
@@ -147,14 +148,14 @@ describe("ticket service actor", () => {
     const { db } = buildTestApp();
     const service = createTicketService(db, "SUP");
     service.createTicket(input, { id: "sam", kind: "person", role: "team", name: "Sam" });
-    service.changeStatus(
+    service.agreeCheck(
       "SUP-1",
-      { status: "resolved" },
+      { agreed_check: "first" },
       { id: "sam", kind: "agent", role: "team", name: "Sam" },
     );
-    service.changeStatus(
+    service.agreeCheck(
       "SUP-1",
-      { status: "new" },
+      { agreed_check: "second" },
       { id: "sam", kind: "person", role: "team", name: "Sam" },
     );
     expect(service.listEvents("SUP-1", actor).map((e) => [e.actor, e.actor_kind])).toEqual([
@@ -203,19 +204,20 @@ describe("ticket service timestamps", () => {
     expect(created.created_at).toBe(t1);
     expect(created.updated_at).toBe(t1);
     expect(service.listEvents("SUP-1", actor).map((e) => e.created_at)).toEqual([t1]);
+    service.takeTicket("SUP-1", actor); // also at t1
 
     vi.setSystemTime(new Date(t2));
-    const changed = service.changeStatus("SUP-1", { status: "resolved" }, actor);
+    const changed = service.changeStatus("SUP-1", { status: "in_progress" }, actor);
     expect(changed.created_at).toBe(t1);
     expect(changed.updated_at).toBe(t2);
-    expect(service.listEvents("SUP-1", actor).map((e) => e.created_at)).toEqual([t1, t2]);
+    expect(service.listEvents("SUP-1", actor).map((e) => e.created_at)).toEqual([t1, t1, t2]);
 
     // The same status again, later: nothing changes and nothing is logged.
     vi.setSystemTime(new Date(t3));
-    const repeated = service.changeStatus("SUP-1", { status: "resolved" }, actor);
+    const repeated = service.changeStatus("SUP-1", { status: "in_progress" }, actor);
     expect(repeated).toEqual(changed);
     expect(service.getTicket("SUP-1", actor)).toEqual(changed);
-    expect(service.listEvents("SUP-1", actor).map((e) => e.created_at)).toEqual([t1, t2]);
+    expect(service.listEvents("SUP-1", actor).map((e) => e.created_at)).toEqual([t1, t1, t2]);
   });
 });
 
@@ -225,7 +227,8 @@ describe("ticket service returns what is stored", () => {
     const service = createTicketService(db, "SUP");
     const created = service.createTicket({ ...input, fix_check: "It prints." }, actor);
     expect(created).toEqual(service.getTicket("SUP-1", actor));
-    const changed = service.changeStatus("SUP-1", { status: "resolved" }, actor);
+    service.takeTicket("SUP-1", actor);
+    const changed = service.changeStatus("SUP-1", { status: "in_progress" }, actor);
     expect(changed).toEqual(service.getTicket("SUP-1", actor));
   });
 
@@ -238,6 +241,7 @@ describe("ticket service returns what is stored", () => {
       "agent_id",
       "agreed_check",
       "archived_at",
+      "change_url",
       "created_at",
       "created_by",
       "description",
@@ -245,8 +249,10 @@ describe("ticket service returns what is stored", () => {
       "key",
       "owner_id",
       "owner_name",
+      "ready_at",
       "status",
       "title",
+      "try_url",
       "updated_at",
       "where_url",
     ]);
