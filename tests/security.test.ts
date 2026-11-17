@@ -161,10 +161,10 @@ describe("fields a caller must not control", () => {
       .send({ ...valid, title: "A new title", ...extras });
     await admin(app)
       .patch("/api/tickets/SUP-1")
-      .send({ ...extras, status: "in_progress" });
+      .send({ ...extras, status: "resolved" });
 
     const ticket = await admin(app).get("/api/tickets/SUP-1");
-    expect(ticket.body).toMatchObject({ ...untouched, status: "in_progress" });
+    expect(ticket.body).toMatchObject({ ...untouched, status: "resolved" });
     const events = await admin(app).get("/api/tickets/SUP-1/events");
     for (const event of events.body) {
       expect(event).toMatchObject({ actor: "dev-admin-1", actor_kind: "person" });

@@ -149,12 +149,12 @@ describe("ticket service actor", () => {
     service.createTicket(input, { id: "sam", kind: "person", role: "team", name: "Sam" });
     service.changeStatus(
       "SUP-1",
-      { status: "in_progress" },
+      { status: "resolved" },
       { id: "sam", kind: "agent", role: "team", name: "Sam" },
     );
     service.changeStatus(
       "SUP-1",
-      { status: "resolved" },
+      { status: "new" },
       { id: "sam", kind: "person", role: "team", name: "Sam" },
     );
     expect(service.listEvents("SUP-1", actor).map((e) => [e.actor, e.actor_kind])).toEqual([
@@ -225,7 +225,7 @@ describe("ticket service returns what is stored", () => {
     const service = createTicketService(db, "SUP");
     const created = service.createTicket({ ...input, fix_check: "It prints." }, actor);
     expect(created).toEqual(service.getTicket("SUP-1", actor));
-    const changed = service.changeStatus("SUP-1", { status: "in_progress" }, actor);
+    const changed = service.changeStatus("SUP-1", { status: "resolved" }, actor);
     expect(changed).toEqual(service.getTicket("SUP-1", actor));
   });
 
@@ -243,6 +243,7 @@ describe("ticket service returns what is stored", () => {
       "fix_check",
       "key",
       "owner_id",
+      "owner_name",
       "status",
       "title",
       "updated_at",
