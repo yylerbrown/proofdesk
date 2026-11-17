@@ -22,10 +22,13 @@ export type EventRow = {
   id: number;
   ticket_id: number;
   actor: string;
+  actor_kind: ActorKind;
   type: string;
   data: string; // JSON text
   created_at: string;
 };
+
+export type ActorKind = "person" | "agent";
 
 export type NewTicket = {
   title: string;
@@ -38,6 +41,7 @@ export type NewTicket = {
 export type NewEvent = {
   ticketId: number;
   actor: string;
+  actorKind: ActorKind;
   type: string;
   data: object;
   now: string;
@@ -81,9 +85,16 @@ export function updateTicketStatus(db: Db, id: number, status: TicketStatus, now
 
 export function insertEvent(db: Db, event: NewEvent): void {
   db.prepare(
-    `INSERT INTO ticket_events (ticket_id, actor, type, data, created_at)
-     VALUES (?, ?, ?, ?, ?)`,
-  ).run(event.ticketId, event.actor, event.type, JSON.stringify(event.data), event.now);
+    `INSERT INTO ticket_events (ticket_id, actor, actor_kind, type, data, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+  ).run(
+    event.ticketId,
+    event.actor,
+    event.actorKind,
+    event.type,
+    JSON.stringify(event.data),
+    event.now,
+  );
 }
 
 /** Oldest first. */
@@ -91,4 +102,15 @@ export function listEvents(db: Db, ticketId: number): EventRow[] {
   return db
     .prepare("SELECT * FROM ticket_events WHERE ticket_id = ? ORDER BY id ASC")
     .all(ticketId) as EventRow[];
+}
+
+/** Reads one value from the app_meta table, or undefined when the key is not there. */
+export function getMeta(db: Db, key: string): string | undefined {
+  const row = db.prepare("SELECT value FROM app_meta WHERE key = ?").get(key) as
+    { value: string } | undefined;
+  return row?.value;
+}
+
+export function insertMeta(db: Db, key: string, value: string): void {
+  db.prepare("INSERT INTO app_meta (key, value) VALUES (?, ?)").run(key, value);
 }
