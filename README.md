@@ -148,7 +148,7 @@ refused (409 `needs_customer`).
    with its owner, and adds the comment to the conversation (`POST /api/tickets/:key/answer`
    with `{ "fixed": "yes" }` or `{ "fixed": "no", "comment": "..." }`).
 
-Any change of status by the team withdraws the question.
+Each question carries a fresh token, and the answer must carry the token of the question the customer was shown, so an old page cannot answer a newer question (409 `question_changed`). Any change of status by the team, or a change to the ticket's text, the agreed check or the change link, withdraws the question. Asking again while waiting changes nothing.
 
 ## Permanent deletion
 
