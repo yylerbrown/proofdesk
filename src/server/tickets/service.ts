@@ -8,6 +8,7 @@ import * as repository from "./repository.js";
 import {
   addEntrySchema,
   changeStatusSchema,
+  agreeCheckSchema,
   createTicketSchema,
   deleteTicketSchema,
   type TicketListFilter,
@@ -28,6 +29,7 @@ export type Ticket = {
   status: TicketStatus;
   where_url: string | null;
   fix_check: string | null;
+  agreed_check: string | null;
   created_by: string | null;
   owner_id: string | null;
   owner_name: string | null;
@@ -95,6 +97,7 @@ export function createTicketService(db: Db, prefix: string) {
       status: row.status,
       where_url: row.where_url,
       fix_check: row.fix_check,
+      agreed_check: row.agreed_check,
       created_by: row.created_by,
       owner_id: row.owner_id,
       owner_name: row.owner_name,
@@ -316,6 +319,33 @@ export function createTicketService(db: Db, prefix: string) {
       return toTicket(row);
     },
 
+    /**
+     * Sets the agreed version of the customer's check, or removes it with an empty text. The
+     * customer's own words in fix_check are never changed by this.
+     */
+    agreeCheck(key: string, input: unknown, actor: Actor): Ticket {
+      const { agreed_check } = parse(agreeCheckSchema, input);
+      const agreed = agreed_check === "" ? null : agreed_check;
+      const row = db.transaction(() => {
+        const before = requireRow(key, actor);
+        requirePermission(actor, "agree_check", before);
+        requireNotArchived(key, before);
+        if (before.agreed_check === agreed) return before; // nothing changes
+        const now = new Date().toISOString();
+        repository.updateAgreedCheck(db, before.id, agreed, now);
+        repository.insertEvent(db, {
+          ticketId: before.id,
+          actor: actor.id,
+          actorKind: actor.kind,
+          type: "check_agreed",
+          data: { from: before.agreed_check, to: agreed },
+          now,
+        });
+        return { ...before, agreed_check: agreed, updated_at: now };
+      })();
+      return toTicket(row);
+    },
+
     /** Makes the actor the owner of the ticket, also when someone else owned it before. */
     takeTicket(key: string, actor: Actor): Ticket {
       const row = db.transaction(() => {
@@ -474,6 +504,7 @@ export function createTicketService(db: Db, prefix: string) {
           can(actor, "release", ticket) &&
           ticket.owner_id !== null &&
           ticket.status !== "in_progress",
+        agreeCheck: !archived && can(actor, "agree_check", ticket),
         reply: !archived && can(actor, "reply", ticket),
         note: !archived && can(actor, "note", ticket),
       };

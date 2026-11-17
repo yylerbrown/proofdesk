@@ -18,6 +18,7 @@ export type TicketRow = {
   updated_at: string;
   archived_at: string | null;
   owner_name: string | null;
+  agreed_check: string | null;
 };
 
 export type EventRow = {
@@ -114,6 +115,14 @@ export function updateTicketText(db: Db, id: number, text: TicketText, now: stri
     `UPDATE tickets SET title = ?, description = ?, where_url = ?, fix_check = ?, updated_at = ?
      WHERE id = ?`,
   ).run(text.title, text.description, text.whereUrl, text.fixCheck, now, id);
+}
+
+export function updateAgreedCheck(db: Db, id: number, agreed: string | null, now: string): void {
+  db.prepare("UPDATE tickets SET agreed_check = ?, updated_at = ? WHERE id = ?").run(
+    agreed,
+    now,
+    id,
+  );
 }
 
 /** Sets the owner of a ticket. Pass null for both to leave it without an owner. */
