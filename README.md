@@ -43,11 +43,11 @@ cp .env.example .env   # then fill it in; npm run dev reads it
 npm run dev
 ```
 
-| Role        | What they can do                                                                               |
-| ----------- | ---------------------------------------------------------------------------------------------- |
-| Customer    | File tickets. See, edit and archive only their own. Cannot change a status.                    |
-| Team member | See, edit, archive and change the status of every ticket. See and restore archived tickets.    |
-| Admin       | Everything a team member can. Permanent deletion, when it is built, will be for an admin only. |
+| Role        | What they can do                                                                                            |
+| ----------- | ----------------------------------------------------------------------------------------------------------- |
+| Customer    | File tickets. See, edit, archive and reply on only their own. Cannot change a status or see internal notes. |
+| Team member | See, edit, archive and change the status of every ticket. See and restore archived tickets.                 |
+| Admin       | Everything a team member can. Permanent deletion, when it is built, will be for an admin only.              |
 
 One function, `can()` in `src/server/permissions.ts`, answers every permission question, and
 the ticket service asks it on every call. A ticket someone may not see answers 404, the same
