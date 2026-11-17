@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { openDatabase } from "../src/server/db.js";
 import { describe, expect, it } from "vitest";
 import { TICKET_TABLES } from "../src/server/tickets/repository.js";
 import { admin, as, buildTestApp, customerOne, teamActor } from "./helpers.js";
@@ -31,7 +32,8 @@ describe("permanent deletion", () => {
   it("removes the ticket and its history, and keeps only who and when", async () => {
     const { app, db } = await setup();
     const res = await admin(app).delete("/api/tickets/SUP-1").send({ confirm: "SUP-1" });
-    expect(res.status).toBe(204);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ deleted: true, files_cleaned: true });
 
     expect(count(db, "SELECT COUNT(*) AS n FROM tickets WHERE id = 1")).toBe(0);
     expect(count(db, "SELECT COUNT(*) AS n FROM ticket_events WHERE ticket_id = 1")).toBe(0);
@@ -105,7 +107,8 @@ describe("permanent deletion", () => {
     const { app } = await setup();
     await admin(app).post("/api/tickets/SUP-1/archive");
     const res = await admin(app).delete("/api/tickets/SUP-1").send({ confirm: "SUP-1" });
-    expect(res.status).toBe(204);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ deleted: true, files_cleaned: true });
   });
 });
 
@@ -166,8 +169,38 @@ describe("permanent deletion on the pages", () => {
       .post("/tickets/SUP-1/delete")
       .type("form")
       .send({ confirm: "SUP-1" });
-    expect(right.status).toBe(303);
-    expect(right.headers.location).toBe("/tickets");
+    expect(right.status).toBe(200);
+    expect(right.text).toContain("SUP-1 was deleted");
+    expect(right.text).toContain("The files on disk have been cleaned as well");
     expect((await admin(app).get("/api/tickets/SUP-1")).status).toBe(410);
+  });
+});
+
+describe("when the files on disk cannot be cleaned at once", () => {
+  it("says so, instead of claiming the text is gone from disk", async () => {
+    const { app, db } = await setup();
+    // Another connection to the same file, in the middle of reading.
+    const reader = openDatabase(db.name);
+    try {
+      reader.prepare("BEGIN").run();
+      reader.prepare("SELECT * FROM tickets").all();
+
+      const startedAt = Date.now();
+      const res = await admin(app).delete("/api/tickets/SUP-1").send({ confirm: "SUP-1" });
+      expect(res.body).toEqual({ deleted: true, files_cleaned: false });
+      // It does not wait for the reader, which would hold up every other request.
+      expect(Date.now() - startedAt).toBeLessThan(1000);
+      // Gone from the database all the same.
+      expect((await admin(app).get("/api/tickets/SUP-1")).status).toBe(410);
+
+      const page = await admin(app)
+        .post("/tickets/SUP-2/delete")
+        .type("form")
+        .send({ confirm: "SUP-2" });
+      expect(page.text).toContain("The files on disk are not cleaned yet.");
+    } finally {
+      reader.prepare("COMMIT").run();
+      reader.close();
+    }
   });
 });

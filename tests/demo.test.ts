@@ -153,6 +153,16 @@ describe("the other demo people", () => {
 });
 
 describe("a demo server started in production", () => {
+  it("marks the demo identity cookie Secure", async () => {
+    const built = buildTestApp({ NODE_ENV: "production", DEMO: "on", ...noSignIn() });
+    const res = await visitor(built.app)
+      .post("/sign-in/dev")
+      .type("form")
+      .send({ id: demoTeam.id });
+    expect(res.status).toBe(303);
+    expect(String(res.headers["set-cookie"])).toContain("Secure");
+  });
+
   it("serves its pages without any sign-in settings", async () => {
     const built = buildTestApp({ NODE_ENV: "production", DEMO: "on", ...noSignIn() });
     const res = await request(built.app).get("/sign-in");
