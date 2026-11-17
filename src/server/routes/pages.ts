@@ -211,6 +211,21 @@ export function pagesRouter(service: TicketService): Router {
     res.redirect(303, `/tickets/${ticket.key}`);
   });
 
+  router.post("/tickets/:key/change-link", (req, res) => {
+    const ticket = service.linkChange(req.params.key, req.body, signedIn(req));
+    res.redirect(303, `/tickets/${ticket.key}`);
+  });
+
+  router.post("/tickets/:key/ready", (req, res) => {
+    const ticket = service.markReady(req.params.key, req.body, signedIn(req));
+    res.redirect(303, `/tickets/${ticket.key}`);
+  });
+
+  router.post("/tickets/:key/answer", (req, res) => {
+    const ticket = service.answer(req.params.key, req.body, signedIn(req));
+    res.redirect(303, `/tickets/${ticket.key}`);
+  });
+
   router.post("/tickets/:key/take", (req, res) => {
     const ticket = service.takeTicket(req.params.key, signedIn(req));
     res.redirect(303, `/tickets/${ticket.key}`);

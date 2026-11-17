@@ -37,6 +37,20 @@ export function ticketsRouter(service: TicketService): Router {
     res.json(service.agreeCheck(req.params.key, req.body, signedIn(req)));
   });
 
+  // From merged to confirmed: { "change_url" }, then { "try_url" }, then the customer's
+  // { "fixed": "yes" } or { "fixed": "no", "comment": "..." }.
+  router.put("/tickets/:key/change-link", (req, res) => {
+    res.json(service.linkChange(req.params.key, req.body, signedIn(req)));
+  });
+
+  router.post("/tickets/:key/ready", (req, res) => {
+    res.json(service.markReady(req.params.key, req.body, signedIn(req)));
+  });
+
+  router.post("/tickets/:key/answer", (req, res) => {
+    res.json(service.answer(req.params.key, req.body, signedIn(req)));
+  });
+
   router.post("/tickets/:key/take", (req, res) => {
     res.json(service.takeTicket(req.params.key, signedIn(req)));
   });

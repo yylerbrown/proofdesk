@@ -9,6 +9,9 @@ import {
   addEntrySchema,
   changeStatusSchema,
   agreeCheckSchema,
+  answerSchema,
+  linkChangeSchema,
+  markReadySchema,
   createTicketSchema,
   deleteTicketSchema,
   type TicketListFilter,
@@ -37,6 +40,9 @@ export type Ticket = {
   created_at: string;
   updated_at: string;
   archived_at: string | null;
+  change_url: string | null;
+  try_url: string | null;
+  ready_at: string | null;
 };
 
 export type TicketEvent = {
@@ -105,6 +111,9 @@ export function createTicketService(db: Db, prefix: string) {
       created_at: row.created_at,
       updated_at: row.updated_at,
       archived_at: row.archived_at,
+      change_url: row.change_url,
+      try_url: row.try_url,
+      ready_at: row.ready_at,
     };
   }
 
@@ -248,6 +257,13 @@ export function createTicketService(db: Db, prefix: string) {
         requirePermission(actor, "change_status", before);
         requireNotArchived(key, before);
         if (before.status === status) return before; // nothing changes, so nothing is logged
+        if (status === "resolved") {
+          throw new HttpError(
+            409,
+            "needs_customer",
+            `Only the customer resolves ticket ${key}, by answering "Did this fix it?".`,
+          );
+        }
         if (status === "in_progress" && before.owner_id === null) {
           throw new HttpError(
             409,
@@ -265,7 +281,7 @@ export function createTicketService(db: Db, prefix: string) {
           data: { from: before.status, to: status },
           now,
         });
-        return { ...before, status, updated_at: now };
+        return { ...before, status, ready_at: null, updated_at: now };
       })();
       return toTicket(row);
     },
@@ -342,6 +358,107 @@ export function createTicketService(db: Db, prefix: string) {
           now,
         });
         return { ...before, agreed_check: agreed, updated_at: now };
+      })();
+      return toTicket(row);
+    },
+
+    /** Records the link to the code change. Evidence, not proof that the ticket is fixed. */
+    linkChange(key: string, input: unknown, actor: Actor): Ticket {
+      const { change_url } = parse(linkChangeSchema, input);
+      const row = db.transaction(() => {
+        const before = requireRow(key, actor);
+        requirePermission(actor, "link_change", before);
+        requireNotArchived(key, before);
+        if (before.change_url === change_url) return before;
+        const now = new Date().toISOString();
+        repository.updateChangeUrl(db, before.id, change_url, now);
+        repository.insertEvent(db, {
+          ticketId: before.id,
+          actor: actor.id,
+          actorKind: actor.kind,
+          type: "change_linked",
+          data: { from: before.change_url, to: change_url },
+          now,
+        });
+        return { ...before, change_url, updated_at: now };
+      })();
+      return toTicket(row);
+    },
+
+    /**
+     * After the change is live and a team member has checked it, asks the customer "Did
+     * this fix it?", pointing them at the page to try. The ticket must be in progress (so it
+     * has an owner) and have its change link.
+     */
+    markReady(key: string, input: unknown, actor: Actor): Ticket {
+      const { try_url } = parse(markReadySchema, input);
+      const row = db.transaction(() => {
+        const before = requireRow(key, actor);
+        requirePermission(actor, "mark_ready", before);
+        requireNotArchived(key, before);
+        if (before.status !== "in_progress") {
+          throw new HttpError(409, "not_in_progress", `Move ticket ${key} to In Progress first.`);
+        }
+        if (before.change_url === null) {
+          throw new HttpError(409, "needs_change_link", `Add the change link to ${key} first.`);
+        }
+        const now = new Date().toISOString();
+        repository.updateReady(db, before.id, try_url, now);
+        repository.insertEvent(db, {
+          ticketId: before.id,
+          actor: actor.id,
+          actorKind: actor.kind,
+          type: "ready_for_customer",
+          data: { try_url },
+          now,
+        });
+        return { ...before, try_url, ready_at: now, updated_at: now };
+      })();
+      return toTicket(row);
+    },
+
+    /**
+     * The customer's answer to "Did this fix it?". Yes resolves the ticket. No puts it back
+     * in progress with its owner, and the customer's comment goes into the conversation.
+     */
+    answer(key: string, input: unknown, actor: Actor): Ticket {
+      const { fixed, comment } = parse(answerSchema, input);
+      if (fixed === "no" && !comment) {
+        throw new ValidationError("Say what is still wrong.", {
+          comment: ["Say what is still wrong."],
+        });
+      }
+      const row = db.transaction(() => {
+        const before = requireRow(key, actor);
+        requirePermission(actor, "answer", before);
+        requireNotArchived(key, before);
+        if (before.ready_at === null) {
+          throw new HttpError(409, "not_waiting", `Ticket ${key} is not waiting for an answer.`);
+        }
+        const now = new Date().toISOString();
+        const status = fixed === "yes" ? "resolved" : "in_progress";
+        repository.updateTicketStatus(db, before.id, status, now);
+        if (fixed === "no") {
+          repository.insertEntry(db, {
+            ticket_id: before.id,
+            kind: "reply",
+            body: comment!,
+            author: actor.id,
+            author_kind: actor.kind,
+            author_role: actor.role,
+            author_name: actor.name,
+            created_at: now,
+          });
+        }
+        repository.insertEvent(db, {
+          ticketId: before.id,
+          actor: actor.id,
+          actorKind: actor.kind,
+          type: "customer_answered",
+          data: { fixed: fixed === "yes" },
+          now,
+        });
+        return { ...before, status, ready_at: null, updated_at: now } as repository.TicketRow;
       })();
       return toTicket(row);
     },
@@ -505,6 +622,14 @@ export function createTicketService(db: Db, prefix: string) {
           ticket.owner_id !== null &&
           ticket.status !== "in_progress",
         agreeCheck: !archived && can(actor, "agree_check", ticket),
+        linkChange: !archived && can(actor, "link_change", ticket),
+        markReady:
+          !archived &&
+          can(actor, "mark_ready", ticket) &&
+          ticket.status === "in_progress" &&
+          ticket.change_url !== null &&
+          ticket.ready_at === null,
+        answer: !archived && can(actor, "answer", ticket) && ticket.ready_at !== null,
         reply: !archived && can(actor, "reply", ticket),
         note: !archived && can(actor, "note", ticket),
       };

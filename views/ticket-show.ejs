@@ -51,6 +51,56 @@
 <% } %>
 <% } %>
 
+<% if (allowed.answer) { %>
+<article>
+  <h2>Did this fix it?</h2>
+  <p>The team says it is fixed. Please check it<% if (ticket.try_url) { %> here: <a href="<%= ticket.try_url %>" rel="noopener noreferrer nofollow"><%= ticket.try_url %></a><% } %>.</p>
+  <% const check = ticket.agreed_check ?? ticket.fix_check; %>
+  <% if (check) { %>
+  <p>You said we would know it is fixed when:</p>
+  <blockquote class="user-text"><%= check %></blockquote>
+  <% } %>
+  <form method="post" action="/tickets/<%= ticket.key %>/answer">
+    <input type="hidden" name="fixed" value="yes" />
+    <button type="submit">Yes, it is fixed</button>
+  </form>
+  <form method="post" action="/tickets/<%= ticket.key %>/answer">
+    <input type="hidden" name="fixed" value="no" />
+    <label>
+      No, it is not fixed. What is still wrong?
+      <textarea name="comment" rows="3" required></textarea>
+    </label>
+    <button type="submit" class="secondary">No, send it back</button>
+  </form>
+</article>
+<% } %>
+
+<% if (ticket.change_url || ticket.ready_at || allowed.linkChange) { %>
+<h2>The fix</h2>
+<% if (ticket.change_url) { %>
+<p>Change: <a href="<%= ticket.change_url %>" rel="noopener noreferrer nofollow" class="user-text"><%= ticket.change_url %></a></p>
+<% } %>
+<% if (ticket.ready_at) { %>
+<p>Waiting for the customer to check it, since <%= formatTime(ticket.ready_at) %>.</p>
+<% } %>
+<% if (allowed.linkChange) { %>
+<form method="post" action="/tickets/<%= ticket.key %>/change-link">
+  <fieldset role="group">
+    <input type="url" name="change_url" placeholder="Link to the code change" aria-label="Link to the code change" required />
+    <button type="submit" class="secondary">Save change link</button>
+  </fieldset>
+</form>
+<% } %>
+<% if (allowed.markReady) { %>
+<form method="post" action="/tickets/<%= ticket.key %>/ready">
+  <fieldset role="group">
+    <input type="url" name="try_url" placeholder="Page on the live site to try" aria-label="Page on the live site to try" required />
+    <button type="submit">Ask the customer</button>
+  </fieldset>
+</form>
+<% } %>
+<% } %>
+
 <% if (allowed.take || allowed.release) { %>
 <h2>Owner</h2>
 <div role="group">
@@ -72,7 +122,7 @@
 <form method="post" action="/tickets/<%= ticket.key %>/status">
   <fieldset role="group">
     <select name="status" aria-label="Status">
-      <% for (const status of statuses) { %>
+      <% for (const status of statuses) { if (status === "resolved" && ticket.status !== "resolved") continue; %>
       <option value="<%= status %>" <% if (status === ticket.status) { %>selected<% } %>><%= statusLabels[status] %></option>
       <% } %>
     </select>
