@@ -60,7 +60,7 @@ A public demo runs as its own server with `DEMO=on`: a labelled entrance offerin
 team member and admin, a banner on every page, and a few sample tickets added to an empty
 database at start. The demo admin can see everything and change nothing, so no visitor can archive
 or delete the sample data. The server refuses `DEMO=on` together with the GitHub sign-in settings,
-so a demo can never hold a real account.
+so a demo can never hold a real account. Each database also records on its first start whether it is for the demo or for real tickets, and the server refuses to start if that does not match `DEMO`; an existing database that already holds data is never labelled as a demo. On the demo nobody archives, restores or deletes, so one visitor cannot empty the sample data for the next.
 
 ```sh
 DEMO=on DATABASE_PATH=./data/demo.db npm run dev
