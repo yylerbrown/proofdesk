@@ -133,6 +133,23 @@ The ticket routes need a signed-in browser session, so they are not meant to be 
 `curl`. A request that changes something must also say it comes from this site, which a
 browser does by itself (see Security).
 
+## From merged to confirmed
+
+Only the customer resolves a ticket. The status control offers New and In Progress; Resolved is
+refused (409 `needs_customer`).
+
+1. A team member pastes the link to the code change (`PUT /api/tickets/:key/change-link`). It is
+   evidence, not proof: the status does not change.
+2. After the change is live and checked, a team member asks the customer, with the page to try
+   (`POST /api/tickets/:key/ready`). The ticket must be in progress, so it has an owner, and have
+   its change link.
+3. The person who filed the ticket sees "Did this fix it?" with their check quoted, the agreed
+   version first. Yes resolves the ticket. No needs a comment, puts the ticket back in progress
+   with its owner, and adds the comment to the conversation (`POST /api/tickets/:key/answer`
+   with `{ "fixed": "yes" }` or `{ "fixed": "no", "comment": "..." }`).
+
+Any change of status by the team withdraws the question.
+
 ## Permanent deletion
 
 For a ticket that holds something that must be gone. An admin opens the ticket, follows
