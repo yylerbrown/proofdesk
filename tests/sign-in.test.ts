@@ -197,6 +197,9 @@ describe("requests forged from another site", () => {
     ["post", "/tickets/SUP-1/archive"],
     ["post", "/sign-out"],
     ["post", "/sign-in/dev"],
+    ["post", "/sign-in/github"],
+    ["post", "/api/tickets/SUP-1/restore"],
+    ["post", "/tickets/SUP-1/restore"],
   ] as const)("are refused: %s %s", async (method, address) => {
     const { app } = buildTestApp();
     await admin(app).post("/api/tickets").send(valid);
@@ -368,6 +371,19 @@ describe("the limit on filing tickets", () => {
     await admin(app).post("/api/tickets").send(valid);
     for (let i = 0; i < FILING_LIMIT + 5; i++) {
       expect((await admin(app).get("/api/tickets/SUP-1")).status).toBe(200);
+      const edited = await admin(app)
+        .put("/api/tickets/SUP-1")
+        .send({ ...valid, title: `Edit number ${i}` });
+      expect(edited.status).toBe(200);
     }
+  });
+
+  it("does not count refused tickets, so mistakes cannot lock a customer out", async () => {
+    const { app } = buildTestApp();
+    for (let i = 0; i < FILING_LIMIT + 5; i++) {
+      const refused = await as(app, customerOne).post("/tickets").type("form").send({ title: "x" });
+      expect(refused.status).toBe(400);
+    }
+    expect((await as(app, customerOne).post("/api/tickets").send(valid)).status).toBe(201);
   });
 });

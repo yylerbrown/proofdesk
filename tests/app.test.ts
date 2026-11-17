@@ -48,6 +48,19 @@ describe("GET /api/health", () => {
 });
 
 describe("error handling", () => {
+  it("uses the status a library puts in statusCode, as the sign-in library does", async () => {
+    const { errorHandler } = await import("../src/server/errors.js");
+    const express = (await import("express")).default;
+    const app = express();
+    app.get("/boom", () => {
+      throw Object.assign(new Error("bad"), { status: "BAD_REQUEST", statusCode: 400 });
+    });
+    app.use(errorHandler);
+    const res = await request(app).get("/boom");
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("bad_request");
+  });
+
   it("returns a JSON 404 for unknown api routes", async () => {
     const { app } = build();
     const res = await request(app).get("/api/nope");

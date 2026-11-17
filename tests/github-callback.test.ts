@@ -1,6 +1,6 @@
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { buildTestApp, SIGN_IN_ENV, visitor } from "./helpers.js";
+import { buildTestApp, PRODUCTION_SIGN_IN_ENV, SIGN_IN_ENV, visitor } from "./helpers.js";
 
 type TestApp = ReturnType<typeof buildTestApp>["app"];
 type GithubUser = { id: number; login: string; name: string; email: string };
@@ -110,6 +110,35 @@ describe("the whole GitHub sign-in", () => {
     expect(String(res.headers["set-cookie"])).toContain("better-auth.session_token=");
     const row = db.prepare(`SELECT "expiresAt" FROM "session"`).get() as { expiresAt: string };
     expect(new Date(row.expiresAt).getTime()).toBeGreaterThan(new Date(twoDaysOld).getTime());
+  });
+});
+
+describe("the session cookie in production", () => {
+  it("is Secure and HttpOnly, and the GitHub token is not stored as it came", async () => {
+    const { app, db } = buildTestApp({
+      ...PRODUCTION_SIGN_IN_ENV,
+      NODE_ENV: "production",
+      ADMIN_GITHUB_IDS: "1001",
+    });
+    githubUser = ada;
+    const start = await visitor(app).post("/sign-in/github");
+    const state = new URL(start.headers.location as string).searchParams.get("state") ?? "";
+    const back = await request(app)
+      .get("/api/auth/callback/github")
+      .query({ code: "made-up-code", state })
+      .set("Cookie", cookiesOf(start));
+    const session = ((back.headers["set-cookie"] as unknown as string[]) ?? []).find((cookie) =>
+      cookie.includes("session_token="),
+    );
+    expect(session).toBeDefined();
+    expect(session).toContain("Secure");
+    expect(session).toContain("HttpOnly");
+
+    const stored = db.prepare(`SELECT "accessToken" FROM "account"`).get() as {
+      accessToken: string;
+    };
+    expect(stored.accessToken).not.toBe("made-up-token");
+    expect(stored.accessToken).not.toContain("made-up-token");
   });
 });
 
