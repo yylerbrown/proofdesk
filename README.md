@@ -37,6 +37,8 @@ ticket service as the JSON API. Open `http://localhost:3000/` in a browser.
 | `GET /tickets/:key`         | One ticket with its status control and its history.           |
 | `POST /tickets/:key/status` | Changes the status from the ticket page, then shows it again. |
 
+The ticket page also has an edit form (`/tickets/:key/edit`) and buttons to archive and restore.
+
 ## API
 
 All routes are under `/api` and speak JSON. Errors look like
@@ -53,6 +55,19 @@ refuses to start if `TICKET_PREFIX` later differs, because that would rename eve
 | `GET /api/tickets/:key`        | Returns one ticket, 404 if it does not exist, 400 if the key is malformed.          |
 | `PATCH /api/tickets/:key`      | Changes the status with `{ "status": "resolved" }`. The same status is a no-op.     |
 | `GET /api/tickets/:key/events` | Returns the ticket's log of events, oldest first, with who acted and of what kind.  |
+
+More routes change a ticket. Each one writes an event in the same transaction.
+
+| Method and path                  | What it does                                                           |
+| -------------------------------- | ---------------------------------------------------------------------- |
+| `PUT /api/tickets/:key`          | Replaces the title, description, link and check. Same rules as create. |
+| `POST /api/tickets/:key/archive` | Archives the ticket. Nothing is deleted.                               |
+| `POST /api/tickets/:key/restore` | Brings an archived ticket back.                                        |
+
+An archived ticket is left out of every list except `GET /api/tickets?status=archived`, and it
+cannot be edited or change status until it is restored (409 `ticket_archived`). Until sign-in
+exists anyone can still open an archived ticket by its key and restore it. Hiding it from
+ordinary users and keeping restore for an admin come with roles.
 
 Creating a ticket needs `title` (3 to 120 characters) and `description` (1 to 5000). It also
 accepts `where_url` (an http or https URL, at most 500 characters) and `fix_check` (at most 500).
