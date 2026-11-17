@@ -110,7 +110,7 @@ The build order becomes:
 2. Pages for the ticket core.
 3. Edit and archive.
 4. Security, the parts that do not need sign-in: headers, the request size limit, fields a user must not control, wider escaping tests.
-5. Sign-in, roles enforced on the server, the demo entrance. With it: the defence against forged requests, rate limits, who may edit, restore by an admin, and permanent deletion.
+5. Sign-in, roles enforced on the server, the demo entrance. With it: the defence against forged requests, rate limits, who may edit, who may restore (a team member or admin), and permanent deletion.
 6. Live on the real address. Moved after sign-in so that nothing is reachable before permissions hold.
 7. Replies, internal notes, a named human owner, the customer's check.
 8. Change links, the deployment check, the customer's confirmation.
