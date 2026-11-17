@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { signedIn } from "../actor.js";
-import { ValidationError } from "../errors.js";
+import { HttpError, ValidationError } from "../errors.js";
 import { can } from "../permissions.js";
 import { describeActor, describeEvent, formatTime, STATUS_LABELS } from "../pages/format.js";
 import { listQuerySchema, TICKET_STATUSES } from "../tickets/schemas.js";
@@ -124,10 +124,24 @@ export function pagesRouter(service: TicketService): Router {
     }
   });
 
+  // Archiving asks first, on a page of its own, because for a customer it cannot be undone.
+  router.get("/tickets/:key/archive", (req, res) => {
+    const actor = signedIn(req);
+    const ticket = service.getTicket(req.params.key, actor);
+    if (!service.allowedActions(ticket, actor).archive) {
+      throw new HttpError(403, "forbidden", "You are not allowed to do that.");
+    }
+    res.render("ticket-archive", {
+      title: `Archive ${ticket.key}`,
+      ticket,
+      canRestore: can(actor, "list_archived"),
+    });
+  });
+
   router.post("/tickets/:key/archive", (req, res) => {
     const actor = signedIn(req);
     service.archiveTicket(req.params.key, actor);
-    // Back to the list: an archived ticket has no page any more, except for an admin.
+    // Back to the list: for a customer an archived ticket has no page any more.
     res.redirect(303, "/tickets");
   });
 

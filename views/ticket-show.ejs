@@ -46,12 +46,10 @@
 
 <% if (allowed.edit || allowed.archive) { %>
 <h2>Change this ticket</h2>
-<form method="post" action="/tickets/<%= ticket.key %>/archive">
-  <div role="group">
-    <% if (allowed.edit) { %><a href="/tickets/<%= ticket.key %>/edit" role="button" class="secondary">Edit ticket</a><% } %>
-    <% if (allowed.archive) { %><button type="submit" class="secondary">Archive ticket</button><% } %>
-  </div>
-</form>
+<div role="group">
+  <% if (allowed.edit) { %><a href="/tickets/<%= ticket.key %>/edit" role="button" class="secondary">Edit ticket</a><% } %>
+  <% if (allowed.archive) { %><a href="/tickets/<%= ticket.key %>/archive" role="button" class="secondary">Archive ticket</a><% } %>
+</div>
 <% } %>
 
 <h2>History</h2>

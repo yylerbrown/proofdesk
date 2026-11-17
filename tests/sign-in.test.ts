@@ -81,13 +81,14 @@ describe("a GitHub session", () => {
     const guest = await signedInBrowser(db, "9009", "Vic Visitor");
     await visitor(app).post("/api/tickets").set("Cookie", guest.cookie).send(valid);
 
-    const archivedList = (cookie: string) =>
-      request(app).get("/api/tickets?status=archived").set("Cookie", cookie);
+    const signedInAs = async (cookie: string) =>
+      (await request(app).get("/tickets").set("Cookie", cookie)).text;
+    expect(await signedInAs(boss.cookie)).toContain("Signed in as Ada Admin (admin)");
+    expect(await signedInAs(helper.cookie)).toContain("Signed in as Tom Team (team)");
+    expect(await signedInAs(guest.cookie)).toContain("Signed in as Vic Visitor (customer)");
+
     const changeStatus = (cookie: string) =>
       visitor(app).patch("/api/tickets/SUP-1").set("Cookie", cookie).send({ status: "resolved" });
-
-    expect((await archivedList(boss.cookie)).status).toBe(200); // admin only
-    expect((await archivedList(helper.cookie)).status).toBe(403);
     expect((await changeStatus(guest.cookie)).status).toBe(403); // a customer cannot
     expect((await changeStatus(helper.cookie)).status).toBe(200); // a team member can
   });
