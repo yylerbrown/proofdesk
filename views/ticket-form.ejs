@@ -1,7 +1,7 @@
 <%- include("header") %>
-<h1>New ticket</h1>
+<h1><%= title %></h1>
 
-<form method="post" action="/tickets">
+<form method="post" action="<%= action %>">
   <label>
     Title
     <input type="text" name="title" value="<%= values.title %>" required <% if (errors.title) { %>aria-invalid="true"<% } %> />
@@ -26,6 +26,6 @@
     <% if (errors.fix_check) { %><small><%= errors.fix_check.join(" ") %></small><% } %>
   </label>
 
-  <button type="submit">File ticket</button>
+  <button type="submit"><%= submitLabel %></button>
 </form>
 <%- include("footer") %>

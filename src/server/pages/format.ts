@@ -26,6 +26,15 @@ const statusChangeSchema = z.object({
   to: z.enum(TICKET_STATUSES),
 });
 
+const editSchema = z.object({ changes: z.record(z.string(), z.unknown()) });
+
+const FIELD_LABELS: Record<string, string> = {
+  title: "title",
+  description: "description",
+  where_url: "where it happened",
+  fix_check: "how we will know it's fixed",
+};
+
 /** One line of plain words for a history entry. An unknown kind of entry shows its type. */
 export function describeEvent(event: TicketEvent): string {
   if (event.type === "created") return "Ticket filed";
@@ -37,6 +46,15 @@ export function describeEvent(event: TicketEvent): string {
       return `Status changed from ${from} to ${to}`;
     }
   }
+  if (event.type === "edited") {
+    const edit = editSchema.safeParse(event.data);
+    if (edit.success) {
+      const fields = Object.keys(edit.data.changes).map((field) => FIELD_LABELS[field] ?? field);
+      return `Edited: ${fields.join(", ")}`;
+    }
+  }
+  if (event.type === "archived") return "Archived";
+  if (event.type === "restored") return "Restored";
   return event.type;
 }
 
