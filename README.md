@@ -2,8 +2,8 @@
 
 Support Desk will be a customer support ticketing system. This repository holds only the
 project skeleton plus the tickets core: an Express server written in TypeScript, a SQLite
-database with a small migration runner, a JSON API to submit tickets, list them and change
-their status, tests, a Dockerfile and a CI workflow. There are no pages and no sign-in yet.
+database with a small migration runner, a JSON API and pages to submit tickets, list them
+and change their status, tests, a Dockerfile and a CI workflow. There is no sign-in yet.
 
 ## Run with Docker
 
@@ -23,6 +23,19 @@ cp .env.example .env   # optional; the variables are read from the environment
 npm run dev            # watch mode on http://localhost:3000
 npm run build && npm start
 ```
+
+## Pages
+
+The pages are HTML built on the server from the templates in `views/`. They call the same
+ticket service as the JSON API. Open `http://localhost:3000/` in a browser.
+
+| Address                     | What it shows or does                                         |
+| --------------------------- | ------------------------------------------------------------- |
+| `GET /tickets?status=`      | The ticket list, newest first, with the status filter.        |
+| `GET /tickets/new`          | The form to file a ticket.                                    |
+| `POST /tickets`             | Files the ticket from the form, then shows its page.          |
+| `GET /tickets/:key`         | One ticket with its status control and its history.           |
+| `POST /tickets/:key/status` | Changes the status from the ticket page, then shows it again. |
 
 ## API
 
@@ -64,8 +77,13 @@ npm run format
 - `src/server/config.ts` validates environment variables with zod.
 - `src/server/db.ts` opens the SQLite database.
 - `src/server/migrate.ts` applies numbered files from `migrations/` and records them.
-- `src/server/errors.ts` holds the JSON error handling.
+- `src/server/errors.ts` holds the error handling: JSON for the API, an HTML page for pages.
+- `src/server/validation.ts` checks a request against a zod schema.
 - `src/server/routes/` holds route modules. They stay thin and call the services.
+  `tickets.ts` is the JSON API and `pages.ts` is the pages.
+- `src/server/pages/format.ts` turns stored values into the words shown on a page.
+- `views/` holds the page templates (EJS: HTML with small pieces of JavaScript).
+- `public/site.css` holds the few style rules added on top of the Pico CSS stylesheet.
 - `src/server/actor.ts` decides who is acting on a request (always anonymous for now).
 - `src/server/tickets/` holds ticket keys, zod schemas, the repository (all SQL) and the service
   (rules and transactions).
