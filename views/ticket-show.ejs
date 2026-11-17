@@ -9,9 +9,11 @@
 <% if (ticket.archived_at) { %>
 <article>
   <p>This ticket was archived on <%= formatTime(ticket.archived_at) %>. It is hidden from the lists and cannot be changed until it is restored.</p>
+  <% if (allowed.restore) { %>
   <form method="post" action="/tickets/<%= ticket.key %>/restore">
     <button type="submit">Restore ticket</button>
   </form>
+  <% } %>
 </article>
 <% } %>
 
@@ -28,7 +30,7 @@
 <blockquote class="user-text"><%= ticket.fix_check %></blockquote>
 <% } %>
 
-<% if (!ticket.archived_at) { %>
+<% if (allowed.changeStatus) { %>
 <h2>Status</h2>
 <form method="post" action="/tickets/<%= ticket.key %>/status">
   <fieldset role="group">
@@ -40,12 +42,14 @@
     <button type="submit">Change status</button>
   </fieldset>
 </form>
+<% } %>
 
+<% if (allowed.edit || allowed.archive) { %>
 <h2>Change this ticket</h2>
 <form method="post" action="/tickets/<%= ticket.key %>/archive">
   <div role="group">
-    <a href="/tickets/<%= ticket.key %>/edit" role="button" class="secondary">Edit ticket</a>
-    <button type="submit" class="secondary">Archive ticket</button>
+    <% if (allowed.edit) { %><a href="/tickets/<%= ticket.key %>/edit" role="button" class="secondary">Edit ticket</a><% } %>
+    <% if (allowed.archive) { %><button type="submit" class="secondary">Archive ticket</button><% } %>
   </div>
 </form>
 <% } %>

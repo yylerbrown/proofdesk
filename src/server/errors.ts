@@ -79,6 +79,11 @@ export const pageErrorHandler: ErrorRequestHandler = (err, _req, res, next) => {
     return;
   }
   const shown = describeError(err);
+  if (shown.status === 401) {
+    // Nobody is signed in: send the browser to the sign-in page instead of an error.
+    res.redirect(303, "/sign-in");
+    return;
+  }
   let title = "Something went wrong";
   if (shown.status === 404) title = "Not found";
   else if (shown.status < 500) title = "That request did not work";

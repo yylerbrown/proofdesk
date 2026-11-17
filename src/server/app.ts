@@ -1,5 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import cookieParser from "cookie-parser";
 import express, { type Express } from "express";
 import helmet from "helmet";
 import { actorMiddleware } from "./actor.js";
@@ -8,6 +9,7 @@ import type { Db } from "./db.js";
 import { errorHandler, notFoundHandler, pageErrorHandler, pageNotFoundHandler } from "./errors.js";
 import { healthRouter } from "./routes/health.js";
 import { pagesRouter } from "./routes/pages.js";
+import { signInRouter } from "./routes/sign-in.js";
 import { ticketsRouter } from "./routes/tickets.js";
 import { createTicketService } from "./tickets/service.js";
 
@@ -45,7 +47,8 @@ export function createApp(config: Config, db: Db): Express {
     }),
   );
 
-  app.use(actorMiddleware);
+  app.use(cookieParser());
+  app.use(actorMiddleware(config));
 
   // The JSON API. Its own handlers at the end turn every error inside it into JSON.
   const api = express.Router();
@@ -62,6 +65,7 @@ export function createApp(config: Config, db: Db): Express {
   });
   app.use("/assets", express.static(path.join(rootDir, "public")));
   app.use(express.urlencoded({ extended: false, limit: BODY_LIMIT }));
+  app.use(signInRouter(config));
   app.use(pagesRouter(tickets));
   app.use(pageNotFoundHandler);
   app.use(pageErrorHandler);
