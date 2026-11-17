@@ -92,4 +92,28 @@ A stranger can get in, file a ticket, filter the list, change a status and follo
 
 ## Changes since this was written
 
-None yet.
+### 2026-11-17
+
+Decided by the owner after the ticket core and its pages were built.
+
+- **Tickets are editable.** The title, the description, the "Where did this happen?" link and the "How will we know it's fixed?" check can be changed, not only the status. Every edit writes a history entry with what changed, from what, to what, in the same transaction. A customer edits their own ticket and a team member edits any. The customer's original wording of their check is still kept beside a tightened version.
+- **Archiving.** An archived ticket leaves every list and is not reachable by its key for ordinary users. Its row and its history stay, and an admin can restore it. Archive and restore each write a history entry.
+- **Permanent deletion.** For a ticket that holds something sensitive. An admin deletes it after typing its key. In one transaction, every row that carries the ticket's id is removed from every table that has one, and the ticket's own row is emptied and kept as a marker: the key, when it was deleted and by whom, with no content. The key is never used again, and asking for it answers "deleted", not "not found". Any table that holds ticket content must carry the ticket id, and a test fails if such a table is not covered by the deletion. Deleting does not reach backups or anything already sent elsewhere, and the README says so.
+- **The history is add-only in the database.** Triggers refuse any update of a history entry, and any delete except the one made by a permanent deletion. This replaces "append-only" as a convention with a rule the database enforces.
+- **The kind of actor is recorded** on every history entry, person or agent, so the standing rule about attribution can be checked from the data.
+- **The key prefix is fixed when the database is first created.** The server refuses to start with a different one.
+- **A security step before the site is shown to anyone,** with one test per protection that fails if the protection is removed: values always bound in SQL; ticket text shown as text on every page and links limited to http and https; security headers from a standard library, including a policy that blocks inline scripts; a defence against forged cross-site requests on every state-changing form and route once sign-in exists; fields a user must not control ignored or refused; a limit on the total size of a request; rate limits on filing tickets and on signing in; error pages that show nothing internal.
+
+The build order becomes:
+
+1. Ticket core: file, list with the status filter, change status, history. Then the fixes from its review.
+2. Pages for the ticket core.
+3. Edit and archive.
+4. Security, the parts that do not need sign-in: headers, the request size limit, fields a user must not control, wider escaping tests.
+5. Sign-in, roles enforced on the server, the demo entrance. With it: the defence against forged requests, rate limits, who may edit, restore by an admin, and permanent deletion.
+6. Live on the real address. Moved after sign-in so that nothing is reachable before permissions hold.
+7. Replies, internal notes, a named human owner, the customer's check.
+8. Change links, the deployment check, the customer's confirmation.
+9. AI sorting.
+10. The work order and the agent run.
+11. Checks, README and a short recording.
