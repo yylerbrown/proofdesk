@@ -73,15 +73,17 @@ export const pageNotFoundHandler: RequestHandler = (_req, _res, next) => {
   next(new HttpError(404, "not_found", "There is no page at this address."));
 };
 
-export const pageErrorHandler: ErrorRequestHandler = (err, _req, res, next) => {
+export const pageErrorHandler: ErrorRequestHandler = (err, req, res, next) => {
   if (res.headersSent) {
     next(err);
     return;
   }
   const shown = describeError(err);
   if (shown.status === 401) {
-    // Nobody is signed in: send the browser to the sign-in page instead of an error.
-    res.redirect(303, "/sign-in");
+    // Nobody is signed in: send the browser to the sign-in page instead of an error. For
+    // a page that was being opened, remember its address so sign-in can return to it.
+    const next = req.method === "GET" ? `?next=${encodeURIComponent(req.originalUrl)}` : "";
+    res.redirect(303, `/sign-in${next}`);
     return;
   }
   let title = "Something went wrong";
