@@ -1,6 +1,6 @@
 import type { Actor } from "../actor.js";
 import type { Db } from "../db.js";
-import { HttpError } from "../errors.js";
+import { HttpError, ValidationError } from "../errors.js";
 import { can, type Action } from "../permissions.js";
 import { parse } from "../validation.js";
 import { buildKey, parseKey } from "./keys.js";
@@ -8,6 +8,7 @@ import * as repository from "./repository.js";
 import {
   changeStatusSchema,
   createTicketSchema,
+  deleteTicketSchema,
   type TicketListFilter,
   type TicketStatus,
 } from "./schemas.js";
@@ -115,7 +116,12 @@ export function createTicketService(db: Db, prefix: string) {
    * 404 in both cases, so the answer does not reveal that someone else's ticket exists.
    */
   function requireRow(key: string, actor: Actor): repository.TicketRow {
-    const row = repository.findTicket(db, idFromKey(key));
+    const id = idFromKey(key);
+    const row = repository.findTicket(db, id);
+    // The team is told a ticket was deleted on purpose. A customer gets the usual answer.
+    if (row === undefined && can(actor, "list_all") && repository.wasDeleted(db, id)) {
+      throw new HttpError(410, "ticket_deleted", `Ticket ${key} was deleted permanently.`);
+    }
     if (row === undefined || !can(actor, "read", row)) {
       throw new HttpError(404, "ticket_not_found", `No ticket ${key}.`);
     }
@@ -302,6 +308,27 @@ export function createTicketService(db: Db, prefix: string) {
       return repository.listEvents(db, row.id).map(toEvent);
     },
 
+    /**
+     * Deletes the ticket and everything that belongs to it, for good. Only its number, the
+     * time and who did it are kept. The input must repeat the ticket's key, so that it
+     * cannot happen by a slip.
+     */
+    deleteTicket(key: string, input: unknown, actor: Actor): void {
+      const { confirm } = parse(deleteTicketSchema, input);
+      db.transaction(() => {
+        const row = requireRow(key, actor);
+        requirePermission(actor, "delete", row);
+        const exactKey = buildKey(prefix, row.id);
+        if (confirm !== exactKey) {
+          throw new ValidationError(`Type ${exactKey} to confirm.`, {
+            confirm: [`Type ${exactKey} to confirm.`],
+          });
+        }
+        repository.deleteTicketForever(db, row.id, actor.id, new Date().toISOString());
+      })();
+      repository.flushDeletedContent(db);
+    },
+
     /** What this actor may do to this ticket, for a page to decide which controls to show. */
     allowedActions(ticket: Ticket, actor: Actor) {
       const archived = ticket.archived_at !== null;
@@ -310,6 +337,7 @@ export function createTicketService(db: Db, prefix: string) {
         changeStatus: !archived && can(actor, "change_status", ticket),
         archive: !archived && can(actor, "archive", ticket),
         restore: archived && can(actor, "restore", ticket),
+        delete: can(actor, "delete", ticket),
       };
     },
   };

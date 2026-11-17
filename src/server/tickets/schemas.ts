@@ -24,6 +24,11 @@ export const createTicketSchema = z.object({
 });
 export type CreateTicketInput = z.infer<typeof createTicketSchema>;
 
+// Permanent deletion is confirmed by typing the ticket's key.
+export const deleteTicketSchema = z.object({
+  confirm: z.string().trim(),
+});
+
 export const changeStatusSchema = z.object({
   status: z.enum(TICKET_STATUSES),
 });

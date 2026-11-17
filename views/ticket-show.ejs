@@ -52,6 +52,10 @@
 </div>
 <% } %>
 
+<% if (allowed.delete) { %>
+<p><a href="/tickets/<%= ticket.key %>/delete">Delete this ticket permanently</a></p>
+<% } %>
+
 <h2>History</h2>
 <div class="overflow-auto">
   <table>
