@@ -19,20 +19,28 @@ Node 22 is the target version. Node 20 or newer works for local development.
 
 ```sh
 npm ci
-cp .env.example .env   # optional; the variables are read from the environment
+cp .env.example .env   # optional; npm run dev reads it
 npm run dev            # watch mode on http://localhost:3000
 npm run build && npm start
 ```
 
 ## Signing in and roles
 
-Every ticket route needs a signed-in person. Real sign-in is not built yet. For local work
-there is a development entrance: start the server with `DEV_SIGN_IN=on` and the sign-in page
-offers four made-up people to act as. The server refuses to start with that setting when
-`NODE_ENV` is `production`.
+Every ticket route needs a signed-in person. There are two ways in.
+
+**GitHub sign-in**, through the Better Auth library. It needs a GitHub OAuth app and four
+settings, listed in `.env.example`. The callback address of the OAuth app is
+`<BETTER_AUTH_URL>/api/auth/callback/github`. In production the server refuses to start
+without these settings. Everyone who signs in is a customer, except the GitHub accounts
+named by number in `TEAM_GITHUB_IDS` and `ADMIN_GITHUB_IDS`.
+
+**The development entrance**, for local work with no keys. Start the server with
+`DEV_SIGN_IN=on` and the sign-in page offers four made-up people to act as. The server
+refuses to start with that setting when `NODE_ENV` is `production`.
 
 ```sh
-DEV_SIGN_IN=on npm run dev
+cp .env.example .env   # then fill it in; npm run dev reads it
+npm run dev
 ```
 
 | Role        | What they can do                                                            |
@@ -93,11 +101,9 @@ can see an archived ticket or restore it. For everyone else it answers 404.
 Creating a ticket needs `title` (3 to 120 characters) and `description` (1 to 5000). It also
 accepts `where_url` (an http or https URL, at most 500 characters) and `fix_check` (at most 500).
 
-```sh
-curl -X POST http://localhost:3000/api/tickets \
-  -H "Content-Type: application/json" \
-  -d '{"title": "Printer is broken", "description": "It jams on every page."}'
-```
+The ticket routes need a signed-in browser session, so they are not meant to be called with
+`curl`. A request that changes something must also say it comes from this site, which a
+browser does by itself (see Security).
 
 ## Security
 
@@ -119,8 +125,20 @@ unless another is named):
 - **Permissions.** Roles are enforced in the service, with tests on the real routes in
   `tests/roles.test.ts` and a table of every rule in `tests/permissions.test.ts`.
 
-Not in place yet, and needed before the site is shown to anyone: real sign-in, a defence
-against forged cross-site requests, and rate limits. They come with the next sign-in step.
+- **Sessions.** The sign-in library keeps sessions in the database and sets a cookie that
+  scripts cannot read. Signing out deletes the session. See `tests/sign-in.test.ts`.
+- **Forged cross-site requests.** `src/server/same-origin.ts` refuses any request that
+  changes something unless the browser says it comes from this site. A request that does not
+  say where it comes from is refused too. See `tests/sign-in.test.ts`.
+- **Sign-in cannot send people elsewhere.** After signing in, the browser returns to the page
+  that was asked for, and only an address on this site is accepted.
+- **Flooding.** The `express-rate-limit` library limits one person to 20 new tickets in ten
+  minutes and one address to 10 sign-in starts a minute. The sign-in library limits its own
+  routes in production. The counts are kept in memory, so they reset when the server restarts.
+
+Not in place yet: the server does not know the visitor's real address behind a host's proxy
+until the proxy setting is made in the deploy step, so the address-based limit is only right
+locally.
 
 ## Tests and checks
 
@@ -147,7 +165,9 @@ npm run format
 - `public/site.css` holds the few style rules added on top of the Pico CSS stylesheet.
 - `src/server/actor.ts` decides who is acting on a request, from the sign-in cookie.
 - `src/server/permissions.ts` holds `can()`, the one function that says who may do what.
-- `src/server/routes/sign-in.ts` is the sign-in page and the development entrance.
+- `src/server/routes/sign-in.ts` is the sign-in page, the GitHub start and the development entrance.
+- `src/server/auth.ts` builds the sign-in library and maps a GitHub account to a role.
+- `src/server/same-origin.ts` refuses forged cross-site requests.
 - `src/server/tickets/` holds ticket keys, zod schemas, the repository (all SQL) and the service
   (rules and transactions). The service checks its own input, so every caller gets the same rules.
 - The event log is append-only: database triggers refuse any update or delete of an event.
