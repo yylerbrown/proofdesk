@@ -1,6 +1,5 @@
-import request from "supertest";
 import { describe, expect, it } from "vitest";
-import { admin, buildTestApp } from "./helpers.js";
+import { admin, buildTestApp, visitor } from "./helpers.js";
 
 const valid = { title: "Printer is broken", description: "It jams on every page." };
 
@@ -24,6 +23,7 @@ describe("security headers", () => {
     const res = await admin(app).get(address);
     expect(res.headers["x-content-type-options"]).toBe("nosniff");
     expect(res.headers["x-frame-options"]).toBe("SAMEORIGIN");
+    expect(res.headers["referrer-policy"]).toBe("same-origin");
     expect(res.headers["content-security-policy"]).toBeDefined();
     expect(res.headers["x-powered-by"]).toBeUndefined();
   });
@@ -36,7 +36,7 @@ describe("security headers", () => {
     expect(policy["script-src"]).toBe("'self'");
     expect(policy["script-src-attr"]).toBe("'none'");
     expect(policy["style-src"]).toBe("'self'");
-    expect(policy["form-action"]).toBe("'self'");
+    expect(policy["form-action"]).toBe("'self' https://github.com");
     expect(policy["frame-ancestors"]).toBe("'self'");
     expect(policy["object-src"]).toBe("'none'");
   });
@@ -46,7 +46,7 @@ describe("security headers", () => {
     expect(development.headers["content-security-policy"]).not.toContain(
       "upgrade-insecure-requests",
     );
-    const production = await request(buildTestApp({ NODE_ENV: "production" }).app).get("/tickets");
+    const production = await visitor(buildTestApp({ NODE_ENV: "production" }).app).get("/tickets");
     expect(production.headers["content-security-policy"]).toContain("upgrade-insecure-requests");
   });
 
