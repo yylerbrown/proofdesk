@@ -1,13 +1,15 @@
 import type { Actor } from "../actor.js";
 import type { Db } from "../db.js";
 import { HttpError } from "../errors.js";
+import { parse } from "../validation.js";
 import { buildKey, parseKey } from "./keys.js";
 import * as repository from "./repository.js";
-import type { CreateTicketInput, TicketStatus } from "./schemas.js";
+import { changeStatusSchema, createTicketSchema, type TicketStatus } from "./schemas.js";
 
-// The rules for tickets live here: key handling, "not found", "same status is a no-op",
-// and which writes must happen together in one transaction. Routes and pages call these
-// functions and nothing else.
+// The rules for tickets live here: what a valid ticket is, key handling, "not found",
+// "same status is a no-op", and which writes must happen together in one transaction.
+// Routes and pages call these functions and nothing else. Input that comes from outside
+// arrives as "unknown" and is checked here, so no caller can skip the check.
 
 /** What callers see. The bare database number is replaced by the public key. */
 export type Ticket = {
@@ -28,6 +30,7 @@ export type TicketEvent = {
   id: number;
   ticket_key: string;
   actor: string;
+  actor_kind: repository.ActorKind;
   type: string;
   data: unknown;
   created_at: string;
@@ -35,10 +38,46 @@ export type TicketEvent = {
 
 export type TicketService = ReturnType<typeof createTicketService>;
 
+const PREFIX_META_KEY = "ticket_prefix";
+
+/**
+ * Keys such as SUP-42 are built from the prefix on every read, so the prefix must never
+ * change for a database that already has tickets. The first start writes the prefix into
+ * the database. Every later start must be configured with the same one.
+ */
+function pinPrefix(db: Db, prefix: string): void {
+  const stored = repository.getMeta(db, PREFIX_META_KEY);
+  if (stored === undefined) {
+    repository.insertMeta(db, PREFIX_META_KEY, prefix);
+    return;
+  }
+  if (stored !== prefix) {
+    throw new Error(
+      `TICKET_PREFIX is "${prefix}" but this database was created with "${stored}". ` +
+        `Set TICKET_PREFIX back to "${stored}".`,
+    );
+  }
+}
+
 export function createTicketService(db: Db, prefix: string) {
+  pinPrefix(db, prefix);
+
+  // Every public field is named here. A column added to the table later stays private
+  // until someone adds it to this list on purpose.
   function toTicket(row: repository.TicketRow): Ticket {
-    const { id, ...rest } = row;
-    return { key: buildKey(prefix, id), ...rest };
+    return {
+      key: buildKey(prefix, row.id),
+      title: row.title,
+      description: row.description,
+      status: row.status,
+      where_url: row.where_url,
+      fix_check: row.fix_check,
+      created_by: row.created_by,
+      owner_id: row.owner_id,
+      agent_id: row.agent_id,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    };
   }
 
   function toEvent(row: repository.EventRow): TicketEvent {
@@ -46,6 +85,7 @@ export function createTicketService(db: Db, prefix: string) {
       id: row.id,
       ticket_key: buildKey(prefix, row.ticket_id),
       actor: row.actor,
+      actor_kind: row.actor_kind,
       type: row.type,
       data: JSON.parse(row.data),
       created_at: row.created_at,
@@ -71,26 +111,29 @@ export function createTicketService(db: Db, prefix: string) {
   }
 
   return {
-    createTicket(input: CreateTicketInput, actor: Actor): Ticket {
+    /** Checks the input, then saves the ticket and its "created" event together. */
+    createTicket(input: unknown, actor: Actor): Ticket {
+      const ticket = parse(createTicketSchema, input);
       const now = new Date().toISOString();
-      const id = db.transaction(() => {
-        const newId = repository.insertTicket(db, {
-          title: input.title,
-          description: input.description,
-          whereUrl: input.where_url ?? null,
-          fixCheck: input.fix_check || null,
+      const row = db.transaction(() => {
+        const id = repository.insertTicket(db, {
+          title: ticket.title,
+          description: ticket.description,
+          whereUrl: ticket.where_url ?? null,
+          fixCheck: ticket.fix_check || null,
           now,
         });
         repository.insertEvent(db, {
-          ticketId: newId,
+          ticketId: id,
           actor: actor.id,
+          actorKind: actor.kind,
           type: "created",
           data: { status: "new" },
           now,
         });
-        return newId;
+        return repository.findTicket(db, id)!;
       })();
-      return toTicket(repository.findTicket(db, id)!);
+      return toTicket(row);
     },
 
     listTickets(status: TicketStatus | "all"): Ticket[] {
@@ -102,21 +145,25 @@ export function createTicketService(db: Db, prefix: string) {
       return toTicket(requireRow(key));
     },
 
-    changeStatus(key: string, newStatus: TicketStatus, actor: Actor): Ticket {
-      db.transaction(() => {
-        const row = requireRow(key);
-        if (row.status === newStatus) return; // nothing changes, so nothing is logged
+    /** Checks the input, then saves the new status and its event together. */
+    changeStatus(key: string, input: unknown, actor: Actor): Ticket {
+      const { status } = parse(changeStatusSchema, input);
+      const row = db.transaction(() => {
+        const before = requireRow(key);
+        if (before.status === status) return before; // nothing changes, so nothing is logged
         const now = new Date().toISOString();
-        repository.updateTicketStatus(db, row.id, newStatus, now);
+        repository.updateTicketStatus(db, before.id, status, now);
         repository.insertEvent(db, {
-          ticketId: row.id,
+          ticketId: before.id,
           actor: actor.id,
+          actorKind: actor.kind,
           type: "status_changed",
-          data: { from: row.status, to: newStatus },
+          data: { from: before.status, to: status },
           now,
         });
+        return { ...before, status, updated_at: now };
       })();
-      return toTicket(requireRow(key));
+      return toTicket(row);
     },
 
     listEvents(key: string): TicketEvent[] {

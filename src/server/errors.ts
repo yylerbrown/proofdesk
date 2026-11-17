@@ -12,6 +12,20 @@ export class HttpError extends Error {
   }
 }
 
+/**
+ * A 400 for input that breaks the rules. Besides the one-line message it carries the
+ * messages per field, for example { title: ["..."] }, so a form can show each one in place.
+ */
+export class ValidationError extends HttpError {
+  constructor(
+    message: string,
+    readonly fieldErrors: Record<string, string[] | undefined>,
+  ) {
+    super(400, "validation_error", message);
+    this.name = "ValidationError";
+  }
+}
+
 type ShownError = { status: number; code: string; message: string };
 
 /**

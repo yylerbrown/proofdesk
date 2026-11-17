@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeEvent, formatTime } from "../src/server/pages/format.js";
+import { describeActor, describeEvent, formatTime } from "../src/server/pages/format.js";
 import type { TicketEvent } from "../src/server/tickets/service.js";
 
 function event(type: string, data: unknown): TicketEvent {
@@ -7,6 +7,7 @@ function event(type: string, data: unknown): TicketEvent {
     id: 1,
     ticket_key: "SUP-1",
     actor: "anonymous",
+    actor_kind: "person",
     type,
     data,
     created_at: "2026-11-17T19:56:00.000Z",
@@ -36,5 +37,14 @@ describe("describeEvent", () => {
   it("falls back to the type for an entry it does not know", () => {
     expect(describeEvent(event("something_new", {}))).toBe("something_new");
     expect(describeEvent(event("status_changed", { from: "odd" }))).toBe("status_changed");
+  });
+});
+
+describe("describeActor", () => {
+  it("shows a person by id and marks an agent as an agent", () => {
+    expect(describeActor({ ...event("created", {}), actor: "sam" })).toBe("sam");
+    expect(describeActor({ ...event("created", {}), actor: "sam", actor_kind: "agent" })).toBe(
+      "sam (agent)",
+    );
   });
 });

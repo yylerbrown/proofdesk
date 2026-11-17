@@ -1,12 +1,7 @@
 import { Router } from "express";
-import { z } from "zod";
-import { describeEvent, formatTime, STATUS_LABELS } from "../pages/format.js";
-import {
-  changeStatusSchema,
-  createTicketSchema,
-  listQuerySchema,
-  TICKET_STATUSES,
-} from "../tickets/schemas.js";
+import { ValidationError } from "../errors.js";
+import { describeActor, describeEvent, formatTime, STATUS_LABELS } from "../pages/format.js";
+import { listQuerySchema, TICKET_STATUSES } from "../tickets/schemas.js";
 import type { TicketService } from "../tickets/service.js";
 import { parse } from "../validation.js";
 
@@ -57,20 +52,22 @@ export function pagesRouter(service: TicketService): Router {
 
   router.post("/tickets", (req, res) => {
     const values = readTicketForm(req.body);
-    // A browser sends an empty box as "". For the optional link that means "not given".
-    const result = createTicketSchema.safeParse({
-      ...values,
-      where_url: values.where_url === "" ? undefined : values.where_url,
-    });
-    if (!result.success) {
+    try {
+      // The service checks the rules. A browser sends an empty box as "", and for the
+      // optional link that means "not given".
+      const ticket = service.createTicket(
+        { ...values, where_url: values.where_url === "" ? undefined : values.where_url },
+        req.actor,
+      );
+      // 303 makes the browser fetch the ticket page with GET, so a refresh cannot file it twice.
+      res.redirect(303, `/tickets/${ticket.key}`);
+    } catch (err) {
+      if (!(err instanceof ValidationError)) throw err;
       // Show the form again with what was typed and one message under each wrong box.
-      const errors = z.flattenError(result.error).fieldErrors;
-      res.status(400).render("ticket-new", { title: "New ticket", values, errors });
-      return;
+      res
+        .status(400)
+        .render("ticket-new", { title: "New ticket", values, errors: err.fieldErrors });
     }
-    const ticket = service.createTicket(result.data, req.actor);
-    // 303 makes the browser fetch the ticket page with GET, so a refresh cannot file it twice.
-    res.redirect(303, `/tickets/${ticket.key}`);
   });
 
   router.get("/tickets/:key", (req, res) => {
@@ -78,14 +75,13 @@ export function pagesRouter(service: TicketService): Router {
     const history = service.listEvents(req.params.key).map((event) => ({
       when: event.created_at,
       what: describeEvent(event),
-      who: event.actor,
+      who: describeActor(event),
     }));
     res.render("ticket-show", { ...helpers, title: ticket.key, ticket, history });
   });
 
   router.post("/tickets/:key/status", (req, res) => {
-    const { status } = parse(changeStatusSchema, req.body);
-    const ticket = service.changeStatus(req.params.key, status, req.actor);
+    const ticket = service.changeStatus(req.params.key, req.body, req.actor);
     res.redirect(303, `/tickets/${ticket.key}`);
   });
 

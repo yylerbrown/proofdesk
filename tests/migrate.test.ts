@@ -25,14 +25,22 @@ afterEach(() => {
   for (const dir of tempDirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
 });
 
+// Every migration in the migrations folder, in the order it is applied.
+const ALL = [
+  "0001_app_meta.sql",
+  "0002_tickets.sql",
+  "0003_event_actor_kind.sql",
+  "0004_events_append_only.sql",
+];
+
 describe("runMigrations", () => {
   it("applies the bundled migrations once and records them", () => {
     const db = memoryDb();
     const first = runMigrations(db);
-    expect(first).toEqual(["0001_app_meta.sql", "0002_tickets.sql"]);
+    expect(first).toEqual(ALL);
     db.prepare("INSERT INTO app_meta (key, value) VALUES (?, ?)").run("k", "v");
     const rows = db.prepare("SELECT name FROM schema_migrations").all();
-    expect(rows).toEqual([{ name: "0001_app_meta.sql" }, { name: "0002_tickets.sql" }]);
+    expect(rows).toEqual(ALL.map((name) => ({ name })));
   });
 
   it("is idempotent on a second run", () => {
@@ -40,7 +48,9 @@ describe("runMigrations", () => {
     runMigrations(db);
     db.prepare("INSERT INTO app_meta (key, value) VALUES (?, ?)").run("k", "v");
     expect(runMigrations(db)).toEqual([]);
-    expect(db.prepare("SELECT COUNT(*) AS n FROM schema_migrations").get()).toEqual({ n: 2 });
+    expect(db.prepare("SELECT COUNT(*) AS n FROM schema_migrations").get()).toEqual({
+      n: ALL.length,
+    });
     expect(db.prepare("SELECT COUNT(*) AS n FROM app_meta").get()).toEqual({ n: 1 });
   });
 

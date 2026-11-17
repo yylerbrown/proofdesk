@@ -1,14 +1,17 @@
-import type { z } from "zod";
-import { HttpError } from "./errors.js";
+import { z } from "zod";
+import { ValidationError } from "./errors.js";
 
-/** Checks a value against a zod schema, or throws a 400 that lists what is wrong. */
+/**
+ * Checks a value against a zod schema and returns the cleaned value, or throws a 400
+ * ValidationError that says what is wrong, both as one line and per field.
+ */
 export function parse<T extends z.ZodType>(schema: T, value: unknown): z.infer<T> {
   const result = schema.safeParse(value);
   if (!result.success) {
     const details = result.error.issues
       .map((issue) => `${issue.path.join(".") || "request"}: ${issue.message}`)
       .join("; ");
-    throw new HttpError(400, "validation_error", details);
+    throw new ValidationError(details, z.flattenError(result.error).fieldErrors);
   }
   return result.data;
 }

@@ -252,6 +252,38 @@ describe("GET /api/tickets/:key/events", () => {
     expect(res.body[0]).toMatchObject({ ticket_key: "SUP-1", actor: "anonymous" });
   });
 
+  it("returns only the events of the ticket that was asked for", async () => {
+    const { app } = buildTestApp();
+    await request(app).post("/api/tickets").send(valid);
+    await request(app).post("/api/tickets").send(valid);
+    await request(app).patch("/api/tickets/SUP-1").send({ status: "in_progress" });
+    await request(app).patch("/api/tickets/SUP-2").send({ status: "resolved" });
+    await request(app).patch("/api/tickets/SUP-2").send({ status: "new" });
+
+    type Row = { ticket_key: string; type: string; data: unknown };
+    const summary = (rows: Row[]) => rows.map((e) => [e.ticket_key, e.type, e.data]);
+
+    const first = await request(app).get("/api/tickets/SUP-1/events");
+    expect(summary(first.body)).toEqual([
+      ["SUP-1", "created", { status: "new" }],
+      ["SUP-1", "status_changed", { from: "new", to: "in_progress" }],
+    ]);
+
+    const second = await request(app).get("/api/tickets/SUP-2/events");
+    expect(summary(second.body)).toEqual([
+      ["SUP-2", "created", { status: "new" }],
+      ["SUP-2", "status_changed", { from: "new", to: "resolved" }],
+      ["SUP-2", "status_changed", { from: "resolved", to: "new" }],
+    ]);
+  });
+
+  it("says what kind of actor wrote each event", async () => {
+    const { app } = buildTestApp();
+    await request(app).post("/api/tickets").send(valid);
+    const res = await request(app).get("/api/tickets/SUP-1/events");
+    expect(res.body[0]).toMatchObject({ actor: "anonymous", actor_kind: "person" });
+  });
+
   it("returns 404 for an unknown ticket and 400 for a malformed key", async () => {
     const { app } = buildTestApp();
     expect((await request(app).get("/api/tickets/SUP-9/events")).status).toBe(404);

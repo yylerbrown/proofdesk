@@ -39,3 +39,8 @@ export function describeEvent(event: TicketEvent): string {
   }
   return event.type;
 }
+
+/** Who wrote a history entry. An agent is always marked, so it is never taken for a person. */
+export function describeActor(event: TicketEvent): string {
+  return event.actor_kind === "agent" ? `${event.actor} (agent)` : event.actor;
+}
