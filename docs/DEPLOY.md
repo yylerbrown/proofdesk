@@ -48,7 +48,7 @@ Actions tab. It never runs on its own.
 
 With one machine and one disk, each deploy has a few seconds of downtime.
 
-## After the first deploy: three checks
+## After the first deploy: five checks
 
 1. `curl https://support-desk-demo.fly.dev/api/health` answers `"status":"ok"` with the commit.
 2. Sign in with GitHub on the hosted copy and see "(admin)" at the top.
@@ -65,6 +65,14 @@ With one machine and one disk, each deploy has a few seconds of downtime.
    a visitor can choose their own address and the per-address rate limit can be dodged; remove
    `CLIENT_IP_HEADER` from `fly.toml` and use `X-Forwarded-For` with a trusted proxy count
    instead.
+
+4. **A doubled header.** Repeat the check with the header sent twice
+   (`-H "fly-client-ip: 1.2.3.4" -H "fly-client-ip: 5.6.7.8"`). The address in the logs must
+   still be your own.
+5. **No way around the proxy.** The server must only be reachable through Fly's proxy at
+   `support-desk-demo.fly.dev`, never directly on the machine's own address and port 3000;
+   otherwise anyone could send their own address header. Check `fly ips list` shows only the
+   app's shared or dedicated addresses, and that `fly.toml` declares no other `[[services]]`.
 
 ## The data survives a restart
 
