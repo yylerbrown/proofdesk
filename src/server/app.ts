@@ -22,7 +22,7 @@ import { signInRouter } from "./routes/sign-in.js";
 import { checkDatabasePurpose } from "./purpose.js";
 import { sameOriginOnly } from "./same-origin.js";
 import { ticketsRouter } from "./routes/tickets.js";
-import { createTicketService } from "./tickets/service.js";
+import { createTicketService, DEMO_BUDGET } from "./tickets/service.js";
 
 // The top folder of the project. It is two levels above this file, both in src/server (when
 // run from source) and in dist/server (when run after a build).
@@ -35,6 +35,9 @@ const BODY_LIMIT = "100kb";
 // may start in a minute.
 export const FILING_LIMIT = 20;
 export const SIGN_IN_LIMIT = 10;
+// How many requests that change something one person (or one address) may make in ten
+// minutes, across every page and API route. Reading is not counted.
+export const WRITE_LIMIT = 120;
 
 const picoCssFile = path.join(rootDir, "node_modules/@picocss/pico/css/pico.min.css");
 
@@ -50,7 +53,9 @@ export function createApp(config: Config, db: Db): Express {
   app.locals.demo = config.demo;
 
   // One ticket service, shared by the JSON API and the pages, so the rules exist once.
-  const tickets = createTicketService(db, config.ticketPrefix);
+  // The demo has a hard budget of rows, so rate limits are not the only thing that stops it
+  // growing. Real tickets have none.
+  const tickets = createTicketService(db, config.ticketPrefix, config.demo ? DEMO_BUDGET : {});
 
   // Security headers on every answer. The content security policy lets a page load scripts
   // and styles only from this server, so a script written into a page cannot run.
@@ -92,7 +97,12 @@ export function createApp(config: Config, db: Db): Express {
   const tooMany: Parameters<typeof rateLimit>[0] = {
     standardHeaders: "draft-8",
     legacyHeaders: false,
-    keyGenerator: (req) => req.actor?.id ?? ipKeyGenerator(clientAddress(req)),
+    // A real person is counted by their account. Demo visitors share three made-up
+    // identities, so they are counted by address, like someone not signed in.
+    keyGenerator: (req) =>
+      req.actor !== null && req.actor.demo !== true
+        ? req.actor.id
+        : ipKeyGenerator(clientAddress(req)),
     handler: (_req, _res, next) => {
       next(new HttpError(429, "too_many_requests", "Too many requests. Try again in a while."));
     },
@@ -112,11 +122,19 @@ export function createApp(config: Config, db: Db): Express {
     skipFailedRequests: true,
   });
   const signInLimit = rateLimit({ ...tooMany, windowMs: 60 * 1000, limit: SIGN_IN_LIMIT });
+  // One allowance for every request that changes something, pages and API together.
+  const writeLimit = rateLimit({
+    ...tooMany,
+    windowMs: 10 * 60 * 1000,
+    limit: WRITE_LIMIT,
+    skip: (req) => req.method === "GET" || req.method === "HEAD",
+  });
 
   // The JSON API. Its own handlers at the end turn every error inside it into JSON.
   const api = express.Router();
   api.use(actor);
   api.use(sameOriginOnly(config));
+  api.use(writeLimit);
   api.post("/tickets", filingLimit);
   api.use(express.json({ limit: BODY_LIMIT }));
   api.use(healthRouter(config, db));
@@ -133,6 +151,7 @@ export function createApp(config: Config, db: Db): Express {
   app.use("/assets", express.static(path.join(rootDir, "public")));
   app.use(actor);
   app.use(sameOriginOnly(config));
+  app.use(writeLimit);
   app.post("/tickets", filingLimit);
   app.post("/sign-in/github", signInLimit);
   app.use(express.urlencoded({ extended: false, limit: BODY_LIMIT }));

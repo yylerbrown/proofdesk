@@ -4,7 +4,7 @@ import { HttpError, ValidationError } from "../errors.js";
 import { can } from "../permissions.js";
 import { describeActor, describeEvent, formatTime, STATUS_LABELS } from "../pages/format.js";
 import { listQuerySchema, TICKET_STATUSES } from "../tickets/schemas.js";
-import type { TicketService } from "../tickets/service.js";
+import { LIST_PAGE_SIZE, type TicketService } from "../tickets/service.js";
 import { parse } from "../validation.js";
 
 // The pages. Like the JSON routes, they only read the request, call the ticket service and
@@ -71,13 +71,17 @@ export function pagesRouter(service: TicketService): Router {
 
   router.get("/tickets", (req, res) => {
     const actor = signedIn(req);
-    const { status } = parse(listQuerySchema, req.query);
+    const { status, page } = parse(listQuerySchema, req.query);
     const current = status ?? "all";
+    const pageNumber = page ?? 1;
+    const tickets = service.listTickets(current, actor, pageNumber);
     res.render("ticket-list", {
       ...helpers,
       title: "Tickets",
       current,
-      tickets: service.listTickets(current, actor),
+      tickets,
+      // A full page means there may be older tickets on the next one.
+      nextPage: tickets.length === LIST_PAGE_SIZE ? pageNumber + 1 : null,
       showArchivedFilter: can(actor, "list_archived"),
     });
   });

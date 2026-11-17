@@ -71,6 +71,16 @@ export type TicketEntry = {
 
 export type TicketService = ReturnType<typeof createTicketService>;
 
+/** Most rows the service will hold. Leave a field out for no limit. */
+export type Budget = { tickets?: number; entriesPerTicket?: number; eventsPerTicket?: number };
+
+/** The demo's budget: enough to try everything, too little to fill the disk. */
+export const DEMO_BUDGET: Budget = { tickets: 200, entriesPerTicket: 50, eventsPerTicket: 100 };
+
+/** How many tickets a list page shows, and how many entries or events a ticket page shows. */
+export const LIST_PAGE_SIZE = 100;
+export const THREAD_LIMIT = 200;
+
 // The fields of a ticket that is not waiting for the customer's answer.
 const noQuestion = { ready_at: null, ready_token: null };
 
@@ -95,7 +105,7 @@ function pinPrefix(db: Db, prefix: string): void {
   }
 }
 
-export function createTicketService(db: Db, prefix: string) {
+export function createTicketService(db: Db, prefix: string, budget: Budget = {}) {
   pinPrefix(db, prefix);
 
   // Every public field is named here. A column added to the table later stays private
@@ -191,7 +201,7 @@ export function createTicketService(db: Db, prefix: string) {
   ): repository.TicketRow {
     const now = new Date().toISOString();
     repository.updateTicketOwner(db, before.id, ownerId, ownerName, now);
-    repository.insertEvent(db, {
+    logEvent({
       ticketId: before.id,
       actor: actor.id,
       actorKind: actor.kind,
@@ -210,6 +220,23 @@ export function createTicketService(db: Db, prefix: string) {
     if (before.ready_at !== null) repository.clearReady(db, before.id);
   }
 
+  /** Throws 409 when a budget is used up. */
+  function requireRoom(used: number, most: number | undefined, what: string): void {
+    if (most !== undefined && used >= most) {
+      throw new HttpError(409, "budget_full", `This server holds no more ${what}.`);
+    }
+  }
+
+  /** Writes a history entry, within the budget of events per ticket. */
+  function logEvent(event: repository.NewEvent): void {
+    requireRoom(
+      repository.countRows(db, "ticket_events", event.ticketId),
+      budget.eventsPerTicket,
+      "changes to this ticket",
+    );
+    repository.insertEvent(db, event);
+  }
+
   /** Throws 409 when the ticket is archived. Used before any change to its content. */
   function requireNotArchived(key: string, row: repository.TicketRow): void {
     if (row.archived_at !== null) {
@@ -224,6 +251,7 @@ export function createTicketService(db: Db, prefix: string) {
       const ticket = parse(createTicketSchema, input);
       const now = new Date().toISOString();
       const row = db.transaction(() => {
+        requireRoom(repository.countTickets(db), budget.tickets, "tickets");
         const id = repository.insertTicket(db, {
           title: ticket.title,
           description: ticket.description,
@@ -232,7 +260,7 @@ export function createTicketService(db: Db, prefix: string) {
           createdBy: actor.id,
           now,
         });
-        repository.insertEvent(db, {
+        logEvent({
           ticketId: id,
           actor: actor.id,
           actorKind: actor.kind,
@@ -250,14 +278,15 @@ export function createTicketService(db: Db, prefix: string) {
      * "archived" lists only archived tickets, for a team member or admin. Every other filter leaves
      * archived tickets out.
      */
-    listTickets(filter: TicketListFilter, actor: Actor): Ticket[] {
+    listTickets(filter: TicketListFilter, actor: Actor, pageNumber = 1): Ticket[] {
+      const page = { limit: LIST_PAGE_SIZE, offset: (pageNumber - 1) * LIST_PAGE_SIZE };
       if (filter === "archived") {
         requirePermission(actor, "list_archived");
-        return repository.listArchivedTickets(db).map(toTicket);
+        return repository.listArchivedTickets(db, page).map(toTicket);
       }
       const status = filter === "all" ? null : filter;
-      if (can(actor, "list_all")) return repository.listAllTickets(db, status).map(toTicket);
-      return repository.listTicketsFiledBy(db, actor.id, status).map(toTicket);
+      if (can(actor, "list_all")) return repository.listAllTickets(db, status, page).map(toTicket);
+      return repository.listTicketsFiledBy(db, actor.id, status, page).map(toTicket);
     },
 
     getTicket(key: string, actor: Actor): Ticket {
@@ -288,7 +317,7 @@ export function createTicketService(db: Db, prefix: string) {
         }
         const now = new Date().toISOString();
         repository.updateTicketStatus(db, before.id, status, now);
-        repository.insertEvent(db, {
+        logEvent({
           ticketId: before.id,
           actor: actor.id,
           actorKind: actor.kind,
@@ -338,7 +367,7 @@ export function createTicketService(db: Db, prefix: string) {
           },
           now,
         );
-        repository.insertEvent(db, {
+        logEvent({
           ticketId: before.id,
           actor: actor.id,
           actorKind: actor.kind,
@@ -366,7 +395,7 @@ export function createTicketService(db: Db, prefix: string) {
         const now = new Date().toISOString();
         withdrawQuestion(before);
         repository.updateAgreedCheck(db, before.id, agreed, now);
-        repository.insertEvent(db, {
+        logEvent({
           ticketId: before.id,
           actor: actor.id,
           actorKind: actor.kind,
@@ -390,7 +419,7 @@ export function createTicketService(db: Db, prefix: string) {
         const now = new Date().toISOString();
         withdrawQuestion(before);
         repository.updateChangeUrl(db, before.id, change_url, now);
-        repository.insertEvent(db, {
+        logEvent({
           ticketId: before.id,
           actor: actor.id,
           actorKind: actor.kind,
@@ -425,7 +454,7 @@ export function createTicketService(db: Db, prefix: string) {
         const now = new Date().toISOString();
         const token = randomUUID();
         repository.updateReady(db, before.id, try_url, token, now);
-        repository.insertEvent(db, {
+        logEvent({
           ticketId: before.id,
           actor: actor.id,
           actorKind: actor.kind,
@@ -479,7 +508,7 @@ export function createTicketService(db: Db, prefix: string) {
             created_at: now,
           });
         }
-        repository.insertEvent(db, {
+        logEvent({
           ticketId: before.id,
           actor: actor.id,
           actorKind: actor.kind,
@@ -531,7 +560,7 @@ export function createTicketService(db: Db, prefix: string) {
         if (before.archived_at !== null) return before; // already archived
         const now = new Date().toISOString();
         repository.updateTicketArchived(db, before.id, now, now);
-        repository.insertEvent(db, {
+        logEvent({
           ticketId: before.id,
           actor: actor.id,
           actorKind: actor.kind,
@@ -552,7 +581,7 @@ export function createTicketService(db: Db, prefix: string) {
         if (before.archived_at === null) return before; // not archived
         const now = new Date().toISOString();
         repository.updateTicketArchived(db, before.id, null, now);
-        repository.insertEvent(db, {
+        logEvent({
           ticketId: before.id,
           actor: actor.id,
           actorKind: actor.kind,
@@ -568,7 +597,7 @@ export function createTicketService(db: Db, prefix: string) {
     /** The history, oldest first. Someone who may not read notes does not see them added. */
     listEvents(key: string, actor: Actor): TicketEvent[] {
       const row = requireRow(key, actor);
-      const events = repository.listEvents(db, row.id).map(toEvent);
+      const events = repository.listEvents(db, row.id, THREAD_LIMIT).map(toEvent);
       if (can(actor, "read_notes", row)) return events;
       return events.filter((event) => event.type !== "note_added");
     },
@@ -583,6 +612,11 @@ export function createTicketService(db: Db, prefix: string) {
         const ticket = requireRow(key, actor);
         requirePermission(actor, entry.kind === "note" ? "note" : "reply", ticket);
         requireNotArchived(key, ticket);
+        requireRoom(
+          repository.countRows(db, "ticket_entries", ticket.id),
+          budget.entriesPerTicket,
+          "replies on this ticket",
+        );
         const now = new Date().toISOString();
         const saved = repository.insertEntry(db, {
           ticket_id: ticket.id,
@@ -594,7 +628,7 @@ export function createTicketService(db: Db, prefix: string) {
           author_name: actor.name,
           created_at: now,
         });
-        repository.insertEvent(db, {
+        logEvent({
           ticketId: ticket.id,
           actor: actor.id,
           actorKind: actor.kind,
@@ -611,7 +645,7 @@ export function createTicketService(db: Db, prefix: string) {
     listEntries(key: string, actor: Actor): TicketEntry[] {
       const row = requireRow(key, actor);
       const includeNotes = can(actor, "read_notes", row);
-      return repository.listEntries(db, row.id, includeNotes).map(toEntry);
+      return repository.listEntries(db, row.id, includeNotes, THREAD_LIMIT).map(toEntry);
     },
 
     /**
