@@ -37,6 +37,7 @@ const ALL = [
   "0008_permanent_delete.sql",
   "0009_ticket_entries.sql",
   "0010_ticket_owner.sql",
+  "0011_agreed_check.sql",
 ];
 
 describe("runMigrations", () => {

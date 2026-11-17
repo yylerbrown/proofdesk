@@ -79,6 +79,7 @@ describe("create and get", () => {
       status: "new",
       where_url: "https://example.com/login",
       fix_check: "I can open my account page.",
+      agreed_check: null,
       created_by: "dev-admin-1",
       owner_id: null,
       owner_name: null,
