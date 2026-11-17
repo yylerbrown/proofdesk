@@ -308,7 +308,9 @@ describe("a customer's list", () => {
     expect(listSql).toBeDefined();
     const plan = db
       .prepare(`EXPLAIN QUERY PLAN ${listSql}`)
-      .all({ createdBy: customerOne.id, status: null }) as { detail: string }[];
+      .all({ createdBy: customerOne.id, status: null, limit: 100, offset: 0 }) as {
+      detail: string;
+    }[];
     expect(plan.map((step) => step.detail).join(" | ")).toContain(
       "USING INDEX idx_tickets_created_by",
     );
