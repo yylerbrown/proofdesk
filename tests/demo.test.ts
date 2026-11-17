@@ -78,20 +78,18 @@ describe("the sample data", () => {
   it("is made through the service, with a real history", async () => {
     const { app } = buildDemo();
     const list = await asDemo(app, demoTeam.id).get("/api/tickets");
-    expect(list.body.map((t: { key: string }) => t.key)).toEqual(["SUP-2", "SUP-1"]);
+    expect(list.body.map((t: { key: string }) => t.key)).toEqual(["SUP-3", "SUP-2", "SUP-1"]);
     const first = await asDemo(app, demoTeam.id).get("/api/tickets/SUP-1");
     expect(first.body).toMatchObject({ status: "in_progress", owner_name: "Demo Team Member" });
     const history = await asDemo(app, demoTeam.id).get("/api/tickets/SUP-1/events");
     expect(history.body.map((e: { type: string }) => e.type)).toContain("owner_changed");
-    const archived = await asDemo(app, demoTeam.id).get("/api/tickets?status=archived");
-    expect(archived.body.map((t: { key: string }) => t.key)).toEqual(["SUP-3"]);
   });
 
   it("is added only to an empty database", () => {
     const { db, config } = buildDemo();
     const service = createTicketService(db, config.ticketPrefix);
     seedDemo(service);
-    expect(service.listTickets("all", demoAdmin)).toHaveLength(2);
+    expect(service.listTickets("all", demoAdmin)).toHaveLength(3);
   });
 });
 
@@ -132,6 +130,17 @@ describe("the demo admin sees everything and changes nothing", () => {
 });
 
 describe("the other demo people", () => {
+  it("cannot archive, restore or delete, so one visitor cannot empty the demo", async () => {
+    const { app } = buildDemo();
+    const team = asDemo(app, demoTeam.id);
+    expect((await team.post("/api/tickets/SUP-1/archive")).status).toBe(403);
+    expect((await team.delete("/api/tickets/SUP-1").send({ confirm: "SUP-1" })).status).toBe(403);
+    const mine = await asDemo(app, demoCustomer.id).post("/api/tickets/SUP-1/archive");
+    expect(mine.status).toBe(403);
+    expect((await team.get("/api/tickets")).body).toHaveLength(3);
+    expect((await team.get("/tickets/SUP-1")).text).not.toContain("/tickets/SUP-1/archive");
+  });
+
   it("let a visitor file a ticket and reply as a customer, and work on it as the team", async () => {
     const { app } = buildDemo();
     const filed = await asDemo(app, demoCustomer.id)
