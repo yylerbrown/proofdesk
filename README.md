@@ -24,6 +24,28 @@ npm run dev            # watch mode on http://localhost:3000
 npm run build && npm start
 ```
 
+## Signing in and roles
+
+Every ticket route needs a signed-in person. Real sign-in is not built yet. For local work
+there is a development entrance: start the server with `DEV_SIGN_IN=on` and the sign-in page
+offers four made-up people to act as. The server refuses to start with that setting when
+`NODE_ENV` is `production`.
+
+```sh
+DEV_SIGN_IN=on npm run dev
+```
+
+| Role        | What they can do                                                            |
+| ----------- | --------------------------------------------------------------------------- |
+| Customer    | File tickets. See, edit and archive only their own. Cannot change a status. |
+| Team member | See, edit, archive and change the status of every ticket.                   |
+| Admin       | Everything a team member can, plus see archived tickets and restore them.   |
+
+One function, `can()` in `src/server/permissions.ts`, answers every permission question, and
+the ticket service asks it on every call. A ticket someone may not see answers 404, the same
+as a ticket that does not exist. Who is acting comes only from the sign-in cookie, never from
+a field of the request.
+
 ## Pages
 
 The pages are HTML built on the server from the templates in `views/`. They call the same
@@ -65,9 +87,8 @@ More routes change a ticket. Each one writes an event in the same transaction.
 | `POST /api/tickets/:key/restore` | Brings an archived ticket back.                                        |
 
 An archived ticket is left out of every list except `GET /api/tickets?status=archived`, and it
-cannot be edited or change status until it is restored (409 `ticket_archived`). Until sign-in
-exists anyone can still open an archived ticket by its key and restore it. Hiding it from
-ordinary users and keeping restore for an admin come with roles.
+cannot be edited or change status until it is restored (409 `ticket_archived`). Only an admin
+can see an archived ticket or restore it. For everyone else it answers 404.
 
 Creating a ticket needs `title` (3 to 120 characters) and `description` (1 to 5000). It also
 accepts `where_url` (an http or https URL, at most 500 characters) and `fix_check` (at most 500).
@@ -95,8 +116,11 @@ unless another is named):
 - **Size.** A request body over 100 KB is refused with 413. Each field also has its own limit.
 - **Errors.** An unexpected failure is logged on the server and answered with a fixed message.
 
-Not in place yet, and needed before the site is shown to anyone: sign-in and roles, a defence
-against forged cross-site requests, and rate limits. They come with the sign-in step.
+- **Permissions.** Roles are enforced in the service, with tests on the real routes in
+  `tests/roles.test.ts` and a table of every rule in `tests/permissions.test.ts`.
+
+Not in place yet, and needed before the site is shown to anyone: real sign-in, a defence
+against forged cross-site requests, and rate limits. They come with the next sign-in step.
 
 ## Tests and checks
 
@@ -121,7 +145,9 @@ npm run format
 - `src/server/pages/format.ts` turns stored values into the words shown on a page.
 - `views/` holds the page templates (EJS: HTML with small pieces of JavaScript).
 - `public/site.css` holds the few style rules added on top of the Pico CSS stylesheet.
-- `src/server/actor.ts` decides who is acting on a request (always anonymous for now).
+- `src/server/actor.ts` decides who is acting on a request, from the sign-in cookie.
+- `src/server/permissions.ts` holds `can()`, the one function that says who may do what.
+- `src/server/routes/sign-in.ts` is the sign-in page and the development entrance.
 - `src/server/tickets/` holds ticket keys, zod schemas, the repository (all SQL) and the service
   (rules and transactions). The service checks its own input, so every caller gets the same rules.
 - The event log is append-only: database triggers refuse any update or delete of an event.
