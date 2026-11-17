@@ -93,6 +93,8 @@ More routes change a ticket. Each one writes an event in the same transaction.
 | `PUT /api/tickets/:key`          | Replaces the title, description, link and check. Same rules as create.       |
 | `POST /api/tickets/:key/archive` | Archives the ticket. Nothing is deleted.                                     |
 | `POST /api/tickets/:key/restore` | Brings an archived ticket back.                                              |
+| `GET /api/tickets/:key/entries`  | The conversation, oldest first. Internal notes only for the team.            |
+| `POST /api/tickets/:key/entries` | Adds `{ "kind": "reply" or "note", "body": "..." }`. Notes are team only.    |
 | `DELETE /api/tickets/:key`       | Deletes the ticket permanently. Admin only. Body: `{ "confirm": "SUP-42" }`. |
 
 An archived ticket is left out of every list except `GET /api/tickets?status=archived`, and it
