@@ -29,6 +29,18 @@ export const deleteTicketSchema = z.object({
   confirm: z.string().trim(),
 });
 
+export const ENTRY_KINDS = ["reply", "note"] as const;
+export type EntryKind = (typeof ENTRY_KINDS)[number];
+
+export const addEntrySchema = z.object({
+  kind: z.enum(ENTRY_KINDS),
+  body: z
+    .string()
+    .trim()
+    .min(1, "Must not be empty.")
+    .max(5000, "Must be at most 5000 characters."),
+});
+
 export const changeStatusSchema = z.object({
   status: z.enum(TICKET_STATUSES),
 });

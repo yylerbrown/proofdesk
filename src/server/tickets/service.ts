@@ -6,6 +6,7 @@ import { parse } from "../validation.js";
 import { buildKey, parseKey } from "./keys.js";
 import * as repository from "./repository.js";
 import {
+  addEntrySchema,
   changeStatusSchema,
   createTicketSchema,
   deleteTicketSchema,
@@ -42,6 +43,18 @@ export type TicketEvent = {
   actor_kind: repository.ActorKind;
   type: string;
   data: unknown;
+  created_at: string;
+};
+
+/** One entry of the conversation on a ticket, as callers see it. */
+export type TicketEntry = {
+  id: number;
+  kind: "reply" | "note";
+  body: string;
+  author: string;
+  author_kind: repository.ActorKind;
+  author_role: "customer" | "team" | "admin";
+  author_name: string;
   created_at: string;
 };
 
@@ -98,6 +111,19 @@ export function createTicketService(db: Db, prefix: string) {
       actor_kind: row.actor_kind,
       type: row.type,
       data: JSON.parse(row.data),
+      created_at: row.created_at,
+    };
+  }
+
+  function toEntry(row: repository.EntryRow): TicketEntry {
+    return {
+      id: row.id,
+      kind: row.kind,
+      body: row.body,
+      author: row.author,
+      author_kind: row.author_kind,
+      author_role: row.author_role,
+      author_name: row.author_name,
       created_at: row.created_at,
     };
   }
@@ -303,9 +329,53 @@ export function createTicketService(db: Db, prefix: string) {
       return toTicket(row);
     },
 
+    /** The history, oldest first. Someone who may not read notes does not see them added. */
     listEvents(key: string, actor: Actor): TicketEvent[] {
       const row = requireRow(key, actor);
-      return repository.listEvents(db, row.id).map(toEvent);
+      const events = repository.listEvents(db, row.id).map(toEvent);
+      if (can(actor, "read_notes", row)) return events;
+      return events.filter((event) => event.type !== "note_added");
+    },
+
+    /**
+     * Adds a reply or an internal note, and its history entry, together. The history entry
+     * says only that something was added. The text itself lives in the entry.
+     */
+    addEntry(key: string, input: unknown, actor: Actor): TicketEntry {
+      const entry = parse(addEntrySchema, input);
+      const row = db.transaction(() => {
+        const ticket = requireRow(key, actor);
+        requirePermission(actor, entry.kind === "note" ? "note" : "reply", ticket);
+        requireNotArchived(key, ticket);
+        const now = new Date().toISOString();
+        const saved = repository.insertEntry(db, {
+          ticket_id: ticket.id,
+          kind: entry.kind,
+          body: entry.body,
+          author: actor.id,
+          author_kind: actor.kind,
+          author_role: actor.role,
+          author_name: actor.name,
+          created_at: now,
+        });
+        repository.insertEvent(db, {
+          ticketId: ticket.id,
+          actor: actor.id,
+          actorKind: actor.kind,
+          type: entry.kind === "note" ? "note_added" : "reply_added",
+          data: {},
+          now,
+        });
+        return saved;
+      })();
+      return toEntry(row);
+    },
+
+    /** The conversation, oldest first. Internal notes only for those who may read them. */
+    listEntries(key: string, actor: Actor): TicketEntry[] {
+      const row = requireRow(key, actor);
+      const includeNotes = can(actor, "read_notes", row);
+      return repository.listEntries(db, row.id, includeNotes).map(toEntry);
     },
 
     /**
@@ -338,6 +408,8 @@ export function createTicketService(db: Db, prefix: string) {
         archive: !archived && can(actor, "archive", ticket),
         restore: archived && can(actor, "restore", ticket),
         delete: can(actor, "delete", ticket),
+        reply: !archived && can(actor, "reply", ticket),
+        note: !archived && can(actor, "note", ticket),
       };
     },
   };

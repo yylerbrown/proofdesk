@@ -46,6 +46,15 @@ export function ticketsRouter(service: TicketService): Router {
     res.status(204).end();
   });
 
+  router.get("/tickets/:key/entries", (req, res) => {
+    res.json(service.listEntries(req.params.key, signedIn(req)));
+  });
+
+  // Adds a reply or an internal note: { "kind": "reply", "body": "..." }.
+  router.post("/tickets/:key/entries", (req, res) => {
+    res.status(201).json(service.addEntry(req.params.key, req.body, signedIn(req)));
+  });
+
   router.get("/tickets/:key/events", (req, res) => {
     res.json(service.listEvents(req.params.key, signedIn(req)));
   });

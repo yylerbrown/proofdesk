@@ -9,7 +9,10 @@ export type Action =
   | "change_status"
   | "archive"
   | "restore"
-  | "delete";
+  | "delete"
+  | "reply"
+  | "note"
+  | "read_notes";
 
 /** The two facts about a ticket that permissions depend on. */
 export type TicketFacts = {
@@ -26,6 +29,8 @@ export type TicketFacts = {
  * - A team member works with every ticket.
  * - An archived ticket is gone for customers. A team member or admin can see and restore it.
  * - Only an admin deletes a ticket permanently.
+ * - A customer replies on their own tickets. Internal notes are for the team only, and a
+ *   customer never sees them.
  */
 export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean {
   const isStaff = actor.role === "team" || actor.role === "admin";
@@ -45,5 +50,8 @@ export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean
   if (action === "change_status") return isStaff;
   if (action === "restore") return isStaff;
   if (action === "delete") return actor.role === "admin";
+  if (action === "reply") return isStaff || isOwn;
+  if (action === "note") return isStaff;
+  if (action === "read_notes") return isStaff;
   return false;
 }

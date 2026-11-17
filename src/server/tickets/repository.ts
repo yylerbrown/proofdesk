@@ -1,5 +1,5 @@
 import type { Db } from "../db.js";
-import type { TicketStatus } from "./schemas.js";
+import type { EntryKind, TicketStatus } from "./schemas.js";
 
 // All SQL for tickets lives in this file. Every statement is a fixed string with ?
 // placeholders, so no user input is ever joined into SQL text.
@@ -170,7 +170,7 @@ export function insertMeta(db: Db, key: string, value: string): void {
  * column. Permanent deletion removes their rows. A test fails if a table with a ticket_id
  * column is missing here, so a new table cannot be forgotten.
  */
-export const TICKET_TABLES = ["ticket_events"];
+export const TICKET_TABLES = ["ticket_events", "ticket_entries"];
 
 /**
  * Removes a ticket and every row that belongs to it, and records that it was deleted.
@@ -201,4 +201,41 @@ export function wasDeleted(db: Db, id: number): boolean {
  */
 export function flushDeletedContent(db: Db): void {
   db.pragma("wal_checkpoint(TRUNCATE)");
+}
+
+export type EntryRow = {
+  id: number;
+  ticket_id: number;
+  kind: EntryKind;
+  body: string;
+  author: string;
+  author_kind: ActorKind;
+  author_role: "customer" | "team" | "admin";
+  author_name: string;
+  created_at: string;
+};
+
+export type NewEntry = Omit<EntryRow, "id">;
+
+/** Inserts an entry and returns it with its number. */
+export function insertEntry(db: Db, entry: NewEntry): EntryRow {
+  const result = db
+    .prepare(
+      `INSERT INTO ticket_entries
+       (ticket_id, kind, body, author, author_kind, author_role, author_name, created_at)
+     VALUES (@ticket_id, @kind, @body, @author, @author_kind, @author_role, @author_name, @created_at)`,
+    )
+    .run(entry);
+  return { id: Number(result.lastInsertRowid), ...entry };
+}
+
+/** Oldest first. Internal notes are left out unless includeNotes is true. */
+export function listEntries(db: Db, ticketId: number, includeNotes: boolean): EntryRow[] {
+  return db
+    .prepare(
+      `SELECT * FROM ticket_entries
+       WHERE ticket_id = @ticketId AND (@includeNotes = 1 OR kind = 'reply')
+       ORDER BY id ASC`,
+    )
+    .all({ ticketId, includeNotes: includeNotes ? 1 : 0 }) as EntryRow[];
 }
