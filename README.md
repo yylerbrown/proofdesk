@@ -136,9 +136,15 @@ unless another is named):
   minutes and one address to 10 sign-in starts a minute. The sign-in library limits its own
   routes in production. The counts are kept in memory, so they reset when the server restarts.
 
-Not in place yet: the server does not know the visitor's real address behind a host's proxy
-until the proxy setting is made in the deploy step, so the address-based limit is only right
-locally.
+- **One person, one GitHub account.** The sign-in library's account linking is off, so a
+  second GitHub account showing the same email address cannot take over a person or their role.
+- **https in production.** The server refuses to start in production unless `BETTER_AUTH_URL`
+  starts with `https://`, so the session cookie is always marked Secure there.
+
+Not in place yet, and part of the deploy step: behind a host's proxy the server does not know the
+visitor's real address until Express's `trust proxy` and the sign-in library's
+`advanced.ipAddress` setting are made. Until then both rate limiters count everyone behind the
+proxy as one address.
 
 ## Tests and checks
 
