@@ -94,7 +94,7 @@ A stranger can get in, file a ticket, filter the list, change a status and follo
 
 ### 2026-11-17
 
-Decided by the owner after the ticket core and its pages were built.
+Decided by the owner after the ticket core and its pages were built. Two points were chosen by the assistant under the owner's general go-ahead and are his to overturn: that only an admin may delete permanently, and that going live moves after sign-in.
 
 - **Tickets are editable.** The title, the description, the "Where did this happen?" link and the "How will we know it's fixed?" check can be changed, not only the status. Every edit writes a history entry with what changed, from what, to what, in the same transaction. A customer edits their own ticket and a team member edits any. The customer's original wording of their check is still kept beside a tightened version.
 - **Archiving.** An archived ticket leaves every list and is not reachable by its key for ordinary users. Its row and its history stay, and an admin can restore it. Archive and restore each write a history entry.
