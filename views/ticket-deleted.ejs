@@ -1,0 +1,10 @@
+<%- include("header") %>
+<h1><%= key %> was deleted</h1>
+<p>The ticket and everything that belonged to it are gone from the database.</p>
+<% if (filesCleaned) { %>
+<p>The files on disk have been cleaned as well, so the old text is not left in them.</p>
+<% } else { %>
+<p><mark>The files on disk are not cleaned yet.</mark> Another part of the server was reading at the same moment, so the old text stays in the database's log file until the next cleanup. It cannot be read through the app.</p>
+<% } %>
+<p><a href="/tickets">Back to the tickets</a></p>
+<%- include("footer") %>

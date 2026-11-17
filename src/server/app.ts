@@ -79,19 +79,6 @@ export function createApp(config: Config, db: Db): Express {
     }),
   );
 
-  // GitHub sign-in, when its settings are present. The library answers everything under
-  // /api/auth itself: the return from GitHub, and its own session routes. It must be
-  // mounted before any body parser, because it reads the request body itself.
-  const auth = config.signIn === null ? null : createAuth(db, config.signIn, config.clientIpHeader);
-  if (auth !== null) {
-    app.all("/api/auth/*splat", toNodeHandler(auth));
-  }
-
-  app.use(cookieParser());
-  // Decides who is acting. It is used twice below, once for the API and once for the
-  // pages, so that a failure inside it is answered in the right format for each.
-  const actor = actorMiddleware(config, auth, db);
-
   // Limits on how often one person, or one address when signed out, may file a ticket or
   // start a sign-in. Over the limit the answer is 429 until the window has passed.
   const tooMany: Parameters<typeof rateLimit>[0] = {
@@ -99,10 +86,9 @@ export function createApp(config: Config, db: Db): Express {
     legacyHeaders: false,
     // A real person is counted by their account. Demo visitors share three made-up
     // identities, so they are counted by address, like someone not signed in.
+    // req.actor is not set on the sign-in library's own routes, which run before it.
     keyGenerator: (req) =>
-      req.actor !== null && req.actor.demo !== true
-        ? req.actor.id
-        : ipKeyGenerator(clientAddress(req)),
+      req.actor && req.actor.demo !== true ? req.actor.id : ipKeyGenerator(clientAddress(req)),
     handler: (_req, _res, next) => {
       next(new HttpError(429, "too_many_requests", "Too many requests. Try again in a while."));
     },
@@ -129,6 +115,30 @@ export function createApp(config: Config, db: Db): Express {
     limit: WRITE_LIMIT,
     skip: (req) => req.method === "GET" || req.method === "HEAD",
   });
+  // The library's own sign-in routes get the same allowance as starting a GitHub sign-in.
+  const authLimit = rateLimit({
+    ...tooMany,
+    windowMs: 60 * 1000,
+    limit: SIGN_IN_LIMIT,
+    skip: (req) => req.method === "GET",
+  });
+
+  // GitHub sign-in, when its settings are present. The library answers everything under
+  // /api/auth itself: the return from GitHub, and its own session routes. It must be
+  // mounted before any body parser, because it reads the request body itself.
+  const auth = config.signIn === null ? null : createAuth(db, config.signIn, config.clientIpHeader);
+  if (auth !== null) {
+    // The same forged-request check and a sign-in limit as our own routes, in front of the
+    // library's own, which are mounted before everything else.
+    app.use("/api/auth", sameOriginOnly(config), authLimit);
+    app.all("/api/auth/*splat", toNodeHandler(auth));
+  }
+
+  app.use(cookieParser());
+
+  // Decides who is acting. It is used twice below, once for the API and once for the
+  // pages, so that a failure inside it is answered in the right format for each.
+  const actor = actorMiddleware(config, auth, db);
 
   // The JSON API. Its own handlers at the end turn every error inside it into JSON.
   const api = express.Router();
