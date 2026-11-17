@@ -168,7 +168,9 @@ that belongs to it are removed, and `deleted_tickets` keeps the number, the time
 - Every table whose rows belong to a ticket carries a `ticket_id` column and is listed in
   `TICKET_TABLES` in `src/server/tickets/repository.ts`. A test fails if a table with a
   `ticket_id` column is missing from that list.
-- Deleting does not reach backups or anything already sent elsewhere.
+  The test only finds columns named exactly `ticket_id`, so that is the name to use.
+- Deleting does not reach backups, the host's snapshots of the disk until they expire, or
+  anything already sent elsewhere.
 
 ## Security
 
