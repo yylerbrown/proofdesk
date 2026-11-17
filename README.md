@@ -43,11 +43,11 @@ cp .env.example .env   # then fill it in; npm run dev reads it
 npm run dev
 ```
 
-| Role        | What they can do                                                                                            |
-| ----------- | ----------------------------------------------------------------------------------------------------------- |
-| Customer    | File tickets. See, edit, archive and reply on only their own. Cannot change a status or see internal notes. |
-| Team member | See, edit, archive and change the status of every ticket. See and restore archived tickets.                 |
-| Admin       | Everything a team member can. Permanent deletion, when it is built, will be for an admin only.              |
+| Role        | What they can do                                                                                                                              |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Customer    | File tickets. See, edit, archive and reply on only their own. Cannot change a status or see internal notes.                                   |
+| Team member | See, edit, archive and change the status of every ticket. Take a ticket, becoming its owner, or release it. See and restore archived tickets. |
+| Admin       | Everything a team member can. Permanent deletion, when it is built, will be for an admin only.                                                |
 
 One function, `can()` in `src/server/permissions.ts`, answers every permission question, and
 the ticket service asks it on every call. A ticket someone may not see answers 404, the same
@@ -93,6 +93,8 @@ More routes change a ticket. Each one writes an event in the same transaction.
 | `PUT /api/tickets/:key`          | Replaces the title, description, link and check. Same rules as create.       |
 | `POST /api/tickets/:key/archive` | Archives the ticket. Nothing is deleted.                                     |
 | `POST /api/tickets/:key/restore` | Brings an archived ticket back.                                              |
+| `POST /api/tickets/:key/take`    | Makes the signed-in team member the owner.                                   |
+| `POST /api/tickets/:key/release` | Leaves the ticket without an owner. Not while it is in progress.             |
 | `GET /api/tickets/:key/entries`  | The conversation, oldest first. Internal notes only for the team.            |
 | `POST /api/tickets/:key/entries` | Adds `{ "kind": "reply" or "note", "body": "..." }`. Notes are team only.    |
 | `DELETE /api/tickets/:key`       | Deletes the ticket permanently. Admin only. Body: `{ "confirm": "SUP-42" }`. |
@@ -101,6 +103,11 @@ An archived ticket is left out of every list except `GET /api/tickets?status=arc
 cannot be edited or change status until it is restored (409 `ticket_archived`). A team member
 or admin can see an archived ticket and restore it. For a customer it answers 404. Archiving
 from a page asks first, on a page that says what will happen.
+
+Every ticket in progress has a named human owner. A ticket starts with none. A team member
+takes it, and only then can it move to In Progress; while it is in progress it cannot be
+released, only taken over by someone else. An agent can never be the owner. The database refuses
+an in-progress ticket without an owner as well (migration `0010`).
 
 Creating a ticket needs `title` (3 to 120 characters) and `description` (1 to 5000). It also
 accepts `where_url` (an http or https URL, at most 500 characters) and `fix_check` (at most 500).
