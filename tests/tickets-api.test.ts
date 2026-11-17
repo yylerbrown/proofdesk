@@ -1,6 +1,5 @@
-import request from "supertest";
 import { describe, expect, it } from "vitest";
-import { buildTestApp } from "./helpers.js";
+import { admin, buildTestApp } from "./helpers.js";
 
 const valid = { title: "Printer is broken", description: "It jams on every page." };
 
@@ -43,7 +42,7 @@ describe("POST /api/tickets validation", () => {
 
   it.each(cases)("%s", async (_name, body, accepted) => {
     const { app } = buildTestApp();
-    const res = await request(app)
+    const res = await admin(app)
       .post("/api/tickets")
       .send(body as object);
     if (accepted) {
@@ -57,7 +56,7 @@ describe("POST /api/tickets validation", () => {
 
   it("rejects a request with no body", async () => {
     const { app } = buildTestApp();
-    const res = await request(app).post("/api/tickets");
+    const res = await admin(app).post("/api/tickets");
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("validation_error");
   });
@@ -66,7 +65,7 @@ describe("POST /api/tickets validation", () => {
 describe("create and get", () => {
   it("creates a ticket and returns it with a key", async () => {
     const { app } = buildTestApp();
-    const res = await request(app).post("/api/tickets").send({
+    const res = await admin(app).post("/api/tickets").send({
       title: "  Cannot log in  ",
       description: "The page says my password is wrong.",
       where_url: "https://example.com/login",
@@ -80,7 +79,7 @@ describe("create and get", () => {
       status: "new",
       where_url: "https://example.com/login",
       fix_check: "I can open my account page.",
-      created_by: null,
+      created_by: "dev-admin-1",
       owner_id: null,
       agent_id: null,
       created_at: expect.stringMatching(/^\d{4}-\d\d-\d\dT[\d:.]+Z$/),
@@ -91,30 +90,30 @@ describe("create and get", () => {
 
   it("stores missing optional fields as null", async () => {
     const { app } = buildTestApp();
-    const res = await request(app).post("/api/tickets").send(valid);
+    const res = await admin(app).post("/api/tickets").send(valid);
     expect(res.body.where_url).toBeNull();
     expect(res.body.fix_check).toBeNull();
   });
 
   it("gets the same ticket back by key", async () => {
     const { app } = buildTestApp();
-    const created = await request(app).post("/api/tickets").send(valid);
-    const res = await request(app).get(`/api/tickets/${created.body.key}`);
+    const created = await admin(app).post("/api/tickets").send(valid);
+    const res = await admin(app).get(`/api/tickets/${created.body.key}`);
     expect(res.status).toBe(200);
     expect(res.body).toEqual(created.body);
   });
 
   it("uses the configured prefix", async () => {
     const { app } = buildTestApp({ TICKET_PREFIX: "HELP" });
-    const created = await request(app).post("/api/tickets").send(valid);
+    const created = await admin(app).post("/api/tickets").send(valid);
     expect(created.body.key).toBe("HELP-1");
-    expect((await request(app).get("/api/tickets/HELP-1")).status).toBe(200);
-    expect((await request(app).get("/api/tickets/SUP-1")).status).toBe(400);
+    expect((await admin(app).get("/api/tickets/HELP-1")).status).toBe(200);
+    expect((await admin(app).get("/api/tickets/SUP-1")).status).toBe(400);
   });
 
   it("returns 404 for a well-formed key that does not exist", async () => {
     const { app } = buildTestApp();
-    const res = await request(app).get("/api/tickets/SUP-999");
+    const res = await admin(app).get("/api/tickets/SUP-999");
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe("ticket_not_found");
   });
@@ -123,7 +122,7 @@ describe("create and get", () => {
     "returns 400 for the malformed key %s",
     async (key) => {
       const { app } = buildTestApp();
-      const res = await request(app).get(`/api/tickets/${key}`);
+      const res = await admin(app).get(`/api/tickets/${key}`);
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe("invalid_key");
     },
@@ -134,26 +133,26 @@ describe("GET /api/tickets", () => {
   async function makeTickets() {
     const { app } = buildTestApp();
     for (const title of ["First", "Second", "Third"]) {
-      await request(app).post("/api/tickets").send({ title, description: "d" });
+      await admin(app).post("/api/tickets").send({ title, description: "d" });
     }
-    await request(app).patch("/api/tickets/SUP-2").send({ status: "in_progress" });
-    await request(app).patch("/api/tickets/SUP-3").send({ status: "resolved" });
+    await admin(app).patch("/api/tickets/SUP-2").send({ status: "in_progress" });
+    await admin(app).patch("/api/tickets/SUP-3").send({ status: "resolved" });
     return app;
   }
 
   it("lists newest first", async () => {
     const { app } = buildTestApp();
     for (const title of ["First", "Second", "Third"]) {
-      await request(app).post("/api/tickets").send({ title, description: "d" });
+      await admin(app).post("/api/tickets").send({ title, description: "d" });
     }
-    const res = await request(app).get("/api/tickets");
+    const res = await admin(app).get("/api/tickets");
     expect(res.status).toBe(200);
     expect(res.body.map((t: { key: string }) => t.key)).toEqual(["SUP-3", "SUP-2", "SUP-1"]);
   });
 
   it("returns an empty list when there are no tickets", async () => {
     const { app } = buildTestApp();
-    const res = await request(app).get("/api/tickets");
+    const res = await admin(app).get("/api/tickets");
     expect(res.status).toBe(200);
     expect(res.body).toEqual([]);
   });
@@ -165,14 +164,14 @@ describe("GET /api/tickets", () => {
     ["all", ["SUP-3", "SUP-2", "SUP-1"]],
   ])("filters by status=%s", async (status, expectedKeys) => {
     const app = await makeTickets();
-    const res = await request(app).get("/api/tickets").query({ status });
+    const res = await admin(app).get("/api/tickets").query({ status });
     expect(res.status).toBe(200);
     expect(res.body.map((t: { key: string }) => t.key)).toEqual(expectedKeys);
   });
 
   it.each(["done", "NEW", "", "new,resolved"])("returns 400 for status=%j", async (status) => {
     const { app } = buildTestApp();
-    const res = await request(app).get("/api/tickets").query({ status });
+    const res = await admin(app).get("/api/tickets").query({ status });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("validation_error");
   });
@@ -181,11 +180,11 @@ describe("GET /api/tickets", () => {
 describe("PATCH /api/tickets/:key", () => {
   it("changes the status and writes exactly one event with the old and new status", async () => {
     const { app, db } = buildTestApp();
-    await request(app).post("/api/tickets").send(valid);
+    await admin(app).post("/api/tickets").send(valid);
     const before = db.prepare("SELECT COUNT(*) AS n FROM ticket_events").get();
     expect(before).toEqual({ n: 1 }); // the "created" event
 
-    const res = await request(app).patch("/api/tickets/SUP-1").send({ status: "in_progress" });
+    const res = await admin(app).patch("/api/tickets/SUP-1").send({ status: "in_progress" });
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("in_progress");
 
@@ -194,7 +193,7 @@ describe("PATCH /api/tickets/:key", () => {
       .all();
     expect(events).toEqual([
       {
-        actor: "anonymous",
+        actor: "dev-admin-1",
         type: "status_changed",
         data: JSON.stringify({ from: "new", to: "in_progress" }),
       },
@@ -203,8 +202,8 @@ describe("PATCH /api/tickets/:key", () => {
 
   it("writes no event and keeps updated_at when the status does not change", async () => {
     const { app, db } = buildTestApp();
-    const created = await request(app).post("/api/tickets").send(valid);
-    const res = await request(app).patch("/api/tickets/SUP-1").send({ status: "new" });
+    const created = await admin(app).post("/api/tickets").send(valid);
+    const res = await admin(app).patch("/api/tickets/SUP-1").send({ status: "new" });
     expect(res.status).toBe(200);
     expect(res.body).toEqual(created.body);
     expect(db.prepare("SELECT COUNT(*) AS n FROM ticket_events").get()).toEqual({ n: 1 });
@@ -212,14 +211,14 @@ describe("PATCH /api/tickets/:key", () => {
 
   it("returns 404 for an unknown key", async () => {
     const { app } = buildTestApp();
-    const res = await request(app).patch("/api/tickets/SUP-5").send({ status: "resolved" });
+    const res = await admin(app).patch("/api/tickets/SUP-5").send({ status: "resolved" });
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe("ticket_not_found");
   });
 
   it("returns 400 for a malformed key", async () => {
     const { app } = buildTestApp();
-    const res = await request(app).patch("/api/tickets/nope").send({ status: "resolved" });
+    const res = await admin(app).patch("/api/tickets/nope").send({ status: "resolved" });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("invalid_key");
   });
@@ -228,8 +227,8 @@ describe("PATCH /api/tickets/:key", () => {
     "returns 400 for the body %j",
     async (body) => {
       const { app } = buildTestApp();
-      await request(app).post("/api/tickets").send(valid);
-      const res = await request(app).patch("/api/tickets/SUP-1").send(body);
+      await admin(app).post("/api/tickets").send(valid);
+      const res = await admin(app).patch("/api/tickets/SUP-1").send(body);
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe("validation_error");
     },
@@ -239,38 +238,38 @@ describe("PATCH /api/tickets/:key", () => {
 describe("GET /api/tickets/:key/events", () => {
   it("returns creation then status change, oldest first", async () => {
     const { app } = buildTestApp();
-    await request(app).post("/api/tickets").send(valid);
-    await request(app).patch("/api/tickets/SUP-1").send({ status: "in_progress" });
-    await request(app).patch("/api/tickets/SUP-1").send({ status: "resolved" });
+    await admin(app).post("/api/tickets").send(valid);
+    await admin(app).patch("/api/tickets/SUP-1").send({ status: "in_progress" });
+    await admin(app).patch("/api/tickets/SUP-1").send({ status: "resolved" });
 
-    const res = await request(app).get("/api/tickets/SUP-1/events");
+    const res = await admin(app).get("/api/tickets/SUP-1/events");
     expect(res.status).toBe(200);
     expect(res.body.map((e: { type: string; data: unknown }) => [e.type, e.data])).toEqual([
       ["created", { status: "new" }],
       ["status_changed", { from: "new", to: "in_progress" }],
       ["status_changed", { from: "in_progress", to: "resolved" }],
     ]);
-    expect(res.body[0]).toMatchObject({ ticket_key: "SUP-1", actor: "anonymous" });
+    expect(res.body[0]).toMatchObject({ ticket_key: "SUP-1", actor: "dev-admin-1" });
   });
 
   it("returns only the events of the ticket that was asked for", async () => {
     const { app } = buildTestApp();
-    await request(app).post("/api/tickets").send(valid);
-    await request(app).post("/api/tickets").send(valid);
-    await request(app).patch("/api/tickets/SUP-1").send({ status: "in_progress" });
-    await request(app).patch("/api/tickets/SUP-2").send({ status: "resolved" });
-    await request(app).patch("/api/tickets/SUP-2").send({ status: "new" });
+    await admin(app).post("/api/tickets").send(valid);
+    await admin(app).post("/api/tickets").send(valid);
+    await admin(app).patch("/api/tickets/SUP-1").send({ status: "in_progress" });
+    await admin(app).patch("/api/tickets/SUP-2").send({ status: "resolved" });
+    await admin(app).patch("/api/tickets/SUP-2").send({ status: "new" });
 
     type Row = { ticket_key: string; type: string; data: unknown };
     const summary = (rows: Row[]) => rows.map((e) => [e.ticket_key, e.type, e.data]);
 
-    const first = await request(app).get("/api/tickets/SUP-1/events");
+    const first = await admin(app).get("/api/tickets/SUP-1/events");
     expect(summary(first.body)).toEqual([
       ["SUP-1", "created", { status: "new" }],
       ["SUP-1", "status_changed", { from: "new", to: "in_progress" }],
     ]);
 
-    const second = await request(app).get("/api/tickets/SUP-2/events");
+    const second = await admin(app).get("/api/tickets/SUP-2/events");
     expect(summary(second.body)).toEqual([
       ["SUP-2", "created", { status: "new" }],
       ["SUP-2", "status_changed", { from: "new", to: "resolved" }],
@@ -280,14 +279,14 @@ describe("GET /api/tickets/:key/events", () => {
 
   it("says what kind of actor wrote each event", async () => {
     const { app } = buildTestApp();
-    await request(app).post("/api/tickets").send(valid);
-    const res = await request(app).get("/api/tickets/SUP-1/events");
-    expect(res.body[0]).toMatchObject({ actor: "anonymous", actor_kind: "person" });
+    await admin(app).post("/api/tickets").send(valid);
+    const res = await admin(app).get("/api/tickets/SUP-1/events");
+    expect(res.body[0]).toMatchObject({ actor: "dev-admin-1", actor_kind: "person" });
   });
 
   it("returns 404 for an unknown ticket and 400 for a malformed key", async () => {
     const { app } = buildTestApp();
-    expect((await request(app).get("/api/tickets/SUP-9/events")).status).toBe(404);
-    expect((await request(app).get("/api/tickets/x/events")).status).toBe(400);
+    expect((await admin(app).get("/api/tickets/SUP-9/events")).status).toBe(404);
+    expect((await admin(app).get("/api/tickets/x/events")).status).toBe(400);
   });
 });

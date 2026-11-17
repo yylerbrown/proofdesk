@@ -4,11 +4,11 @@ import type { Actor } from "../src/server/actor.js";
 import { openDatabase } from "../src/server/db.js";
 import { ValidationError } from "../src/server/errors.js";
 import { createTicketService } from "../src/server/tickets/service.js";
-import { buildTestApp } from "./helpers.js";
+import { adminActor, buildTestApp } from "./helpers.js";
 
 type TestDb = ReturnType<typeof buildTestApp>["db"];
 
-const actor: Actor = { id: "anonymous", kind: "person" };
+const actor = adminActor;
 const input = { title: "Printer is broken", description: "It jams." };
 
 // A trigger that makes every insert into ticket_events fail, to prove the ticket change and
@@ -34,14 +34,14 @@ describe("ticket service transactions", () => {
     const { db } = buildTestApp();
     const service = createTicketService(db, "SUP");
     service.createTicket(input, actor);
-    const before = service.getTicket("SUP-1");
+    const before = service.getTicket("SUP-1", actor);
 
     breakEventInserts(db);
     expect(() => service.changeStatus("SUP-1", { status: "resolved" }, actor)).toThrow(
       /event insert failed/,
     );
 
-    expect(service.getTicket("SUP-1")).toEqual(before);
+    expect(service.getTicket("SUP-1", actor)).toEqual(before);
     expect(count(db, "ticket_events")).toBe(1);
   });
 
@@ -109,7 +109,7 @@ describe("ticket service checks its own input", () => {
       where_url: null,
       fix_check: null,
       status: "new",
-      created_by: null,
+      created_by: "dev-admin-1",
       owner_id: null,
     });
   });
@@ -120,11 +120,11 @@ describe("ticket service checks its own input", () => {
       const { db } = buildTestApp();
       const service = createTicketService(db, "SUP");
       service.createTicket(input, actor);
-      const before = service.getTicket("SUP-1");
+      const before = service.getTicket("SUP-1", actor);
 
       expect(() => service.changeStatus("SUP-1", bad, actor)).toThrow(ValidationError);
 
-      expect(service.getTicket("SUP-1")).toEqual(before);
+      expect(service.getTicket("SUP-1", actor)).toEqual(before);
       expect(count(db, "ticket_events")).toBe(1);
     },
   );
@@ -134,19 +134,30 @@ describe("ticket service actor", () => {
   it("records the actor it is given on the events", () => {
     const { db } = buildTestApp();
     const service = createTicketService(db, "SUP");
-    const agent: Actor = { id: "helper-1", kind: "agent" };
+    const agent: Actor = { id: "helper-1", kind: "agent", role: "team", name: "Helper" };
     service.createTicket(input, agent);
     service.changeStatus("SUP-1", { status: "resolved" }, actor);
-    expect(service.listEvents("SUP-1").map((e) => e.actor)).toEqual(["helper-1", "anonymous"]);
+    expect(service.listEvents("SUP-1", actor).map((e) => e.actor)).toEqual([
+      "helper-1",
+      "dev-admin-1",
+    ]);
   });
 
   it("tells a person from an agent that has the same id", () => {
     const { db } = buildTestApp();
     const service = createTicketService(db, "SUP");
-    service.createTicket(input, { id: "sam", kind: "person" });
-    service.changeStatus("SUP-1", { status: "in_progress" }, { id: "sam", kind: "agent" });
-    service.changeStatus("SUP-1", { status: "resolved" }, { id: "sam", kind: "person" });
-    expect(service.listEvents("SUP-1").map((e) => [e.actor, e.actor_kind])).toEqual([
+    service.createTicket(input, { id: "sam", kind: "person", role: "team", name: "Sam" });
+    service.changeStatus(
+      "SUP-1",
+      { status: "in_progress" },
+      { id: "sam", kind: "agent", role: "team", name: "Sam" },
+    );
+    service.changeStatus(
+      "SUP-1",
+      { status: "resolved" },
+      { id: "sam", kind: "person", role: "team", name: "Sam" },
+    );
+    expect(service.listEvents("SUP-1", actor).map((e) => [e.actor, e.actor_kind])).toEqual([
       ["sam", "person"],
       ["sam", "agent"],
       ["sam", "person"],
@@ -156,7 +167,7 @@ describe("ticket service actor", () => {
   it("cannot store a kind of actor the database does not know", () => {
     const { db } = buildTestApp();
     const service = createTicketService(db, "SUP");
-    const robot = { id: "x", kind: "robot" } as unknown as Actor;
+    const robot = { ...actor, kind: "robot" } as unknown as Actor;
     expect(() => service.createTicket(input, robot)).toThrow(/CHECK constraint failed/);
     expect(count(db, "tickets")).toBe(0);
   });
@@ -167,14 +178,14 @@ describe("ticket events are append-only in the database", () => {
     const { db } = buildTestApp();
     const service = createTicketService(db, "SUP");
     service.createTicket(input, actor);
-    const before = service.listEvents("SUP-1");
+    const before = service.listEvents("SUP-1", actor);
 
     expect(() => db.prepare("UPDATE ticket_events SET actor = 'someone-else'").run()).toThrow(
       /append-only/,
     );
     expect(() => db.prepare("DELETE FROM ticket_events").run()).toThrow(/append-only/);
 
-    expect(service.listEvents("SUP-1")).toEqual(before);
+    expect(service.listEvents("SUP-1", actor)).toEqual(before);
   });
 });
 
@@ -191,20 +202,20 @@ describe("ticket service timestamps", () => {
     const created = service.createTicket(input, actor);
     expect(created.created_at).toBe(t1);
     expect(created.updated_at).toBe(t1);
-    expect(service.listEvents("SUP-1").map((e) => e.created_at)).toEqual([t1]);
+    expect(service.listEvents("SUP-1", actor).map((e) => e.created_at)).toEqual([t1]);
 
     vi.setSystemTime(new Date(t2));
     const changed = service.changeStatus("SUP-1", { status: "resolved" }, actor);
     expect(changed.created_at).toBe(t1);
     expect(changed.updated_at).toBe(t2);
-    expect(service.listEvents("SUP-1").map((e) => e.created_at)).toEqual([t1, t2]);
+    expect(service.listEvents("SUP-1", actor).map((e) => e.created_at)).toEqual([t1, t2]);
 
     // The same status again, later: nothing changes and nothing is logged.
     vi.setSystemTime(new Date(t3));
     const repeated = service.changeStatus("SUP-1", { status: "resolved" }, actor);
     expect(repeated).toEqual(changed);
-    expect(service.getTicket("SUP-1")).toEqual(changed);
-    expect(service.listEvents("SUP-1").map((e) => e.created_at)).toEqual([t1, t2]);
+    expect(service.getTicket("SUP-1", actor)).toEqual(changed);
+    expect(service.listEvents("SUP-1", actor).map((e) => e.created_at)).toEqual([t1, t2]);
   });
 });
 
@@ -213,9 +224,9 @@ describe("ticket service returns what is stored", () => {
     const { db } = buildTestApp();
     const service = createTicketService(db, "SUP");
     const created = service.createTicket({ ...input, fix_check: "It prints." }, actor);
-    expect(created).toEqual(service.getTicket("SUP-1"));
+    expect(created).toEqual(service.getTicket("SUP-1", actor));
     const changed = service.changeStatus("SUP-1", { status: "in_progress" }, actor);
-    expect(changed).toEqual(service.getTicket("SUP-1"));
+    expect(changed).toEqual(service.getTicket("SUP-1", actor));
   });
 
   it("returns exactly the public fields of a ticket", () => {
@@ -246,7 +257,7 @@ describe("ticket key prefix is pinned to the database", () => {
     createTicketService(db, "SUP").createTicket(input, actor);
 
     // The same database with the same prefix, as after a restart.
-    expect(createTicketService(db, "SUP").getTicket("SUP-1").title).toBe(input.title);
+    expect(createTicketService(db, "SUP").getTicket("SUP-1", actor).title).toBe(input.title);
 
     expect(() => createTicketService(db, "HELP")).toThrow(
       'TICKET_PREFIX is "HELP" but this database was created with "SUP"',

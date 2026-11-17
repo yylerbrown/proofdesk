@@ -1,11 +1,11 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
-import { buildTestApp } from "./helpers.js";
+import { admin, buildTestApp } from "./helpers.js";
 
 const valid = { title: "Printer is broken", description: "It jams on every page." };
 
 function submitForm(app: ReturnType<typeof buildTestApp>["app"], fields: Record<string, string>) {
-  return request(app).post("/tickets").type("form").send(fields);
+  return admin(app).post("/tickets").type("form").send(fields);
 }
 
 /** Splits a Content-Security-Policy header into { directive: "its values" }. */
@@ -21,7 +21,7 @@ function parsePolicy(header: string): Record<string, string> {
 describe("security headers", () => {
   it.each(["/tickets", "/api/health", "/nope"])("sends them on %s", async (address) => {
     const { app } = buildTestApp();
-    const res = await request(app).get(address);
+    const res = await admin(app).get(address);
     expect(res.headers["x-content-type-options"]).toBe("nosniff");
     expect(res.headers["x-frame-options"]).toBe("SAMEORIGIN");
     expect(res.headers["content-security-policy"]).toBeDefined();
@@ -30,7 +30,7 @@ describe("security headers", () => {
 
   it("allows scripts and styles only from this server, and no inline script", async () => {
     const { app } = buildTestApp();
-    const res = await request(app).get("/tickets");
+    const res = await admin(app).get("/tickets");
     const policy = parsePolicy(res.headers["content-security-policy"] as string);
     expect(policy["default-src"]).toBe("'self'");
     expect(policy["script-src"]).toBe("'self'");
@@ -42,7 +42,7 @@ describe("security headers", () => {
   });
 
   it("tells browsers to switch to HTTPS in production only", async () => {
-    const development = await request(buildTestApp().app).get("/tickets");
+    const development = await admin(buildTestApp().app).get("/tickets");
     expect(development.headers["content-security-policy"]).not.toContain(
       "upgrade-insecure-requests",
     );
@@ -53,7 +53,7 @@ describe("security headers", () => {
   it("has no inline script or inline style in any page, so the policy blocks nothing", async () => {
     const { app } = buildTestApp();
     await submitForm(app, valid);
-    await request(app).post("/tickets/SUP-1/archive");
+    await admin(app).post("/tickets/SUP-1/archive");
     const pages = [
       "/tickets",
       "/tickets/new",
@@ -63,7 +63,7 @@ describe("security headers", () => {
       "/tickets?status=archived",
     ];
     for (const address of pages) {
-      const res = await request(app).get(address);
+      const res = await admin(app).get(address);
       expect(res.text, address).not.toMatch(/<script/i);
       expect(res.text, address).not.toMatch(/<style/i);
       expect(res.text, address).not.toMatch(/\sstyle=/i);
@@ -77,13 +77,13 @@ describe("request size limit", () => {
 
   it("refuses a JSON body over the limit with a JSON 413 and stores nothing", async () => {
     const { app } = buildTestApp();
-    const res = await request(app)
+    const res = await admin(app)
       .post("/api/tickets")
       .send({ ...valid, description: tooBig });
     expect(res.status).toBe(413);
     expect(res.headers["content-type"]).toMatch(/json/);
     expect(res.body.error.code).toBe("bad_request");
-    expect((await request(app).get("/api/tickets")).body).toEqual([]);
+    expect((await admin(app).get("/api/tickets")).body).toEqual([]);
   });
 
   it("refuses a form over the limit with an HTML 413 and stores nothing", async () => {
@@ -91,12 +91,12 @@ describe("request size limit", () => {
     const res = await submitForm(app, { ...valid, description: tooBig });
     expect(res.status).toBe(413);
     expect(res.headers["content-type"]).toMatch(/html/);
-    expect((await request(app).get("/api/tickets")).body).toEqual([]);
+    expect((await admin(app).get("/api/tickets")).body).toEqual([]);
   });
 
   it("accepts the largest valid ticket, which is far under the limit", async () => {
     const { app } = buildTestApp();
-    const res = await request(app)
+    const res = await admin(app)
       .post("/api/tickets")
       .send({
         title: "a".repeat(120),
@@ -124,7 +124,7 @@ describe("fields a caller must not control", () => {
   const untouched = {
     key: "SUP-1",
     status: "new",
-    created_by: null,
+    created_by: "dev-admin-1",
     owner_id: null,
     agent_id: null,
     archived_at: null,
@@ -132,23 +132,23 @@ describe("fields a caller must not control", () => {
 
   it("are ignored when a ticket is filed through the API", async () => {
     const { app } = buildTestApp();
-    const res = await request(app)
+    const res = await admin(app)
       .post("/api/tickets")
       .send({ ...valid, ...extras });
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject(untouched);
     expect(res.body.created_at).not.toBe(extras.created_at);
 
-    const events = await request(app).get("/api/tickets/SUP-1/events");
+    const events = await admin(app).get("/api/tickets/SUP-1/events");
     expect(events.body).toHaveLength(1);
-    expect(events.body[0]).toMatchObject({ actor: "anonymous", actor_kind: "person" });
+    expect(events.body[0]).toMatchObject({ actor: "dev-admin-1", actor_kind: "person" });
   });
 
   it("are ignored when a ticket is filed through the form", async () => {
     const { app } = buildTestApp();
     const res = await submitForm(app, { ...valid, ...extras });
     expect(res.status).toBe(303);
-    const ticket = await request(app).get("/api/tickets/SUP-1");
+    const ticket = await admin(app).get("/api/tickets/SUP-1");
     expect(ticket.body).toMatchObject(untouched);
   });
 
@@ -156,18 +156,18 @@ describe("fields a caller must not control", () => {
     const { app } = buildTestApp();
     await submitForm(app, valid);
 
-    await request(app)
+    await admin(app)
       .put("/api/tickets/SUP-1")
       .send({ ...valid, title: "A new title", ...extras });
-    await request(app)
+    await admin(app)
       .patch("/api/tickets/SUP-1")
       .send({ ...extras, status: "in_progress" });
 
-    const ticket = await request(app).get("/api/tickets/SUP-1");
+    const ticket = await admin(app).get("/api/tickets/SUP-1");
     expect(ticket.body).toMatchObject({ ...untouched, status: "in_progress" });
-    const events = await request(app).get("/api/tickets/SUP-1/events");
+    const events = await admin(app).get("/api/tickets/SUP-1/events");
     for (const event of events.body) {
-      expect(event).toMatchObject({ actor: "anonymous", actor_kind: "person" });
+      expect(event).toMatchObject({ actor: "dev-admin-1", actor_kind: "person" });
     }
   });
 });
@@ -178,11 +178,11 @@ describe("SQL injection", () => {
   it("stores hostile text as plain text and leaves the tables alone", async () => {
     const { app, db } = buildTestApp();
     await submitForm(app, { title: attack, description: attack, fix_check: attack });
-    await request(app)
+    await admin(app)
       .put("/api/tickets/SUP-1")
       .send({ title: `${attack} 2`, description: attack });
 
-    const ticket = await request(app).get("/api/tickets/SUP-1");
+    const ticket = await admin(app).get("/api/tickets/SUP-1");
     expect(ticket.body).toMatchObject({ title: `${attack} 2`, description: attack });
     expect(db.prepare("SELECT COUNT(*) AS n FROM tickets").get()).toEqual({ n: 1 });
     expect(db.prepare("SELECT COUNT(*) AS n FROM ticket_events").get()).toEqual({ n: 2 });
@@ -193,16 +193,16 @@ describe("SQL injection", () => {
     async (status) => {
       const { app } = buildTestApp();
       await submitForm(app, valid);
-      const res = await request(app).get("/api/tickets").query({ status });
+      const res = await admin(app).get("/api/tickets").query({ status });
       expect(res.status).toBe(400);
-      expect((await request(app).get("/api/tickets")).body).toHaveLength(1);
+      expect((await admin(app).get("/api/tickets")).body).toHaveLength(1);
     },
   );
 
   it.each(["SUP-1 OR 1=1", "SUP-1;--", "SUP-1'"])("refuses the key %j", async (key) => {
     const { app } = buildTestApp();
     await submitForm(app, valid);
-    const res = await request(app).get(`/api/tickets/${encodeURIComponent(key)}`);
+    const res = await admin(app).get(`/api/tickets/${encodeURIComponent(key)}`);
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("invalid_key");
   });
@@ -237,14 +237,14 @@ describe("script injection in pages", () => {
       });
       expect(again.status).toBe(303);
     }
-    await request(app)
+    await admin(app)
       .post("/tickets/SUP-1/edit")
       .type("form")
       .send({ title: `T2 ${text}`, description: `D2 ${text}`, fix_check: `C2 ${text}` });
 
     const pages = ["/tickets", "/tickets/SUP-1", "/tickets/SUP-1/edit"];
     for (const address of pages) {
-      const res = await request(app).get(address);
+      const res = await admin(app).get(address);
       expect(res.status, address).toBe(200);
       expect(res.text, address).toContain("T2 ");
       // No tag and no attribute from the hostile text may appear as markup.
@@ -261,7 +261,7 @@ describe("script injection in pages", () => {
       const res = await submitForm(app, { ...valid, where_url: link });
       expect(res.status).toBe(400);
     }
-    expect((await request(app).get("/api/tickets")).body).toEqual([]);
+    expect((await admin(app).get("/api/tickets")).body).toEqual([]);
   });
 
   it("keeps a quote in a link inside the href", async () => {
@@ -271,7 +271,7 @@ describe("script injection in pages", () => {
       where_url: 'https://example.com/"onmouseover="alert(1)',
     });
     expect(res.status).toBe(303);
-    const page = await request(app).get("/tickets/SUP-1");
+    const page = await admin(app).get("/tickets/SUP-1");
     expect(page.text).toContain('href="https://example.com/&#34;onmouseover=&#34;alert(1)"');
   });
 });

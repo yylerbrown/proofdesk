@@ -10,6 +10,7 @@ describe("loadConfig", () => {
       databasePath: "./data/app.db",
       gitCommit: undefined,
       ticketPrefix: "SUP",
+      devSignIn: false,
     });
   });
 
@@ -44,5 +45,15 @@ describe("loadConfig", () => {
 
   it("rejects an unknown NODE_ENV", () => {
     expect(() => loadConfig({ NODE_ENV: "staging" })).toThrow(/NODE_ENV/);
+  });
+
+  it("opens the development entrance only when asked, and never in production", () => {
+    expect(loadConfig({}).devSignIn).toBe(false);
+    expect(loadConfig({ DEV_SIGN_IN: "on" }).devSignIn).toBe(true);
+    expect(() => loadConfig({ DEV_SIGN_IN: "yes" })).toThrow(/DEV_SIGN_IN/);
+    expect(() => loadConfig({ NODE_ENV: "production", DEV_SIGN_IN: "on" })).toThrow(
+      /DEV_SIGN_IN must not be on in production/,
+    );
+    expect(loadConfig({ NODE_ENV: "production" }).devSignIn).toBe(false);
   });
 });
