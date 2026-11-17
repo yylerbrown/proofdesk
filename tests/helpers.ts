@@ -18,6 +18,9 @@ export const SIGN_IN_ENV = {
   GITHUB_CLIENT_SECRET: "test-client-secret",
 };
 
+/** The same, as a production server needs them: its address must use https. */
+export const PRODUCTION_SIGN_IN_ENV = { ...SIGN_IN_ENV, BETTER_AUTH_URL: "https://desk.test" };
+
 const opened: { db: Db; dir: string }[] = [];
 
 /** Builds an app on a fresh database file in a temp directory. Cleaned up after each test. */
@@ -28,7 +31,7 @@ export function buildTestApp(env: NodeJS.ProcessEnv = {}) {
   runMigrations(db);
   // Tests get in through the development entrance. Production refuses that entrance and
   // requires the GitHub sign-in settings instead, so a production test app gets those.
-  const base = env.NODE_ENV === "production" ? SIGN_IN_ENV : { DEV_SIGN_IN: "on" };
+  const base = env.NODE_ENV === "production" ? PRODUCTION_SIGN_IN_ENV : { DEV_SIGN_IN: "on" };
   const config = loadConfig({ ...base, ...env });
   return { app: createApp(config, db), db, config };
 }
