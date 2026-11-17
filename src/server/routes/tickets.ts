@@ -1,20 +1,7 @@
 import { Router } from "express";
-import type { z } from "zod";
-import { HttpError } from "../errors.js";
 import { changeStatusSchema, createTicketSchema, listQuerySchema } from "../tickets/schemas.js";
 import type { TicketService } from "../tickets/service.js";
-
-/** Checks a value against a zod schema, or throws a 400 that lists what is wrong. */
-function parse<T extends z.ZodType>(schema: T, value: unknown): z.infer<T> {
-  const result = schema.safeParse(value);
-  if (!result.success) {
-    const details = result.error.issues
-      .map((issue) => `${issue.path.join(".") || "request"}: ${issue.message}`)
-      .join("; ");
-    throw new HttpError(400, "validation_error", details);
-  }
-  return result.data;
-}
+import { parse } from "../validation.js";
 
 // Routes only read the request, call the service and send the answer.
 export function ticketsRouter(service: TicketService): Router {
