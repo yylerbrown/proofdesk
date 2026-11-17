@@ -132,6 +132,11 @@ export function pagesRouter(service: TicketService): Router {
   router.get("/tickets/:key/edit", (req, res) => {
     const actor = signedIn(req);
     const ticket = service.getTicket(req.params.key, actor);
+    // An archived ticket cannot be saved, so do not offer a form for it.
+    if (!service.allowedActions(ticket, actor).edit) {
+      res.redirect(303, `/tickets/${ticket.key}`);
+      return;
+    }
     const values = {
       title: ticket.title,
       description: ticket.description,
@@ -163,13 +168,18 @@ export function pagesRouter(service: TicketService): Router {
   router.get("/tickets/:key/archive", (req, res) => {
     const actor = signedIn(req);
     const ticket = service.getTicket(req.params.key, actor);
+    // Already archived: there is nothing to ask, so show the ticket.
+    if (ticket.archived_at !== null) {
+      res.redirect(303, `/tickets/${ticket.key}`);
+      return;
+    }
     if (!service.allowedActions(ticket, actor).archive) {
       throw new HttpError(403, "forbidden", "You are not allowed to do that.");
     }
     res.render("ticket-archive", {
       title: `Archive ${ticket.key}`,
       ticket,
-      canRestore: can(actor, "list_archived"),
+      canSeeArchived: can(actor, "list_archived"),
     });
   });
 

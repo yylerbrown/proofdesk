@@ -44,11 +44,16 @@ function describeError(err: unknown): ShownError {
   return { status: 500, code: "internal_error", message: "Internal server error." };
 }
 
+/**
+ * The HTTP status a library put on an error, if any. Express's body parser puts a number in
+ * "status". The sign-in library puts a word there ("BAD_REQUEST") and the number in
+ * "statusCode".
+ */
 function httpStatusOf(err: unknown): number | undefined {
-  if (typeof err === "object" && err !== null && "status" in err) {
-    const status = (err as { status: unknown }).status;
-    if (typeof status === "number") return status;
-  }
+  if (typeof err !== "object" || err === null) return undefined;
+  const { status, statusCode } = err as { status?: unknown; statusCode?: unknown };
+  if (typeof status === "number") return status;
+  if (typeof statusCode === "number") return statusCode;
   return undefined;
 }
 

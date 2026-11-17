@@ -78,25 +78,35 @@ export function findTicket(db: Db, id: number): TicketRow | undefined {
   return db.prepare("SELECT * FROM tickets WHERE id = ?").get(id) as TicketRow | undefined;
 }
 
-/**
- * Tickets that are not archived, newest first. Pass a status to get only that status, and a
- * creator to get only the tickets that person filed. Pass null to leave either one out.
- */
-export function listTickets(
-  db: Db,
-  status: TicketStatus | null,
-  createdBy: string | null,
-): TicketRow[] {
-  // @status and @createdBy are named values, so each can be used twice in the text.
+/** Every ticket that is not archived, newest first. Pass a status to get only that status. */
+export function listAllTickets(db: Db, status: TicketStatus | null): TicketRow[] {
   return db
     .prepare(
       `SELECT * FROM tickets
-       WHERE archived_at IS NULL
-         AND (@status IS NULL OR status = @status)
-         AND (@createdBy IS NULL OR created_by = @createdBy)
+       WHERE archived_at IS NULL AND (@status IS NULL OR status = @status)
        ORDER BY id DESC`,
     )
-    .all({ status, createdBy }) as TicketRow[];
+    .all({ status }) as TicketRow[];
+}
+
+/**
+ * The tickets one person filed that are not archived, newest first. There is no way to ask
+ * it for everyone's tickets, so a mistake in a caller cannot show a customer other people's
+ * tickets. created_by is a plain condition, so the index on it is used.
+ */
+export function listTicketsFiledBy(
+  db: Db,
+  createdBy: string,
+  status: TicketStatus | null,
+): TicketRow[] {
+  return db
+    .prepare(
+      `SELECT * FROM tickets
+       WHERE created_by = @createdBy AND archived_at IS NULL
+         AND (@status IS NULL OR status = @status)
+       ORDER BY id DESC`,
+    )
+    .all({ createdBy, status }) as TicketRow[];
 }
 
 /** Archived tickets only, newest first. */
