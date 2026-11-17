@@ -56,8 +56,17 @@ declare global {
 export function actorMiddleware(config: Config, auth: Auth | null, db: Db): RequestHandler {
   return async (req, res, next) => {
     req.actor = null;
+    res.locals.viewer = null; // templates read this to show who is signed in
     if (auth !== null) {
-      const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
+      const found = await auth.api.getSession({
+        headers: fromNodeHeaders(req.headers),
+        returnHeaders: true,
+      });
+      // The library extends a session that is in use and sends a fresh cookie for it.
+      // Pass that cookie on, or the browser's copy would run out while the session lives.
+      const cookies = found.headers.getSetCookie();
+      if (cookies.length > 0) res.append("Set-Cookie", cookies);
+      const session = found.response;
       if (session !== null) {
         req.actor = {
           id: session.user.id,
@@ -71,7 +80,6 @@ export function actorMiddleware(config: Config, auth: Auth | null, db: Db): Requ
       const id: unknown = req.cookies[DEV_COOKIE];
       req.actor = DEV_ACTORS.find((actor) => actor.id === id) ?? null;
     }
-    // Templates read this to show who is signed in.
     res.locals.viewer = req.actor;
     next();
   };

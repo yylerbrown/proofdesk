@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadConfig } from "../src/server/config.js";
-import { SIGN_IN_ENV } from "./helpers.js";
+import { PRODUCTION_SIGN_IN_ENV, SIGN_IN_ENV } from "./helpers.js";
 
 describe("loadConfig", () => {
   it("applies defaults for an empty environment", () => {
@@ -20,7 +20,7 @@ describe("loadConfig", () => {
 
   it("reads values from the environment", () => {
     const config = loadConfig({
-      ...SIGN_IN_ENV,
+      ...PRODUCTION_SIGN_IN_ENV,
       NODE_ENV: "production",
       PORT: "8080",
       DATABASE_PATH: "/data/app.db",
@@ -59,7 +59,7 @@ describe("loadConfig", () => {
     expect(() => loadConfig({ NODE_ENV: "production", DEV_SIGN_IN: "on" })).toThrow(
       /DEV_SIGN_IN must not be on in production/,
     );
-    expect(loadConfig({ ...SIGN_IN_ENV, NODE_ENV: "production" }).devSignIn).toBe(false);
+    expect(loadConfig({ ...PRODUCTION_SIGN_IN_ENV, NODE_ENV: "production" }).devSignIn).toBe(false);
   });
 
   it("reads the GitHub sign-in settings as a set", () => {
@@ -85,6 +85,18 @@ describe("loadConfig", () => {
       /sign-in is required in production. Set BETTER_AUTH_SECRET, BETTER_AUTH_URL, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET/,
     );
     expect(loadConfig({ NODE_ENV: "development" }).signIn).toBeNull();
+  });
+
+  it("refuses a plain http address in production", () => {
+    expect(() =>
+      loadConfig({
+        ...PRODUCTION_SIGN_IN_ENV,
+        NODE_ENV: "production",
+        BETTER_AUTH_URL: "http://desk.test",
+      }),
+    ).toThrow(/BETTER_AUTH_URL must start with https:\/\/ in production/);
+    // A development machine may use plain http.
+    expect(loadConfig(SIGN_IN_ENV).signIn?.baseUrl).toBe("http://desk.test");
   });
 
   it("reads the team and admin lists as GitHub user numbers", () => {

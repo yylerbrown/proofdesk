@@ -78,7 +78,9 @@ export function createApp(config: Config, db: Db): Express {
   }
 
   app.use(cookieParser());
-  app.use(actorMiddleware(config, auth, db));
+  // Decides who is acting. It is used twice below, once for the API and once for the
+  // pages, so that a failure inside it is answered in the right format for each.
+  const actor = actorMiddleware(config, auth, db);
 
   // Limits on how often one person, or one address when signed out, may file a ticket or
   // start a sign-in. Over the limit the answer is 429 until the window has passed.
@@ -95,6 +97,7 @@ export function createApp(config: Config, db: Db): Express {
 
   // The JSON API. Its own handlers at the end turn every error inside it into JSON.
   const api = express.Router();
+  api.use(actor);
   api.use(sameOriginOnly(config));
   api.post("/tickets", filingLimit);
   api.use(express.json({ limit: BODY_LIMIT }));
@@ -104,11 +107,13 @@ export function createApp(config: Config, db: Db): Express {
   api.use(errorHandler);
   app.use("/api", api);
 
-  // The pages: two stylesheets, the HTML form parser, the routes, then HTML error pages.
+  // The pages: two stylesheets, which need no sign-in and so come before the actor, then
+  // the HTML form parser, the routes and the HTML error pages.
   app.get("/assets/pico.min.css", (_req, res) => {
     res.sendFile(picoCssFile);
   });
   app.use("/assets", express.static(path.join(rootDir, "public")));
+  app.use(actor);
   app.use(sameOriginOnly(config));
   app.post("/tickets", filingLimit);
   app.post("/sign-in/github", signInLimit);

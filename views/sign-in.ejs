@@ -1,6 +1,10 @@
 <%- include("header") %>
 <h1>Sign in</h1>
 
+<% if (failed) { %>
+<p><mark>That sign-in did not work. Try again, or ask the support team if it keeps happening.</mark></p>
+<% } %>
+
 <% if (github) { %>
 <form method="post" action="/sign-in/github">
   <input type="hidden" name="next" value="<%= next %>" />

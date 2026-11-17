@@ -14,11 +14,10 @@ import { HttpError } from "../errors.js";
  * back to the ticket list, so the sign-in page cannot be used to send people to another site.
  */
 export function safeNext(value: unknown): string {
-  const isLocalPath =
-    typeof value === "string" &&
-    value.startsWith("/") &&
-    !value.startsWith("//") &&
-    !value.includes("\\");
+  // One slash, then visible ASCII characters only, and not a second slash or a backslash
+  // straight after the first. Browsers drop tabs and line breaks from an address, so
+  // "/<tab>/elsewhere" would otherwise be read as "//elsewhere", which is another site.
+  const isLocalPath = typeof value === "string" && /^\/(?![/\\])[\x21-\x7e]*$/.test(value);
   return isLocalPath ? value : "/tickets";
 }
 
@@ -28,7 +27,9 @@ export function signInRouter(config: Config, auth: Auth | null): Router {
   router.get("/sign-in", (req, res) => {
     const people = config.devSignIn ? DEV_ACTORS : [];
     const next = safeNext(req.query.next);
-    res.render("sign-in", { title: "Sign in", people, github: auth !== null, next });
+    // The sign-in library returns here with "?error=..." when a GitHub sign-in fails.
+    const failed = req.query.error !== undefined;
+    res.render("sign-in", { title: "Sign in", people, github: auth !== null, next, failed });
   });
 
   // Starts a GitHub sign-in. The library answers with the GitHub address to go to and a

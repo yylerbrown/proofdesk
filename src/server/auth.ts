@@ -15,6 +15,11 @@ export function createAuth(db: Db, signIn: SignInConfig) {
     socialProviders: {
       github: { clientId: signIn.githubClientId, clientSecret: signIn.githubClientSecret },
     },
+    // One person, one GitHub account. By default the library would attach a second GitHub
+    // account to an existing person when both show the same verified email address. Roles
+    // are decided by the GitHub account, so that would let a different account inherit
+    // someone's role.
+    account: { accountLinking: { enabled: false } },
     telemetry: { enabled: false },
   });
 }
