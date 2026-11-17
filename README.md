@@ -88,11 +88,12 @@ refuses to start if `TICKET_PREFIX` later differs, because that would rename eve
 
 More routes change a ticket. Each one writes an event in the same transaction.
 
-| Method and path                  | What it does                                                           |
-| -------------------------------- | ---------------------------------------------------------------------- |
-| `PUT /api/tickets/:key`          | Replaces the title, description, link and check. Same rules as create. |
-| `POST /api/tickets/:key/archive` | Archives the ticket. Nothing is deleted.                               |
-| `POST /api/tickets/:key/restore` | Brings an archived ticket back.                                        |
+| Method and path                  | What it does                                                                 |
+| -------------------------------- | ---------------------------------------------------------------------------- |
+| `PUT /api/tickets/:key`          | Replaces the title, description, link and check. Same rules as create.       |
+| `POST /api/tickets/:key/archive` | Archives the ticket. Nothing is deleted.                                     |
+| `POST /api/tickets/:key/restore` | Brings an archived ticket back.                                              |
+| `DELETE /api/tickets/:key`       | Deletes the ticket permanently. Admin only. Body: `{ "confirm": "SUP-42" }`. |
 
 An archived ticket is left out of every list except `GET /api/tickets?status=archived`, and it
 cannot be edited or change status until it is restored (409 `ticket_archived`). A team member
@@ -105,6 +106,24 @@ accepts `where_url` (an http or https URL, at most 500 characters) and `fix_chec
 The ticket routes need a signed-in browser session, so they are not meant to be called with
 `curl`. A request that changes something must also say it comes from this site, which a
 browser does by itself (see Security).
+
+## Permanent deletion
+
+For a ticket that holds something that must be gone. An admin opens the ticket, follows
+"Delete this ticket permanently" and types the key. In one transaction the ticket and every row
+that belongs to it are removed, and `deleted_tickets` keeps the number, the time and who did it.
+
+- The numbers of other tickets never change, and a deleted number is never given to a new
+  ticket: the tickets table uses SQLite's `AUTOINCREMENT`.
+- Asking for a deleted key answers 410 "deleted" to the team and the usual 404 to a customer.
+- The event log stays append-only. Its trigger lets the events of a ticket be removed only
+  once that ticket is listed in `deleted_tickets`, and that list can never be changed.
+- Deleted text leaves the files on disk at once: `secure_delete` zeroes it, and a checkpoint
+  empties the write-ahead log. A test searches the raw files for it.
+- Every table whose rows belong to a ticket carries a `ticket_id` column and is listed in
+  `TICKET_TABLES` in `src/server/tickets/repository.ts`. A test fails if a table with a
+  `ticket_id` column is missing from that list.
+- Deleting does not reach backups or anything already sent elsewhere.
 
 ## Security
 
