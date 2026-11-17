@@ -95,6 +95,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
         `Set ${missing.join(", ")}.`,
     );
   }
+  if (data.NODE_ENV === "production" && !data.BETTER_AUTH_URL!.startsWith("https://")) {
+    throw new Error(
+      "Invalid environment configuration: BETTER_AUTH_URL must start with https:// in " +
+        "production. Over plain http the session cookie would travel unprotected.",
+    );
+  }
   const signIn =
     missing.length > 0
       ? null
