@@ -44,6 +44,7 @@
     <label>
       Agreed check (leave empty to remove it)
       <textarea name="agreed_check" rows="3"><%= ticket.agreed_check ?? ticket.fix_check ?? "" %></textarea>
+      <% if (problem?.form === "agreedCheck") { %><small><%= problem.message %></small><% } %>
     </label>
     <button type="submit">Save agreed check</button>
   </form>
@@ -52,13 +53,16 @@
 <% } %>
 
 <% if (allowed.answer) { %>
-<article>
+<article id="did-this-fix-it">
   <h2>Did this fix it?</h2>
   <p>The team says it is fixed. Please check it<% if (ticket.try_url) { %> here: <a href="<%= ticket.try_url %>" rel="noopener noreferrer nofollow"><%= ticket.try_url %></a><% } %>.</p>
-  <% const check = ticket.agreed_check ?? ticket.fix_check; %>
-  <% if (check) { %>
-  <p>You said we would know it is fixed when:</p>
-  <blockquote class="user-text"><%= check %></blockquote>
+  <% if (ticket.agreed_check) { %>
+  <p>Agreed check:</p>
+  <blockquote class="user-text"><%= ticket.agreed_check %></blockquote>
+  <% } %>
+  <% if (ticket.fix_check) { %>
+  <p>In your words:</p>
+  <blockquote class="user-text"><%= ticket.fix_check %></blockquote>
   <% } %>
   <form method="post" action="/tickets/<%= ticket.key %>/answer">
     <input type="hidden" name="fixed" value="yes" />
@@ -70,7 +74,8 @@
     <input type="hidden" name="ready_token" value="<%= ticket.ready_token %>" />
     <label>
       No, it is not fixed. What is still wrong?
-      <textarea name="comment" rows="3" required></textarea>
+      <textarea name="comment" rows="3" required <% if (problem?.form === "answer") { %>aria-invalid="true"<% } %>><%= problem?.form === "answer" ? problem.comment : "" %></textarea>
+      <% if (problem?.form === "answer") { %><small><%= problem.message %></small><% } %>
     </label>
     <button type="submit" class="secondary">No, send it back</button>
   </form>
@@ -91,6 +96,7 @@
     <input type="url" name="change_url" placeholder="Link to the code change" aria-label="Link to the code change" required />
     <button type="submit" class="secondary">Save change link</button>
   </fieldset>
+  <% if (problem?.form === "changeLink") { %><small><%= problem.message %></small><% } %>
 </form>
 <% } %>
 <% if (allowed.markReady) { %>
@@ -99,6 +105,7 @@
     <input type="url" name="try_url" placeholder="Page on the live site to try" aria-label="Page on the live site to try" required />
     <button type="submit">Ask the customer</button>
   </fieldset>
+  <% if (problem?.form === "ready") { %><small><%= problem.message %></small><% } %>
 </form>
 <% } %>
 <% } %>

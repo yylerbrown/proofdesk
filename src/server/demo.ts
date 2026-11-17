@@ -10,8 +10,9 @@ export function seedDemo(service: TicketService): void {
   const customer = DEMO_ACTORS[0]!;
   const team = DEMO_ACTORS[1]!;
   // Demo people cannot archive, so the sample data has no archived ticket.
-  const admin = DEMO_ACTORS[2]!;
-  if (service.listTickets("all", admin).length > 0) return;
+  // Archived tickets count too, or archiving every sample would make the next start seed
+  // a second set.
+  if (!service.hasNoTickets()) return;
 
   const login = service.createTicket(
     {
