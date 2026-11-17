@@ -1,6 +1,6 @@
 import { fromNodeHeaders } from "better-auth/node";
 import { Router } from "express";
-import { DEV_ACTORS, DEV_COOKIE } from "../actor.js";
+import { DEV_COOKIE, entrancePeople } from "../actor.js";
 import type { Auth } from "../auth.js";
 import type { Config } from "../config.js";
 import { HttpError } from "../errors.js";
@@ -25,11 +25,18 @@ export function signInRouter(config: Config, auth: Auth | null): Router {
   const router = Router();
 
   router.get("/sign-in", (req, res) => {
-    const people = config.devSignIn ? DEV_ACTORS : [];
+    const people = entrancePeople(config);
     const next = safeNext(req.query.next);
     // The sign-in library returns here with "?error=..." when a GitHub sign-in fails.
     const failed = req.query.error !== undefined;
-    res.render("sign-in", { title: "Sign in", people, github: auth !== null, next, failed });
+    res.render("sign-in", {
+      title: "Sign in",
+      people,
+      github: auth !== null,
+      next,
+      failed,
+      demo: config.demo,
+    });
   });
 
   // Starts a GitHub sign-in. The library answers with the GitHub address to go to and a
@@ -54,12 +61,14 @@ export function signInRouter(config: Config, auth: Auth | null): Router {
     res.redirect(303, started.response.url);
   });
 
+  // The development entrance and the demo entrance share this route. Each offers its own
+  // people, and neither is open unless its setting is on.
   router.post("/sign-in/dev", (req, res) => {
-    if (!config.devSignIn) {
+    if (entrancePeople(config).length === 0) {
       throw new HttpError(404, "not_found", "There is no page at this address.");
     }
     const id: unknown = req.body?.id;
-    const person = DEV_ACTORS.find((actor) => actor.id === id);
+    const person = entrancePeople(config).find((actor) => actor.id === id);
     if (person === undefined) {
       throw new HttpError(400, "unknown_person", "Pick one of the people on the sign-in page.");
     }

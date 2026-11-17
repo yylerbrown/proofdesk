@@ -43,6 +43,8 @@ export function createApp(config: Config, db: Db): Express {
   app.disable("x-powered-by");
   app.set("view engine", "ejs");
   app.set("views", path.join(rootDir, "views"));
+  // Every page shows the demo banner when this server is the demo.
+  app.locals.demo = config.demo;
 
   // One ticket service, shared by the JSON API and the pages, so the rules exist once.
   const tickets = createTicketService(db, config.ticketPrefix);

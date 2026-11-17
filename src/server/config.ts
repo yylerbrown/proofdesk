@@ -18,6 +18,7 @@ const schema = z.object({
     .regex(/^[A-Z]{2,6}$/, "must be 2 to 6 capital letters")
     .default("SUP"),
   DEV_SIGN_IN: z.enum(["on", "off"]).default("off"),
+  DEMO: z.enum(["on", "off"]).default("off"),
   BETTER_AUTH_SECRET: z.string().min(32, "must be at least 32 characters").optional(),
   BETTER_AUTH_URL: z.url({ protocol: /^https?$/ }).optional(),
   GITHUB_CLIENT_ID: z.string().min(1).optional(),
@@ -53,6 +54,8 @@ export type Config = {
   ticketPrefix: string;
   /** True when the development entrance is open: anyone can pick who they are. */
   devSignIn: boolean;
+  /** True when this server is the public demo: sample data and made-up people, no real sign-in. */
+  demo: boolean;
   /** GitHub sign-in settings, or null when they are not set. */
   signIn: SignInConfig | null;
   /**
@@ -73,6 +76,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     GIT_COMMIT: env.GIT_COMMIT || undefined,
     TICKET_PREFIX: env.TICKET_PREFIX || undefined,
     DEV_SIGN_IN: env.DEV_SIGN_IN || undefined,
+    DEMO: env.DEMO || undefined,
     BETTER_AUTH_SECRET: env.BETTER_AUTH_SECRET || undefined,
     BETTER_AUTH_URL: env.BETTER_AUTH_URL || undefined,
     GITHUB_CLIENT_ID: env.GITHUB_CLIENT_ID || undefined,
@@ -99,13 +103,25 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   if (missing.length > 0 && missing.length < SIGN_IN_NAMES.length) {
     throw new Error(`Invalid environment configuration: also set ${missing.join(", ")}.`);
   }
-  if (data.NODE_ENV === "production" && missing.length > 0) {
+  // The demo is fenced off: it never has real sign-in, so it can never hold a real account,
+  // and it is a separate server with its own database.
+  if (data.DEMO === "on" && missing.length === 0) {
+    throw new Error(
+      "Invalid environment configuration: DEMO must not be on together with the GitHub " +
+        "sign-in settings. The demo runs as its own server with its own database.",
+    );
+  }
+  if (data.DEMO === "on" && data.DEV_SIGN_IN === "on") {
+    throw new Error("Invalid environment configuration: turn on DEMO or DEV_SIGN_IN, not both.");
+  }
+  if (data.NODE_ENV === "production" && missing.length > 0 && data.DEMO !== "on") {
     throw new Error(
       `Invalid environment configuration: sign-in is required in production. ` +
         `Set ${missing.join(", ")}.`,
     );
   }
-  if (data.NODE_ENV === "production" && !data.BETTER_AUTH_URL!.startsWith("https://")) {
+  const url = data.BETTER_AUTH_URL;
+  if (data.NODE_ENV === "production" && url !== undefined && !url.startsWith("https://")) {
     throw new Error(
       "Invalid environment configuration: BETTER_AUTH_URL must start with https:// in " +
         "production. Over plain http the session cookie would travel unprotected.",
@@ -128,6 +144,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     gitCommit: data.GIT_COMMIT,
     ticketPrefix: data.TICKET_PREFIX,
     devSignIn: data.DEV_SIGN_IN === "on",
+    demo: data.DEMO === "on",
     signIn,
     clientIpHeader: data.CLIENT_IP_HEADER,
     teamGithubIds: data.TEAM_GITHUB_IDS,

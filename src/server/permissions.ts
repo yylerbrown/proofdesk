@@ -37,7 +37,11 @@ export type TicketFacts = {
  * - A customer replies on their own tickets. Internal notes are for the team only, and a
  *   customer never sees them.
  */
+// What a read-only person, the demo admin, may still do: look.
+const READ_ONLY_ACTIONS: Action[] = ["list_all", "list_archived", "read", "read_notes"];
+
 export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean {
+  if (actor.readOnly === true && !READ_ONLY_ACTIONS.includes(action)) return false;
   const isStaff = actor.role === "team" || actor.role === "admin";
 
   if (action === "create") return true;

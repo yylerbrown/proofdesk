@@ -16,6 +16,8 @@ export type Actor = {
   kind: "person" | "agent";
   role: Role;
   name: string;
+  /** True for the demo admin, who may look at everything and change nothing. */
+  readOnly?: boolean;
 };
 
 /**
@@ -29,6 +31,23 @@ export const DEV_ACTORS: Actor[] = [
   { id: "dev-team-1", kind: "person", role: "team", name: "Team Member" },
   { id: "dev-admin-1", kind: "person", role: "admin", name: "Admin" },
 ];
+
+/**
+ * The people of the public demo, offered when DEMO is on. The demo admin is read-only: the
+ * demo's data is shared by every visitor, and an admin could archive or delete all of it.
+ */
+export const DEMO_ACTORS: Actor[] = [
+  { id: "demo-customer", kind: "person", role: "customer", name: "Demo Customer" },
+  { id: "demo-team", kind: "person", role: "team", name: "Demo Team Member" },
+  { id: "demo-admin", kind: "person", role: "admin", name: "Demo Admin", readOnly: true },
+];
+
+/** The made-up people this server offers on its sign-in page: development, demo, or none. */
+export function entrancePeople(config: Config): Actor[] {
+  if (config.devSignIn) return DEV_ACTORS;
+  if (config.demo) return DEMO_ACTORS;
+  return [];
+}
 
 export const DEV_COOKIE = "dev_actor";
 
@@ -76,9 +95,9 @@ export function actorMiddleware(config: Config, auth: Auth | null, db: Db): Requ
         };
       }
     }
-    if (req.actor === null && config.devSignIn) {
+    if (req.actor === null) {
       const id: unknown = req.cookies[DEV_COOKIE];
-      req.actor = DEV_ACTORS.find((actor) => actor.id === id) ?? null;
+      req.actor = entrancePeople(config).find((actor) => actor.id === id) ?? null;
     }
     res.locals.viewer = req.actor;
     next();
