@@ -1,0 +1,5 @@
+/* Text typed by a customer keeps its line breaks, and a long word cannot widen the page. */
+.user-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

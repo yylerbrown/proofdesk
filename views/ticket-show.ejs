@@ -1,0 +1,55 @@
+<%- include("header") %>
+<p><a href="/tickets">Back to all tickets</a></p>
+
+<hgroup>
+  <h1><%= ticket.title %></h1>
+  <p><%= ticket.key %>, <%= statusLabels[ticket.status] %>, filed <%= formatTime(ticket.created_at) %></p>
+</hgroup>
+
+<h2>Description</h2>
+<p class="user-text"><%= ticket.description %></p>
+
+<% if (ticket.where_url) { %>
+<h2>Where did this happen?</h2>
+<p class="user-text"><a href="<%= ticket.where_url %>" rel="noopener noreferrer nofollow"><%= ticket.where_url %></a></p>
+<% } %>
+
+<% if (ticket.fix_check) { %>
+<h2>How will we know it's fixed?</h2>
+<blockquote class="user-text"><%= ticket.fix_check %></blockquote>
+<% } %>
+
+<h2>Status</h2>
+<form method="post" action="/tickets/<%= ticket.key %>/status">
+  <fieldset role="group">
+    <select name="status" aria-label="Status">
+      <% for (const status of statuses) { %>
+      <option value="<%= status %>" <% if (status === ticket.status) { %>selected<% } %>><%= statusLabels[status] %></option>
+      <% } %>
+    </select>
+    <button type="submit">Change status</button>
+  </fieldset>
+</form>
+
+<h2>History</h2>
+<div class="overflow-auto">
+  <table>
+    <thead>
+      <tr>
+        <th>When</th>
+        <th>What</th>
+        <th>Who</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% for (const entry of history) { %>
+      <tr>
+        <td><%= formatTime(entry.when) %></td>
+        <td><%= entry.what %></td>
+        <td><%= entry.who %></td>
+      </tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+<%- include("footer") %>

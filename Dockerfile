@@ -23,6 +23,8 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY package.json ./
 COPY migrations ./migrations
+COPY views ./views
+COPY public ./public
 RUN mkdir -p /data && chown node:node /data
 USER node
 VOLUME /data
