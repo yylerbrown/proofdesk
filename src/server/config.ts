@@ -22,6 +22,10 @@ const schema = z.object({
   BETTER_AUTH_URL: z.url({ protocol: /^https?$/ }).optional(),
   GITHUB_CLIENT_ID: z.string().min(1).optional(),
   GITHUB_CLIENT_SECRET: z.string().min(1).optional(),
+  CLIENT_IP_HEADER: z
+    .string()
+    .regex(/^[a-z0-9-]+$/, "must be a header name in lower case, for example fly-client-ip")
+    .optional(),
   TEAM_GITHUB_IDS: githubIds,
   ADMIN_GITHUB_IDS: githubIds,
 });
@@ -51,6 +55,11 @@ export type Config = {
   devSignIn: boolean;
   /** GitHub sign-in settings, or null when they are not set. */
   signIn: SignInConfig | null;
+  /**
+   * A header that the host's proxy sets to the visitor's address, or undefined to use the
+   * address of the connection. Behind a proxy the connection always comes from the proxy.
+   */
+  clientIpHeader: string | undefined;
   teamGithubIds: string[];
   adminGithubIds: string[];
 };
@@ -68,6 +77,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     BETTER_AUTH_URL: env.BETTER_AUTH_URL || undefined,
     GITHUB_CLIENT_ID: env.GITHUB_CLIENT_ID || undefined,
     GITHUB_CLIENT_SECRET: env.GITHUB_CLIENT_SECRET || undefined,
+    CLIENT_IP_HEADER: env.CLIENT_IP_HEADER || undefined,
     TEAM_GITHUB_IDS: env.TEAM_GITHUB_IDS || undefined,
     ADMIN_GITHUB_IDS: env.ADMIN_GITHUB_IDS || undefined,
   });
@@ -119,6 +129,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     ticketPrefix: data.TICKET_PREFIX,
     devSignIn: data.DEV_SIGN_IN === "on",
     signIn,
+    clientIpHeader: data.CLIENT_IP_HEADER,
     teamGithubIds: data.TEAM_GITHUB_IDS,
     adminGithubIds: data.ADMIN_GITHUB_IDS,
   };
