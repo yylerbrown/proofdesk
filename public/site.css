@@ -4,13 +4,80 @@
   overflow-wrap: anywhere;
 }
 
-/* The sign-out button sits inside a line of small text, so it stays small and inline. */
+/* The header is one line: who is signed in, their role as a small label, and Sign out. */
+header nav .viewer {
+  font-size: 0.875rem;
+  color: var(--pico-muted-color);
+}
+header nav .viewer strong {
+  color: var(--pico-color);
+}
+.role-label {
+  margin-left: 0.25rem;
+  padding: 0.05rem 0.4rem;
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+}
 .sign-out {
-  display: inline;
+  margin: 0;
+}
+.sign-out button {
   width: auto;
+  margin: 0;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.875rem;
+}
+
+/* A status: the word on a coloured background. Each pair passes contrast in light and dark. */
+.badge {
+  display: inline-block;
   padding: 0.1rem 0.5rem;
-  margin: 0 0 0 0.5rem;
-  font-size: inherit;
+  border-radius: 1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.status-new {
+  background: #dbeafe;
+  color: #1e3a8a;
+}
+.status-in_progress {
+  background: #fef3c7;
+  color: #78350f;
+}
+.status-resolved {
+  background: #dcfce7;
+  color: #14532d;
+}
+
+/* What was just saved, shown at the top of the next page. */
+.saved {
+  padding: 0.5rem 0.75rem;
+  border-left: 4px solid var(--pico-ins-color);
+  background: var(--pico-card-sectioning-background-color);
+}
+
+/* The made-up people of the entrance, each with one thing to try. */
+.people {
+  padding: 0;
+}
+.people li {
+  list-style: none;
+  margin-bottom: 0.75rem;
+}
+.people form {
+  display: inline;
+}
+.people button {
+  width: auto;
+  margin: 0 0.75rem 0 0;
+}
+
+/* Long titles in the list wrap instead of widening the table. */
+table.tickets td.user-text {
+  min-width: 12rem;
 }
 
 /* An internal note is set apart, so it is never mistaken for a reply the customer sees. */

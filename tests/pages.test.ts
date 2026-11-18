@@ -21,7 +21,7 @@ describe("ticket list page", () => {
     const res = await admin(app).get("/tickets");
     expect(res.status).toBe(200);
     expect(res.headers["content-type"]).toMatch(/html/);
-    expect(res.text).toContain("No tickets to show.");
+    expect(res.text).toContain("There are no tickets yet.");
   });
 
   it("shows each ticket with a link to its page, newest first", async () => {
@@ -151,7 +151,7 @@ describe("ticket page", () => {
     expect(res.text).toContain('href="https://example.com/print"');
     expect(res.text).toContain("Ten pages print without a jam.");
     expect(res.text).toContain("Ticket filed");
-    expect(res.text).toContain("<td>dev-admin-1</td>");
+    expect(res.text).toContain("<td>Admin</td>");
     expect(res.text).toMatch(/<td>\d{1,2} \w{3} \d{4}, \d{2}:\d{2} UTC<\/td>/);
     expect(res.text).toContain('<option value="new" selected>New</option>');
   });

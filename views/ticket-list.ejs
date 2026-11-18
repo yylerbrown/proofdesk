@@ -1,4 +1,15 @@
 <%- include("header") %>
+<%
+  // What an empty list says, for each filter. A customer is told about their own tickets.
+  const mine = viewerRole === "customer";
+  const empty = {
+    all: mine ? "You have not filed any tickets yet." : "There are no tickets yet.",
+    new: "No new tickets.",
+    in_progress: "Nothing is in progress.",
+    resolved: "No resolved tickets yet.",
+    archived: "Nothing is archived.",
+  };
+%>
 <h1>Tickets</h1>
 
 <nav aria-label="Filter by status">
@@ -20,25 +31,29 @@
 </nav>
 
 <% if (tickets.length === 0) { %>
-<p>No tickets to show. <a href="/tickets/new">File a ticket</a>.</p>
+<p class="empty"><%= empty[current] %><% if (current !== "archived") { %> <a href="/tickets/new">File a ticket</a>.<% } %></p>
 <% } else { %>
 <div class="overflow-auto">
-  <table>
+  <table class="tickets">
     <thead>
       <tr>
-        <th>Key</th>
-        <th>Title</th>
-        <th>Status</th>
-        <th>Filed</th>
+        <th scope="col">Key</th>
+        <th scope="col">Title</th>
+        <th scope="col">Status</th>
+        <th scope="col">Owner</th>
+        <th scope="col">Waiting on</th>
+        <th scope="col">Filed</th>
       </tr>
     </thead>
     <tbody>
       <% for (const ticket of tickets) { %>
       <tr>
         <td><a href="/tickets/<%= ticket.key %>"><%= ticket.key %></a></td>
-        <td><%= ticket.title %></td>
-        <td><%= statusLabels[ticket.status] %></td>
-        <td><%= formatTime(ticket.created_at) %></td>
+        <td class="user-text"><%= ticket.title %></td>
+        <td><%- include("status-badge", { status: ticket.status }) %></td>
+        <td><%= ticket.owner_name ?? "Unassigned" %></td>
+        <td><%= ticket.waiting %></td>
+        <td><time datetime="<%= ticket.created_at %>" title="<%= formatTime(ticket.created_at) %>"><%= timeAgo(ticket.created_at) %></time></td>
       </tr>
       <% } %>
     </tbody>

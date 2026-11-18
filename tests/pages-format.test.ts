@@ -41,10 +41,18 @@ describe("describeEvent", () => {
 });
 
 describe("describeActor", () => {
-  it("shows a person by id and marks an agent as an agent", () => {
-    expect(describeActor({ ...event("created", {}), actor: "sam" })).toBe("sam");
-    expect(describeActor({ ...event("created", {}), actor: "sam", actor_kind: "agent" })).toBe(
-      "sam (agent)",
-    );
+  const names = new Map([["u-1", "Sam Rivera"]]);
+
+  it("shows a person by display name, not by id", () => {
+    expect(describeActor({ ...event("created", {}), actor: "u-1" }, names)).toBe("Sam Rivera");
+  });
+
+  it("marks an AI agent as one", () => {
+    const agent = { ...event("created", {}), actor: "u-1", actor_kind: "agent" as const };
+    expect(describeActor(agent, names)).toBe("Sam Rivera (AI agent)");
+  });
+
+  it("does not show an id that has no name", () => {
+    expect(describeActor(event("created", {}), names)).toBe("Unknown person");
   });
 });

@@ -14,6 +14,7 @@ import {
   customerOne,
   customerTwo,
   SIGN_IN_ENV,
+  signedInLine,
   visitor,
 } from "./helpers.js";
 
@@ -71,7 +72,7 @@ describe("a GitHub session", () => {
 
     const page = await request(app).get("/tickets").set("Cookie", browser.cookie);
     expect(page.status).toBe(200);
-    expect(page.text).toContain("Signed in as Sam Customer (customer)");
+    expect(page.text).toContain(signedInLine("Sam Customer", "customer"));
   });
 
   it("gives the role that the configuration names for the GitHub user number", async () => {
@@ -83,9 +84,9 @@ describe("a GitHub session", () => {
 
     const signedInAs = async (cookie: string) =>
       (await request(app).get("/tickets").set("Cookie", cookie)).text;
-    expect(await signedInAs(boss.cookie)).toContain("Signed in as Ada Admin (admin)");
-    expect(await signedInAs(helper.cookie)).toContain("Signed in as Tom Team (team)");
-    expect(await signedInAs(guest.cookie)).toContain("Signed in as Vic Visitor (customer)");
+    expect(await signedInAs(boss.cookie)).toContain(signedInLine("Ada Admin", "admin"));
+    expect(await signedInAs(helper.cookie)).toContain(signedInLine("Tom Team", "team"));
+    expect(await signedInAs(guest.cookie)).toContain(signedInLine("Vic Visitor", "customer"));
 
     const changeStatus = (cookie: string) =>
       visitor(app).patch("/api/tickets/SUP-1").set("Cookie", cookie).send({ status: "new" });

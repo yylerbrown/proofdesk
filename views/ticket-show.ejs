@@ -2,8 +2,8 @@
 <p><a href="/tickets">Back to all tickets</a></p>
 
 <hgroup>
-  <h1><%= ticket.title %></h1>
-  <p><%= ticket.key %>, <%= statusLabels[ticket.status] %>, filed <%= formatTime(ticket.created_at) %>, <% if (ticket.owner_name) { %>owner <%= ticket.owner_name %><% } else { %>no owner yet<% } %></p>
+  <h1 class="user-text"><%= ticket.title %></h1>
+  <p><%= ticket.key %> <%- include("status-badge", { status: ticket.status }) %> filed <%= formatTime(ticket.created_at) %>, <% if (ticket.owner_name) { %>owner <%= ticket.owner_name %><% } else { %>no owner yet<% } %></p>
 </hgroup>
 
 <% if (ticket.archived_at) { %>
