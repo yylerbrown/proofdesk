@@ -1,0 +1,43 @@
+<%- include("header") %>
+<h1>Tickets</h1>
+
+<nav aria-label="Filter by status">
+  <ul>
+    <li>
+      <a href="/tickets" <% if (current === "all") { %>aria-current="page"<% } %>>All</a>
+    </li>
+    <% for (const status of statuses) { %>
+    <li>
+      <a href="/tickets?status=<%= status %>" <% if (current === status) { %>aria-current="page"<% } %>><%= statusLabels[status] %></a>
+    </li>
+    <% } %>
+  </ul>
+</nav>
+
+<% if (tickets.length === 0) { %>
+<p>No tickets to show. <a href="/tickets/new">File a ticket</a>.</p>
+<% } else { %>
+<div class="overflow-auto">
+  <table>
+    <thead>
+      <tr>
+        <th>Key</th>
+        <th>Title</th>
+        <th>Status</th>
+        <th>Filed</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% for (const ticket of tickets) { %>
+      <tr>
+        <td><a href="/tickets/<%= ticket.key %>"><%= ticket.key %></a></td>
+        <td><%= ticket.title %></td>
+        <td><%= statusLabels[ticket.status] %></td>
+        <td><%= formatTime(ticket.created_at) %></td>
+      </tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+<% } %>
+<%- include("footer") %>
