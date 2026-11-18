@@ -7,22 +7,21 @@
 </hgroup>
 <% const staff = viewerRole !== "customer"; %>
 
-<%# The viewer's one next action, right under the status: what to press now. %>
-<% if (allowed.takeAndStart) { %>
+<%# The viewer's one next action, right under the status: the step that is possible now. %>
+<% if (locals.nextStep) { %>
 <div class="next-action">
-  <form method="post" action="/tickets/<%= ticket.key %>/take-and-start">
-    <button type="submit">Take ticket and start work</button>
+  <% if (nextStep.form) { %>
+  <form method="post" action="<%= nextStep.form.action %>">
+    <% for (const [name, value] of Object.entries(nextStep.form.fields ?? {})) { %>
+    <input type="hidden" name="<%= name %>" value="<%= value %>" />
+    <% } %>
+    <button type="submit"><%= nextStep.label %></button>
   </form>
+  <% } else { %>
+  <a href="<%= nextStep.href %>" role="button"><%= nextStep.label %></a>
+  <% } %>
+  <% if (nextStep.note) { %><small class="next-note"><%= nextStep.note %></small><% } %>
 </div>
-<% } else if (allowed.start) { %>
-<div class="next-action">
-  <form method="post" action="/tickets/<%= ticket.key %>/status">
-    <input type="hidden" name="status" value="in_progress" />
-    <button type="submit">Start work</button>
-  </form>
-</div>
-<% } else if (allowed.markReady || askBlocked) { %>
-<p class="next-action"><a href="#ask">Next: ask the customer to verify</a></p>
 <% } %>
 
 <% if (locals.recordedRun) { %>
@@ -326,7 +325,7 @@
   <% } %>
   <% if (allowed.linkChange) { %>
   <% if (ticket.change_url) { %><details class="change-link" <% if (problem?.form === "changeLink") { %>open<% } %>><summary>Change the link</summary><% } %>
-  <form method="post" action="/tickets/<%= ticket.key %>/change-link">
+  <form method="post" action="/tickets/<%= ticket.key %>/change-link" id="change-link">
     <label>
       Link to the code change
       <input type="url" name="change_url" required <% if (problem?.form === "changeLink") { %>aria-invalid="true" aria-describedby="change-link-error"<% } %> />
@@ -338,7 +337,7 @@
   <% } %>
   <%# On the demo, the owner can fill the change link and the ask with labelled sample values, so
       nobody has to invent evidence to reach the customer's question. %>
-  <% if (locals.sampleFix) { %>
+  <% if (locals.sampleFix && ticket.change_url) { %>
   <form method="post" action="/tickets/<%= ticket.key %>/sample-fix" class="sample-fix">
     <button type="submit" class="secondary compact">Use sample fix</button>
     <small>Demo only: fills the change link and the ask below with values marked as demo samples.</small>

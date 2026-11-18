@@ -2091,13 +2091,19 @@ form.sample-fix {
 
 /* The viewer's one next action, right under the status line. */
 .next-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pd-space-2) var(--pd-space-3);
   margin: 0 0 var(--pd-space-4);
 }
-.next-action form {
+.next-action form,
+.next-action button,
+.next-action [role="button"] {
   margin: 0;
 }
-.next-action button {
-  margin: 0;
+.next-note {
+  color: var(--pd-muted);
 }
 /* On the demo, the next role to view as: quieter than the next action, and below it. */
 .demo-next button {

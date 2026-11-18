@@ -108,7 +108,10 @@ test("a customer files a ticket, the team works it, and only the customer resolv
     await team
       .getByRole("textbox", { name: "What happened?" })
       .fill("The file downloaded with every row.");
-    await team.getByRole("button", { name: "Ask the customer to verify" }).click();
+    await team
+      .locator("form#ask")
+      .getByRole("button", { name: "Ask the customer to verify" })
+      .click();
     await expect(savedMessage(team)).toContainText("asked to check the fix");
   });
 
@@ -163,7 +166,10 @@ test("a customer files a ticket, the team works it, and only the customer resolv
     await team
       .getByRole("textbox", { name: "What changed since the customer said it still fails?" })
       .fill("Empty exports are fixed too.");
-    await team.getByRole("button", { name: "Ask the customer to verify" }).click();
+    await team
+      .locator("form#ask")
+      .getByRole("button", { name: "Ask the customer to verify" })
+      .click();
     await expect(savedMessage(team)).toContainText("asked to check the fix");
 
     await customer.goto(`/tickets/${key}`);
