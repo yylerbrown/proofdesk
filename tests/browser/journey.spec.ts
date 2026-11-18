@@ -182,7 +182,9 @@ test("a customer files a ticket, the team works it, and only the customer resolv
     expect(theirs?.status()).toBe(404);
     expect(missing?.status()).toBe(404);
     expect(theirsHeading).toBe(missingHeading);
-    expect(theirsText).toBe(missingText);
+    // The page repeats the key that was asked for, which tells nothing. Apart from that,
+    // the two answers must be the same.
+    expect(theirsText?.replaceAll(key, "SUP-99999")).toBe(missingText);
     await other.context().close();
   });
 
