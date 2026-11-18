@@ -81,12 +81,19 @@ describe("the sample data", () => {
   it("is made through the service, with a real history", async () => {
     const { app } = buildDemo();
     const list = await asDemo(app, demoTeam.id).get("/api/tickets");
+    // Open tickets newest first, then the resolved one.
     expect(list.body.map((t: { key: string }) => t.key)).toEqual([
+      "SUP-7",
+      "SUP-6",
       "SUP-4",
       "SUP-3",
       "SUP-2",
       "SUP-1",
+      "SUP-5",
     ]);
+    // Every status is there, so each filter changes the list.
+    const statuses = new Set(list.body.map((t: { status: string }) => t.status));
+    expect([...statuses].sort()).toEqual(["in_progress", "new", "resolved"]);
     const first = await asDemo(app, demoTeam.id).get("/api/tickets/SUP-1");
     expect(first.body).toMatchObject({ status: "in_progress", owner_name: "Demo Team Member" });
     const history = await asDemo(app, demoTeam.id).get("/api/tickets/SUP-1/events");
@@ -97,7 +104,7 @@ describe("the sample data", () => {
     const { db, config } = buildDemo();
     const service = createTicketService(db, config.ticketPrefix);
     seedDemo(service);
-    expect(service.listTickets("all", demoAdmin)).toHaveLength(4);
+    expect(service.listTickets("all", demoAdmin)).toHaveLength(7);
   });
 });
 
@@ -145,7 +152,7 @@ describe("the other demo people", () => {
     expect((await team.delete("/api/tickets/SUP-1").send({ confirm: "SUP-1" })).status).toBe(403);
     const mine = await asDemo(app, demoCustomer.id).post("/api/tickets/SUP-1/archive");
     expect(mine.status).toBe(403);
-    expect((await team.get("/api/tickets")).body).toHaveLength(4);
+    expect((await team.get("/api/tickets")).body).toHaveLength(7);
     expect((await team.get("/tickets/SUP-1")).text).not.toContain("/tickets/SUP-1/archive");
   });
 
