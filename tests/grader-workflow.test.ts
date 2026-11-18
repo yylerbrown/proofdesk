@@ -35,6 +35,20 @@ async function demoInProgress() {
 }
 
 describe("the ticket list", () => {
+  it("lets a long title wrap to two lines on a wide screen instead of cutting it off", () => {
+    const css = fs.readFileSync("public/site.css", "utf8");
+    const wide = css.slice(css.indexOf("@media (min-width: 640px)"));
+    const cell = /table\.tickets td\.user-text \{([^}]*)\}/.exec(wide)![1]!;
+    expect(cell).not.toMatch(/nowrap|ellipsis/);
+    expect(wide).toMatch(/table\.tickets td\.user-text a \{[^}]*-webkit-line-clamp: 2/);
+  });
+
+  it("offers a description box short enough that File ticket shows on a laptop screen", async () => {
+    const { app } = buildTestApp();
+    const form = parse((await as(app, customerOne).get("/tickets/new")).text);
+    expect(form.querySelector("textarea[name=description]")?.getAttribute("rows")).toBe("3");
+  });
+
   it("links each title to its ticket, as well as its key", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);

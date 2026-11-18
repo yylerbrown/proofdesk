@@ -851,13 +851,22 @@ table.tickets td.row-actions > * + * {
   table.tickets td {
     white-space: nowrap;
   }
-  /* On a wide screen the title stays on one line; the full title is on hover. */
+  /*
+   * On a wide screen the title takes what is left and wraps to at most two lines, so a long one
+   * is read rather than cut off; the full title is on hover.
+   */
   table.tickets td.user-text {
     width: 100%;
     max-width: 0;
+    line-height: 1.35;
+    white-space: normal;
+  }
+  table.tickets td.user-text a {
+    display: -webkit-box;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
   }
 }
 /*
