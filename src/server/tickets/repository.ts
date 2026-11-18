@@ -1,9 +1,8 @@
 import type { Db } from "../db.js";
 import type { EntryKind, TicketStatus } from "./schemas.js";
 
-// The SQL for tickets lives in this file, except one query in the ticket service that records
-// what demo seeding wrote. Every statement here is a fixed string with ? placeholders, so no
-// user input is ever joined into SQL text.
+// The SQL for tickets lives in this file. Every statement here is a fixed string with ?
+// placeholders, so no user input is ever joined into SQL text.
 
 export type TicketRow = {
   id: number;
@@ -729,4 +728,16 @@ export function scenariosWithEvidence(db: Db, specId: number, author: string | n
     )
     .all({ specId, author }) as { scenario: number }[];
   return rows.map((row) => row.scenario);
+}
+
+// One fixed statement per table that demo seeding writes.
+const ALL_IDS = {
+  tickets: "SELECT id FROM tickets",
+  ticket_entries: "SELECT id FROM ticket_entries",
+  ticket_events: "SELECT id FROM ticket_events",
+} as const;
+
+/** Every id in one of the tables demo seeding writes, to record what it wrote. */
+export function allIds(db: Db, table: keyof typeof ALL_IDS): number[] {
+  return (db.prepare(ALL_IDS[table]).all() as { id: number }[]).map((row) => row.id);
 }

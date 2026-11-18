@@ -82,6 +82,13 @@ describe("a named human owner", () => {
     await admin(app).patch("/api/tickets/SUP-1").send({ status: "in_progress" });
     const refused = await admin(app).post("/api/tickets/SUP-1/release");
     expect(refused.status).toBe(409);
+    // Its own code and hint: the one for "take it first" would send the owner the wrong way.
+    expect(refused.body.error).toEqual({
+      code: "keeps_owner",
+      message: "Ticket SUP-1 is in progress, so it must keep an owner. Someone else can take it.",
+      hint: "Work has started, so the ticket keeps an owner. Hand it to a team member instead (POST .../hand-off).",
+      retry: false,
+    });
     expect((await admin(app).get("/api/tickets/SUP-1")).body.owner_name).toBe("Admin");
 
     // Started work does not go back to New, so it cannot be released that way either.
