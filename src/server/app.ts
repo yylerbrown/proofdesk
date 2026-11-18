@@ -161,7 +161,7 @@ export function createApp(config: Config, db: Db): Express {
   api.use(writeLimit);
   api.post("/tickets", filingLimit);
   api.use(express.json({ limit: BODY_LIMIT }));
-  api.use(healthRouter(config, db));
+  api.use(healthRouter(config, db, () => tickets.hasDemoSeed()));
   // The API describes itself, with no sign-in needed: a guide at /api, and the
   // machine-readable description at /api/openapi.json. With a key, the guide also says what
   // that connection may do.

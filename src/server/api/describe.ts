@@ -63,7 +63,7 @@ export function guide(actor: Actor | null, address: string) {
     start_here: {
       steps: [
         {
-          step: "Find work. You see only the tickets an owner has handed to your connection (on the demo, the sample tickets).",
+          step: "Find work. You see only the tickets an owner has handed to your connection (on the demo, the sample ticket made for assistants).",
           http: `curl ${key} ${address}/api/tickets`,
           mcp: "list_tickets {}",
         },

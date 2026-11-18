@@ -11,7 +11,18 @@ if (applied.length > 0) console.log(`Applied migrations: ${applied.join(", ")}`)
 // createApp checks the database's purpose first, so the demo is only seeded into a demo
 // database.
 const app = createApp(config, db);
-if (config.demo) seedDemo(createTicketService(db, config.ticketPrefix));
+if (config.demo) {
+  const service = createTicketService(db, config.ticketPrefix);
+  seedDemo(service);
+  // A database filled by older code has no record of its samples, and assistant connections
+  // stay off until it is reset. Say so where an operator looks first.
+  if (!service.hasDemoSeed()) {
+    console.warn(
+      "This demo's database was filled before its samples were recorded, so assistant " +
+        "connections are off. Reset it: docs/DEPLOY.md, Resetting the demo.",
+    );
+  }
+}
 
 const server = app.listen(config.port, () => {
   console.log(`Listening on port ${config.port}`);

@@ -70,13 +70,19 @@ const HINTS: Record<string, string> = {
   idempotency_key_reused:
     "Use a new idempotency key for a new request. Reuse a key only to retry the very same request.",
   budget_full: "The demo has no room for more of these. Nothing to retry.",
+  demo_not_ready:
+    "The demo's operator must reset its database (docs/DEPLOY.md, Resetting the demo). Sending it again will not help.",
   too_many_requests: "Wait for the time in the Retry-After header, then send again.",
   bad_request: "The request could not be read. Send JSON with Content-Type: application/json.",
   internal_error: "Something failed on the server. Try again later.",
 };
 
 /** Whether sending the same request again can work: only after waiting, or after a failure. */
+/** Refusals that sending the same request again can never change, whatever their status. */
+const NEVER_RETRY = new Set(["demo_not_ready"]);
+
 function canRetry(shown: ShownError): boolean {
+  if (NEVER_RETRY.has(shown.code)) return false;
   return shown.status === 429 || shown.status >= 500;
 }
 

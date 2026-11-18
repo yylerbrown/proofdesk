@@ -13,7 +13,11 @@ function readVersion(): string {
 
 const version = readVersion();
 
-export function healthRouter(config: Config, db: Db): Router {
+export function healthRouter(
+  config: Config,
+  db: Db,
+  demoReady: () => boolean = () => true,
+): Router {
   const router = Router();
   router.get("/health", (_req, res) => {
     const databaseOk = isDatabaseOk(db);
@@ -22,6 +26,8 @@ export function healthRouter(config: Config, db: Db): Router {
       version,
       commit: config.gitCommit ?? null,
       database: databaseOk ? "ok" : "error",
+      // On the demo: whether assistant connections work, or its operator must reset it.
+      ...(config.demo ? { assistant_connections: demoReady() ? "ready" : "needs_reset" } : {}),
     });
   });
   return router;

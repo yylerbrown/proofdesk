@@ -80,7 +80,7 @@ export function connectionsRouter(
       throw new HttpError(
         503,
         "demo_not_ready",
-        "Assistant connections are not ready on this demo yet. Please try again later.",
+        "Assistant connections are off on this demo until its operator resets its database.",
       );
     }
     const { connection, key } = connections.issueDemo();

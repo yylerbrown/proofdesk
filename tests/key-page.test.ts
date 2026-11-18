@@ -38,7 +38,7 @@ describe("the page that shows a new key", () => {
     seedDemo(createTicketService(built.db, built.config.ticketPrefix));
     const html = parse((await visitor(built.app).post("/demo/connection")).text);
     expect(html.querySelector(".can-read")?.text).toBe(
-      "It can read: the sample tickets, without internal notes.",
+      "It can read: the sample ticket made for assistants, without internal notes.",
     );
     const text = html.querySelector("main")!.text;
     expect(text).toContain(

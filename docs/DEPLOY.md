@@ -88,7 +88,9 @@ set-aside folder keeps what visitors wrote; delete it when it is no longer neede
 
 1. `curl https://support-desk-demo.fly.dev/api/health` and
    `curl https://proofdesk.fly.dev/api/health` both answer `"status":"ok"` with the commit.
-2. The demo's welcome page offers **Get a demo connection**. If it does not, reset the demo.
+2. The demo's welcome page offers **Get a demo connection**, and its `/api/health` answers
+   `"assistant_connections":"ready"`. If it says `needs_reset`, or the start-up log says so, reset
+   the demo.
 3. The real site's sign-in page shows **Sign in with GitHub** and **Try the demo without signing
    in**.
 
