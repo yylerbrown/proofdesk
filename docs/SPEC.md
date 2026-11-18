@@ -74,7 +74,7 @@ A customer support desk where the customer says how they will know it is fixed, 
 
 ## Left out on purpose
 
-Other sign-in providers, screens for managing people and keys, AI-drafted replies, automatic agent start, automatic discovery of linked changes, a preview copy of the app per branch, text search, email.
+Other sign-in providers, screens for managing people and keys, AI-drafted replies, automatic agent start, automatic discovery of linked changes, a preview copy of the app per branch, text search, email. (Since 18 Nov a screen for people and email notices are in; see that afternoon's entry below.)
 
 ## Build order
 
@@ -159,9 +159,9 @@ Designed by an outside reviewer against this specification, the permission funct
 
 - **Intake is a shared inbox.** A new ticket is New and unassigned. A team member takes it and becomes its named owner. The owner or an admin can hand it directly to another team member. There is no dispatcher, routing or acceptance step.
 - **The status moves only by the workflow's own steps.** The owner starts work (New to In Progress; "Take ticket and start work" does both at once). Started work stays In Progress with its owner. The customer's Yes resolves it as "Customer confirmed"; since 18 Nov the owner or an admin can also resolve it with a reason, shown as "Resolved by the team: <reason>" (see that day's entry below). The customer who filed a resolved ticket can reopen it, with "Still happening, reopen" and a reason, and since 18 Nov the owner or an admin can reopen a ticket the team resolved, never one the customer confirmed; it returns to its owner, or to the inbox if it has none, and the earlier Yes stays in the history. Agents never change a status.
-- **Only the current owner asks the customer,** after personally trying the delivered result against the customer's check, and the ask records what they tried, where, what happened and which evidence they relied on.
+- **Only the current owner asks the customer,** after personally trying the delivered result against the customer's check, and the ask records what they tried, where, what happened and which evidence they relied on. Since the afternoon of 18 Nov each of those details is optional, and asking is one press (see that entry below).
 - **An agent is a contributor, never an owner.** The owner may hand an in-progress ticket to one named connection; the agent sees only tickets handed to it, and loses access on revoke, transfer, ask or archive. The demo keeps its per-connection isolation instead. Agents do not send public replies: suggested wording arrives as an internal note, which a person may publish as their own reply.
-- **After a No** the owner keeps the ticket, the customer's comment is shown first, the team's list says "Customer says it still fails", and the next ask needs the owner's response to that No and a fresh check.
+- **After a No** the owner keeps the ticket, the customer's comment is shown first, the team's list says "Customer says it still fails", and the next ask needs the owner's response to that No and a fresh check. Since the afternoon of 18 Nov the response is optional too.
 - **Silence** leaves the question open, dated, never closed by a timer.
 - **The customer's check is theirs.** Staff wording is labelled "Team's check" unless the customer adopts it.
 
@@ -177,9 +177,19 @@ Two sentences above were corrected to say what happened. The opening line used t
 
 The owner's call, asked whether the team should be able to resolve a ticket without the customer's Yes, labelled with a reason: "Yes, labelled".
 
-- **Who:** the ticket's owner, or an admin. Not a customer through this path (they confirm with Yes), and never an agent, on any door; no tool or scope offers it.
+- **Who:** the ticket's owner, or an admin; since that afternoon, also a team member for a ticket nobody owns, who becomes its owner. Not a customer through this path (they confirm with Yes), and never an agent, on any door; no tool or scope offers it.
 - **When:** from New or In Progress. An open question to the customer is withdrawn first, with its own history entry.
 - **Why:** a reason from a short list: fixed but the customer has not replied, duplicate (naming the other ticket), won't fix, cannot reproduce, or other, which needs a note.
 - **How it shows:** the status stays Resolved, one of the three. Its label tells the two kinds apart everywhere, on the page for both roles, in the list, in history, in the JSON API and in the tools' read output: "Customer confirmed" only from the customer's Yes, otherwise "Resolved by the team: <reason>". The tick stays with the customer's Yes.
 - **After:** the customer sees the reason and can reopen the ticket, as after their own Yes. Later the same day the owner or an admin could also reopen it, with a reason, shown as "Reopened by the team: <reason>"; a ticket the customer confirmed stays theirs to reopen.
 - **On the page:** a quiet "Resolve" under Status that opens the reason form, never the primary button, which keeps following the customer-confirmation path.
+
+### 2026-11-18, afternoon: people, email and a shorter ask
+
+The owner's decision, under his call that sign-in be polished and done properly: an admin chooses who is on the team in the product. The same afternoon, email notices went out and asking the customer became one press.
+
+- **People.** An admin opens People from the header and chooses each signed-in person's role: customer, team member or admin. It applies on that person's next page, with no restart, and every change is kept in an add-only history of role changes. People named in `ADMIN_GITHUB_IDS` or `TEAM_GITHUB_IDS` keep that role and show as locked, so the site cannot lock itself out. An admin cannot change their own role, and a team member who still owns unresolved tickets keeps the role until those are handed on. This replaces "screens for managing people" in the list of things left out; screens for keys stay as they are, on Connections.
+- **Each person's account page** shows who Proofdesk thinks they are, and has one switch, "Email me about my tickets", on by default.
+- **Email.** Notices are worked out from the ticket history, written to an outbox, and sent with nodemailer once a mail server is set (`SMTP_URL` and `MAIL_FROM`). Only verified addresses are mailed, never about an internal note or an assistant's work. The demo never sends. Each ticket has a read-only page of its notices. This replaces "email" in the list of things left out.
+- **A shorter ask.** After taking a ticket, one press asks the customer "Did this fix it?". The page to try, what was tried, what happened, the response to a No and evidence are optional, and the customer sees each one given. The demo's sample fix is gone.
+- **Resolving an unowned ticket.** A team member may resolve a New ticket nobody owns, with a reason, and becomes its owner as part of it. The owner or an admin can reopen a ticket the team resolved, never one the customer confirmed.

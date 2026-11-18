@@ -33,7 +33,10 @@ Done once, already done:
    - Authorization callback URL: `https://proofdesk.fly.dev/api/auth/callback/github`
 2. **The secrets.** Generate a new secret for production; do not reuse the local one. Set
    `ADMIN_GITHUB_IDS` to the GitHub user numbers of the admins (and `TEAM_GITHUB_IDS` for team
-   members). A number can be read at `https://api.github.com/users/<user name>`.
+   members). A number can be read at `https://api.github.com/users/<user name>`. Name at least
+   one admin here: the server warns at start when none is named. Everyone else is chosen on the
+   site's People page by an admin, and it applies at once; the people named here keep their role
+   and show there as locked.
 
    ```sh
    fly secrets set --app proofdesk \
@@ -84,7 +87,9 @@ kept as not sent, with the reason, and nothing is emailed. The demo never sends,
    A notice that could not be sent is tried five times, waiting longer each time, and then kept
    as failed with a short reason in the `email_outbox` table.
 
-Only addresses GitHub verified are mailed, and only to the people the notice rules name.
+Only addresses GitHub verified are mailed, and only to the people the notice rules name who left
+"Email me about my tickets" on, on their account page. Each ticket's notices page,
+`/tickets/SUP-1/notices`, shows what it sent or would have sent.
 
 ## Deploy
 
