@@ -158,6 +158,11 @@ export function createApp(config: Config, db: Db): Express {
   app.get("/assets/pico.min.css", (_req, res) => {
     res.sendFile(picoCssFile);
   });
+  // The Inter font files, from its package, so the page needs no font host.
+  app.use(
+    "/assets/inter",
+    express.static(path.join(rootDir, "node_modules/@fontsource/inter/files")),
+  );
   app.use("/assets", express.static(path.join(rootDir, "public")));
   app.use(actor);
   app.use(sameOriginOnly(config));

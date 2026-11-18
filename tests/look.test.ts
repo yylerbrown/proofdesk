@@ -47,7 +47,7 @@ describe("the welcome for a signed-out visitor", () => {
   it("says what the desk is before asking anyone to sign in", async () => {
     const { app } = buildTestApp();
     const html = await page(visitor(app), "/sign-in");
-    expect(html.querySelector("h1")?.text).toBe("Support Desk");
+    expect(html.querySelector("h1")?.text).toBe("Proofdesk");
     expect(html.querySelector("hgroup p")?.text).toContain("follow it while the team works on it");
   });
 
@@ -145,7 +145,7 @@ describe("the ticket list", () => {
   it("names the list in the page title", async () => {
     const { app } = buildTestApp();
     const html = await page(admin(app), "/tickets?status=in_progress");
-    expect(html.querySelector("title")?.text).toBe("In Progress tickets - Support Desk");
+    expect(html.querySelector("title")?.text).toBe("In Progress tickets - Proofdesk");
   });
 });
 
@@ -192,7 +192,7 @@ describe("the ticket page", () => {
     const { app } = buildTestApp();
     await admin(app).post("/api/tickets").send(valid);
     const html = await page(admin(app), "/tickets/SUP-1");
-    expect(html.querySelector("title")?.text).toBe("SUP-1: Printer jams - Support Desk");
+    expect(html.querySelector("title")?.text).toBe("SUP-1: Printer jams - Proofdesk");
   });
 
   it("gives every box a label, for the team and for the customer", async () => {

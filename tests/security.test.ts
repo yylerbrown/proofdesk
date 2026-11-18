@@ -226,9 +226,12 @@ describe("SQL injection", () => {
 // The one script tag the pages carry: a file from this site that shows times in local time.
 const OWN_SCRIPT = '<script type="module" src="/assets/js/local-time.js"></script>';
 
-/** A page without its own script tag, so that any other script tag stands out. */
+// The one image tag: the mark beside the name in the header.
+const OWN_MARK = '<img src="/assets/mark.svg" alt="" width="24" height="24" />';
+
+/** A page without its own script and mark tags, so that any other such tag stands out. */
 function withoutOwnScript(html: string): string {
-  return html.replace(OWN_SCRIPT, "");
+  return html.replace(OWN_SCRIPT, "").replace(OWN_MARK, "");
 }
 
 describe("script injection in pages", () => {
