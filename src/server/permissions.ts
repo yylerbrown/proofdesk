@@ -35,7 +35,6 @@ export type Action =
 export const AGENT_SCOPES = [
   "read_tickets",
   "write_notes",
-  "send_replies",
   "attach_evidence",
   "propose_specs",
   "link_changes",
@@ -62,7 +61,7 @@ export const CAPABILITIES: Record<Action, Capability> = {
   archive: { people: "The team, or the customer who filed it.", agent: "people_only" },
   restore: { people: "The team.", agent: "people_only" },
   delete: { people: "An admin.", agent: "people_only" },
-  reply: { people: "The team, or the customer who filed it.", agent: "send_replies" },
+  reply: { people: "The team, or the customer who filed it.", agent: "people_only" },
   note: { people: "The team.", agent: "write_notes" },
   take: { people: "A team member, for an unowned ticket.", agent: "people_only" },
   release: { people: "The ticket's owner, before work starts.", agent: "people_only" },

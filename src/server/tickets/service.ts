@@ -109,6 +109,8 @@ export type TicketEntry = {
   author_role: "customer" | "team" | "admin";
   author_name: string;
   created_at: string;
+  /** For a reply published from an internal note: that note's id. Shown to the team only. */
+  based_on: number | null;
 };
 
 /** One piece of evidence, as reported. Proofdesk verifies none of it. */
@@ -467,6 +469,7 @@ export function createTicketService(
       author_role: row.author_role,
       author_name: row.author_name,
       created_at: row.created_at,
+      based_on: row.based_on ?? null,
     };
   }
 
@@ -1400,10 +1403,22 @@ export function createTicketService(
           "replies on this ticket",
         );
         const now = new Date().toISOString();
+        // Publishing from a note: it must be a note on this same ticket, published as a reply.
+        if (entry.based_on !== undefined) {
+          const source = repository
+            .listEntries(db, ticket.id, true, THREAD_LIMIT)
+            .find((e) => e.id === entry.based_on);
+          if (entry.kind !== "reply" || source === undefined || source.kind !== "note") {
+            throw new ValidationError("A reply can be based only on a note on this ticket.", {
+              based_on: ["A reply can be based only on a note on this ticket."],
+            });
+          }
+        }
         const saved = repository.insertEntry(db, {
           ticket_id: ticket.id,
           kind: entry.kind,
           body: entry.body,
+          based_on: entry.based_on ?? null,
           author: actor.id,
           author_kind: actor.kind,
           author_role: actor.role,
@@ -1428,7 +1443,11 @@ export function createTicketService(
     listEntries(key: string, actor: Actor): TicketEntry[] {
       const row = requireRow(key, actor);
       const includeNotes = can(actor, "read_notes", row);
-      const entries = repository.listEntries(db, row.id, includeNotes, THREAD_LIMIT).map(toEntry);
+      // Where a reply's words came from is the team's to know: a customer never sees the note.
+      const entries = repository
+        .listEntries(db, row.id, includeNotes, THREAD_LIMIT)
+        .map(toEntry)
+        .map((entry) => (includeNotes ? entry : { ...entry, based_on: null }));
       if (!isDemoAgent(actor)) return entries;
       const seeded = seededOrRefused().entries;
       return entries.filter((entry) => seeded.includes(entry.id) || entry.author === actor.id);

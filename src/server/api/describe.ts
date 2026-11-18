@@ -20,7 +20,7 @@ export const MCP_INSTRUCTIONS =
   "Proofdesk is a support desk where only the customer says a ticket is fixed. To help: " +
   "list_tickets (the tickets handed to you), get_ticket (read done_when first), do the work " +
   "elsewhere, add_evidence, then request_verification so the named owner asks the customer. " +
-  "With no check or when blocked, write a note (add_entry, kind note) saying why, and stop. " +
+  "With no check or when blocked, write a note (add_note) saying why, and stop. " +
   "Send an idempotency_key with every write so a retry acts once. " +
   UNTRUSTED_TEXT;
 

@@ -40,6 +40,17 @@ export const addEntrySchema = z.object({
     .trim()
     .min(1, "Must not be empty.")
     .max(5000, "Must be at most 5000 characters."),
+  // A reply a person publishes from an internal note: that note's id.
+  based_on: z.coerce.number().int().positive().optional(),
+});
+
+// An internal note on its own, for the notes route and tool.
+export const noteSchema = z.object({
+  body: z
+    .string()
+    .trim()
+    .min(1, "Must not be empty.")
+    .max(5000, "Must be at most 5000 characters."),
 });
 
 // Handing a ticket to another team member. expected_owner is the owner the form was made for

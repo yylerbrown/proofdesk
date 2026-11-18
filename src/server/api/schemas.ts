@@ -96,6 +96,9 @@ export const entryOutput = z
     author_role: role,
     author_name: z.string(),
     created_at: time,
+    based_on: z.number().int().nullable().meta({
+      description: "For a reply published from an internal note: that note's id. Team only.",
+    }),
   })
   .meta({ id: "Entry" });
 
