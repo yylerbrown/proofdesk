@@ -163,6 +163,12 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, next) => {
     return;
   }
   const { status, body } = errorBody(err);
+  if (status === 401) {
+    // A 401 names the scheme that works here (RFC 9110), and says when a key was sent but
+    // is not valid (RFC 6750). Pages do not get this: they send the browser to sign-in.
+    const wrongKey = body.error.code === "invalid_connection_key";
+    res.set("WWW-Authenticate", wrongKey ? 'Bearer error="invalid_token"' : "Bearer");
+  }
   res.status(status).json(body);
 };
 

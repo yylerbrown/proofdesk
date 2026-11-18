@@ -6,6 +6,10 @@
 app = "proofdesk"
 # Where the disk and the machine are. Fly no longer offers "sea".
 primary_region = "sjc"
+# On a deploy or a stop, Fly sends this signal, then kills the process after the timeout. The
+# server finishes requests in flight within 8 seconds (src/server/serve.ts), so it exits first.
+kill_signal = "SIGTERM"
+kill_timeout = 10
 
 [build]
   dockerfile = "Dockerfile"

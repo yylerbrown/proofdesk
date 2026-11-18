@@ -69,7 +69,7 @@ describe("security headers", () => {
       "/tickets?status=archived",
     ];
     for (const address of pages) {
-      const res = await admin(app).get(address);
+      const res = await admin(app).get(address).redirects(1);
       if (res.status === 200)
         for (const own of OWN_SCRIPTS) expect(res.text, address).toContain(own);
       expect(withoutOwnScript(res.text), address).not.toMatch(/<script/i);

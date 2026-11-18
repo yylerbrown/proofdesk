@@ -16,8 +16,12 @@
   </ul>
 </nav>
 <h1><%= editKey ? "Edit ticket" : title %></h1>
+<% if (locals.alreadyFiled) { %>
+<p class="notice already-filed" role="status">This form was already filed as <a href="/tickets/<%= alreadyFiled.key %>"><%= alreadyFiled.key %></a>. <a href="/tickets/new">Start a new ticket</a>.</p>
+<% } %>
 
 <form method="post" action="<%= action %>">
+  <% if (locals.formId) { %><input type="hidden" name="form" value="<%= formId %>" /><% } %>
   <label>
     Title
     <input type="text" name="title" value="<%= values.title %>" required <% if (errors.title) { %>aria-invalid="true" aria-describedby="title-error"<% } %> />

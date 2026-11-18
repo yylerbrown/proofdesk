@@ -13,10 +13,11 @@ import {
   reportFields,
   waitingOn,
 } from "../pages/format.js";
+import { fileOnce, newFormId, readFormId, sameText, ticketFiledWith } from "../pages/form-id.js";
+import { readListPageQuery } from "../pages/list-query.js";
 import { rememberSaved, takeProblem, takeSaved, type SavedKey } from "../pages/saved.js";
-import { listQuerySchema, RESOLVE_REASON_LABELS, TICKET_STATUSES } from "../tickets/schemas.js";
+import { RESOLVE_REASON_LABELS, TICKET_STATUSES } from "../tickets/schemas.js";
 import { LIST_PAGE_SIZE, type Ticket, type TicketService } from "../tickets/service.js";
-import { parse } from "../validation.js";
 
 // The pages. Like the JSON routes, they only read the request, call the ticket service and
 // send the answer. The answer is HTML built from a template in views/.
@@ -387,9 +388,15 @@ export function pagesRouter(service: TicketService): Router {
 
   router.get("/tickets", (req, res) => {
     const actor = signedIn(req);
-    const { status, page, owner, q } = parse(listQuerySchema, req.query);
-    const current = status ?? "all";
-    const pageNumber = page ?? 1;
+    const query = readListPageQuery(req.query);
+    // A filter this viewer cannot use, such as Archived for a customer after a role switch or
+    // from a bookmark, shows their whole list instead of a refusal.
+    const current =
+      query.status === "archived" && !can(actor, "list_archived") ? "all" : query.status;
+    // A customer's list is their own tickets, so it has no owner filter to keep.
+    const owner = actor.role === "customer" ? undefined : query.owner;
+    const q = query.q;
+    const pageNumber = query.page;
     const tickets = service.listTickets(current, actor, pageNumber, { owner, q });
     // Every link on the list keeps the other filters, so a filtered view can be shared.
     const filters: ListFilters = { status: current, owner, q };
@@ -449,10 +456,22 @@ export function pagesRouter(service: TicketService): Router {
   // Registered before "/tickets/:key" so that "new" is not read as a ticket key.
   router.get("/tickets/new", (req, res) => {
     const actor = signedIn(req);
+    // Each new form gets its own one-time id in its address, so Back after filing opens the
+    // same form again, and the page can say it was filed.
+    const formId = readFormId(req.query.form);
+    if (formId === null) {
+      const address = new URLSearchParams();
+      if (req.query.try === "1") address.set("try", "1");
+      address.set("form", newFormId());
+      res.redirect(303, `/tickets/new?${address}`);
+      return;
+    }
     // On the demo, the ticket workflow starts from a filled-in sample the visitor can change.
     const sample = actor.demo === true && req.query.try === "1";
     res.render("ticket-form", {
       ...newForm,
+      formId,
+      alreadyFiled: ticketFiledWith(service, actor, formId),
       values: sample ? WALKTHROUGH_SAMPLE : emptyForm,
       errors: {},
     });
@@ -461,20 +480,44 @@ export function pagesRouter(service: TicketService): Router {
   router.post("/tickets", (req, res) => {
     const actor = signedIn(req);
     const values = readTicketForm(req.body);
+    const formId = readFormId(req.body?.form);
     try {
+      let filedNow = false;
       // The service checks the rules. A browser sends an empty box as "", and for the
       // optional link that means "not given".
-      const ticket = service.createTicket(
-        { ...values, where_url: values.where_url === "" ? undefined : values.where_url },
-        actor,
-      );
-      // 303 makes the browser fetch the ticket page with GET, so a refresh cannot file it twice.
-      rememberSaved(res, "filed");
-      res.redirect(303, `/tickets/${ticket.key}`);
+      const fileTicket = () => {
+        filedNow = true;
+        return service.createTicket(
+          { ...values, where_url: values.where_url === "" ? undefined : values.where_url },
+          actor,
+        );
+      };
+      // A form with an id files once. Sent again, it gets back the ticket it already filed.
+      const ticket = formId === null ? fileTicket() : fileOnce(service, actor, formId, fileTicket);
+      if (filedNow) {
+        // 303 makes the browser fetch the ticket page with GET, so a refresh cannot file it twice.
+        rememberSaved(res, "filed");
+        res.redirect(303, `/tickets/${ticket.key}`);
+      } else if (sameText(ticket, values)) {
+        // The same form sent twice, for example after Back: open the ticket it filed.
+        rememberSaved(res, "alreadyFiled");
+        res.redirect(303, `/tickets/${ticket.key}`);
+      } else {
+        // The same form sent again with changed text: file nothing, and keep what was typed.
+        res.status(409).render("ticket-form", {
+          ...newForm,
+          formId,
+          alreadyFiled: ticket,
+          values,
+          errors: {},
+        });
+      }
     } catch (err) {
       if (!(err instanceof ValidationError)) throw err;
       // Show the form again with what was typed and one message under each wrong box.
-      res.status(400).render("ticket-form", { ...newForm, values, errors: err.fieldErrors });
+      res
+        .status(400)
+        .render("ticket-form", { ...newForm, formId, values, errors: err.fieldErrors });
     }
   });
 
