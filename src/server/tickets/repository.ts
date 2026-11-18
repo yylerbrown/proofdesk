@@ -555,20 +555,31 @@ export function insertEntry(db: Db, entry: NewEntry): EntryRow {
   };
 }
 
-/** For each of these tickets, the latest note an agent wrote on it, if it says it is blocked. */
-export function blockedAgentNotes(
+/** For each of these tickets, the latest note an agent wrote on it. */
+export function latestAgentNotes(
   db: Db,
   ticketIds: number[],
-): { ticket_id: number; body: string }[] {
+): {
+  ticket_id: number;
+  body: string;
+  blocked: number;
+  purpose: NotePurpose;
+  author_name: string;
+}[] {
   return db
     .prepare(
-      `SELECT e.ticket_id, e.body FROM ticket_entries e
+      `SELECT e.ticket_id, e.body, e.blocked, e.purpose, e.author_name FROM ticket_entries e
        WHERE e.ticket_id IN (SELECT value FROM json_each(@ids))
-         AND e.blocked = 1
          AND e.id = (SELECT MAX(x.id) FROM ticket_entries x
                      WHERE x.ticket_id = e.ticket_id AND x.kind = 'note' AND x.author_kind = 'agent')`,
     )
-    .all({ ids: JSON.stringify(ticketIds) }) as { ticket_id: number; body: string }[];
+    .all({ ids: JSON.stringify(ticketIds) }) as {
+    ticket_id: number;
+    body: string;
+    blocked: number;
+    purpose: NotePurpose;
+    author_name: string;
+  }[];
 }
 
 /** The latest `limit` entries, oldest first. Notes are left out unless includeNotes is true. */
