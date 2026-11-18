@@ -31,6 +31,9 @@
 <% if (locals.demoUrl) { %>
 <p class="try-demo"><a href="<%= demoUrl %>">Try the demo without signing in</a></p>
 <% } %>
+<% if (locals.sourceUrl) { %>
+<p class="source-link"><a href="<%= sourceUrl %>#readme">Source and setup</a></p>
+<% } %>
 <% } %>
 
 <% if (!github && people.length === 0) { %>
@@ -42,6 +45,9 @@
   <% if (demo) { %>
   <h2 id="entrance">Try the demo</h2>
   <p>The tickets are sample data, shared with everyone who visits. Do not type anything private here.</p>
+  <% if (locals.realSiteUrl) { %>
+  <p class="real-site"><small>GitHub sign-in with roles runs on the real site: <a href="<%= realSiteUrl %>"><%= new URL(realSiteUrl).host %></a></small></p>
+  <% } %>
   <% if (locals.walkthrough) { %>
   <%# The first and strongest choice: one ticket, from the customer's words to their Yes. %>
   <form method="post" action="/sign-in/dev" class="try-workflow">
@@ -49,6 +55,9 @@
     <input type="hidden" name="next" value="/tickets/new?try=1" />
     <button type="submit" class="large">Try the ticket workflow</button>
   </form>
+  <% if (locals.sourceUrl) { %>
+  <p class="source-link"><a href="<%= sourceUrl %>#readme">Source and setup</a></p>
+  <% } %>
   <p class="try-steps"><small>File a ticket as the customer, work on it as the team, then say whether it is fixed as the customer. The same ticket stays open as you switch. About two minutes.</small></p>
   <h3>Or look around as</h3>
   <% } %>

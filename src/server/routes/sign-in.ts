@@ -46,6 +46,9 @@ export function signInRouter(
       walkthrough: config.demo ? people.find((person) => person.role === "customer") : undefined,
       // The real site links to the demo, so a visitor can try it without signing in.
       demoUrl: config.demoUrl,
+      // The real site, from the demo, where GitHub sign-in with roles runs; and the source.
+      realSiteUrl: config.realSiteUrl,
+      sourceUrl: config.sourceUrl,
     });
   });
 

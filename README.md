@@ -132,6 +132,8 @@ All of them are in `.env.example`, with comments.
 | `TEAM_GITHUB_IDS`, `ADMIN_GITHUB_IDS`                                               | GitHub user numbers, separated by commas. Everyone else is a customer.                                                   |
 | `CLIENT_IP_HEADER`                                                                  | Behind a proxy, the header with the visitor's address, for rate limits. Fly.io: `fly-client-ip`.                         |
 | `DEMO_URL`                                                                          | Optional, on the real site: the demo's https address, linked from the sign-in page as "Try the demo without signing in". |
+| `REAL_SITE_URL`                                                                     | Optional, on the demo: the real site's https address, named on the welcome page as where GitHub sign-in with roles runs. |
+| `SOURCE_URL`                                                                        | Optional: the repository's https address. The welcome page then links **Source and setup** to its README.                |
 | `GIT_COMMIT`                                                                        | Reported by `GET /api/health`.                                                                                           |
 
 ### GitHub sign-in
