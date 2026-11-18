@@ -195,7 +195,7 @@ describe("resolving with a reason on the page", () => {
   it("is a quiet disclosure for the owner and admins, never the primary button", async () => {
     const { app } = await setup();
     const owner = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    expect(owner.querySelector("details.resolve summary")?.text).toBe("Resolve with a reason");
+    expect(owner.querySelector("details.resolve summary")?.text).toBe("Resolve");
     expect(owner.querySelector(".next-action")?.text).not.toContain("Resolve");
     expect(
       parse((await admin(app).get("/tickets/SUP-2")).text).querySelector("details.resolve"),

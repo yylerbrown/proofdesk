@@ -66,7 +66,10 @@ describe("who resolves", () => {
     const sentence =
       "The customer confirms a fix with Yes; the team can also resolve with a reason.";
     const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    expect(page.querySelector(".status-rule")?.text.startsWith(sentence)).toBe(true);
+    // On the ticket, Resolve sits under the status for those who may; the line says the way on.
+    expect(page.querySelector(".status-rule")?.text).toBe(
+      "Take the ticket, then ask the customer to verify.",
+    );
     const edit = parse((await as(app, teamActor).get("/tickets/SUP-1/edit")).text);
     expect(edit.querySelector(".status-rule")?.text).toBe(sentence);
     // The customer who filed it is not told they cannot.
@@ -193,7 +196,7 @@ describe("the team's next step", () => {
     const linkStep = await page();
     expect(step(linkStep)).toEqual({
       label: "Add the code change link",
-      to: "#change-link",
+      to: "#change-url",
       note: "Next: link the code change, then ask the customer to verify.",
     });
     expect(linkStep.querySelector("form#change-link input[name=change_url]")).not.toBeNull();

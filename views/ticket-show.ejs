@@ -97,7 +97,8 @@
   <p><small><% if (ticket.resolution.resolved_by_name) { %><%= ticket.resolution.resolved_by_name %>, <% } %><%- include("time", { iso: ticket.resolution.at }) %>. <%= viewerRole === "customer" ? "If it is still happening, you can reopen it." : "The customer did not confirm it, and can reopen it." %><% if (staff && ticket.resolution.duplicate_of) { %> <a href="/tickets/<%= ticket.resolution.duplicate_of %>">Open <%= ticket.resolution.duplicate_of %></a><% } %></small></p>
 </article>
 <% } %>
-<% if (allowed.reopen) { %>
+<%# The customer's way back in. The team's Reopen sits with the status, in the side panel. %>
+<% if (allowed.reopen && !staff) { %>
 <details id="reopen" <% if (problem?.form === "reopen") { %>open<% } %>>
   <summary>Still happening?</summary>
   <form method="post" action="/tickets/<%= ticket.key %>/reopen">
@@ -238,15 +239,18 @@
   <h2>Status</h2>
   <p><%- include("status-badge", { status: ticket.status }) %><% if (ticket.ready_at && ticket.status === "in_progress") { %>, waiting for <%= viewerRole === "customer" ? "you" : "the customer who filed this ticket" %><% } %></p>
   <% if (ticket.resolution) { %><p class="resolution-label"><small><%= ticket.resolution.label %></small></p><% } %>
-  <%# Resolved is never a dead end: the team is told where it comes from and how to get there. %>
-  <% if (viewerRole !== "customer" && !ticket.archived_at && ticket.status !== "resolved") { %>
-  <p class="status-rule"><small>The customer confirms a fix with Yes; the team can also resolve with a reason. <% if (ticket.ready_at) { %>Their Yes moves it to Resolved.<% } else if (ticket.owner_id && ticket.owner_id === viewerId) { %>When the fix is in, <a href="#ask">ask the customer to verify</a>.<% } else if (ticket.owner_id) { %>Only <%= ticket.owner_name %> can ask the customer to verify.<% } else { %>Take the ticket, then ask the customer to verify.<% } %></small></p>
+  <%# The status changes this viewer can make now, each named for where it leads. Each one comes
+      from the allowed actions, so the page offers exactly what the server would accept. %>
+  <% if (allowed.takeAndStart || allowed.start) { %>
+  <form method="post" action="/tickets/<%= ticket.key %>/<%= allowed.takeAndStart ? "take-and-start" : "status" %>">
+    <% if (!allowed.takeAndStart) { %><input type="hidden" name="status" value="in_progress" /><% } %>
+    <button type="submit" class="secondary compact">Start work</button>
+  </form>
   <% } %>
-  <%# Resolving without the customer's Yes is there for the owner and admins, but quiet: the main road is the customer's confirmation. %>
   <% if (allowed.resolveWithReason) { %>
   <% const resolving = problem?.form === "resolve" ? (problem.values ?? {}) : {}; %>
   <details class="resolve" <% if (problem?.form === "resolve") { %>open<% } %>>
-    <summary>Resolve with a reason</summary>
+    <summary role="button" class="secondary outline">Resolve</summary>
     <form method="post" action="/tickets/<%= ticket.key %>/resolve">
       <label>
         Reason
@@ -265,10 +269,41 @@
         <textarea name="note" rows="2"><%= resolving.note ?? "" %></textarea>
       </label>
       <% if (problem?.form === "resolve") { %><p><small id="resolve-error" role="alert"><%= problem.message %></small></p><% } %>
-      <p><small>It then shows the team's reason, apart from a customer's Yes, and the customer can reopen it.</small></p>
+      <p><small>The customer sees your reason and can reopen it.</small></p>
       <button type="submit" class="secondary compact" <% if (problem?.form === "resolve") { %>aria-describedby="resolve-error"<% } %>>Resolve</button>
     </form>
   </details>
+  <% } %>
+  <% if (allowed.reopen) { %>
+  <details class="reopen" <% if (problem?.form === "reopen") { %>open<% } %>>
+    <summary role="button" class="secondary outline">Reopen</summary>
+    <form method="post" action="/tickets/<%= ticket.key %>/reopen">
+      <label for="reopen-reason">Why reopen it?</label>
+      <textarea id="reopen-reason" name="reason" rows="2" required <% if (problem?.form === "reopen") { %>aria-invalid="true" aria-describedby="reopen-error"<% } %>><%= problem?.form === "reopen" ? problem.comment : "" %></textarea>
+      <% if (problem?.form === "reopen") { %><small id="reopen-error" role="alert"><%= problem.message %></small><% } %>
+      <button type="submit" class="secondary compact">Reopen</button>
+    </form>
+  </details>
+  <% } %>
+  <%# One short line: the way on from here, or who can move the status when this viewer cannot. %>
+  <% if (!ticket.archived_at) { %>
+  <% if (ticket.status === "resolved") { %>
+  <% if (!allowed.reopen) { %><p class="status-rule"><small>The customer who filed it can reopen it.</small></p><% } %>
+  <% } else if (ticket.ready_at) { %>
+  <p class="status-rule"><small>The customer's Yes moves it to Resolved.</small></p>
+  <% } else if (ticket.owner_id && ticket.owner_id === viewerId) { %>
+  <% if (ticket.status === "in_progress" && !ticket.change_url && allowed.linkChange) { %>
+  <p class="status-rule"><small>Next: <a href="#change-url">add the link to the code change</a>.</small></p>
+  <% } else { %>
+  <p class="status-rule"><small>When the fix is in, <a href="#ask">ask the customer to verify</a>.</small></p>
+  <% } %>
+  <% } else if (ticket.owner_id) { %>
+  <p class="status-rule"><small>Only <%= ticket.owner_name %> can ask the customer to verify.</small></p>
+  <% } else if (allowed.take || allowed.takeAndStart) { %>
+  <p class="status-rule"><small>Take the ticket, then ask the customer to verify.</small></p>
+  <% } else { %>
+  <p class="status-rule"><small>The team takes the ticket and asks the customer to verify.</small></p>
+  <% } %>
   <% } %>
 </section>
 <% } %>
@@ -377,7 +412,7 @@
   <form method="post" action="/tickets/<%= ticket.key %>/change-link" id="change-link">
     <label>
       Link to the code change
-      <input type="url" name="change_url" required <% if (problem?.form === "changeLink") { %>aria-invalid="true" aria-describedby="change-link-error"<% } %> />
+      <input type="url" id="change-url" name="change_url" required <% if (problem?.form === "changeLink") { %>aria-invalid="true" aria-describedby="change-link-error"<% } %> />
     </label>
     <% if (problem?.form === "changeLink") { %><small id="change-link-error"><%= problem.message %></small><% } %>
     <button type="submit" class="secondary compact">Save change link</button>
