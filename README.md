@@ -8,6 +8,9 @@ tests, a Dockerfile and a CI workflow.
 
 The whole look (colours and fonts) is in one file, `public/theme.css`; replace it to change it.
 
+The mark, a tick, means "the customer confirmed it". Beyond the header and the browser tab, it
+appears only on a ticket the customer resolved by answering yes.
+
 ## Run with Docker
 
 ```sh
