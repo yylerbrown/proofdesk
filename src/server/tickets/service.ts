@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { DEMO_ACTORS, DEV_ACTORS, type Actor } from "../actor.js";
 import type { Db } from "../db.js";
 import { HttpError, ValidationError } from "../errors.js";
@@ -758,6 +758,56 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
       const events = repository.listEvents(db, row.id, THREAD_LIMIT).map(toEvent);
       if (can(actor, "read_notes", row)) return events;
       return events.filter((event) => CUSTOMER_EVENT_TYPES.has(event.type));
+    },
+
+    /**
+     * Runs a write once per idempotency key. A retry with the same key and the same request
+     * gets the first answer back and changes nothing; the same key with a different request is
+     * refused. A refused write stores nothing, so it can be retried with the same key. Without
+     * a key, the write simply runs.
+     */
+    once<T>(
+      actor: Actor,
+      idempotencyKey: string | undefined,
+      action: string,
+      ticketKey: string,
+      input: unknown,
+      write: () => T,
+    ): T {
+      if (idempotencyKey === undefined) return write();
+      if (idempotencyKey.length < 1 || idempotencyKey.length > 100) {
+        throw new ValidationError("The idempotency key must be 1 to 100 characters.", {
+          idempotency_key: ["Must be 1 to 100 characters."],
+        });
+      }
+      const requestHash = createHash("sha256")
+        .update(JSON.stringify([action, ticketKey, input ?? null]))
+        .digest("hex");
+      return db.transaction(() => {
+        const seen = repository.findIdempotency(db, actor.id, idempotencyKey);
+        if (seen !== undefined) {
+          if (seen.request_hash !== requestHash) {
+            throw new HttpError(
+              409,
+              "idempotency_key_reused",
+              "That idempotency key was already used for a different request.",
+            );
+          }
+          return JSON.parse(seen.response) as T;
+        }
+        const result = write();
+        const ticketId = ticketKey === "" ? null : parseKey(prefix, ticketKey);
+        repository.saveIdempotency(db, {
+          actor: actor.id,
+          key: idempotencyKey,
+          action,
+          request_hash: requestHash,
+          response: JSON.stringify(result),
+          ticket_id: ticketId,
+          created_at: new Date().toISOString(),
+        });
+        return result;
+      })();
     },
 
     /**

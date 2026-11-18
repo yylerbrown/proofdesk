@@ -107,7 +107,8 @@ describe("the one path: read, evidence, ask the owner", () => {
     );
 
     const list = await call(client, "list_tickets", { status: "new" });
-    expect(list.body.result.map((t: { key: string }) => t.key)).toEqual(["SUP-1"]);
+    expect(list.body.result.next_cursor).toBeNull();
+    expect(list.body.result.items.map((t: { key: string }) => t.key)).toEqual(["SUP-1"]);
     const ticket = await call(client, "get_ticket", { key: "SUP-1" });
     expect(Object.keys(ticket.body.result)[0]).toBe("done_when");
     expect(ticket.body.result.done_when.customer_check).toBe("Ten pages print");
@@ -219,5 +220,18 @@ describe("the agents guide", () => {
     const table = guide.slice(guide.indexOf("## Tools"), guide.indexOf("## Limits"));
     const listed = [...table.matchAll(/^\| `([a-z_]+)`\s+\|/gm)].map((m) => m[1]).sort();
     expect(listed).toEqual(TOOL_ACTIONS.map((row) => row.name).sort());
+  });
+});
+
+describe("retries over MCP", () => {
+  it("attach evidence once when the same idempotency key is sent twice", async () => {
+    const { app } = buildTestApp();
+    await admin(app).post("/api/tickets").send(valid);
+    const client = await connect(app, await issue(app, ["read_tickets", "attach_evidence"]));
+    const args = { key: "SUP-1", kind: "note", summary: "Checked it", idempotency_key: "try-1" };
+    const first = await call(client, "add_evidence", args);
+    const again = await call(client, "add_evidence", args);
+    expect(again.body.result).toEqual(first.body.result);
+    expect((await admin(app).get("/api/tickets/SUP-1/evidence")).body).toHaveLength(1);
   });
 });

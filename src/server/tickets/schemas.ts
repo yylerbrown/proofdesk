@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ValidationError } from "../errors.js";
 
 export const TICKET_STATUSES = ["new", "in_progress", "resolved"] as const;
 export type TicketStatus = (typeof TICKET_STATUSES)[number];
@@ -84,4 +85,26 @@ export type TicketListFilter = (typeof TICKET_LIST_FILTERS)[number];
 export const listQuerySchema = z.object({
   status: z.enum(TICKET_LIST_FILTERS).optional(),
   page: z.coerce.number().int().min(1).max(100000).optional(),
+  cursor: z.string().max(100).optional().meta({
+    description: "Where the previous page ended, as given by its next_cursor or Link header.",
+  }),
 });
+
+/** A cursor names the next page. It is opaque to callers: pass back what you were given. */
+export function cursorFor(page: number): string {
+  return Buffer.from(JSON.stringify({ page })).toString("base64url");
+}
+
+/** The page a cursor names, or a validation error for one that was not made here. */
+export function pageOf(cursor: string): number {
+  try {
+    const { page } = z
+      .object({ page: z.number().int().min(1).max(100000) })
+      .parse(JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")));
+    return page;
+  } catch {
+    throw new ValidationError("That cursor was not made here.", {
+      cursor: ["Pass back the next_cursor you were given, unchanged."],
+    });
+  }
+}

@@ -10,7 +10,7 @@ import {
 } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import type { Actor } from "./actor.js";
-import { ACTIONS, type ApiAction } from "./api/actions.js";
+import { ACTIONS, nextCursor, type ApiAction } from "./api/actions.js";
 import type { ConnectionService } from "./connections/service.js";
 import { errorBody, HttpError } from "./errors.js";
 import { CAPABILITIES } from "./permissions.js";
@@ -35,6 +35,14 @@ export const TOOL_ACTIONS: ApiAction[] = ACTIONS.filter((row) =>
 /** A tool's input: the ticket key when the action is about one ticket, then its fields. */
 function inputSchema(row: ApiAction) {
   return z.object({
+    ...(row.method !== "get"
+      ? {
+          idempotency_key: z.string().min(1).max(100).optional().meta({
+            description:
+              "Any unique text. Send the same one when retrying, and the write is done only once.",
+          }),
+        }
+      : {}),
     ...(row.path.includes(":key")
       ? { key: z.string().meta({ description: "The ticket's key, for example SUP-42." }) }
       : {}),
@@ -55,15 +63,33 @@ function buildServer(service: TicketService, actor: Actor): McpServer {
       row.name,
       { description: `${row.summary} ${UNTRUSTED}`, inputSchema: inputSchema(row) },
       async (args: Record<string, unknown>) => {
-        const { key, ...fields } = args;
+        const { key, idempotency_key: idempotencyKey, ...fields } = args;
+        const ticketKey = typeof key === "string" ? key : "";
         try {
-          const result = row.run({
-            service,
-            actor,
-            key: typeof key === "string" ? key : "",
-            query: row.query ? fields : {},
-            body: row.body ? fields : {},
-          });
+          const call = () =>
+            row.run({
+              service,
+              actor,
+              key: ticketKey,
+              query: row.query ? fields : {},
+              body: row.body ? fields : {},
+            });
+          const ran =
+            row.method === "get"
+              ? call()
+              : service.once(
+                  actor,
+                  typeof idempotencyKey === "string" ? idempotencyKey : undefined,
+                  row.name,
+                  ticketKey,
+                  fields,
+                  call,
+                );
+          // A list comes in pages: say where the next one starts, or null on the last.
+          const result =
+            row.paged && Array.isArray(ran)
+              ? { items: ran, next_cursor: nextCursor(fields, ran) }
+              : ran;
           return { content: text({ untrusted_content_note: UNTRUSTED, result }) };
         } catch (err) {
           // A refusal is a result the agent can act on: what happened and what to do next.

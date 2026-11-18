@@ -7,14 +7,16 @@ import {
   answerSchema,
   changeStatusSchema,
   createTicketSchema,
+  cursorFor,
   deleteTicketSchema,
   linkChangeSchema,
   listQuerySchema,
   markReadySchema,
+  pageOf,
   verificationRequestSchema,
 } from "../tickets/schemas.js";
 import { addEvidenceSchema } from "../tickets/evidence.js";
-import type { TicketService } from "../tickets/service.js";
+import { LIST_PAGE_SIZE, type TicketService } from "../tickets/service.js";
 import { parse } from "../validation.js";
 
 // Every action anyone can take on a ticket, in one table. The JSON API's routes are built from
@@ -50,6 +52,8 @@ export type ApiAction = {
   status?: number;
   /** The page form that does the same thing, if there is one. */
   page?: string;
+  /** True for a list that comes in pages; its doors add how to get the next page. */
+  paged?: boolean;
   run: (call: Call) => unknown;
 };
 
@@ -62,9 +66,10 @@ export const ACTIONS: ApiAction[] = [
       "List tickets: open ones newest first, then resolved ones. A customer sees only their own.",
     needs: "read",
     query: listQuerySchema,
+    paged: true,
     run: ({ service, actor, query }) => {
-      const { status, page } = parse(listQuerySchema, query);
-      return service.listTickets(status ?? "all", actor, page ?? 1);
+      const { status, page, cursor } = parse(listQuerySchema, query);
+      return service.listTickets(status ?? "all", actor, cursor ? pageOf(cursor) : (page ?? 1));
     },
   },
   {
@@ -261,6 +266,16 @@ export const ACTIONS: ApiAction[] = [
     run: ({ service, actor, key }) => service.listEvents(key, actor),
   },
 ];
+
+/**
+ * The cursor for the page after this one, or null when this page is the last. A full page
+ * means there may be more.
+ */
+export function nextCursor(query: unknown, items: unknown[]): string | null {
+  if (items.length < LIST_PAGE_SIZE) return null;
+  const { page, cursor } = parse(listQuerySchema, query);
+  return cursorFor((cursor ? pageOf(cursor) : (page ?? 1)) + 1);
+}
 
 /** "/tickets/:key" in the form the documentation uses: "/tickets/{key}". */
 export function documentedPath(path: string): string {
