@@ -56,11 +56,11 @@
   <% } %>
 </article>
 <% } %>
-<%# The only tick inside the product: the customer said yes, it is fixed. %>
+<%# The only tick inside the product, always with the words "Customer confirmed". %>
 <% if (confirmed) { %>
 <article class="confirmed">
   <img src="/assets/mark.svg" alt="" width="32" height="32" class="tick" />
-  <p><strong>The customer confirmed it is fixed.</strong> <%- include("time", { iso: confirmed }) %></p>
+  <p><strong>Customer confirmed it is fixed.</strong> <%- include("time", { iso: confirmed }) %></p>
 </article>
 <% } %>
 <% if (allowed.reopen) { %>
@@ -93,7 +93,7 @@
   <% } %>
   <% } %>
   <% if (ticket.agreed_check) { %>
-  <p>The team's interpretation of your check:</p>
+  <p>Team's check:</p>
   <blockquote class="user-text"><%= ticket.agreed_check %></blockquote>
   <% } %>
   <% if (ticket.fix_check) { %>
@@ -216,7 +216,7 @@
   <p class="assistant-blocked"><strong>Assistant blocked:</strong> <span class="user-text"><%= assistantBlocked %></span></p>
   <% } %>
   <% if (ticket.agreed_check) { %>
-  <p><strong>Team's interpretation</strong></p>
+  <p><strong>Team's check</strong></p>
   <blockquote class="user-text"><%= ticket.agreed_check %></blockquote>
   <% if (allowed.adoptCheck) { %>
   <form method="post" action="/tickets/<%= ticket.key %>/adopt-check">
@@ -235,11 +235,11 @@
     <summary>Offer a clearer check</summary>
     <form method="post" action="/tickets/<%= ticket.key %>/agreed-check">
       <label>
-        Team's interpretation (leave empty to remove it)
+        Team's check (leave empty to remove it)
         <textarea name="agreed_check" rows="3" <% if (problem?.form === "agreedCheck") { %>aria-invalid="true" aria-describedby="agreed-check-error"<% } %>><%= ticket.agreed_check ?? ticket.fix_check ?? "" %></textarea>
       </label>
       <% if (problem?.form === "agreedCheck") { %><small id="agreed-check-error"><%= problem.message %></small><% } %>
-      <button type="submit" class="compact">Save agreed check</button>
+      <button type="submit" class="compact">Save team's check</button>
     </form>
   </details>
   <% } %>

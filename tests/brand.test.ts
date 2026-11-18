@@ -64,14 +64,22 @@ describe("the theme", () => {
   });
 });
 
-describe("the mark", () => {
-  it("is the favicon and sits beside the name in the header", async () => {
+describe("the logo", () => {
+  it("is the favicon and sits beside the name in the header, and is not the tick", async () => {
     const { app } = buildTestApp();
     const html = parse((await visitor(app).get("/sign-in")).text);
-    expect(html.querySelector("link[rel=icon]")?.getAttribute("href")).toBe("/assets/mark.svg");
-    expect(html.querySelector("header .brand img")?.getAttribute("src")).toBe("/assets/mark.svg");
-    const svg = await request(app).get("/assets/mark.svg");
+    expect(html.querySelector("link[rel=icon]")?.getAttribute("href")).toBe("/assets/brand.svg");
+    expect(html.querySelector("header .brand img")?.getAttribute("src")).toBe("/assets/brand.svg");
+    expect(
+      html.querySelector("img[src='/assets/mark.svg'], link[href='/assets/mark.svg']"),
+    ).toBeNull();
+    const svg = await request(app).get("/assets/brand.svg");
     expect(svg.status).toBe(200);
     expect(svg.headers["content-type"]).toMatch(/^image\/svg\+xml/);
+    // Neither the tick's lime nor its stroke: the tick belongs to the customer's Yes alone.
+    const logo = fs.readFileSync("public/brand.svg", "utf8").toLowerCase();
+    const lime = /fill="(#[0-9a-f]{6})"/i.exec(fs.readFileSync("public/mark.svg", "utf8"))![1]!;
+    expect(logo).not.toContain(lime.toLowerCase());
+    expect(logo).not.toContain("<path");
   });
 });

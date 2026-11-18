@@ -59,7 +59,7 @@ describe("the tick", () => {
     await resolveTicket(app, "SUP-1", customerOne);
     const main = await ticketMain(app);
     expect(ticks(main)).toHaveLength(1);
-    expect(main.querySelector(".confirmed")?.text).toContain("The customer confirmed it is fixed.");
+    expect(main.querySelector(".confirmed")?.text).toContain("Customer confirmed it is fixed.");
     expect(main.querySelector(".confirmed time")?.getAttribute("datetime")).toMatch(/Z$/);
     expect(ticks(await ticketMain(app, "/tickets"))).toHaveLength(0);
   });
