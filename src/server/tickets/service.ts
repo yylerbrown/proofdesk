@@ -1412,7 +1412,7 @@ export function createTicketService(
         if (before.status === "in_progress") {
           throw new HttpError(
             409,
-            "needs_owner",
+            "keeps_owner",
             `Ticket ${key} is in progress, so it must keep an owner. Someone else can take it.`,
           );
         }
