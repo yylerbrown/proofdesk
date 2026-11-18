@@ -12,6 +12,7 @@ export const SAVED_MESSAGES = {
   note: "Internal note added. The customer does not see it.",
   taken: "You own this ticket now.",
   started: "You own this ticket, and it is in progress.",
+  handedOff: "Handed off. The new owner has it now.",
   reopened: "Reopened. The team has your words.",
   released: "Ticket released. It has no owner now.",
   restored: "Ticket restored.",

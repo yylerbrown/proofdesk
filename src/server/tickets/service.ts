@@ -16,6 +16,7 @@ import {
   linkChangeSchema,
   markReadySchema,
   createTicketSchema,
+  handOffSchema,
   reopenSchema,
   deleteTicketSchema,
   type TicketListFilter,
@@ -276,7 +277,16 @@ function doneWhen(row: { fix_check: string | null; agreed_check: string | null }
   };
 }
 
-export function createTicketService(db: Db, prefix: string, budget: Budget = {}) {
+/** What the service needs to know from outside the database: who can own a ticket. */
+export type ServiceOptions = { teamMembers?: () => { id: string; name: string }[] };
+
+export function createTicketService(
+  db: Db,
+  prefix: string,
+  budget: Budget = {},
+  options: ServiceOptions = {},
+) {
+  const teamMembers = options.teamMembers ?? (() => []);
   pinPrefix(db, prefix);
 
   // Every public field is named here. A column added to the table later stays private
@@ -892,6 +902,17 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
         requirePermission(actor, "take", before);
         requireNotArchived(key, before);
         if (before.owner_id === actor.id) return before; // already theirs
+        // Take is for the inbox. Someone else's ticket is handed over, not taken.
+        if (before.owner_id !== null) {
+          throw new HttpError(
+            409,
+            "already_owned",
+            `${before.owner_name ?? "Someone"} already owns ticket ${key}.`,
+          );
+        }
+        if (before.status === "resolved") {
+          throw new HttpError(409, "not_open", `Ticket ${key} is resolved.`);
+        }
         return setOwner(before, actor.id, actor.name, actor);
       })();
       return toTicket(row, actor);
@@ -988,13 +1009,72 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
       return toTicket(row, actor);
     },
 
-    /** Leaves the ticket without an owner. Not while it is in progress. */
+    /**
+     * The owner, or an admin, hands the ticket straight to another team member. The form says
+     * whom it expects to own the ticket now, so a hand-off made from an old page is refused. An
+     * open question to the customer is withdrawn: the new owner asks again.
+     */
+    handOff(key: string, input: unknown, actor: Actor): Ticket {
+      const { to, expected_owner } = parse(handOffSchema, input);
+      const row = db.transaction(() => {
+        const before = requireRow(key, actor);
+        requirePermission(actor, "hand_off", before);
+        requireNotArchived(key, before);
+        if (before.status === "resolved") {
+          throw new HttpError(409, "not_open", `Ticket ${key} is resolved.`);
+        }
+        if (before.owner_id !== actor.id && actor.role !== "admin") {
+          throw new HttpError(
+            403,
+            "not_owner",
+            `Only ${before.owner_name ?? "its owner"}, who owns ticket ${key}, or an admin can hand it off.`,
+          );
+        }
+        if ((before.owner_id ?? "") !== expected_owner) {
+          throw new HttpError(
+            409,
+            "owner_changed",
+            `Ticket ${key} has changed hands since you opened it. Reload it and try again.`,
+          );
+        }
+        const target = teamMembers().find((member) => member.id === to);
+        if (target === undefined) {
+          throw new ValidationError("Choose a team member.", { to: ["Choose a team member."] });
+        }
+        if (target.id === before.owner_id) return before;
+        withdrawQuestion(before);
+        return {
+          ...setOwner(before, target.id, target.name, actor),
+          ready_at: null,
+          ready_token: null,
+        };
+      })();
+      return toTicket(row, actor);
+    },
+
+    /** The team members this ticket could be handed to: everyone eligible but its owner. */
+    handOffCandidates(ticket: Ticket): { id: string; name: string }[] {
+      return teamMembers().filter((member) => member.id !== ticket.owner_id);
+    },
+
+    /** Leaves the ticket without an owner. Only its owner, and not while it is in progress. */
     releaseTicket(key: string, actor: Actor): Ticket {
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "release", before);
         requireNotArchived(key, before);
         if (before.owner_id === null) return before; // nobody owns it
+        // Only the owner lets go of a ticket, and only before work starts.
+        if (before.owner_id !== actor.id) {
+          throw new HttpError(
+            403,
+            "not_owner",
+            `Only ${before.owner_name ?? "its owner"}, who owns ticket ${key}, can release it.`,
+          );
+        }
+        if (before.status === "resolved") {
+          throw new HttpError(409, "not_open", `Ticket ${key} is resolved.`);
+        }
         if (before.status === "in_progress") {
           throw new HttpError(
             409,
@@ -1395,12 +1475,21 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
         archive: !archived && can(actor, "archive", ticket),
         restore: archived && can(actor, "restore", ticket),
         delete: can(actor, "delete", ticket),
-        take: !archived && can(actor, "take", ticket) && ticket.owner_id !== actor.id,
+        take:
+          !archived &&
+          can(actor, "take", ticket) &&
+          ticket.owner_id === null &&
+          ticket.status !== "resolved",
         release:
           !archived &&
           can(actor, "release", ticket) &&
-          ticket.owner_id !== null &&
-          ticket.status !== "in_progress",
+          ticket.owner_id === actor.id &&
+          ticket.status === "new",
+        handOff:
+          !archived &&
+          can(actor, "hand_off", ticket) &&
+          ticket.status !== "resolved" &&
+          (ticket.owner_id === actor.id || actor.role === "admin"),
         agreeCheck: !archived && can(actor, "agree_check", ticket),
         linkChange: !archived && can(actor, "link_change", ticket),
         start:

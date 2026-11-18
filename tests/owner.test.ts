@@ -29,13 +29,18 @@ describe("a named human owner", () => {
     });
   });
 
-  it("lets another team member take it over, and says so in the history", async () => {
+  it("passes from one owner to another only by a hand-off, and says so in the history", async () => {
     const { app } = await setup();
     await as(app, teamActor).post("/api/tickets/SUP-1/take");
-    const over = await admin(app).post("/api/tickets/SUP-1/take");
-    expect(over.body.owner_name).toBe("Admin");
+    const taken = await admin(app).post("/api/tickets/SUP-1/take");
+    expect(taken.body.error.code).toBe("already_owned");
+    const handed = await as(app, teamActor)
+      .post("/api/tickets/SUP-1/hand-off")
+      .send({ to: "dev-admin-1", expected_owner: "dev-team-1" });
+    expect(handed.body.owner_name).toBe("Admin");
     const history = await admin(app).get("/api/tickets/SUP-1/events");
     expect(history.body.at(-1).data).toEqual({ from: "Team Member", to: "Admin" });
+    expect(history.body.at(-1).actor).toBe("dev-team-1");
   });
 
   it("writes nothing when the owner takes their own ticket again", async () => {
@@ -131,7 +136,10 @@ describe("the owner on the ticket page", () => {
     expect(page.text).not.toContain("Take this ticket");
     expect(page.text).toContain("<td>Owner: Team Member</td>");
 
-    expect((await admin(app).get("/tickets/SUP-1")).text).toContain("Take over from Team Member");
+    // An admin may hand it on, but not take it over.
+    const adminPage = (await admin(app).get("/tickets/SUP-1")).text;
+    expect(adminPage).toContain("Hand off to…");
+    expect(adminPage).not.toContain("Take this ticket");
 
     const customer = await as(app, customerOne).get("/tickets/SUP-1");
     expect(customer.text).toContain("<p>Team Member</p>");

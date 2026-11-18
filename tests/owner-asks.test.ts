@@ -49,8 +49,10 @@ describe("who asks the customer", () => {
       .send(ask);
     expect(agent.status).toBe(403);
 
-    // The admin takes the ticket over; the former owner's old form is refused.
-    await admin(app).post("/api/tickets/SUP-1/take");
+    // An admin hands the ticket to themselves; the former owner's old form is refused.
+    await admin(app)
+      .post("/api/tickets/SUP-1/hand-off")
+      .send({ to: "dev-admin-1", expected_owner: "dev-team-1" });
     const former = await as(app, teamActor).post("/tickets/SUP-1/ready").type("form").send(ask);
     expect(former.status).toBe(403);
     expect((await reread(app)).ready_at).toBeNull();
