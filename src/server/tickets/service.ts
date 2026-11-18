@@ -145,6 +145,8 @@ export const DEMO_SEED_KEY = "demo_seeded";
 /** What seeding wrote: the rows, and each sample ticket's text as first written. */
 export type DemoSeed = {
   tickets: number[];
+  /** The sample made for assistants: on the demo, it is handed to every visitor's connection. */
+  assistant?: number;
   entries: number[];
   events: number[];
   text: Record<string, Partial<repository.TicketRow>>;
@@ -337,10 +339,19 @@ export function createTicketService(
       throw new HttpError(
         503,
         "demo_not_ready",
-        "This demo's sample data was seeded before agent connections existed. Reset the demo database.",
+        "Assistant connections are off on this demo until its operator resets its database.",
       );
     }
     return seed;
+  }
+
+  /**
+   * The tickets a demo connection works on: the sample made for assistants, handed to every
+   * visitor's connection. A seed recorded before it was named falls back to every sample.
+   */
+  function demoTicketIds(): number[] {
+    const seed = seededOrRefused();
+    return seed.assistant !== undefined ? [seed.assistant] : seed.tickets;
   }
 
   function toTicket(row: repository.TicketRow, actor?: Actor): Ticket {
@@ -497,7 +508,7 @@ export function createTicketService(
    */
   function requireRow(key: string, actor: Actor): repository.TicketRow {
     const id = idFromKey(key);
-    if (isDemoAgent(actor) && !seededOrRefused().tickets.includes(id)) {
+    if (isDemoAgent(actor) && !demoTicketIds().includes(id)) {
       throw new HttpError(404, "ticket_not_found", `No ticket ${key}.`);
     }
     // An agent works only on the tickets handed to its connection.
@@ -643,7 +654,7 @@ export function createTicketService(
           return rows.filter((row) => handed.includes(row.id)).map((row) => toTicket(row, actor));
         }
         if (!isDemoAgent(actor)) return rows.map((row) => toTicket(row, actor));
-        const seeded = seededOrRefused().tickets;
+        const seeded = demoTicketIds();
         return rows.filter((row) => seeded.includes(row.id)).map((row) => toTicket(row, actor));
       };
       if (filter === "archived") {
@@ -1592,7 +1603,7 @@ export function createTicketService(
      * Records what seeding wrote, so a demo connection can be shown only that. Called once,
      * right after the demo's sample data is created on an empty database.
      */
-    recordDemoSeed(): void {
+    recordDemoSeed(assistantKey?: string): void {
       const ids = (table: string) =>
         (db.prepare(`SELECT id FROM ${table}`).all() as { id: number }[]).map((r) => r.id);
       const text: DemoSeed["text"] = {};
@@ -1607,8 +1618,10 @@ export function createTicketService(
           try_url: row.try_url,
         };
       }
+      const assistant = assistantKey === undefined ? undefined : parseKey(prefix, assistantKey);
       const seed: DemoSeed = {
         tickets: ids("tickets"),
+        ...(assistant === null || assistant === undefined ? {} : { assistant }),
         entries: ids("ticket_entries"),
         events: ids("ticket_events"),
         text,

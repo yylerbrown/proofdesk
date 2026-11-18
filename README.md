@@ -53,8 +53,8 @@ For Claude Code it looks like this:
 claude mcp add --transport http proofdesk https://support-desk-demo.fly.dev/mcp --header "Authorization: Bearer <your key>"
 ```
 
-Your assistant sees only the sample tickets and what it writes itself, never what other visitors
-write. It can read a ticket (which starts with the customer's check, as `done_when`), attach
+Your assistant sees only the sample ticket made for assistants, which is handed to every visitor's
+connection, and what it writes itself, never what other visitors' assistants write. It can read a ticket (which starts with the customer's check, as `done_when`), attach
 evidence, and ask the owner to request the customer's check; it can never answer for the
 customer or resolve. On the real site an admin issues connections on the **Connections** page,
 and a ticket's owner hands the ticket to one with **Hand to an AI assistant**: an assistant sees

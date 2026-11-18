@@ -80,7 +80,7 @@ export function seedDemo(service: TicketService): void {
 
   // A sample made for a visitor's own AI assistant to work on: a clear check and a small,
   // complete example it can reproduce on its own machine.
-  service.createTicket(
+  const assistantSample = service.createTicket(
     {
       title: "Sample for your AI assistant: the total adds tax twice",
       description:
@@ -92,6 +92,8 @@ export function seedDemo(service: TicketService): void {
     },
     customer,
   );
+  // Owned and in progress, so an assistant's request for review reaches a named person.
+  service.takeAndStart(assistantSample.key, team);
 
   // Every status in the samples, so each filter changes the list: one the customer confirmed,
   // and one where another customer said No and it went back to its owner.
@@ -130,7 +132,7 @@ export function seedDemo(service: TicketService): void {
 
   // Record what was seeded, so a visitor's assistant is shown only this, never what other
   // visitors write.
-  service.recordDemoSeed();
+  service.recordDemoSeed(assistantSample.key);
 }
 
 /** The team takes a sample, links a fix and asks; its customer answers. */
