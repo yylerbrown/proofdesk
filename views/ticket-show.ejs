@@ -25,7 +25,7 @@
 <% } %>
 
 <% if (locals.recordedRun) { %>
-<p class="recorded-run">A recorded example of a real assistant run: what it sent is shown here as it sent it. <a href="/assistant-run">See its transcript and files</a></p>
+<p class="recorded-run">A recorded example of a real assistant run: what it sent is shown here as it sent it. The run worked on the assistant sample, SUP-4, in an earlier copy of this demo, so its own words name SUP-4. <a href="/assistant-run">See its transcript and files</a></p>
 <% } %>
 <%# On the demo: the next role to view this same ticket as, or where resolved tickets are listed. %>
 <% if (locals.demoNext) { %>
@@ -234,9 +234,6 @@
 <% if ((ticket.fix_check || ticket.agreed_check || allowed.agreeCheck) && !allowed.answer) { %>
 <section>
   <h2>How will we know it's fixed?</h2>
-  <% if (assistantSignal) { %>
-  <p class="<%= assistantSignal.label === "Assistant blocked:" ? "assistant-blocked" : "review-requested" %>"><strong><%= assistantSignal.label %></strong> <span class="user-text"><%= assistantSignal.text %></span></p>
-  <% } %>
   <% if (ticket.agreed_check) { %>
   <p><strong>Team's check</strong></p>
   <blockquote class="user-text"><%= ticket.agreed_check %></blockquote>
@@ -251,6 +248,13 @@
   <blockquote class="user-text"><%= ticket.fix_check %></blockquote>
   <% } else { %>
   <p>The customer did not say.</p>
+  <% } %>
+  <%# What the ticket's assistant last asked for, after the check and labelled as the assistant's, so it never reads as the customer's words. %>
+  <% if (assistantSignal) { %>
+  <div class="assistant-signal">
+    <p class="signal-from"><small>From the AI assistant</small></p>
+    <p class="<%= assistantSignal.label === "Assistant blocked:" ? "assistant-blocked" : "review-requested" %>"><strong><%= assistantSignal.label %></strong> <span class="user-text"><%= assistantSignal.text %></span></p>
+  </div>
   <% } %>
   <% if (allowed.agreeCheck) { %>
   <details <% if (problem?.form === "agreedCheck") { %>open<% } %>>

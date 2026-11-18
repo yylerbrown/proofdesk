@@ -172,6 +172,18 @@ main > form,
   background: var(--pd-subtle);
   font-size: var(--pd-text-sm);
 }
+/* What a ticket's assistant asked for, set apart under the check and labelled as its own. */
+.assistant-signal {
+  margin-bottom: var(--pd-space-3);
+  padding-left: var(--pd-space-3);
+  border-left: 2px solid var(--pd-border-strong);
+}
+.assistant-signal p {
+  margin-bottom: var(--pd-space-1);
+}
+.signal-from {
+  color: var(--pd-muted);
+}
 /* Small explanations under a title or beside a control: muted, never body-black. */
 .list-note,
 .role-note,
