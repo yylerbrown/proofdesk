@@ -145,6 +145,16 @@ export type TicketListFilter = (typeof TICKET_LIST_FILTERS)[number];
 
 export const listQuerySchema = z.object({
   status: z.enum(TICKET_LIST_FILTERS).optional(),
+  owner: z.enum(["me", "none"]).optional().meta({
+    description: "Narrow to the tickets you own (me) or that nobody owns yet (none).",
+  }),
+  // A search box sent empty means no search.
+  q: z
+    .preprocess(
+      (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+      z.string().trim().max(100, "Must be at most 100 characters.").optional(),
+    )
+    .meta({ description: "Words to find in the title or description, in any case." }),
   page: z.coerce.number().int().min(1).max(100000).optional(),
   cursor: z.string().max(100).optional().meta({
     description: "Where the previous page ended, as given by its next_cursor or Link header.",

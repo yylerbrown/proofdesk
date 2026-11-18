@@ -93,14 +93,36 @@ export type Page = { limit: number; offset: number };
  * Every ticket that is not archived: open ones first, newest first, then resolved ones.
  * Pass a status to get only that status.
  */
-export function listAllTickets(db: Db, status: TicketStatus | null, page: Page): TicketRow[] {
+/**
+ * How a list may be narrowed: to one owner or to tickets nobody owns, and to tickets whose title
+ * or description holds the search, a LIKE pattern the service escapes.
+ */
+export type Narrowing = { ownerId: string | null; unassigned: boolean; search: string | null };
+export const NO_NARROWING: Narrowing = { ownerId: null, unassigned: false, search: null };
+
+// The same conditions in every list below. A fixed string: the values are bound.
+const NARROWED = `AND (@ownerId IS NULL OR owner_id = @ownerId)
+       AND (@unassigned = 0 OR owner_id IS NULL)
+       AND (@search IS NULL OR title LIKE @search ESCAPE '\\' OR description LIKE @search ESCAPE '\\')`;
+
+function narrowed(n: Narrowing) {
+  return { ownerId: n.ownerId, unassigned: n.unassigned ? 1 : 0, search: n.search };
+}
+
+export function listAllTickets(
+  db: Db,
+  status: TicketStatus | null,
+  page: Page,
+  narrow: Narrowing = NO_NARROWING,
+): TicketRow[] {
   return db
     .prepare(
       `SELECT * FROM tickets
        WHERE archived_at IS NULL AND (@status IS NULL OR status = @status)
+       ${NARROWED}
        ORDER BY status = 'resolved', id DESC LIMIT @limit OFFSET @offset`,
     )
-    .all({ status, ...page }) as TicketRow[];
+    .all({ status, ...page, ...narrowed(narrow) }) as TicketRow[];
 }
 
 /**
@@ -113,15 +135,17 @@ export function listTicketsAmong(
   ids: number[],
   status: TicketStatus | null,
   page: Page,
+  narrow: Narrowing = NO_NARROWING,
 ): TicketRow[] {
   return db
     .prepare(
       `SELECT * FROM tickets
        WHERE id IN (SELECT value FROM json_each(@ids)) AND archived_at IS NULL
          AND (@status IS NULL OR status = @status)
+       ${NARROWED}
        ORDER BY status = 'resolved', id DESC LIMIT @limit OFFSET @offset`,
     )
-    .all({ ids: JSON.stringify(ids), status, ...page }) as TicketRow[];
+    .all({ ids: JSON.stringify(ids), status, ...page, ...narrowed(narrow) }) as TicketRow[];
 }
 
 /**
@@ -134,25 +158,32 @@ export function listTicketsFiledBy(
   createdBy: string,
   status: TicketStatus | null,
   page: Page,
+  narrow: Narrowing = NO_NARROWING,
 ): TicketRow[] {
   return db
     .prepare(
       `SELECT * FROM tickets
        WHERE created_by = @createdBy AND archived_at IS NULL
          AND (@status IS NULL OR status = @status)
+       ${NARROWED}
        ORDER BY status = 'resolved', id DESC LIMIT @limit OFFSET @offset`,
     )
-    .all({ createdBy, status, ...page }) as TicketRow[];
+    .all({ createdBy, status, ...page, ...narrowed(narrow) }) as TicketRow[];
 }
 
 /** Archived tickets only, newest first. */
-export function listArchivedTickets(db: Db, page: Page): TicketRow[] {
+export function listArchivedTickets(
+  db: Db,
+  page: Page,
+  narrow: Narrowing = NO_NARROWING,
+): TicketRow[] {
   return db
     .prepare(
       `SELECT * FROM tickets WHERE archived_at IS NOT NULL
+       ${NARROWED}
        ORDER BY id DESC LIMIT @limit OFFSET @offset`,
     )
-    .all(page) as TicketRow[];
+    .all({ ...page, ...narrowed(narrow) }) as TicketRow[];
 }
 
 export type TicketText = {

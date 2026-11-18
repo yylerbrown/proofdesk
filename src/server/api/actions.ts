@@ -84,11 +84,12 @@ export const ACTIONS: ApiAction[] = [
     query: listQuerySchema,
     paged: true,
     run: ({ service, actor, query }) => {
-      const { status, page, cursor } = parse(listQuerySchema, query);
+      const { status, page, cursor, owner, q } = parse(listQuerySchema, query);
       const tickets = service.listTickets(
         status ?? "all",
         actor,
         cursor ? pageOf(cursor) : (page ?? 1),
+        { owner, q },
       );
       if (actor.kind !== "agent") return tickets;
       return tickets.map((ticket) => ({

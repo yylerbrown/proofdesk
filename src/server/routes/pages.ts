@@ -82,6 +82,20 @@ function demoNext(ticket: Ticket, actor: Actor) {
   return null;
 }
 
+/** The ticket list's filters, as they stand in its address. */
+type ListFilters = { status: string; owner?: "me" | "none"; q?: string };
+
+/** The address of the ticket list with these filters, leaving out the ones at their default. */
+function listHref(filters: ListFilters, page?: number): string {
+  const params = new URLSearchParams();
+  if (filters.status !== "all") params.set("status", filters.status);
+  if (filters.owner) params.set("owner", filters.owner);
+  if (filters.q) params.set("q", filters.q);
+  if (page !== undefined) params.set("page", String(page));
+  const query = params.toString();
+  return query ? `/tickets?${query}` : "/tickets";
+}
+
 // A person who pressed "Not now" on the invitation to connect an assistant: kept in their
 // browser, so it needs no account setting and no script.
 const INVITE_COOKIE = "assistant_invite";
@@ -358,10 +372,12 @@ export function pagesRouter(service: TicketService): Router {
 
   router.get("/tickets", (req, res) => {
     const actor = signedIn(req);
-    const { status, page } = parse(listQuerySchema, req.query);
+    const { status, page, owner, q } = parse(listQuerySchema, req.query);
     const current = status ?? "all";
     const pageNumber = page ?? 1;
-    const tickets = service.listTickets(current, actor, pageNumber);
+    const tickets = service.listTickets(current, actor, pageNumber, { owner, q });
+    // Every link on the list keeps the other filters, so a filtered view can be shared.
+    const filters: ListFilters = { status: current, owner, q };
     const signals = service.assistantSignals(tickets, actor);
     // The invitation to bring an assistant: for the team only, until one is connected. On the
     // demo every visitor gets their own connection, so it always invites.
@@ -392,7 +408,12 @@ export function pagesRouter(service: TicketService): Router {
       })),
       viewerRole: actor.role,
       // A full page means there may be older tickets on the next one.
-      nextPage: tickets.length === LIST_PAGE_SIZE ? pageNumber + 1 : null,
+      nextPage: tickets.length === LIST_PAGE_SIZE ? listHref(filters, pageNumber + 1) : null,
+      filters,
+      href: (change: Partial<ListFilters>) => listHref({ ...filters, ...change }),
+      // Who owns a ticket is the team's question; a customer's list is their own tickets.
+      ownerFilters: actor.role !== "customer",
+      narrowed: owner !== undefined || q !== undefined,
       showArchivedFilter: can(actor, "list_archived"),
       invite,
     });

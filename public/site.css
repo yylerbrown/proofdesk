@@ -709,22 +709,22 @@ form.inline {
  * get the soft grey under the pointer. The row scrolls sideways on its own if it must; the page
  * never does.
  */
-nav[aria-label="Filter by status"] {
+:is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"]) {
   display: block;
-  margin-bottom: var(--pd-space-3);
+  margin: 0;
   overflow-x: auto;
 }
-nav[aria-label="Filter by status"] ul {
+:is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"]) ul {
   display: flex;
   gap: 2px;
   margin: 0;
   padding: 0;
   white-space: nowrap;
 }
-nav[aria-label="Filter by status"] li {
+:is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"]) li {
   padding: 0;
 }
-nav[aria-label="Filter by status"] li a {
+:is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"]) li a {
   display: inline-block;
   margin: 0;
   padding: 5px 10px;
@@ -738,15 +738,42 @@ nav[aria-label="Filter by status"] li a {
     background-color var(--pd-ease),
     color var(--pd-ease);
 }
-nav[aria-label="Filter by status"] li a:hover {
+:is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"]) li a:hover {
   background-color: var(--pd-subtle);
   color: var(--pd-text);
 }
-nav[aria-label="Filter by status"] a[aria-current="page"],
-nav[aria-label="Filter by status"] a[aria-current="page"]:hover {
+:is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"]) a[aria-current="page"],
+:is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"])
+  a[aria-current="page"]:hover {
   border-color: var(--pd-border-strong);
   background-color: var(--pd-surface);
   color: var(--pd-text);
+}
+/*
+ * The list's filters on one row that wraps: status, owner (for the team) and a search box, which
+ * takes the rest of the row on a wide screen and a row of its own on a phone.
+ */
+.list-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pd-space-2) var(--pd-space-5);
+  margin-bottom: var(--pd-space-3);
+}
+form.list-search {
+  flex: 1 1 16rem;
+  max-width: 24rem;
+  margin: 0 0 0 auto;
+}
+form.list-search :is(input, button) {
+  margin: 0;
+  font-size: var(--pd-text-sm);
+}
+@media (max-width: 639px) {
+  form.list-search {
+    max-width: none;
+    margin-left: 0;
+  }
 }
 
 /* ---------- 7. Tables and list rows ---------- */
