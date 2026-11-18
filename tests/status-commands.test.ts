@@ -168,11 +168,9 @@ describe("starting work", () => {
     expect(unowned.querySelector(".next-action button")?.text.trim()).toBe(
       "Take ticket and start work",
     );
-    // Taking without starting work is a secondary action, in More.
-    expect(panel.querySelector("details.more form[action$='/take'] button")?.text).toBe(
-      "Take this ticket",
-    );
-    // The panel's Start work takes the ticket too, so it is the same one step as the top.
+    // Taking without starting work is left to the API: the page's In Progress takes it too.
+    expect(panel.querySelector("form[action$='/take']")).toBeNull();
+    // The status row's In Progress takes the ticket too, so it is the same one step as the top.
     expect(panel.querySelector("form[action$='/status']")).toBeNull();
     await as(app, teamActor).post("/api/tickets/SUP-1/take");
     const mine = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);

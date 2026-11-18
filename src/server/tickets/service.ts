@@ -711,6 +711,40 @@ export function createTicketService(
     }
   }
 
+  /** Only the ticket's owner, or an admin, sends a ticket back to New. */
+  function requireOwnerOrAdminReturns(key: string, row: repository.TicketRow, actor: Actor): void {
+    if (row.owner_id === actor.id || actor.role === "admin") return;
+    throw new HttpError(
+      403,
+      "not_owner",
+      `Only ${row.owner_name ?? "its owner"}, who owns ticket ${key}, or an admin can return it to New.`,
+    );
+  }
+
+  /**
+   * Sends an in-progress ticket back to New, with no owner, so anyone on the team can take it.
+   * An open question to the customer is withdrawn first, with its own history entry, and any
+   * assistant's work on the ticket ends, as on a hand-off. Call it inside a transaction.
+   */
+  function returnToNew(
+    key: string,
+    before: repository.TicketRow,
+    actor: Actor,
+  ): repository.TicketRow {
+    requireOwnerOrAdminReturns(key, before, actor);
+    const now = new Date().toISOString();
+    if (before.ready_at !== null) {
+      repository.clearReady(db, before.id, now);
+      log(before.id, actor, "question_withdrawn", {}, now);
+    }
+    endAgent(before, "the ticket went back to New", actor, now);
+    // The status first: the database refuses an in-progress ticket without an owner.
+    repository.updateTicketStatus(db, before.id, "new", now);
+    const unowned = setOwner(before, null, null, actor);
+    log(before.id, actor, "status_changed", { from: before.status, to: "new" }, now);
+    return { ...unowned, status: "new", ...noQuestion, updated_at: now };
+  }
+
   /** Changes the owner and writes the history entry. Call it inside a transaction. */
   function setOwner(
     before: repository.TicketRow,
@@ -864,12 +898,12 @@ export function createTicketService(
         requireNotArchived(key, before);
         if (before.status === status) {
           // Work that has started is the owner's: anyone else asking to start it is refused,
-          // even though nothing would change.
+          // even though nothing would change. Asking for New on a New ticket changes nothing.
           if (status === "in_progress") requireOwnerStarts(key, before, actor);
           return before; // nothing changes, so nothing is logged
         }
         if (status === "resolved") throw needsCustomer(key);
-        // The status moves only by the workflow's own steps. This is now only "start work".
+        // The status moves only by the workflow's own steps: start work, or send it back to New.
         if (before.status === "resolved") {
           throw new HttpError(
             409,
@@ -877,13 +911,7 @@ export function createTicketService(
             `Ticket ${key} is resolved. A resolved ticket moves only by reopening it.`,
           );
         }
-        if (status === "new") {
-          throw new HttpError(
-            409,
-            "cannot_return_to_new",
-            `Ticket ${key} is in progress. Started work stays in progress with its owner.`,
-          );
-        }
+        if (status === "new") return returnToNew(key, before, actor);
         requireOwnerStarts(key, before, actor);
         const now = new Date().toISOString();
         repository.updateTicketStatus(db, before.id, status, now);
@@ -1051,6 +1079,14 @@ export function createTicketService(
             403,
             "not_owner",
             `Only ${before.owner_name}, who owns ticket ${key}, can ask the customer to verify.`,
+          );
+        }
+        // Worded from the ticket as it is now, which a page opened earlier may not show.
+        if (before.status === "resolved") {
+          throw new HttpError(
+            409,
+            "not_in_progress",
+            `Ticket ${key} was resolved, so nothing was sent. Reopen it first if it needs another check.`,
           );
         }
         if (before.status !== "in_progress") {
@@ -1861,6 +1897,23 @@ export function createTicketService(
       return signals;
     },
 
+    /**
+     * The keys of the open tickets, of these, that their customer reopened and that nobody has
+     * asked the customer about since, so the team's list can say why each one is back.
+     */
+    reopenedByCustomer(tickets: Ticket[]): Set<string> {
+      const keyOf = new Map<number, string>();
+      for (const ticket of tickets) {
+        const id = parseKey(prefix, ticket.key);
+        if (ticket.waiting_on === "team" && id !== null) keyOf.set(id, ticket.key);
+      }
+      const keys = new Set<string>();
+      for (const id of repository.reopenedByCustomer(db, [...keyOf.keys()])) {
+        keys.add(keyOf.get(id)!);
+      }
+      return keys;
+    },
+
     /** The conversation, oldest first. Internal notes only for those who may read them. */
     listEntries(key: string, actor: Actor): TicketEntry[] {
       const row = requireRow(key, actor);
@@ -2077,6 +2130,12 @@ export function createTicketService(
           can(actor, "change_status", ticket) &&
           ticket.status === "new" &&
           ticket.owner_id === null,
+        // The same rules as changeStatus to New.
+        returnToNew:
+          !archived &&
+          can(actor, "change_status", ticket) &&
+          ticket.status === "in_progress" &&
+          (ticket.owner_id === actor.id || actor.role === "admin"),
         // The same rules as reopen.
         reopen:
           !archived &&

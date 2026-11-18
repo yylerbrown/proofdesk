@@ -6,8 +6,21 @@
   <li><a href="/assistant-run/files/transcript.public.jsonl">The transcript</a>, every step of the run</li>
   <li><a href="/assistant-run/files/sup4/total.js">total.js</a>, the code it wrote: the ticket's function and its fix</li>
   <li><a href="/assistant-run/files/sup4/total.test.js">total.test.js</a>, the test it ran</li>
-  <% if (recordedKey) { %>
+  <% if (recordedKey && viewer && viewer.role !== "customer") { %>
   <li><a href="/tickets/<%= recordedKey %>">The ticket it left, recorded on this demo</a>: its spec, evidence and review request as it sent them, in the team's view</li>
+  <% } else if (recordedKey) { %>
+  <%# Another customer filed it, so a customer cannot open it. A customer or a signed-out
+      visitor opens it as the demo team member instead, the same way Switch role does. %>
+  <% const teamMember = demoPeople.find((person) => person.role === "team"); %>
+  <% if (teamMember) { %>
+  <li class="recorded-ticket">The ticket it left, <%= recordedKey %>, recorded on this demo: its spec, evidence and review request as it sent them, in the team's view.
+    <form method="post" action="/sign-in/dev" class="inline">
+      <input type="hidden" name="id" value="<%= teamMember.id %>" />
+      <input type="hidden" name="next" value="/tickets/<%= recordedKey %>" />
+      <button type="submit" class="link">Open it as <%= teamMember.name %></button>
+    </form>
+  </li>
+  <% } %>
   <% } %>
 </ul>
 <%# The summary in docs/assistant-run/summary.md, as headed sections: the same words, without

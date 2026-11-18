@@ -195,7 +195,7 @@ export const RESOLVE_REASONS = [
 ] as const;
 export type ResolveReason = (typeof RESOLVE_REASONS)[number];
 export const RESOLVE_REASON_LABELS: Record<ResolveReason, string> = {
-  fixed_no_reply: "Fixed, but the customer has not replied",
+  fixed_no_reply: "Fixed, not yet confirmed",
   duplicate: "Duplicate of another ticket",
   wont_fix: "Won't fix",
   cannot_reproduce: "Cannot reproduce",

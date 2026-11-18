@@ -66,10 +66,10 @@ describe("who resolves", () => {
     const sentence =
       "The customer confirms a fix with Yes; the team can also resolve with a reason.";
     const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    // On the ticket, Resolve sits under the status for those who may; the line says the way on.
-    expect(page.querySelector(".status-rule")?.text).toBe(
-      "Start work, then ask the customer to verify.",
-    );
+    // On the ticket, Resolved is in the status row for those who may, and opens the reasons.
+    const row = page.querySelector(".status-control .status-row")!;
+    expect(row.querySelector("details.resolve summary")?.text).toBe("Resolved");
+    expect(row.querySelector("details.resolve select[name=reason]")).not.toBeNull();
     const edit = parse((await as(app, teamActor).get("/tickets/SUP-1/edit")).text);
     expect(edit.querySelector(".status-rule")?.text).toBe(sentence);
     // The customer who filed it is not told they cannot.
@@ -151,7 +151,7 @@ describe("the team's next step", () => {
       note: 'Sends the customer "Did this fix it?".',
     });
     // The longer form, with its optional boxes, works too: never a greyed button.
-    expect(askStep.querySelector("form#ask button[type=submit]")?.hasAttribute("disabled")).toBe(
+    expect(askStep.querySelector("#ask form button[type=submit]")?.hasAttribute("disabled")).toBe(
       false,
     );
 

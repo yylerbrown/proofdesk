@@ -22,6 +22,7 @@ import {
   ticketFiledWith,
 } from "../pages/form-id.js";
 import { readListPageQuery } from "../pages/list-query.js";
+import { statusControl } from "../pages/status-control.js";
 import { rememberSaved, takeProblem, takeSaved, type SavedKey } from "../pages/saved.js";
 import { RESOLVE_REASON_LABELS, TICKET_STATUSES } from "../tickets/schemas.js";
 import { LIST_PAGE_SIZE, type Ticket, type TicketService } from "../tickets/service.js";
@@ -78,12 +79,15 @@ function focusField(form: Problem["form"], fieldErrors: Record<string, string[] 
   return fields.find((name) => (fieldErrors[name] ?? []).length > 0) ?? fields[0];
 }
 
-/** The sample a demo visitor files when they start the ticket workflow. Made up, like the demo. */
+/**
+ * The sample a demo visitor files when they start the ticket workflow. Made up, like the demo.
+ * The page address stays empty: a made-up address would be filed as if it were the visitor's.
+ */
 const WALKTHROUGH_SAMPLE = {
   title: "The export button downloads an empty file",
   description:
     "When I export this month's report as CSV, the file has the header row and nothing else.",
-  where_url: "https://example.com/reports",
+  where_url: "",
   fix_check: "I export this month's report and the file has every row.",
 };
 
@@ -187,13 +191,14 @@ function askBlockedReason(ticket: Ticket, actor: Actor): string | null {
 }
 type TicketAction = (key: string, input: unknown, actor: Actor) => Ticket;
 
-// What each ticket-page form says it saved. The answer form says one thing or the other.
-const FORM_SAVED: Record<Problem["form"], (input: unknown) => SavedKey> = {
+// What each ticket-page form says it saved. The answer form says one thing or the other, and
+// reopening says one thing to the customer and another to the team.
+const FORM_SAVED: Record<Problem["form"], (input: unknown, actor: Actor) => SavedKey> = {
   agreedCheck: () => "check",
   changeLink: () => "link",
   ready: () => "ready",
   evidence: () => "evidence",
-  reopen: () => "reopened",
+  reopen: (_input, actor) => (actor.role === "customer" ? "reopened" : "reopenedByTeam"),
   handOff: () => "handedOff",
   resolve: () => "resolvedByTeam",
   answer: (input) =>
@@ -303,6 +308,7 @@ export function pagesRouter(service: TicketService): Router {
       assistantSignal: service.assistantSignals([ticket], actor).get(ticket.key) ?? null,
       demoNext: demoNext(ticket, actor),
       nextStep: nextStep(ticket, allowed),
+      statusRow: statusControl(ticket, allowed, actor),
       recordedRun: service.recordedRunKey() === ticket.key,
       assistantSampleKey: service.assistantSampleKey(),
       handOffTo: service.handOffCandidates(ticket),
@@ -331,7 +337,7 @@ export function pagesRouter(service: TicketService): Router {
       const actor = signedIn(req);
       try {
         const ticket = run(req.params.key as string, req.body, actor);
-        rememberSaved(res, FORM_SAVED[form](req.body));
+        rememberSaved(res, FORM_SAVED[form](req.body, actor));
         res.redirect(303, `/tickets/${ticket.key}`);
       } catch (err) {
         if (!(err instanceof ValidationError)) throw err;
@@ -370,6 +376,8 @@ export function pagesRouter(service: TicketService): Router {
     // Every link on the list keeps the other filters, so a filtered view can be shared.
     const filters: ListFilters = { status: current, owner, q };
     const signals = service.assistantSignals(tickets, actor);
+    const reopened =
+      actor.role === "customer" ? new Set<string>() : service.reopenedByCustomer(tickets);
     // The invitation to bring an assistant: for the team only, until one is connected. On the
     // demo every visitor gets their own connection, so it always invites.
     const connected = actor.demo === true ? 0 : service.connectedAssistants();
@@ -395,7 +403,7 @@ export function pagesRouter(service: TicketService): Router {
         // What an assistant said it needs is what the team needs to see first.
         waiting: signals.has(ticket.key)
           ? `${signals.get(ticket.key)!.label} ${signals.get(ticket.key)!.text}`
-          : waitingOn(ticket, actor.role),
+          : waitingOn(ticket, actor.role, reopened.has(ticket.key)),
       })),
       viewerRole: actor.role,
       // A full page means there may be older tickets on the next one.
@@ -692,7 +700,8 @@ export function pagesRouter(service: TicketService): Router {
     const actor = signedIn(req);
     const before = service.getTicket(req.params.key, actor).status;
     const ticket = service.changeStatus(req.params.key, req.body, actor);
-    if (ticket.status !== before) rememberSaved(res, "status");
+    if (ticket.status === "new" && before !== "new") rememberSaved(res, "returnedToNew");
+    else if (ticket.status !== before) rememberSaved(res, "status");
     res.redirect(303, `/tickets/${ticket.key}`);
   });
 

@@ -176,17 +176,18 @@ describe("from merged to confirmed", () => {
     expect((await admin(app).get("/api/tickets/SUP-1")).body.status).toBe("in_progress");
   });
 
-  it("refuses to move an asked ticket back to New, and keeps the question open", async () => {
+  it("withdraws the open question when its owner moves the asked ticket back to New", async () => {
     const { app } = await setup();
     const token = (await askCustomer(app)).body.ready_token as string;
     const back = await as(app, teamActor).patch("/api/tickets/SUP-1").send({ status: "new" });
-    expect(back.status).toBe(409);
-    expect(back.body.error.code).toBe("cannot_return_to_new");
-    expect((await admin(app).get("/api/tickets/SUP-1")).body.ready_token).toBe(token);
+    expect(back.status).toBe(200);
+    expect(back.body).toMatchObject({ status: "new", ready_at: null, owner_id: null });
+    // The customer's open answer form stops working: there is no question to answer now.
     const answered = await as(app, customerOne)
       .post("/api/tickets/SUP-1/answer")
       .send({ fixed: "yes", ready_token: token });
-    expect(answered.status).toBe(200);
+    expect(answered.status).toBe(409);
+    expect((await admin(app).get("/api/tickets/SUP-1")).body.status).toBe("new");
   });
 
   it("is the team's to start: a customer cannot add the link or ask themselves", async () => {

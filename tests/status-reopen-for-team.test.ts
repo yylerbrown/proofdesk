@@ -36,17 +36,20 @@ async function resolvedByTheTeam() {
 }
 
 describe("Reopen for whoever the rules allow", () => {
-  it("shows the team a Reopen button under the status, and it reopens the ticket", async () => {
+  it("opens the team's reopen from In Progress in the status row, and it reopens the ticket", async () => {
     const { app } = await resolvedByTheTeam();
     const html = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     const panel = html.querySelector("aside.ticket-panel")!;
     const reopen = panel.querySelector("details.reopen")!;
-    expect(reopen.querySelector("summary[role=button]")?.text).toBe("Reopen");
+    expect(reopen.querySelector("summary[role=button]")?.text).toBe("In Progress");
     expect(reopen.querySelector("form")?.getAttribute("action")).toBe("/tickets/SUP-1/reopen");
-    // The customer's own "Still happening?" stays theirs, and the line saying who can reopen
-    // gives way to the button.
+    expect(reopen.querySelector("form button")?.text).toBe("Reopen");
+    // The customer's own "Still happening?" stays theirs, and the line beside the row says
+    // where reopening takes it, not who may.
     expect(html.querySelector("#reopen")).toBeNull();
-    expect(panel.querySelector(".status-rule")).toBeNull();
+    expect(panel.querySelector(".status-rule")?.text.trim()).toBe(
+      "Reopening takes it to In Progress.",
+    );
 
     const done = await as(app, teamActor)
       .post("/tickets/SUP-1/reopen")

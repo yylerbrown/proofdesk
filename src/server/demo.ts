@@ -78,8 +78,12 @@ export function seedDemo(service: TicketService): void {
     customer,
   );
 
+  // The other customers file some samples, so the demo customer's own list stays short.
+  const [second, third] = OTHER_DEMO_CUSTOMERS as [Actor, Actor];
+
   // A sample made for a visitor's own AI assistant to work on: a clear check and a small,
-  // complete example it can reproduce on its own machine.
+  // complete example it can reproduce on its own machine. Another customer filed it, so it
+  // stays out of the demo customer's list.
   const assistantSample = service.createTicket(
     {
       title: "Sample for your AI assistant: the total adds tax twice",
@@ -90,14 +94,13 @@ export function seedDemo(service: TicketService): void {
         "total(100, 0.1) returns 120.",
       fix_check: "total(100, 0.1) returns 110, and a test shows it",
     },
-    customer,
+    second,
   );
   // Owned and in progress, so an assistant's request for review reaches a named person.
   service.takeAndStart(assistantSample.key, team);
 
   // Every status in the samples, so each filter changes the list: one the customer confirmed,
   // and one where another customer said No and it went back to its owner.
-  const [second, third] = OTHER_DEMO_CUSTOMERS as [Actor, Actor];
   const receipt = service.createTicket(
     {
       title: "Receipts show the wrong currency",
@@ -130,7 +133,7 @@ export function seedDemo(service: TicketService): void {
     third,
   );
 
-  const recorded = seedRecordedRun(service, team, customer, assistantSample.key);
+  const recorded = seedRecordedRun(service, team, second, assistantSample.key);
 
   // Record what was seeded, so a visitor's assistant is shown only this, never what other
   // visitors write.
@@ -160,14 +163,14 @@ function askAndAnswer(
 }
 
 /**
- * The assistant of the recorded run, as it appeared on the demo. Its name is the demo
- * connection's; it writes only here, through the seed.
+ * The assistant of the recorded run: a demo visitor's connection, named plainly. It writes only
+ * here, through the seed.
  */
 export const RECORDED_ASSISTANT: Actor = {
   id: "demo-recorded-assistant",
   kind: "agent",
   role: "team",
-  name: "Demo visitor ea29379c",
+  name: "Demo visitor's assistant",
   scopes: ["read_tickets", "write_notes", "attach_evidence", "propose_specs"],
 };
 
