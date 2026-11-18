@@ -104,6 +104,27 @@ export function listAllTickets(db: Db, status: TicketStatus | null, page: Page):
 }
 
 /**
+ * The tickets among these ids that are not archived, in the same order as above: what an
+ * assistant may list. The ids are applied before the page is cut, so a page holds as many of
+ * them as fit, however many other tickets are newer.
+ */
+export function listTicketsAmong(
+  db: Db,
+  ids: number[],
+  status: TicketStatus | null,
+  page: Page,
+): TicketRow[] {
+  return db
+    .prepare(
+      `SELECT * FROM tickets
+       WHERE id IN (SELECT value FROM json_each(@ids)) AND archived_at IS NULL
+         AND (@status IS NULL OR status = @status)
+       ORDER BY status = 'resolved', id DESC LIMIT @limit OFFSET @offset`,
+    )
+    .all({ ids: JSON.stringify(ids), status, ...page }) as TicketRow[];
+}
+
+/**
  * The tickets one person filed that are not archived, in the same order as above. There is no way to ask
  * it for everyone's tickets, so a mistake in a caller cannot show a customer other people's
  * tickets. created_by is a plain condition, so the index on it is used.

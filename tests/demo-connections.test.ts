@@ -9,7 +9,7 @@ import { DEV_COOKIE } from "../src/server/actor.js";
 import { DEMO_CONNECTIONS_PER_HOUR } from "../src/server/app.js";
 import { DEMO_CONNECTION_LIMIT } from "../src/server/connections/service.js";
 import { seedDemo } from "../src/server/demo.js";
-import { createTicketService } from "../src/server/tickets/service.js";
+import { createTicketService, LIST_PAGE_SIZE } from "../src/server/tickets/service.js";
 import { buildTestApp, closeServers, listenLocally, visitor } from "./helpers.js";
 
 // A visitor's own demo connection: what it is given, and that it never reads what another
@@ -132,6 +132,19 @@ describe("what a demo connection sees", () => {
     expect(
       (await api(app, key).post("/api/tickets/SUP-8/entries", { kind: "note", body: "x" })).status,
     ).toBe(404);
+  });
+
+  it("the sample made for assistants, after a full page of newer tickets", async () => {
+    const { app, db } = buildDemo();
+    const now = new Date().toISOString();
+    const insert = db.prepare(
+      "INSERT INTO tickets (title, description, created_by, created_at, updated_at) VALUES ('t', 'd', 'demo-customer', ?, ?)",
+    );
+    for (let i = 0; i < LIST_PAGE_SIZE; i++) insert.run(now, now);
+    const key = await getConnection(app);
+    const list = await api(app, key).get("/api/tickets");
+    expect(list.body.map((t: { key: string }) => t.key)).toEqual(["SUP-4"]);
+    expect(list.headers.link).toBeUndefined();
   });
 
   it("the sample text as first written, whatever a visitor changed it to", async () => {
