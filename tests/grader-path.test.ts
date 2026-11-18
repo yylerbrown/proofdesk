@@ -1,6 +1,9 @@
 import { parse } from "node-html-parser";
 import type { Express } from "express";
 import { describe, expect, it } from "vitest";
+import { DEV_COOKIE } from "../src/server/actor.js";
+import { seedDemo } from "../src/server/demo.js";
+import { createTicketService } from "../src/server/tickets/service.js";
 import {
   admin,
   adminActor,
@@ -9,11 +12,12 @@ import {
   customerOne,
   refusedBackToTicket,
   teamActor,
+  visitor,
 } from "./helpers.js";
 
 // The minimum features, as a grader meets them: a ticket starts New, one action owns it and
-// starts work, and Resolved is never a dead end. Wherever the team looks for it, the page says
-// that it comes from the customer's Yes and how to get there.
+// starts work, and Resolved is never a dead end. Under the status, one short line says the way
+// on from here, or who can move the status when this viewer cannot.
 
 const valid = {
   title: "Printer jams",
@@ -63,25 +67,49 @@ describe("where Resolved comes from", () => {
   it("is said to the team at every step, with the way to get there", async () => {
     const { app } = await filed();
     expect(rule(await page(app, teamActor))).toBe(
-      "The customer confirms a fix with Yes; the team can also resolve with a reason. Take the ticket, then ask the customer to verify.",
+      "Take the ticket, then ask the customer to verify.",
     );
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
 
+    // While the change link is missing, the line names that step and leads to its field, so
+    // following it puts the cursor where the next thing is typed.
     const owner = await page(app, teamActor);
-    expect(rule(owner)).toBe(
-      "The customer confirms a fix with Yes; the team can also resolve with a reason. When the fix is in, ask the customer to verify.",
-    );
-    expect(owner.querySelector(".status-rule a")?.getAttribute("href")).toBe("#ask");
-    // The link lands on the ask, shown greyed with what is missing until it can be done.
+    expect(rule(owner)).toBe("Next: add the link to the code change.");
+    expect(owner.querySelector(".status-rule a")?.getAttribute("href")).toBe("#change-url");
+    expect(owner.querySelector("input#change-url")?.getAttribute("name")).toBe("change_url");
+    // The ask further down still says what is missing, greyed until it can be done.
     expect(owner.querySelector("#ask button")?.text).toBe("Ask the customer to verify");
     expect(owner.querySelector("#ask-blocked-why")?.text).toBe(
       "Add the link to the code change first.",
     );
 
+    // With the link in, the line leads to the ask.
+    await as(app, teamActor)
+      .put("/api/tickets/SUP-1/change-link")
+      .send({ change_url: "https://example.com/c" });
+    const linked = await page(app, teamActor);
+    expect(rule(linked)).toBe("When the fix is in, ask the customer to verify.");
+    expect(linked.querySelector(".status-rule a")?.getAttribute("href")).toBe("#ask");
+
     expect(rule(await page(app, adminActor))).toBe(
-      "The customer confirms a fix with Yes; the team can also resolve with a reason. Only Team Member can ask the customer to verify.",
+      "Only Team Member can ask the customer to verify.",
     );
     expect(rule(await page(app, customerOne))).toBeUndefined();
+  });
+
+  it("does not tell the read-only admin preview to take a ticket it cannot take", async () => {
+    const built = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
+    seedDemo(createTicketService(built.db, built.config.ticketPrefix));
+    const preview = visitor(built.app).set("Cookie", `${DEV_COOKIE}=demo-admin`);
+    const tickets = (await preview.get("/api/tickets")).body as {
+      key: string;
+      status: string;
+      owner_name: string | null;
+    }[];
+    const unowned = tickets.find((t) => t.status === "new" && t.owner_name === null)!;
+    const html = parse((await preview.get(`/tickets/${unowned.key}`)).text);
+    expect(rule(html)).toBe("The team takes the ticket and asks the customer to verify.");
+    expect(html.querySelector("main")!.text).not.toMatch(/Take the ticket|Start work/);
   });
 
   it("answers a try to set Resolved on the ticket itself, naming the way to get there", async () => {
@@ -118,9 +146,7 @@ describe("where Resolved comes from", () => {
     expect(status.querySelector("p")?.text).toBe(
       "In Progress, waiting for the customer who filed this ticket",
     );
-    expect(rule(team)).toBe(
-      "The customer confirms a fix with Yes; the team can also resolve with a reason. Their Yes moves it to Resolved.",
-    );
+    expect(rule(team)).toBe("The customer's Yes moves it to Resolved.");
 
     const customer = await page(app, customerOne);
     expect(customer.querySelector("main")!.text).toContain("In Progress, waiting for you");
