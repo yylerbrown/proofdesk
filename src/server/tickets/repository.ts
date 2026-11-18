@@ -204,7 +204,6 @@ export function updateChangeUrl(db: Db, id: number, changeUrl: string, now: stri
   );
 }
 
-/** Starts the wait for the customer's answer, with the page to try and a fresh token. */
 /** What the owner records when asking the customer. */
 export type AskRecord = {
   tryUrl: string;
@@ -214,6 +213,7 @@ export type AskRecord = {
   evidenceIds: number[];
 };
 
+/** Starts the wait for the customer's answer, with the page to try and a fresh token. */
 export function updateReady(db: Db, id: number, ask: AskRecord, token: string, now: string): void {
   db.prepare(
     `UPDATE tickets SET try_url = ?, ready_tried = ?, ready_result = ?, ready_response = ?,
