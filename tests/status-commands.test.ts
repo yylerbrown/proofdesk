@@ -122,7 +122,7 @@ describe("after the customer's Yes", () => {
       .type("form")
       .send({ reason: "" });
     expect(empty.status).toBe(400);
-    expect(parse(empty.text).querySelector("#reopen-error")?.text).toMatch(/happening again/);
+    expect(parse(empty.text).querySelector("#reopen-error")?.text).toMatch(/reason for reopening/);
     const done = await as(app, customerOne)
       .post("/tickets/SUP-1/reopen")
       .type("form")

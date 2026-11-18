@@ -82,6 +82,8 @@ describe("the team reopening a ticket the team resolved", () => {
     const empty = await reopen(app, teamActor, { reason: "  " });
     expect(empty.status).toBe(400);
     expect(Object.keys(empty.body.error.fields)).toEqual(["reason"]);
+    // The message fits whoever reopens, not only the customer whose problem came back.
+    expect(empty.body.error.fields.reason).toEqual(["Give a reason for reopening it."]);
     expect((await reread(app)).status).toBe("resolved");
   });
 
