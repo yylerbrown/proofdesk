@@ -167,3 +167,7 @@ Designed by an outside reviewer against this specification, the permission funct
 Left out on purpose, and listed in the README's limits: human review records against evidence ids, reconciling owners when team membership changes, documentation generated from conditional rules, and upgrading the provenance of tickets resolved before this workflow.
 
 The workflow is built in this order: status commands and reopen; the owner-only ask with its record; take, release and hand-off; agent access limited to handed-off tickets; no public replies from agents; then the smaller items.
+
+### 2026-11-18: two corrections
+
+Two sentences above were corrected to say what happened. The opening line used to say this document was written before the features were built, and the standing rule on merging used to say a person reads every change before it merges. Every outside review named in this document, including the one that designed the ticket workflow, came from other AI sessions.
