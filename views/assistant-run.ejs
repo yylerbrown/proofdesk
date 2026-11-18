@@ -28,8 +28,8 @@
 </ol>
 
 <h3>How it was run</h3>
-<p>From a new empty folder with a clean environment (HOME, PATH, USER, LANG and the key only):</p>
-<pre class="paste"><code>claude -p --model opus --setting-sources project --no-session-persistence --mcp-config mcp-config.json --strict-mcp-config --settings '&lt;sandbox on&gt;' --allowedTools "mcp__proofdesk" "Write(./**)" "Edit(./**)" "Read(./**)" "Bash(node *)" --output-format stream-json --verbose "&lt;prompt&gt;"</code></pre>
+<p>From a new empty folder with a clean environment (HOME, PATH, USER, LANG and the key only), the key read from a private file into <code>PROOFDESK_KEY</code>, this exact command:</p>
+<pre class="paste run-command"><code><%= command %></code></pre>
 <ul>
   <li>File tools limited to the folder; only <code>node</code> commands allowed.</li>
   <li>Claude Code's own sandbox switched on: no writes outside the folder, home folder unreadable, no network. Probes confirmed <code>curl</code>, <code>rm</code> and compound commands were refused.</li>

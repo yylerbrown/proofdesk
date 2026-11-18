@@ -127,6 +127,20 @@ describe("the assistant's work, on its own page", () => {
     );
   });
 
+  it("shows the exact command the run used, as the summary keeps it", async () => {
+    const { app } = demo();
+    // Read inside <pre> too, which the parser otherwise keeps as raw text.
+    const page = parse((await visitor(app).get("/assistant-run")).text, {
+      blockTextElements: { script: true, style: true },
+    });
+    const shown = page.querySelector("pre.run-command code")!.text;
+    const kept = fs.readFileSync(`${RUN}/summary.md`, "utf8");
+    const block = /## How it was run[\s\S]*?```sh\n([\s\S]*?)\n```/.exec(kept)![1]!;
+    expect(shown).toBe(block);
+    expect(shown).toContain('"sandbox":{"enabled":true');
+    expect(shown).not.toContain("sandbox on");
+  });
+
   it("serves the kept files as plain text, exactly as kept", async () => {
     const { app } = demo();
     for (const file of ["transcript.public.jsonl", "sup4/total.js", "sup4/total.test.js"]) {
