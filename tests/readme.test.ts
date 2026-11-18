@@ -6,12 +6,12 @@ import { ACTIONS } from "../src/server/api/actions.js";
 
 // A command a reader copies has to be readable on a phone, so a long one is split across lines.
 describe("the commands in the README and the assistants' guide", () => {
-  it("are at most 72 characters a line", () => {
+  it("are at most 56 characters a line", () => {
     for (const file of ["README.md", "docs/AGENTS_GUIDE.md"]) {
       const text = fs.readFileSync(file, "utf8");
       const blocks = [...text.matchAll(/^```bash\n([\s\S]*?)^```/gm)].map((m) => m[1]!);
       expect(blocks.length).toBeGreaterThan(0);
-      const long = blocks.flatMap((b) => b.split("\n")).filter((line) => line.length > 72);
+      const long = blocks.flatMap((b) => b.split("\n")).filter((line) => line.length > 56);
       expect(long, file).toEqual([]);
     }
   });

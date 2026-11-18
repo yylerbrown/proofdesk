@@ -151,7 +151,8 @@ on; `npm run dev` reads it.
 **The demo, locally**, on its own database:
 
 ```bash
-DEV_SIGN_IN=off DEMO=on DATABASE_PATH=./data/demo.db npm run dev
+DEV_SIGN_IN=off DEMO=on \
+  DATABASE_PATH=./data/demo.db npm run dev
 ```
 
 **A production build** reads only real environment variables, never `.env`:
@@ -161,7 +162,8 @@ npm run build
 ```
 
 ```bash
-NODE_ENV=production DEMO=on DATABASE_PATH=./data/demo.db npm start
+NODE_ENV=production DEMO=on \
+  DATABASE_PATH=./data/demo.db npm start
 ```
 
 For the real thing, replace `DEMO=on` with the four GitHub settings below.
@@ -340,7 +342,8 @@ curl -c jar -H "Origin: http://localhost:3000" \
 ```bash
 curl -b jar -H "Origin: http://localhost:3000" \
   -H "Content-Type: application/json" \
-  -d '{"title": "Printer jams", "description": "On page two",
+  -d '{"title": "Printer jams",
+       "description": "On page two",
        "fix_check": "Ten pages print"}' \
   http://localhost:3000/api/tickets
 ```
