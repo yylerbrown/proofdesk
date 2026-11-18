@@ -1,0 +1,34 @@
+<%- include("header") %>
+<p><a href="/connections">All connections</a></p>
+<h1 class="user-text"><%= connection.name %></h1>
+<p>Key starts <code>pd_<%= connection.key_prefix %></code>. Issued by <%= connection.issued_by %>, <%- include("time", { iso: connection.created_at }) %>.
+<% if (connection.revoked_at) { %><strong>Revoked</strong> <%- include("time", { iso: connection.revoked_at }) %>.<% } else if (connection.expires_at) { %>Expires <%- include("time", { iso: connection.expires_at }) %>.<% } %>
+Last acted: <% if (connection.last_used_at) { %><%- include("time", { iso: connection.last_used_at }) %><% } else { %>never<% } %>.</p>
+<p>It may: <%= connection.scopes.map((s) => scopeLabels[s]).join("; ") %>.</p>
+
+<h2>What it asked for</h2>
+<p>Everything this connection asked for in the last 30 days, newest first, whether it was done or refused.</p>
+<% if (activity.length === 0) { %>
+<p class="empty">Nothing yet.</p>
+<% } else { %>
+<div class="overflow-auto">
+  <table class="activity">
+    <thead>
+      <tr><th scope="col">When</th><th scope="col">How</th><th scope="col">What</th><th scope="col">Ticket</th><th scope="col">Result</th><th scope="col">Idempotency key</th></tr>
+    </thead>
+    <tbody>
+      <% for (const a of activity) { %>
+      <tr>
+        <td><%- include("time", { iso: a.created_at }) %></td>
+        <td><%= a.door === "mcp" ? "Tool" : "API" %></td>
+        <td><code><%= a.action %></code></td>
+        <td><% if (a.ticket_key) { %><a href="/tickets/<%= a.ticket_key %>"><%= a.ticket_key %></a><% } %></td>
+        <td><% if (a.outcome === "done") { %>Done<% } else if (a.outcome === "refused") { %>Refused: <code><%= a.code %></code><% } else { %>Failed: <code><%= a.code %></code><% } %></td>
+        <td><% if (a.idempotency_key) { %><code class="user-text"><%= a.idempotency_key %></code><% } %></td>
+      </tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+<% } %>
+<%- include("footer") %>

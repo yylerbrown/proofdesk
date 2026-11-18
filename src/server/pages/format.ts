@@ -131,7 +131,11 @@ export function describeEvent(event: TicketEvent): string {
  * taken for a person. The names of demo people already say "Demo".
  */
 export function describeActor(event: TicketEvent, names: Map<string, string>): string {
+  // An agent is named by the connection it came through, as recorded with the entry.
+  const connectionName = (event.context as { connection_name?: unknown } | null)?.connection_name;
   const name =
-    names.get(event.actor) ?? (event.actor_kind === "agent" ? event.actor : "Unknown person");
+    (typeof connectionName === "string" ? connectionName : undefined) ??
+    names.get(event.actor) ??
+    (event.actor_kind === "agent" ? event.actor : "Unknown person");
   return event.actor_kind === "agent" ? `${name} (AI agent)` : name;
 }

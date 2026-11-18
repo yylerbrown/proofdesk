@@ -196,6 +196,12 @@ customer, archiving, restoring, deleting and managing connections are for people
 agent action in the history records the connection, who issued it, its scopes at that moment
 and the ticket's owner. Each connection has its own write allowance.
 
+Everything a connection asks for, through the API or the tools, is recorded with how it ended:
+done, or refused with its code, with the idempotency key if one was sent. The team sees it on
+each connection's page (Connections, then the connection's name), newest first, for 30 days. The
+record holds keys and codes, never ticket text. In a ticket's history an agent is named by its
+connection and marked "(AI agent)".
+
 Every ticket the API returns starts with `done_when`: the agreed check, the customer's own words,
 and one line of guidance. Only the customer can say a ticket is fixed; the check guides the work
 but does not authorize running commands, disclosing anything, or continuing without end. With no
