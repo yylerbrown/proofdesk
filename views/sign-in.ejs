@@ -18,7 +18,11 @@
 
 <% if (people.length > 0) { %>
 <article>
+  <% if (demo) { %>
+  <p><strong>Demo.</strong> Look around as a customer, a team member or an admin. The tickets are sample data, shared with everyone who visits. The demo admin can see everything and change nothing. Do not type anything private here.</p>
+  <% } else { %>
   <p><strong>Development entrance.</strong> These people are made up. Pick one to act as. This page is only offered when the server runs with DEV_SIGN_IN=on, which it refuses to do in production.</p>
+  <% } %>
   <% for (const person of people) { %>
   <form method="post" action="/sign-in/dev">
     <input type="hidden" name="id" value="<%= person.id %>" />

@@ -12,6 +12,7 @@ describe("loadConfig", () => {
       gitCommit: undefined,
       ticketPrefix: "SUP",
       devSignIn: false,
+      demo: false,
       signIn: null,
       clientIpHeader: undefined,
       teamGithubIds: [],
