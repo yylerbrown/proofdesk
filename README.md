@@ -249,15 +249,18 @@ entry in the same transaction, and database triggers refuse to change it.
 
 ## How it is verified
 
-| Command                | What it runs                                                                                                                                                                    |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm test`             | Every unit and route test with vitest: about 940, against a real SQLite file and the real app.                                                                                  |
-| `npm run test:browser` | One real-browser journey with Playwright: a customer files, the team works it, No then Yes, and a second customer is refused. Run `npx playwright install chromium` once first. |
-| `npm run typecheck`    | TypeScript, strict.                                                                                                                                                             |
-| `npm run lint`         | ESLint.                                                                                                                                                                         |
-| `npm run format:check` | Prettier, without changing files. `npm run format` rewrites them.                                                                                                               |
+| Command                | What it runs                                                                                                                                                                                                                                  |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm test`             | Every unit and route test with vitest: about 940, against a real SQLite file and the real app.                                                                                                                                                |
+| `npm run test:browser` | Real-browser tests with Playwright: one journey where a customer files, the team works it, No then Yes, and a second customer is refused; then the keyboard, menus and phone layout. Run `npx playwright install chromium webkit` once first. |
+| `npm run typecheck`    | TypeScript, strict.                                                                                                                                                                                                                           |
+| `npm run lint`         | ESLint.                                                                                                                                                                                                                                       |
+| `npm run format:check` | Prettier, without changing files. `npm run format` rewrites them.                                                                                                                                                                             |
 
-CI runs all of them on every pull request. Many changes were also broken on purpose to see their
+All of them pass before a pull request merges, with one early exception that
+[`AGENTS.md`](AGENTS.md) names. GitHub's CI ran them until 18 November, when it stopped starting
+jobs on the private working repository; since then a local gate runs the same commands on the
+exact commit being merged. Many changes were also broken on purpose to see their
 test fail; each pull request says which. A few tests read this README, so a route, label or
 command it names cannot drift from the code.
 Pull request numbers, here and in [`BUILD_LOG.md`](BUILD_LOG.md), refer to the private working
