@@ -90,21 +90,28 @@
     </li>
     <% } %>
   </ul>
-  <%# Where "Connect your assistant" leads on the demo: this block, whether connections are on or off. %>
-  <div id="connect">
-  <% if (demo && !locals.demoAgents) { %>
-  <p class="notice">Assistant connections are off on this demo until its operator resets it.</p>
-  <% } %>
+  <% if (demo) { %>
+  <%# The assistant setup is extra, so it starts folded to one quiet line. Links to /sign-in#connect
+      open it without a script: a browser opens a closed details element when the address's
+      #part names something inside it. %>
+  <details class="connect">
+    <summary>Connect your own AI assistant</summary>
+    <div id="connect">
+    <% if (locals.demoAgents) { %>
+    <p>Get a key for your own assistant, for example Claude Code, to work on the sample tickets: read a ticket, check it, attach evidence. It lasts a day and sees only the sample ticket made for assistants, which is handed to it, and what it writes itself. Proofdesk makes no AI calls of its own.</p>
+    <form method="post" action="/demo/connection">
+      <button type="submit" class="secondary">Get a demo connection</button>
+    </form>
+    <p><small>A key is shown only once, on the page that makes it. Get a new one here at any time.</small></p>
+    <% } else { %>
+    <p class="notice">Assistant connections are off on this demo until its operator resets it.</p>
+    <% } %>
+    <p class="assistant-run-link"><a href="/assistant-run">See an assistant's work</a>: one real run on a sample ticket, with its transcript.</p>
+    </div>
+  </details>
+  <% } else { %>
   <p class="assistant-run-link"><a href="/assistant-run">See an assistant's work</a>: one real run on a sample ticket, with its transcript.</p>
-  <% if (locals.demoAgents) { %>
-  <h3>Connect your own AI assistant</h3>
-  <p>Get a key for your own assistant, for example Claude Code, to work on the sample tickets: read a ticket, check it, attach evidence. It lasts a day and sees only the sample ticket made for assistants, which is handed to it, and what it writes itself. Proofdesk makes no AI calls of its own.</p>
-  <form method="post" action="/demo/connection">
-    <button type="submit" class="secondary">Get a demo connection</button>
-  </form>
-  <p><small>A key is shown only once, on the page that makes it. Get a new one here at any time.</small></p>
   <% } %>
-  </div>
 </section>
 <% } %>
 </div>
