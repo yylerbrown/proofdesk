@@ -22,6 +22,8 @@ export function createAuth(db: Db, signIn: SignInConfig, clientIpHeader: string 
         // private profile data the app never uses.
         disableDefaultScope: true,
         scope: ["user:email"],
+        // Names come only from GitHub, where a display name can be very long or empty.
+        mapProfileToUser: (profile) => ({ name: shownName(profile.name, profile.login) }),
       },
     },
     // One person, one GitHub account. By default the library would attach a second GitHub
@@ -66,6 +68,20 @@ export function createAuth(db: Db, signIn: SignInConfig, clientIpHeader: string 
 }
 
 export type Auth = ReturnType<typeof createAuth>;
+
+/** The most characters of a GitHub display name that are kept. */
+const NAME_LIMIT = 100;
+
+/**
+ * The name kept for a person: their GitHub display name cut to NAME_LIMIT characters, or
+ * their GitHub login when the display name is empty or only spaces. Array.from splits the
+ * name into whole characters, so the cut never leaves half of one, such as half an emoji.
+ */
+function shownName(name: string | null, login: string): string {
+  const trimmed = (name ?? "").trim();
+  const chosen = trimmed === "" ? login : trimmed;
+  return Array.from(chosen).slice(0, NAME_LIMIT).join("");
+}
 
 /** The GitHub user number of a signed-in person, or undefined if they have no GitHub account. */
 export function githubIdOf(db: Db, userId: string): string | undefined {

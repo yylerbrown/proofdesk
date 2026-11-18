@@ -119,6 +119,29 @@ describe("the whole GitHub sign-in", () => {
     expect((await signInThroughGithub(app, ada)).signedInAs).toBe("Ada Admin (admin)");
   });
 
+  it("keeps at most 100 characters of a GitHub name, and never half of one", async () => {
+    const { app, db } = buildGithubApp();
+    const long: GithubUser = { id: 4001, login: "long", name: "N".repeat(5000), email: "a@x.test" };
+    expect((await signInThroughGithub(app, long)).signedInAs).toBe(`${"N".repeat(100)} (customer)`);
+    // A character that takes two places in a JavaScript string, right at the cut.
+    const wide = "W".repeat(99) + "\u{1F600}" + "W";
+    const emoji: GithubUser = { id: 4002, login: "wide", name: wide, email: "b@x.test" };
+    await signInThroughGithub(app, emoji);
+    expect(db.prepare(`SELECT "name" FROM "user" ORDER BY "email"`).all()).toEqual([
+      { name: "N".repeat(100) },
+      { name: "W".repeat(99) + "\u{1F600}" },
+    ]);
+  });
+
+  it.each([
+    ["empty", ""],
+    ["only spaces", "   "],
+  ])("shows the GitHub login when the GitHub name is %s", async (_case, name) => {
+    const { app } = buildGithubApp();
+    const quiet: GithubUser = { id: 4003, login: "quiet-one", name, email: "c@x.test" };
+    expect((await signInThroughGithub(app, quiet)).signedInAs).toBe("quiet-one (customer)");
+  });
+
   it("returns to the page that was asked for, and never to another site", async () => {
     const { app } = buildGithubApp();
     const back = await signInThroughGithub(app, ada, "/tickets/SUP-7");
