@@ -22,3 +22,21 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: docker build --build-arg GIT_COMMIT=${{ github.sha }} -t support-desk:ci .
+
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-test-results
+          path: test-results/browser
+          retention-days: 7
