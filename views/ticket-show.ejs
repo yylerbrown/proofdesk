@@ -172,7 +172,7 @@
       <input type="hidden" name="expected_owner" value="<%= ticket.owner_id ?? "" %>" />
       <label>
         Team member
-        <select name="to">
+        <select name="to" <% if (problem?.form === "handOff") { %>aria-describedby="hand-off-error"<% } %>>
           <% for (const member of handOffTo) { %>
           <option value="<%= member.id %>"><%= member.name %></option>
           <% } %>
@@ -354,7 +354,7 @@
     </fieldset>
     <% } %>
     <% if (problem?.form === "ready") { %><p><small id="ready-error" role="alert"><%= problem.message %></small></p><% } %>
-    <button type="submit" class="compact">Ask customer to confirm</button>
+    <button type="submit" class="compact" <% if (problem?.form === "ready") { %>aria-describedby="ready-error"<% } %>>Ask customer to confirm</button>
   </form>
   <% } else if (askBlocked) { %>
   <p class="ask-blocked" id="ask"><button type="button" class="compact" disabled aria-describedby="ask-blocked-why">Ask customer to confirm</button> <small id="ask-blocked-why"><%= askBlocked %></small></p>
