@@ -1,10 +1,10 @@
 # Roadmap
 
-What comes after sending, in order, with an outside review's reasons. Proofdesk stays what its
-README's first line says: a support desk where the customer says how to check a fix and gets to
-say whether it worked. Proofdesk gives your agent the customer's definition of "fixed", and gives
-the customer the final say on whether the fix worked. The customer's check is direction for the
-agent, not its acceptance test: a test can pass while the customer is still stuck.
+What comes after sending, in order, with an outside review's reasons and the owner's decisions.
+Proofdesk stays what its README's first line says: a support desk where the customer says how to
+check a fix and gets to say whether it worked. Proofdesk gives your agent the customer's definition
+of "fixed", and gives the customer the final say on whether the fix worked. The customer's check is
+direction for the agent, not its acceptance test: a test can pass while the customer is still stuck.
 
 ## First: a ticket's tests kept as regression tests
 
