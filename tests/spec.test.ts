@@ -350,11 +350,14 @@ describe("test specs on the demo", () => {
     expect(page.text).toContain("(reported, not verified)");
   });
 
-  it("offers every demo visitor the line, pointing at the demo's own connection button", async () => {
+  it("offers the demo's team the line, pointing at the demo's own connection button, and never the customer", async () => {
     const { app } = buildDemo();
+    const asCustomer = await visitor(app)
+      .set("Cookie", `${DEV_COOKIE}=demo-customer`)
+      .get(`/tickets/${sample}`);
+    expect(parse(asCustomer.text).querySelector(".spec-prompt")).toBeNull();
     const page = parse(
-      (await visitor(app).set("Cookie", `${DEV_COOKIE}=demo-customer`).get(`/tickets/${sample}`))
-        .text,
+      (await visitor(app).set("Cookie", `${DEV_COOKIE}=demo-team`).get(`/tickets/${sample}`)).text,
     );
     const line = page.querySelector(".spec-prompt")!;
     expect(line.text).toContain(`Using Proofdesk, write a test spec for ${sample}`);

@@ -63,7 +63,7 @@ describe("who asks the customer", () => {
       .post("/api/tickets/SUP-1/hand-off")
       .send({ to: "dev-admin-1", expected_owner: "dev-team-1" });
     const reason = await refusedBackToTicket(as(app, teamActor), "/tickets/SUP-1/ready", ask);
-    expect(reason).toMatch(/Only Admin, who owns ticket SUP-1, asks the customer/);
+    expect(reason).toMatch(/Only Admin, who owns ticket SUP-1, can ask the customer to confirm/);
     expect((await reread(app)).ready_at).toBeNull();
 
     const owner = await admin(app).post("/api/tickets/SUP-1/ready").send(ask);
@@ -163,11 +163,15 @@ describe("when asking is not possible yet", () => {
     await as(app, customerOne).post("/api/tickets").send(valid);
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
     const noLink = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    expect(noLink.querySelector(".ask-blocked button[disabled]")?.text).toBe("Ask the customer");
-    expect(noLink.querySelector("#ask-blocked-why")?.text).toBe("Add the change link first.");
+    expect(noLink.querySelector(".ask-blocked button[disabled]")?.text).toBe(
+      "Ask customer to confirm",
+    );
+    expect(noLink.querySelector("#ask-blocked-why")?.text).toBe(
+      "Add the link to the code change first.",
+    );
     const notMine = parse((await admin(app).get("/tickets/SUP-1")).text);
     expect(notMine.querySelector("#ask-blocked-why")?.text).toBe(
-      "Only Team Member, who owns it, asks the customer.",
+      "Only Team Member can ask the customer to confirm.",
     );
     expect(
       parse((await as(app, customerOne).get("/tickets/SUP-1")).text).querySelector(".ask-blocked"),

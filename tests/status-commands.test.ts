@@ -166,7 +166,7 @@ describe("starting work", () => {
         .querySelectorAll("button")
         .map((b) => b.text.trim())
         .slice(0, 2),
-    ).toEqual(["Take and start work", "Take this ticket"]);
+    ).toEqual(["Take ticket and start work", "Take this ticket"]);
     expect(panel.text).not.toContain("Start work\n");
     await as(app, teamActor).post("/api/tickets/SUP-1/take");
     const mine = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
