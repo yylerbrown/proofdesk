@@ -454,8 +454,10 @@
   <% if (allowed.note) { %>
   <fieldset>
     <legend>Who sees it</legend>
-    <label><input type="radio" name="kind" value="reply" <% if (entry.kind !== "note") { %>checked<% } %> /> Reply to the customer</label>
-    <label><input type="radio" name="kind" value="note" <% if (entry.kind === "note") { %>checked<% } %> /> Internal note, for the team only</label>
+    <div class="kind-choice">
+      <label><input type="radio" name="kind" value="reply" <% if (entry.kind !== "note") { %>checked<% } %> /> Reply to the customer</label>
+      <label><input type="radio" name="kind" value="note" <% if (entry.kind === "note") { %>checked<% } %> /> Internal note, for the team only</label>
+    </div>
   </fieldset>
   <% } else { %>
   <input type="hidden" name="kind" value="reply" />
