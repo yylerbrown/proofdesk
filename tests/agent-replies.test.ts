@@ -2,6 +2,7 @@ import { parse } from "node-html-parser";
 import request from "supertest";
 import type { Express } from "express";
 import { describe, expect, it } from "vitest";
+import { AGENT_SCOPES } from "../src/server/permissions.js";
 import { admin, as, buildTestApp, customerOne, handToAgent, teamActor } from "./helpers.js";
 
 // Agents never send a reply the customer sees. Their suggested wording is an internal note,
@@ -14,14 +15,12 @@ const valid = {
 };
 
 async function agentWithEveryScope(app: Express) {
-  // Every scope there is, plus "send_replies" as an old key might still hold.
+  // Every scope there is, read from the list itself so a new one is never left out. The first
+  // test below also adds "send_replies", as an old key might still hold.
   const res = await admin(app)
     .post("/connections")
     .type("form")
-    .send({
-      name: "Helper",
-      scopes: ["read_tickets", "write_notes", "attach_evidence", "link_changes", "propose_specs"],
-    });
+    .send({ name: "Helper", scopes: [...AGENT_SCOPES] });
   const key = parse(res.text).querySelector("input.key")!.getAttribute("value")!;
   return key;
 }
@@ -32,7 +31,7 @@ describe("an agent and the customer", () => {
     await as(app, customerOne).post("/api/tickets").send(valid);
     const key = await agentWithEveryScope(app);
     db.prepare("UPDATE agent_connections SET scopes = ?").run(
-      JSON.stringify(["read_tickets", "write_notes", "send_replies"]),
+      JSON.stringify([...AGENT_SCOPES, "send_replies"]),
     );
     await handToAgent(app, "SUP-1", key);
     const reply = await request(app)

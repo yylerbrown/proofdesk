@@ -97,6 +97,7 @@ describe("the customer's own changes", () => {
       .post("/api/tickets/SUP-1/ready")
       .send({ try_url: "https://example.com/t", tried: "Printed.", result: "Fine." });
     expect((await as(app, teamActor).post("/api/tickets/SUP-1/adopt-check")).status).toBe(403);
+    expect((await admin(app).post("/api/tickets/SUP-1/adopt-check")).status).toBe(403);
     const page = parse((await as(app, customerOne).get("/tickets/SUP-1")).text);
     expect(page.querySelector("form[action$='/adopt-check'] button")?.text).toBe(
       "Use these words as my check",
