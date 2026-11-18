@@ -540,6 +540,11 @@ table.tickets td:first-child a::after {
   table.tickets td.user-text {
     min-width: 0;
   }
+  /* A short name stays whole rather than breaking letter by letter in a squeezed cell. */
+  table.connections td.user-text {
+    min-width: 6rem;
+    overflow-wrap: break-word;
+  }
   table.connections th:nth-child(2),
   table.connections td:nth-child(2),
   table.connections th:nth-child(4),
