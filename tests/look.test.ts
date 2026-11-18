@@ -71,7 +71,7 @@ describe("the header", () => {
     const res = await as(app, teamActor).get("/tickets");
     expect(res.text).toContain(signedInLine("Team Member", "team"));
     const nav = parse(res.text).querySelector("header nav");
-    expect(nav?.querySelector(".role-label")?.text).toBe("team");
+    expect(nav?.querySelector(".role-label")?.text).toBe("Team member");
     expect(nav?.querySelector("form.sign-out button")?.text).toBe("Sign out");
     // Nothing about who is signed in is left in the page body under the header.
     expect(parse(res.text).querySelector("main form[action='/sign-out']")).toBeNull();

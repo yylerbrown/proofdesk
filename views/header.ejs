@@ -24,6 +24,8 @@
         <% if (viewer) { %>
         <ul class="links">
           <li class="tickets-link"><a href="/tickets">Tickets</a></li>
+          <%# Only an admin chooses who is on the team, so only an admin is shown the way there. %>
+          <% if (viewer.role === "admin" && viewer.kind === "person") { %><li class="people-link"><a href="/people">People</a></li><% } %>
           <%# The read-only admin preview cannot file a ticket, so it is not offered one. %>
           <% if (!viewer.readOnly) { %><li><a href="/tickets/new" role="button">New ticket</a></li><% } %>
         </ul>
@@ -31,7 +33,7 @@
           <% if (viewer.demo && demoPeople.length > 0) { %>
           <li class="viewer">
             <details class="dropdown switch-role">
-              <summary>Signed in as <strong><%= viewer.name %></strong> <small class="role-label"><%= viewer.role %></small> <span class="switch-label">Switch role</span></summary>
+              <summary>Signed in as <strong><%= viewer.name %></strong> <small class="role-label"><%= viewerRoleWord %></small> <span class="switch-label">Switch role</span></summary>
               <ul>
                 <% for (const person of demoPeople.filter((p) => p.id !== viewer.id)) { %>
                 <li>
@@ -46,7 +48,8 @@
             </details>
           </li>
           <% } else { %>
-          <li class="viewer">Signed in as <strong><%= viewer.name %></strong> <small class="role-label"><%= viewer.role %></small></li>
+          <%# The name opens the person's own account page: who Proofdesk thinks they are. %>
+          <li class="viewer">Signed in as <a href="/account" class="account-link"><strong><%= viewer.name %></strong></a> <small class="role-label"><%= viewerRoleWord %></small></li>
           <% } %>
           <li>
             <form method="post" action="/sign-out" class="sign-out">

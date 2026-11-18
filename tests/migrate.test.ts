@@ -54,6 +54,8 @@ const ALL = [
   "0025_agent_activity_created_index.sql",
   "0026_email_outbox.sql",
   "0027_email_retry_time.sql",
+  "0028_people_roles.sql",
+  "0029_email_setting.sql",
 ];
 
 describe("runMigrations", () => {
