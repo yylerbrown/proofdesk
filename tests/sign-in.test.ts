@@ -186,6 +186,13 @@ describe("starting a GitHub sign-in", () => {
     expect(String(res.headers["set-cookie"])).toContain("HttpOnly");
   });
 
+  it("asks GitHub for the email permission and nothing else", async () => {
+    const { app } = buildSignInApp();
+    const res = await visitor(app).post("/sign-in/github");
+    const target = new URL(res.headers.location as string);
+    expect(target.searchParams.get("scope")).toBe("user:email");
+  });
+
   it("is not there when GitHub sign-in is not configured", async () => {
     const { app } = buildTestApp();
     expect((await request(app).get("/sign-in")).text).not.toContain('action="/sign-in/github"');

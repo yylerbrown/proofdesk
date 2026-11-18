@@ -13,7 +13,15 @@ export function createAuth(db: Db, signIn: SignInConfig, clientIpHeader: string 
     secret: signIn.secret,
     baseURL: signIn.baseUrl,
     socialProviders: {
-      github: { clientId: signIn.githubClientId, clientSecret: signIn.githubClientSecret },
+      github: {
+        clientId: signIn.githubClientId,
+        clientSecret: signIn.githubClientSecret,
+        // Only the permission to read the person's email addresses. Who they are needs no
+        // permission at all. The library's default also asks for read:user, which reads
+        // private profile data the app never uses.
+        disableDefaultScope: true,
+        scope: ["user:email"],
+      },
     },
     // One person, one GitHub account. By default the library would attach a second GitHub
     // account to an existing person when both show the same verified email address. Roles
