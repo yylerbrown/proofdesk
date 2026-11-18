@@ -16,6 +16,7 @@ import {
   linkChangeSchema,
   markReadySchema,
   createTicketSchema,
+  giveToAgentSchema,
   handOffSchema,
   reopenSchema,
   deleteTicketSchema,
@@ -307,6 +308,26 @@ export function createTicketService(
     return actor !== undefined && actor.kind === "agent" && actor.demo === true;
   }
 
+  /** An agent outside the demo, which sees only the tickets handed to its connection. */
+  function isHandedAgent(actor: Actor): boolean {
+    return actor.kind === "agent" && actor.demo !== true && actor.connection !== undefined;
+  }
+
+  /** Ends the ticket's agent hand-off, if any, and says so in the history. */
+  function endAgent(row: repository.TicketRow, reason: string, actor: Actor, now: string): void {
+    const ended = repository.endHandoff(db, row.id, reason, now);
+    if (ended === undefined) return;
+    logEvent({
+      ticketId: row.id,
+      actor: actor.id,
+      actorKind: actor.kind,
+      context: agentContext(actor),
+      type: "agent_handoff_ended",
+      data: { connection: ended, reason },
+      now,
+    });
+  }
+
   function seededOrRefused(): DemoSeed {
     const seed = demoSeed();
     if (seed === null) {
@@ -468,6 +489,13 @@ export function createTicketService(
     if (isDemoAgent(actor) && !seededOrRefused().tickets.includes(id)) {
       throw new HttpError(404, "ticket_not_found", `No ticket ${key}.`);
     }
+    // An agent works only on the tickets handed to its connection.
+    if (
+      isHandedAgent(actor) &&
+      !repository.handedTicketIds(db, actor.connection!.id).includes(id)
+    ) {
+      throw new HttpError(404, "ticket_not_found", `No ticket ${key}.`);
+    }
     const row = repository.findTicket(db, id);
     // The team is told a ticket was deleted on purpose. A customer gets the usual answer.
     if (row === undefined && can(actor, "list_all") && repository.wasDeleted(db, id)) {
@@ -599,6 +627,10 @@ export function createTicketService(
     listTickets(filter: TicketListFilter, actor: Actor, pageNumber = 1): Ticket[] {
       const page = { limit: LIST_PAGE_SIZE, offset: (pageNumber - 1) * LIST_PAGE_SIZE };
       const view = (rows: repository.TicketRow[]) => {
+        if (isHandedAgent(actor)) {
+          const handed = repository.handedTicketIds(db, actor.connection!.id);
+          return rows.filter((row) => handed.includes(row.id)).map((row) => toTicket(row, actor));
+        }
         if (!isDemoAgent(actor)) return rows.map((row) => toTicket(row, actor));
         const seeded = seededOrRefused().tickets;
         return rows.filter((row) => seeded.includes(row.id)).map((row) => toTicket(row, actor));
@@ -813,6 +845,8 @@ export function createTicketService(
         }
         const ask = { tryUrl: try_url, tried, result, response: response || null, evidenceIds };
         const now = new Date().toISOString();
+        // Asking the customer ends any agent's work on the ticket.
+        endAgent(before, "the customer was asked", actor, now);
         const token = randomUUID();
         repository.updateReady(db, before.id, ask, token, now);
         logEvent({
@@ -1043,6 +1077,8 @@ export function createTicketService(
         }
         if (target.id === before.owner_id) return before;
         withdrawQuestion(before);
+        // A new owner chooses their own help: the old owner's agent hand-off ends.
+        endAgent(before, "the ticket changed hands", actor, new Date().toISOString());
         return {
           ...setOwner(before, target.id, target.name, actor),
           ready_at: null,
@@ -1050,6 +1086,77 @@ export function createTicketService(
         };
       })();
       return toTicket(row, actor);
+    },
+
+    /**
+     * The owner hands an in-progress ticket to one agent connection, which can then work on it
+     * within its scopes. A ticket has at most one; handing it to another ends the first.
+     */
+    giveToAgent(key: string, input: unknown, actor: Actor): Ticket {
+      const { connection_id } = parse(giveToAgentSchema, input);
+      const row = db.transaction(() => {
+        const before = requireRow(key, actor);
+        requirePermission(actor, "hand_to_agent", before);
+        requireNotArchived(key, before);
+        if (before.owner_id !== actor.id) {
+          throw new HttpError(
+            403,
+            "not_owner",
+            `Only ${before.owner_name ?? "its owner"}, who owns ticket ${key}, hands it to an agent.`,
+          );
+        }
+        if (before.status !== "in_progress") {
+          throw new HttpError(409, "not_in_progress", `Start work on ticket ${key} first.`);
+        }
+        const now = new Date().toISOString();
+        const connection = repository.liveConnections(db, now).find((c) => c.id === connection_id);
+        if (connection === undefined) {
+          throw new ValidationError("Choose a connection that is not revoked.", {
+            connection_id: ["Choose a connection that is not revoked."],
+          });
+        }
+        if (repository.activeHandoff(db, before.id)?.connection_id === connection.id) return before;
+        endAgent(before, "handed to another agent", actor, now);
+        repository.startHandoff(db, before.id, connection.id, actor.id, now);
+        logEvent({
+          ticketId: before.id,
+          actor: actor.id,
+          actorKind: actor.kind,
+          context: agentContext(actor),
+          type: "agent_handed",
+          data: { connection: connection.name },
+          now,
+        });
+        return before;
+      })();
+      return toTicket(row, actor);
+    },
+
+    /** The owner, or an admin, ends an agent's work on the ticket. */
+    endAgentWork(key: string, actor: Actor): Ticket {
+      const row = db.transaction(() => {
+        const before = requireRow(key, actor);
+        requirePermission(actor, "hand_to_agent", before);
+        if (before.owner_id !== actor.id && actor.role !== "admin") {
+          throw new HttpError(
+            403,
+            "not_owner",
+            `Only the owner of ticket ${key}, or an admin, can end it.`,
+          );
+        }
+        endAgent(before, "ended by a person", actor, new Date().toISOString());
+        return before;
+      })();
+      return toTicket(row, actor);
+    },
+
+    /** Which agent connection is working on the ticket now, and which it could be handed to. */
+    agentHelp(ticket: Ticket) {
+      const id = parseKey(prefix, ticket.key)!;
+      return {
+        current: repository.activeHandoff(db, id) ?? null,
+        candidates: repository.liveConnections(db, new Date().toISOString()),
+      };
     },
 
     /** The team members this ticket could be handed to: everyone eligible but its owner. */
@@ -1095,6 +1202,7 @@ export function createTicketService(
         if (before.archived_at !== null) return before; // already archived
         const now = new Date().toISOString();
         withdrawQuestion(before);
+        endAgent(before, "the ticket was archived", actor, now);
         repository.updateTicketArchived(db, before.id, now, now);
         logEvent({
           ticketId: before.id,
@@ -1485,6 +1593,15 @@ export function createTicketService(
           can(actor, "release", ticket) &&
           ticket.owner_id === actor.id &&
           ticket.status === "new",
+        giveToAgent:
+          !archived &&
+          can(actor, "hand_to_agent", ticket) &&
+          ticket.owner_id === actor.id &&
+          ticket.status === "in_progress",
+        endAgentWork:
+          !archived &&
+          can(actor, "hand_to_agent", ticket) &&
+          (ticket.owner_id === actor.id || actor.role === "admin"),
         handOff:
           !archived &&
           can(actor, "hand_off", ticket) &&

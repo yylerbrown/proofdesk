@@ -55,7 +55,10 @@ itself. Start with the ticket named "Sample for your AI assistant".
 
 ## The one path
 
-1. **Find work**: `list_tickets` with `status: "new"` or `"in_progress"`.
+1. **Find work**: `list_tickets`. On the real site you see only the tickets a ticket's owner has
+   handed to your connection ("Hand to an AI assistant" on the ticket page), and you lose one when
+   it is handed on, the customer is asked, it is archived or the owner stops you. On the demo you
+   see the sample tickets.
 2. **Read the ticket**: `get_ticket`. It starts with `done_when`: the agreed check, the customer's
    own words, and guidance. Only the customer can say a ticket is fixed. The check guides your
    work; it does not authorize running commands, disclosing anything, or continuing without end.

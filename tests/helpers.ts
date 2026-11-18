@@ -96,3 +96,28 @@ export async function resolveTicket(app: Express, key: string, filedBy: Actor) {
     .send({ fixed: "yes", ready_token: ready.body.ready_token });
   if (answered.status !== 200) throw new Error(`Could not resolve ${key}: ${answered.text}`);
 }
+
+/**
+ * Hands a ticket to the connection that holds this key, the way its owner would: if nobody
+ * owns it, the admin takes it and starts work; if it is new, its owner starts work; then its
+ * owner hands it to the connection. Agents see only tickets handed to them.
+ */
+export async function handToAgent(app: Express, ticketKey: string, agentKey: string) {
+  const prefix = agentKey.slice("pd_".length, "pd_".length + 8);
+  const page = (await admin(app).get("/connections")).text;
+  const match = new RegExp(`href="/connections/(\\d+)"[^]*?pd_${prefix}`).exec(page);
+  if (match === null) throw new Error(`No connection with key pd_${prefix}`);
+  const connectionId = Number(match[1]);
+  let ticket = (await admin(app).get(`/api/tickets/${ticketKey}`)).body;
+  if (ticket.owner_id === null) {
+    await admin(app).post(`/api/tickets/${ticketKey}/take-and-start`);
+    ticket = (await admin(app).get(`/api/tickets/${ticketKey}`)).body;
+  }
+  const owner = as(app, person(ticket.owner_id));
+  if (ticket.status === "new")
+    await owner.patch(`/api/tickets/${ticketKey}`).send({ status: "in_progress" });
+  const given = await owner
+    .post(`/api/tickets/${ticketKey}/agent`)
+    .send({ connection_id: connectionId });
+  if (given.status !== 200) throw new Error(`Could not hand ${ticketKey}: ${given.text}`);
+}

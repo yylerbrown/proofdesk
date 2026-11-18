@@ -25,7 +25,8 @@ export type Action =
   | "propose_spec"
   | "decide_spec"
   | "reopen"
-  | "hand_off";
+  | "hand_off"
+  | "hand_to_agent";
 
 /**
  * What an AI agent may be allowed to do, each named by the operation it permits. A connection
@@ -76,6 +77,7 @@ export const CAPABILITIES: Record<Action, Capability> = {
   decide_spec: { people: "The team.", agent: "people_only" },
   reopen: { people: "Only the customer who filed it.", agent: "people_only" },
   hand_off: { people: "The ticket's owner, or an admin.", agent: "people_only" },
+  hand_to_agent: { people: "The ticket's owner.", agent: "people_only" },
 };
 
 /** The two facts about a ticket that permissions depend on. */
@@ -153,5 +155,6 @@ export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean
   if (action === "answer") return isOwn;
   if (action === "reopen") return isOwn;
   if (action === "hand_off") return isStaff && actor.kind === "person";
+  if (action === "hand_to_agent") return isStaff && actor.kind === "person";
   return false;
 }

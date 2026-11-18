@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { ACTIONS } from "../src/server/api/actions.js";
 import { WRITE_LIMIT } from "../src/server/app.js";
 import { AGENT_SCOPES, CAPABILITIES } from "../src/server/permissions.js";
-import { admin, as, buildTestApp, customerOne, teamActor } from "./helpers.js";
+import { admin, as, buildTestApp, customerOne, handToAgent, teamActor } from "./helpers.js";
 
 // Connections for AI agents: issuing, the key shown once, signing in with it on the API,
 // revoking, and the capability table enforced on the JSON door.
@@ -84,6 +84,7 @@ describe("a connection key on the API", () => {
     const { app } = buildTestApp();
     await admin(app).post("/api/tickets").send(valid);
     const key = await issue(app, ["read_tickets", "write_notes"]);
+    await handToAgent(app, "SUP-1", key);
     const list = await agent(app, key).get("/api/tickets");
     expect(list.status).toBe(200);
     expect(list.body.map((t: { key: string }) => t.key)).toEqual(["SUP-1"]);
@@ -133,6 +134,7 @@ describe("a connection key on the API", () => {
     await admin(app).post("/api/tickets").send(valid);
     await as(app, teamActor).post("/api/tickets/SUP-1/take");
     const key = await issue(app, ["read_tickets", "write_notes"]);
+    await handToAgent(app, "SUP-1", key);
     await agent(app, key).send("post", "/api/tickets/SUP-1/entries", {
       kind: "note",
       body: "Seen.",
@@ -166,7 +168,8 @@ const BODIES: Record<string, object> = {
   delete_ticket: { confirm: "SUP-1" },
   change_status: { status: "in_progress" },
   reopen: { reason: "It happens again." },
-  hand_off: { to: "dev-team-1", expected_owner: "" },
+  hand_off: { to: "dev-team-1", expected_owner: "dev-admin-1" },
+  give_to_agent: { connection_id: 1 },
   decide_spec: { decision: "accept" },
 };
 
@@ -186,6 +189,8 @@ describe("the capability table on the JSON door", () => {
         "decide_spec",
         "delete_ticket",
         "edit_ticket",
+        "end_agent_work",
+        "give_to_agent",
         "hand_off",
         "mark_ready",
         "release_ticket",
@@ -203,6 +208,8 @@ describe("the capability table on the JSON door", () => {
       const { app } = buildTestApp();
       await admin(app).post("/api/tickets").send(valid);
       const key = await issue(app, [...AGENT_SCOPES]);
+      // Handed to the agent, so a refusal can only be the permission.
+      await handToAgent(app, "SUP-1", key);
       const path = `/api${row.path.replace(":key", "SUP-1")}`;
       const method = row.method === "get" ? "post" : row.method;
       const res = await agent(app, key).send(method, path, BODIES[row.name] ?? {});
@@ -215,8 +222,11 @@ describe("limits for a connection", () => {
   it("counts each connection's writes on its own, and refuses past the allowance", async () => {
     const { app } = buildTestApp();
     await admin(app).post("/api/tickets").send(valid);
+    await admin(app).post("/api/tickets").send(valid);
     const first = await issue(app, ["read_tickets", "write_notes"], "First");
     const second = await issue(app, ["read_tickets", "write_notes"], "Second");
+    await handToAgent(app, "SUP-1", first);
+    await handToAgent(app, "SUP-2", second);
     const note = { kind: "note", body: "x" };
     for (let i = 0; i < WRITE_LIMIT; i++) {
       await agent(app, first).send("post", "/api/tickets/SUP-1/entries", note);
@@ -224,7 +234,7 @@ describe("limits for a connection", () => {
     const refused = await agent(app, first).send("post", "/api/tickets/SUP-1/entries", note);
     expect(refused.status).toBe(429);
     expect(refused.body.error).toMatchObject({ code: "too_many_requests", retry: true });
-    const other = await agent(app, second).send("post", "/api/tickets/SUP-1/entries", note);
+    const other = await agent(app, second).send("post", "/api/tickets/SUP-2/entries", note);
     expect(other.status).toBe(201);
   });
 });

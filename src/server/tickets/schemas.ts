@@ -49,6 +49,11 @@ export const handOffSchema = z.object({
   expected_owner: z.string().default(""),
 });
 
+// The owner hands a ticket to one agent connection, by its id.
+export const giveToAgentSchema = z.object({
+  connection_id: z.coerce.number().int().positive("Choose a connection."),
+});
+
 // The customer says a resolved ticket is still happening, and what recurred.
 export const reopenSchema = z.object({
   reason: z

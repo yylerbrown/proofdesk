@@ -4,7 +4,7 @@ import type { Express } from "express";
 import { describe, expect, it } from "vitest";
 import { readProveReport } from "../src/server/tickets/evidence.js";
 import { createTicketService, DEMO_BUDGET } from "../src/server/tickets/service.js";
-import { admin, as, buildTestApp, customerOne, teamActor } from "./helpers.js";
+import { admin, as, buildTestApp, customerOne, handToAgent, teamActor } from "./helpers.js";
 
 // Evidence beside the customer's check: stored as reported, read honestly, never a verdict.
 
@@ -29,7 +29,12 @@ const proveReport = {
 
 async function issue(app: Express, scopes: string[]) {
   const res = await admin(app).post("/connections").type("form").send({ name: "Helper", scopes });
-  return parse(res.text).querySelector("input.key")!.getAttribute("value")!;
+  const key = parse(res.text).querySelector("input.key")!.getAttribute("value")!;
+  // The owner hands SUP-1 to this connection, when there is one: agents see only those.
+  if ((await admin(app).get("/api/tickets/SUP-1")).status === 200) {
+    await handToAgent(app, "SUP-1", key);
+  }
+  return key;
 }
 
 const attach = (app: Express, key: string, body: object) =>
@@ -70,7 +75,8 @@ describe("attaching evidence", () => {
       report: proveReport,
     });
     const ticket = (await admin(app).get("/api/tickets/SUP-1")).body;
-    expect(ticket).toMatchObject({ status: "new", waiting_on: "team" });
+    // Still in progress, still with the team: evidence resolves nothing.
+    expect(ticket).toMatchObject({ status: "in_progress", waiting_on: "team", ready_at: null });
   });
 
   it("is refused without the scope, to the customer, and on an archived ticket", async () => {

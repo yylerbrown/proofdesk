@@ -307,6 +307,69 @@ export function latestAnswer(
   return { fixed: data.fixed === true, at: event.created_at, comment };
 }
 
+/** The agent connection a ticket is handed to right now, or undefined. */
+export function activeHandoff(
+  db: Db,
+  ticketId: number,
+): { connection_id: number; name: string; granted_at: string } | undefined {
+  return db
+    .prepare(
+      `SELECT h.connection_id, c.name, h.granted_at FROM ticket_agent_handoffs h
+       JOIN agent_connections c ON c.id = h.connection_id
+       WHERE h.ticket_id = ? AND h.ended_at IS NULL LIMIT 1`,
+    )
+    .get(ticketId) as { connection_id: number; name: string; granted_at: string } | undefined;
+}
+
+/** The ids of the tickets handed to a connection right now. */
+export function handedTicketIds(db: Db, connectionId: number): number[] {
+  return (
+    db
+      .prepare(
+        "SELECT ticket_id FROM ticket_agent_handoffs WHERE connection_id = ? AND ended_at IS NULL",
+      )
+      .all(connectionId) as { ticket_id: number }[]
+  ).map((row) => row.ticket_id);
+}
+
+export function startHandoff(
+  db: Db,
+  ticketId: number,
+  connectionId: number,
+  by: string,
+  now: string,
+): void {
+  db.prepare(
+    "INSERT INTO ticket_agent_handoffs (ticket_id, connection_id, granted_by, granted_at) VALUES (?, ?, ?, ?)",
+  ).run(ticketId, connectionId, by, now);
+}
+
+/** Ends the ticket's current hand-off, if any. Returns the connection's name, or undefined. */
+export function endHandoff(
+  db: Db,
+  ticketId: number,
+  reason: string,
+  now: string,
+): string | undefined {
+  const active = activeHandoff(db, ticketId);
+  if (active === undefined) return undefined;
+  db.prepare(
+    "UPDATE ticket_agent_handoffs SET ended_at = ?, end_reason = ? WHERE ticket_id = ? AND ended_at IS NULL",
+  ).run(now, reason, ticketId);
+  return active.name;
+}
+
+/** The connections an owner may hand a ticket to: issued by a person, not revoked or expired. */
+export function liveConnections(db: Db, now: string): { id: number; name: string }[] {
+  return db
+    .prepare(
+      `SELECT id, name FROM agent_connections
+       WHERE demo = 0 AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?)
+       ORDER BY name`,
+    )
+    .all(now) as { id: number; name: string }[];
+}
+
 /** The named human owner of a ticket right now, or null. */
 export function ownerOf(db: Db, ticketId: number): string | null {
   const row = db.prepare("SELECT owner_id FROM tickets WHERE id = ?").get(ticketId) as
@@ -362,6 +425,7 @@ export const TICKET_TABLES = [
   "ticket_evidence",
   "idempotency_keys",
   "ticket_specs",
+  "ticket_agent_handoffs",
 ];
 
 /**

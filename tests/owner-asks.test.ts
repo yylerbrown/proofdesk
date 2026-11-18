@@ -3,7 +3,7 @@ import request from "supertest";
 import type { Express } from "express";
 import { describe, expect, it } from "vitest";
 import { AGENT_SCOPES } from "../src/server/permissions.js";
-import { admin, as, buildTestApp, customerOne, teamActor } from "./helpers.js";
+import { admin, as, buildTestApp, customerOne, handToAgent, teamActor } from "./helpers.js";
 
 // Only the ticket's current owner asks the customer, after trying it, and the ask says what
 // they tried and what happened. After a No, it also says what changed.
@@ -43,6 +43,7 @@ describe("who asks the customer", () => {
       .type("form")
       .send({ name: "Helper", scopes: [...AGENT_SCOPES] });
     const key = parse(res.text).querySelector("input.key")!.getAttribute("value")!;
+    await handToAgent(app, "SUP-1", key);
     const agent = await request(app)
       .post("/api/tickets/SUP-1/ready")
       .set("Authorization", `Bearer ${key}`)

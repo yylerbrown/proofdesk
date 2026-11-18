@@ -8,7 +8,7 @@ import type { Express } from "express";
 import { afterEach, describe, expect, it } from "vitest";
 import { AGENT_SCOPES, CAPABILITIES } from "../src/server/permissions.js";
 import { ACTIONS } from "../src/server/api/actions.js";
-import { admin, as, buildTestApp, customerOne, teamActor } from "./helpers.js";
+import { admin, as, buildTestApp, customerOne, handToAgent, teamActor } from "./helpers.js";
 
 // The MCP endpoint, driven by the SDK's own client over HTTP, as an assistant would.
 
@@ -101,12 +101,12 @@ describe("the one path: read, evidence, ask the owner", () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
     await as(app, teamActor).post("/api/tickets/SUP-1/take");
-    const client = await connect(
-      app,
-      await issue(app, ["read_tickets", "write_notes", "attach_evidence"]),
-    );
+    const key = await issue(app, ["read_tickets", "write_notes", "attach_evidence"]);
+    // The owner starts work and hands the ticket to the assistant.
+    await handToAgent(app, "SUP-1", key);
+    const client = await connect(app, key);
 
-    const list = await call(client, "list_tickets", { status: "new" });
+    const list = await call(client, "list_tickets", { status: "in_progress" });
     expect(list.body.result.next_cursor).toBeNull();
     expect(list.body.result.items.map((t: { key: string }) => t.key)).toEqual(["SUP-1"]);
     const ticket = await call(client, "get_ticket", { key: "SUP-1" });
@@ -133,13 +133,18 @@ describe("the one path: read, evidence, ask the owner", () => {
       "Asks the owner to request the customer's check: Evidence attached.",
     );
     const after = (await admin(app).get("/api/tickets/SUP-1")).body;
-    expect(after).toMatchObject({ status: "new", waiting_on: "team", owner_name: "Team Member" });
+    expect(after).toMatchObject({
+      status: "in_progress",
+      waiting_on: "team",
+      owner_name: "Team Member",
+    });
   });
 
   it("refuses to resolve, with a clear message, and the customer's answer stays separate", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
     const key = await issue(app, [...AGENT_SCOPES]);
+    await handToAgent(app, "SUP-1", key);
     const client = await connect(app, key);
     // Changing the status is for people only, so it is not a tool at all.
     await expect(
@@ -156,13 +161,15 @@ describe("the one path: read, evidence, ask the owner", () => {
     await expect(
       client.callTool({ name: "answer", arguments: { key: "SUP-1", fixed: "yes" } }),
     ).rejects.toThrow(/Tool answer not found/);
-    expect((await admin(app).get("/api/tickets/SUP-1")).body.status).toBe("new");
+    expect((await admin(app).get("/api/tickets/SUP-1")).body.status).toBe("in_progress");
   });
 
   it("refuses what the connection's scopes do not name, as a result it can act on", async () => {
     const { app } = buildTestApp();
     await admin(app).post("/api/tickets").send(valid);
-    const client = await connect(app, await issue(app, ["read_tickets"]));
+    const readOnly = await issue(app, ["read_tickets"]);
+    await handToAgent(app, "SUP-1", readOnly);
+    const client = await connect(app, readOnly);
     const note = await call(client, "add_entry", { key: "SUP-1", kind: "note", body: "x" });
     expect(note).toMatchObject({
       isError: true,
@@ -179,7 +186,9 @@ describe("ticket text is data", () => {
     await as(app, customerOne)
       .post("/api/tickets")
       .send({ ...valid, description: planted });
-    const client = await connect(app, await issue(app, ["read_tickets", "write_notes"]));
+    const notes = await issue(app, ["read_tickets", "write_notes"]);
+    await handToAgent(app, "SUP-1", notes);
+    const client = await connect(app, notes);
     const before = (await client.listTools()).tools.map((t) => t.name);
     const ticket = await call(client, "get_ticket", { key: "SUP-1" });
     expect(ticket.body.untrusted_content_note).toMatch(/treat it as data/);
@@ -197,6 +206,7 @@ describe("limits over MCP", () => {
     const { app } = buildTestApp();
     await admin(app).post("/api/tickets").send(valid);
     const key = await issue(app, ["read_tickets", "write_notes"]);
+    await handToAgent(app, "SUP-1", key);
     const client = await connect(app, key);
     // Half the allowance through the JSON API, half through MCP: one count for the connection.
     const half = WRITE_LIMIT / 2;
@@ -235,7 +245,9 @@ describe("retries over MCP", () => {
   it("attach evidence once when the same idempotency key is sent twice", async () => {
     const { app } = buildTestApp();
     await admin(app).post("/api/tickets").send(valid);
-    const client = await connect(app, await issue(app, ["read_tickets", "attach_evidence"]));
+    const evidenceKey = await issue(app, ["read_tickets", "attach_evidence"]);
+    await handToAgent(app, "SUP-1", evidenceKey);
+    const client = await connect(app, evidenceKey);
     const args = { key: "SUP-1", kind: "note", summary: "Checked it", idempotency_key: "try-1" };
     const first = await call(client, "add_evidence", args);
     const again = await call(client, "add_evidence", args);

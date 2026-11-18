@@ -18,7 +18,7 @@ export const UNTRUSTED_TEXT =
 /** The same steps, short, for the MCP server's instructions. */
 export const MCP_INSTRUCTIONS =
   "Proofdesk is a support desk where only the customer says a ticket is fixed. To help: " +
-  "list_tickets (status new or in_progress), get_ticket (read done_when first), do the work " +
+  "list_tickets (the tickets handed to you), get_ticket (read done_when first), do the work " +
   "elsewhere, add_evidence, then request_verification so the named owner asks the customer. " +
   "With no check or when blocked, write a note (add_entry, kind note) saying why, and stop. " +
   "Send an idempotency_key with every write so a retry acts once. " +
@@ -62,9 +62,9 @@ export function guide(actor: Actor | null, address: string) {
     start_here: {
       steps: [
         {
-          step: "Find work",
-          http: `curl ${key} '${address}/api/tickets?status=new'`,
-          mcp: "list_tickets { status: 'new' }",
+          step: "Find work. You see only the tickets an owner has handed to your connection (on the demo, the sample tickets).",
+          http: `curl ${key} ${address}/api/tickets`,
+          mcp: "list_tickets {}",
         },
         {
           step: "Read a ticket. done_when comes first: the agreed check and the customer's own words.",

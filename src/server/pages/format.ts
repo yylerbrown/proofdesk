@@ -127,6 +127,16 @@ export function describeEvent(event: TicketEvent): string {
   if (event.type === "spec_discarded") return "Test spec discarded";
   if (event.type === "note_added") return "Internal note added";
   if (event.type === "reopened") return "Reopened by the customer: still happening";
+  if (event.type === "agent_handed" || event.type === "agent_handoff_ended") {
+    const handoff = z
+      .object({ connection: z.string(), reason: z.string().optional() })
+      .safeParse(event.data);
+    if (handoff.success) {
+      return event.type === "agent_handed"
+        ? `Handed to the AI assistant ${handoff.data.connection}`
+        : `${handoff.data.connection} (AI assistant) stopped working on it: ${handoff.data.reason ?? "ended"}`;
+    }
+  }
   if (event.type === "archived") return "Archived";
   if (event.type === "restored") return "Restored";
   return event.type;
