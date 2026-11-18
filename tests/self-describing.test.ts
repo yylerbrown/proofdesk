@@ -124,6 +124,7 @@ describe("real answers", () => {
       "add_entry",
       await admin(app).post(`${t}/entries`).send({ kind: "note", body: "Looking" }),
     );
+    expectShape("add_note", await admin(app).post(`${t}/notes`).send({ body: "A note" }));
     expectShape("list_entries", await admin(app).get(`${t}/entries`));
     expectShape(
       "add_evidence",

@@ -479,6 +479,8 @@ export type EntryRow = {
   author_role: "customer" | "team" | "admin";
   author_name: string;
   created_at: string;
+  /** For a reply published from an internal note: that note's id. */
+  based_on?: number | null;
 };
 
 export type NewEntry = Omit<EntryRow, "id">;
@@ -534,11 +536,11 @@ export function insertEntry(db: Db, entry: NewEntry): EntryRow {
   const result = db
     .prepare(
       `INSERT INTO ticket_entries
-       (ticket_id, kind, body, author, author_kind, author_role, author_name, created_at)
-     VALUES (@ticket_id, @kind, @body, @author, @author_kind, @author_role, @author_name, @created_at)`,
+       (ticket_id, kind, body, author, author_kind, author_role, author_name, created_at, based_on)
+     VALUES (@ticket_id, @kind, @body, @author, @author_kind, @author_role, @author_name, @created_at, @based_on)`,
     )
-    .run(entry);
-  return { id: Number(result.lastInsertRowid), ...entry };
+    .run({ based_on: null, ...entry });
+  return { id: Number(result.lastInsertRowid), based_on: null, ...entry };
 }
 
 /** The latest `limit` entries, oldest first. Notes are left out unless includeNotes is true. */

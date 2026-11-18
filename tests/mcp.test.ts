@@ -170,7 +170,7 @@ describe("the one path: read, evidence, ask the owner", () => {
     const readOnly = await issue(app, ["read_tickets"]);
     await handToAgent(app, "SUP-1", readOnly);
     const client = await connect(app, readOnly);
-    const note = await call(client, "add_entry", { key: "SUP-1", kind: "note", body: "x" });
+    const note = await call(client, "add_note", { key: "SUP-1", body: "x" });
     expect(note).toMatchObject({
       isError: true,
       body: { error: { code: "forbidden", retry: false } },
@@ -217,13 +217,10 @@ describe("limits over MCP", () => {
         .send({ kind: "note", body: `api ${i}` });
     }
     for (let i = 0; i < half; i++) {
-      await call(client, "add_entry", { key: "SUP-1", kind: "note", body: `mcp ${i}` });
+      await call(client, "add_note", { key: "SUP-1", body: `mcp ${i}` });
     }
     await expect(
-      client.callTool({
-        name: "add_entry",
-        arguments: { key: "SUP-1", kind: "note", body: "one more" },
-      }),
+      client.callTool({ name: "add_note", arguments: { key: "SUP-1", body: "one more" } }),
     ).rejects.toThrow();
     // Reading is not a write, and still works.
     expect((await call(client, "get_ticket", { key: "SUP-1" })).isError).toBe(false);

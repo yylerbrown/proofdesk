@@ -346,6 +346,23 @@
     <small><% if (item.author_kind !== "agent") { %><%= item.author_role %> · <% } %><% if (item.kind === "note") { %><span class="note-label">internal note, the customer does not see this</span> · <% } %><%- include("time", { iso: item.created_at }) %></small>
   </header>
   <p class="user-text"><%= item.body %></p>
+  <% if (item.based_on) { const source = entries.find((e) => e.id === item.based_on); if (source) { %>
+  <p><small>Published from a note by <%= source.author_name %><% if (source.author_kind === "agent") { %> (AI agent)<% } %>. Only the team sees this line.</small></p>
+  <% } } %>
+  <% if (item.kind === "note" && item.author_kind === "agent" && allowed.reply && viewerRole !== "customer") { %>
+  <details class="publish">
+    <summary>Publish as my reply</summary>
+    <form method="post" action="/tickets/<%= ticket.key %>/entries">
+      <input type="hidden" name="kind" value="reply" />
+      <input type="hidden" name="based_on" value="<%= item.id %>" />
+      <label>
+        Reply to the customer, in your name
+        <textarea name="body" rows="4" required><%= item.body %></textarea>
+      </label>
+      <button type="submit" class="secondary compact">Send as my reply</button>
+    </form>
+  </details>
+  <% } %>
 </article>
 <% } %>
 

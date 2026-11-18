@@ -47,6 +47,7 @@ const ALL = [
   "0018_ticket_specs.sql",
   "0019_ask_record.sql",
   "0020_agent_handoffs.sql",
+  "0021_reply_source.sql",
 ];
 
 describe("runMigrations", () => {

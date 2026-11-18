@@ -235,7 +235,13 @@ export function pagesRouter(service: TicketService): Router {
     const entry = { kind: asText(req.body?.kind) || "reply", body: asText(req.body?.body) };
     try {
       const ticket = service.getTicket(req.params.key, actor);
-      const added = service.addEntry(req.params.key, entry, actor);
+      // A reply published from a note carries that note's id.
+      const basedOn = asText(req.body?.based_on);
+      const added = service.addEntry(
+        req.params.key,
+        basedOn === "" ? entry : { ...entry, based_on: basedOn },
+        actor,
+      );
       rememberSaved(res, added.kind === "note" ? "note" : "reply");
       res.redirect(303, `/tickets/${ticket.key}#conversation`);
     } catch (err) {

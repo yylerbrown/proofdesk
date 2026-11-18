@@ -14,6 +14,7 @@ import {
   linkChangeSchema,
   listQuerySchema,
   markReadySchema,
+  noteSchema,
   pageOf,
   reopenSchema,
   verificationRequestSchema,
@@ -312,6 +313,19 @@ export const ACTIONS: ApiAction[] = [
     status: 201,
     page: "POST /tickets/:key/entries",
     run: ({ service, actor, key, body }) => service.addEntry(key, body, actor),
+  },
+  {
+    name: "add_note",
+    output: entryOutput,
+    method: "post",
+    path: "/tickets/:key/notes",
+    summary:
+      "Add an internal note for the team. The customer never sees it. Suggested wording for the customer goes here; a person decides whether to publish it.",
+    needs: "note",
+    body: noteSchema,
+    status: 201,
+    run: ({ service, actor, key, body }) =>
+      service.addEntry(key, { kind: "note", body: parse(noteSchema, body).body }, actor),
   },
   {
     name: "list_evidence",
