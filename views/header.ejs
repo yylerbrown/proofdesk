@@ -11,10 +11,12 @@
     <link rel="stylesheet" href="/assets/site.css" />
   </head>
   <body>
-    <% if (demo) { %>
-    <p class="demo-strip">Demo: sample data, shared with everyone who visits.</p>
-    <% } %>
+    <%# The first stop on every page: keyboard users can jump past the header's links. %>
+    <a href="#main" class="skip-link">Skip to main content</a>
     <header class="site-header">
+      <% if (demo) { %>
+      <p class="demo-strip">Demo: sample data, shared with everyone who visits.</p>
+      <% } %>
       <nav class="container">
         <ul>
           <li><a href="/tickets" class="brand"><img src="/assets/brand.svg" alt="" width="24" height="24" /><strong>Proofdesk</strong></a></li>
@@ -55,7 +57,7 @@
         <% } %>
       </nav>
     </header>
-    <main class="container">
+    <main id="main" class="container" tabindex="-1">
       <% if (locals.refused) { %>
       <p role="alert" class="refused"><%= locals.refused %></p>
       <% } %>

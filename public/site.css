@@ -89,6 +89,10 @@ time,
 details.history > summary {
   font-variant-numeric: tabular-nums;
 }
+/* A time never breaks inside itself, so "9:44 AM" never leaves "AM" alone on the next line. */
+time {
+  white-space: nowrap;
+}
 /*
  * Code: the system monospace a step smaller than the words around it. Inline code sits on a
  * hairline chip; a block is one quiet panel, its padding set once (Pico pads both the block and
@@ -246,6 +250,7 @@ nav[aria-label="breadcrumb"] ul li a {
  * width up it stays at the top while the page scrolls under it, slightly see-through.
  */
 body > header.site-header {
+  --pd-demo-strip-h: 28px;
   padding-block: 0;
   border-bottom: var(--pd-hairline);
   background: var(--pd-bg);
@@ -258,6 +263,18 @@ body > header.site-header {
     background: var(--pd-header-bg);
     -webkit-backdrop-filter: saturate(180%) blur(12px);
     backdrop-filter: saturate(180%) blur(12px);
+  }
+  /*
+   * The demo strip is the header's first line. The header sticks one strip-height above the top,
+   * so the strip scrolls away and only the bar with the links stays.
+   */
+  body > header.site-header:has(> .demo-strip) {
+    top: calc(-1 * var(--pd-demo-strip-h));
+  }
+  .site-header > .demo-strip {
+    box-sizing: border-box;
+    height: var(--pd-demo-strip-h);
+    padding-block: 0;
   }
   /* A link to a part of the page lands below the header, not under it. */
   [id] {
@@ -486,6 +503,32 @@ header nav .viewer strong {
   .site-header .tickets-link {
     display: none;
   }
+}
+
+/*
+ * "Skip to main content": the first stop on every page. It stays out of sight until it has
+ * focus, then shows as a small chip over the top corner of the page.
+ */
+.skip-link {
+  position: absolute;
+  z-index: 40;
+  top: var(--pd-space-2);
+  left: var(--pd-space-2);
+  padding: 6px 10px;
+  border-radius: var(--pd-radius);
+  background: var(--pd-surface);
+  color: var(--pd-text);
+  font-size: var(--pd-text-sm);
+  font-weight: var(--pd-weight-medium);
+  text-decoration: none;
+  transform: translateY(calc(-100% - var(--pd-space-4)));
+}
+.skip-link:focus {
+  transform: none;
+}
+/* The skip link lands on the page's main part, which only takes focus for that; no ring. */
+main:focus {
+  outline: none;
 }
 
 /* ---------- 3. Demo strip ---------- */
@@ -730,7 +773,9 @@ form.inline {
  */
 :is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"]) {
   display: block;
-  margin: 0;
+  /* Room inside the scrolling row for the focus ring, which sits 4px outside each segment. */
+  margin: -4px;
+  padding: 4px;
   overflow-x: auto;
 }
 :is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"]) ul {
