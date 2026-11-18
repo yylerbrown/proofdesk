@@ -27,6 +27,15 @@ export class ValidationError extends HttpError {
   }
 }
 
+/** The demo was not seeded with its assistant sample, so assistant connections are off. */
+export function demoNotReady(): HttpError {
+  return new HttpError(
+    503,
+    "demo_not_ready",
+    "Assistant connections are off on this demo until its operator resets its database.",
+  );
+}
+
 type ShownError = {
   status: number;
   code: string;

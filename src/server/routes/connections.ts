@@ -2,7 +2,7 @@ import { Router, type Request } from "express";
 import { signedIn } from "../actor.js";
 import type { Config } from "../config.js";
 import { DEFAULT_SCOPES, type ConnectionService } from "../connections/service.js";
-import { HttpError, ValidationError } from "../errors.js";
+import { demoNotReady, HttpError, ValidationError } from "../errors.js";
 import { formatTime } from "../pages/format.js";
 import { AGENT_SCOPES, can, CAPABILITIES } from "../permissions.js";
 
@@ -76,13 +76,7 @@ export function connectionsRouter(
   // welcome page, without signing in.
   router.post("/demo/connection", (req, res) => {
     if (!config.demo) throw new HttpError(404, "not_found", "There is no page at this address.");
-    if (!demoReady()) {
-      throw new HttpError(
-        503,
-        "demo_not_ready",
-        "Assistant connections are off on this demo until its operator resets its database.",
-      );
-    }
+    if (!demoReady()) throw demoNotReady();
     const { connection, key } = connections.issueDemo();
     res.render("connection-created", {
       title: "Your demo connection",
