@@ -36,7 +36,7 @@ async function askCustomer(app: Awaited<ReturnType<typeof setup>>["app"]) {
   return as(app, teamActor).post("/api/tickets/SUP-1/ready").send(tryIt);
 }
 
-describe("only the customer resolves a ticket", () => {
+describe("the status control never resolves a ticket", () => {
   it("refuses Resolved from the status control, on the API and on the page", async () => {
     const { app } = await setup();
     const api = await admin(app).patch("/api/tickets/SUP-1").send({ status: "resolved" });
@@ -65,11 +65,12 @@ describe("from merged to confirmed", () => {
     });
   });
 
-  it("asks the customer only once the ticket is in progress and has its change link", async () => {
+  it("asks the customer once the ticket is in progress, with or without a change link", async () => {
     const { app } = await setup();
-    const noLink = await as(app, teamActor).post("/api/tickets/SUP-1/ready").send(tryIt);
-    expect(noLink.status).toBe(409);
-    expect(noLink.body.error.code).toBe("needs_change_link");
+    const noLink = await as(app, teamActor).post("/api/tickets/SUP-1/ready").send({});
+    expect(noLink.status).toBe(200);
+    expect(noLink.body).toMatchObject({ change_url: null, try_url: null });
+    expect(noLink.body.ready_at).not.toBeNull();
 
     // A second ticket that was taken and linked but never started.
     await as(app, customerOne)

@@ -91,7 +91,8 @@ export const CAPABILITIES: Record<Action, Capability> = {
   hand_to_agent: { people: "The ticket's owner.", agent: "people_only" },
   adopt_check: { people: "Only the customer who filed it.", agent: "people_only" },
   resolve_with_reason: {
-    people: "The ticket's owner, or an admin, with a reason.",
+    people:
+      "The ticket's owner, a team member for a ticket nobody owns yet (they become its owner), or an admin, with a reason.",
     agent: "people_only",
   },
 };

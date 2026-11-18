@@ -54,7 +54,7 @@ Each one takes under a minute on the demo, starting from its welcome page.
 **Update status: to Resolved**
 
 - Start as: Demo Team Member, owning the ticket
-- Press: **Use sample fix** (or type any link and press **Save change link**), then **Ask the customer to verify**, then **View this ticket as the customer who filed it** and **Yes, resolve ticket**
+- Press: **Ask the customer to verify**, then **View this ticket as the customer who filed it** and **Yes, resolve ticket**
 - You should see: **Resolved**, and "Customer confirmed it is fixed." The owner can also resolve without the customer: press "Resolve" under Status and choose a reason, and the ticket then shows "Resolved by the team: <reason>" to everyone.
 
 **A working product**

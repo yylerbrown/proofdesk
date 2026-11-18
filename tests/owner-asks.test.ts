@@ -13,8 +13,9 @@ import {
   teamActor,
 } from "./helpers.js";
 
-// Only the ticket's current owner asks the customer, after trying it, and the ask says what
-// they tried and what happened. After a No, it also says what changed.
+// Only the ticket's current owner asks the customer, on a ticket in progress. What they tried,
+// what happened, a page to try, what changed since a No and evidence are all optional, and the
+// customer sees each one given.
 
 const valid = {
   title: "Printer jams",
@@ -70,22 +71,24 @@ describe("who asks the customer", () => {
     expect(owner.status).toBe(200);
   });
 
-  it("must say what they tried and what happened, and keeps what was typed", async () => {
+  it("may leave every box empty, and a link that is not one comes back with what was typed", async () => {
     const { app } = buildTestApp();
     await ready(app);
-    const bare = await as(app, teamActor)
-      .post("/api/tickets/SUP-1/ready")
-      .send({ try_url: ask.try_url });
-    expect(bare.status).toBe(400);
-    expect(Object.keys(bare.body.error.fields).sort()).toEqual(["result", "tried"]);
     const page = await as(app, teamActor)
       .post("/tickets/SUP-1/ready")
       .type("form")
-      .send({ try_url: ask.try_url, tried: "Printed it", result: "" });
+      .send({ try_url: "not a link", tried: "Printed it", result: "" });
     expect(page.status).toBe(400);
     const form = parse(page.text).querySelector("form.ask");
     expect(form?.querySelector("textarea[name=tried]")?.text).toBe("Printed it");
-    expect(parse(page.text).querySelector("#ready-error")?.text).toMatch(/what happened/);
+    expect(parse(page.text).querySelector("#ready-error")?.text).toMatch(/http or https/);
+    // The form's empty boxes are not given: the customer is asked with nothing else.
+    const empty = await as(app, teamActor)
+      .post("/tickets/SUP-1/ready")
+      .type("form")
+      .send({ try_url: "", tried: "", result: "" });
+    expect(empty.status).toBe(303);
+    expect((await reread(app)).ask).toMatchObject({ try_url: null, tried: null, result: null });
   });
 
   it("shows the customer what the owner tried and what happened", async () => {
@@ -126,24 +129,31 @@ describe("who asks the customer", () => {
 });
 
 describe("after a No", () => {
-  it("refuses a bare repeat of the question until the owner says what changed", async () => {
+  it("asks again in one press, and shows what changed when the owner says it", async () => {
     const { app } = buildTestApp();
     await ready(app);
-    const first = (await as(app, teamActor).post("/api/tickets/SUP-1/ready").send(ask)).body;
-    await as(app, customerOne)
-      .post("/api/tickets/SUP-1/answer")
-      .send({ fixed: "no", comment: "Still jams double-sided.", ready_token: first.ready_token });
-    const bare = await as(app, teamActor).post("/api/tickets/SUP-1/ready").send(ask);
-    expect(bare.status).toBe(400);
-    expect(bare.body.error.fields.response).toBeDefined();
-    expect((await reread(app)).ready_at).toBeNull();
+    const say = async (comment: string) => {
+      const { ready_token } = await reread(app);
+      await as(app, customerOne)
+        .post("/api/tickets/SUP-1/answer")
+        .send({ fixed: "no", comment, ready_token });
+    };
+    await as(app, teamActor).post("/api/tickets/SUP-1/ready").send(ask);
+    await say("Still jams double-sided.");
 
     const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    // The page to try is filled in from the last question.
+    // The page to try is filled in from the last question, and what changed is optional.
     expect(page.querySelector("form.ask input[name=try_url]")?.getAttribute("value")).toBe(
       ask.try_url,
     );
-    expect(page.querySelector("form.ask textarea[name=response]")).not.toBeNull();
+    const response = page.querySelector("form.ask textarea[name=response]")!;
+    expect(response.hasAttribute("required")).toBe(false);
+
+    const bare = await as(app, teamActor).post("/api/tickets/SUP-1/ready").send({});
+    expect(bare.status).toBe(200);
+    const plain = parse((await as(app, customerOne).get("/tickets/SUP-1")).text);
+    expect(plain.querySelector("#did-this-fix-it")?.text).not.toContain("What changed");
+    await say("Still jams.");
 
     const again = await as(app, teamActor)
       .post("/api/tickets/SUP-1/ready")
@@ -157,18 +167,15 @@ describe("after a No", () => {
   });
 });
 
-describe("when asking is not possible yet", () => {
-  it("shows the button greyed, with the reason", async () => {
+describe("the ask on the ticket page", () => {
+  it("shows the button greyed, with the reason, to anyone but the owner", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
+    // The owner asks without a change link: the form, never a greyed button.
     const noLink = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    expect(noLink.querySelector(".ask-blocked button[disabled]")?.text).toBe(
-      "Ask the customer to verify",
-    );
-    expect(noLink.querySelector("#ask-blocked-why")?.text).toBe(
-      "Add the link to the code change first.",
-    );
+    expect(noLink.querySelector("form.ask")).not.toBeNull();
+    expect(noLink.querySelector(".ask-blocked")).toBeNull();
     const notMine = parse((await admin(app).get("/tickets/SUP-1")).text);
     expect(notMine.querySelector("#ask-blocked-why")?.text).toBe(
       "Only Team Member can ask the customer to verify.",
@@ -178,22 +185,17 @@ describe("when asking is not possible yet", () => {
     ).toBeNull();
   });
 
-  it("shows the reason, not the form, when the customer has not said how they will know", async () => {
+  it("is possible when the customer has not said how they will know", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne)
       .post("/api/tickets")
       .send({ ...valid, fix_check: undefined });
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
-    await as(app, teamActor)
-      .put("/api/tickets/SUP-1/change-link")
-      .send({ change_url: "https://example.com/c/1" });
     const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    expect(page.querySelector("form.ask")).toBeNull();
-    expect(page.querySelector("#ask-blocked-why")?.text).toBe(
-      "The customer has not said how they will know it is fixed. Ask them in a reply.",
-    );
-    // The server refuses it too, so the page offers nothing that would fail.
+    expect(page.querySelector("form.ask")).not.toBeNull();
+    expect(page.querySelector(".ask-blocked")).toBeNull();
+    // The server accepts it too, so the page offers nothing that would fail.
     const res = await as(app, teamActor).post("/api/tickets/SUP-1/ready").send(ask);
-    expect(res.body.error.code).toBe("needs_check");
+    expect(res.status).toBe(200);
   });
 });

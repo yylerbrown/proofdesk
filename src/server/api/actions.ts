@@ -136,7 +136,7 @@ export const ACTIONS: ApiAction[] = [
     method: "patch",
     path: "/tickets/:key",
     summary:
-      "Start work: move a New ticket you own to in_progress. Nothing else moves the status this way: the customer's Yes resolves (or the owner or an admin resolves with a reason, resolve_with_reason), and a resolved ticket moves only by reopen.",
+      "Start work: move a New ticket you own to in_progress. Nothing else moves the status this way: the customer's Yes resolves (or the team resolves with a reason, resolve_with_reason), and a resolved ticket moves only by reopen.",
     needs: "change_status",
     body: changeStatusSchema,
     run: ({ service, actor, key, body }) => service.changeStatus(key, body, actor),
@@ -187,7 +187,8 @@ export const ACTIONS: ApiAction[] = [
     output: ticketOutput,
     method: "post",
     path: "/tickets/:key/ready",
-    summary: 'Ask the customer "Did this fix it?", with a page on the live site to try.',
+    summary:
+      'Ask the customer "Did this fix it?". The ticket must be in progress, and only its owner asks. Every field is optional, and the customer sees each one given: try_url (a page on the live site to try), tried, result, response (what changed since their last No) and evidence_ids.',
     needs: "mark_ready",
     body: markReadySchema,
     run: ({ service, actor, key, body }) => service.markReady(key, body, actor),
@@ -246,7 +247,7 @@ export const ACTIONS: ApiAction[] = [
     method: "post",
     path: "/tickets/:key/resolve",
     summary:
-      "Resolve a New or In Progress ticket without the customer's Yes, with a reason: fixed_no_reply, duplicate (with duplicate_of), wont_fix, cannot_reproduce, or other (with a note). The ticket's owner or an admin; never an agent. It shows as resolved by the team, apart from Customer confirmed. The customer can reopen it, and so can its owner or an admin.",
+      "Resolve a New or In Progress ticket without the customer's Yes, with a reason: fixed_no_reply, duplicate (with duplicate_of), wont_fix, cannot_reproduce, or other (with a note). The ticket's owner or an admin, or a team member for a ticket nobody owns yet, who becomes its owner; never an agent. It shows as resolved by the team, apart from Customer confirmed. The customer can reopen it, and so can its owner or an admin.",
     needs: "resolve_with_reason",
     body: resolveSchema,
     output: ticketOutput,
