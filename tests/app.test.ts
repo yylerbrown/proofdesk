@@ -67,7 +67,12 @@ describe("error handling", () => {
     expect(res.status).toBe(404);
     expect(res.headers["content-type"]).toMatch(/json/);
     expect(res.body).toEqual({
-      error: { code: "not_found", message: "No route for GET /api/nope" },
+      error: {
+        code: "not_found",
+        message: "No route for GET /api/nope",
+        hint: expect.any(String),
+        retry: false,
+      },
     });
   });
 
@@ -80,7 +85,12 @@ describe("error handling", () => {
       .send("{bad");
     expect(res.status).toBe(400);
     expect(res.body).toEqual({
-      error: { code: "bad_request", message: "The request was invalid." },
+      error: {
+        code: "bad_request",
+        message: "The request was invalid.",
+        hint: expect.any(String),
+        retry: false,
+      },
     });
   });
 });

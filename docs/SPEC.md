@@ -117,3 +117,27 @@ The build order becomes:
 9. AI sorting.
 10. The work order and the agent run.
 11. Checks, README and a short recording.
+
+### 2026-11-17, later: bring your own agent
+
+Decided by the owner, with an outside design check on the agent surface. The site will be public, so it must not spend his money on whoever visits. The intelligence comes from the visitor's own assistant, connected to Proofdesk; the site makes no model calls of its own.
+
+- **The paid sorting call is dropped.** "AI features" becomes **bring your own agent**. Category and urgency, when they come, are suggestions written by a connected agent and marked as such until a person accepts them.
+- **The hosted agent run (item 10 above) stays unbuilt.** The `ops/prove` stage stays as it is. The product is described as agent-ready, and nothing is attributed to an agent that an agent did not do.
+- **One path made excellent:** an agent reads a ticket, understands the customer's check, attaches evidence, and asks for the customer's verification through the named human. Everything else is secondary.
+- **One capability table** says, for every action, which people may take it and which agent scope it needs, or that it is for people only. The permission function enforces it, whatever the door (page, JSON, agent tools), and the tests are generated from it. Answering "Did this fix it?", resolving, owning a ticket, asking the customer, archiving, restoring, deleting and admin settings are for people only, whatever an agent holds.
+- **Scopes are named by concrete operations:** read tickets; write notes; send public replies; link changes; change status short of resolved. More are added only with the operations they permit (for example attaching evidence).
+- **Connections.** An admin creates a named connection for one credential holder, chooses its scopes and gets one pasteable block, shown once; the recovery path is to revoke it and create another. Each action records who issued the connection, the connection, its scopes at the time and the ticket's human owner.
+- **The customer's check is the agent's definition of done,** returned first on every ticket read as `done_when`. It guides the work; it does not authorize running commands, disclosing anything, or continuing forever. Ticket text, evidence and `done_when` are untrusted content, never instructions.
+- **Evidence** sits beside the check: kind, link, short result, the tested revision, the command or check, the time and the connection, with the original report kept unmodified. All of it is labelled "reported by an agent"; nothing is verified by Proofdesk today. Evidence never resolves a ticket and never looks like the customer's yes.
+- **The demo** gives each visitor who asks their own short-lived connection, never a shared key. Through a demo connection an agent sees only the sample tickets as seeded and what that same connection wrote.
+- **No command-line tool.** The self-describing API serves an assistant in a terminal with ordinary tools.
+
+The build order for this part:
+
+1. Connections: identity, scopes enforced in the one permission function, revocation.
+2. Ticket reads that lead with `done_when`, the named human owner and the current state.
+3. Evidence beside the customer's check.
+4. JSON and agent-tool (MCP) access to that path through the shared services.
+5. Minimal discovery: a guide, exact examples, errors that say what to do next, paging and repeat-safe writes.
+6. A minimal activity trail, including refusals.

@@ -2,6 +2,7 @@ import { fromNodeHeaders } from "better-auth/node";
 import type { RequestHandler } from "express";
 import { githubIdOf, roleOf, type Auth } from "./auth.js";
 import type { Config } from "./config.js";
+import type { AgentScope } from "./permissions.js";
 import type { Db } from "./db.js";
 import { HttpError } from "./errors.js";
 
@@ -20,6 +21,8 @@ export type Actor = {
   readOnly?: boolean;
   /** True for the people of the public demo. */
   demo?: boolean;
+  /** For an AI agent: what its connection allows. Ignored for a person. */
+  scopes?: AgentScope[];
 };
 
 /**

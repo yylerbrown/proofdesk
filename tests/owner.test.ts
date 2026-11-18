@@ -1,3 +1,4 @@
+import { AGENT_SCOPES } from "../src/server/permissions.js";
 import { describe, expect, it } from "vitest";
 import { createTicketService } from "../src/server/tickets/service.js";
 import { admin, adminActor, as, buildTestApp, customerOne, teamActor } from "./helpers.js";
@@ -51,6 +52,8 @@ describe("a named human owner", () => {
     expect(refused.body.error).toEqual({
       code: "needs_owner",
       message: "Take ticket SUP-1 before moving it to In Progress.",
+      hint: "Take the ticket first (POST .../take), then change the status.",
+      retry: false,
     });
     expect((await admin(app).get("/api/tickets/SUP-1")).body.status).toBe("new");
 
@@ -88,7 +91,13 @@ describe("a named human owner", () => {
     const { db } = buildTestApp();
     const service = createTicketService(db, "SUP");
     service.createTicket(valid, adminActor);
-    const agent = { id: "helper-1", kind: "agent" as const, role: "team" as const, name: "Helper" };
+    const agent = {
+      id: "helper-1",
+      kind: "agent" as const,
+      role: "team" as const,
+      name: "Helper",
+      scopes: [...AGENT_SCOPES],
+    };
     expect(() => service.takeTicket("SUP-1", agent)).toThrow(/not allowed/);
     expect(service.getTicket("SUP-1", adminActor).owner_id).toBeNull();
   });
