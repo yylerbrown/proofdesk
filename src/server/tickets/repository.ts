@@ -36,6 +36,7 @@ export type NewTicket = {
   description: string;
   whereUrl: string | null;
   fixCheck: string | null;
+  createdBy: string;
   now: string;
 };
 
@@ -52,14 +53,16 @@ export type NewEvent = {
 export function insertTicket(db: Db, ticket: NewTicket): number {
   const result = db
     .prepare(
-      `INSERT INTO tickets (title, description, where_url, fix_check, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO tickets
+         (title, description, where_url, fix_check, created_by, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       ticket.title,
       ticket.description,
       ticket.whereUrl,
       ticket.fixCheck,
+      ticket.createdBy,
       ticket.now,
       ticket.now,
     );
@@ -70,16 +73,25 @@ export function findTicket(db: Db, id: number): TicketRow | undefined {
   return db.prepare("SELECT * FROM tickets WHERE id = ?").get(id) as TicketRow | undefined;
 }
 
-/** Tickets that are not archived, newest first. Pass undefined to get every status. */
-export function listTickets(db: Db, status: TicketStatus | undefined): TicketRow[] {
-  if (status === undefined) {
-    return db
-      .prepare("SELECT * FROM tickets WHERE archived_at IS NULL ORDER BY id DESC")
-      .all() as TicketRow[];
-  }
+/**
+ * Tickets that are not archived, newest first. Pass a status to get only that status, and a
+ * creator to get only the tickets that person filed. Pass null to leave either one out.
+ */
+export function listTickets(
+  db: Db,
+  status: TicketStatus | null,
+  createdBy: string | null,
+): TicketRow[] {
+  // @status and @createdBy are named values, so each can be used twice in the text.
   return db
-    .prepare("SELECT * FROM tickets WHERE archived_at IS NULL AND status = ? ORDER BY id DESC")
-    .all(status) as TicketRow[];
+    .prepare(
+      `SELECT * FROM tickets
+       WHERE archived_at IS NULL
+         AND (@status IS NULL OR status = @status)
+         AND (@createdBy IS NULL OR created_by = @createdBy)
+       ORDER BY id DESC`,
+    )
+    .all({ status, createdBy }) as TicketRow[];
 }
 
 /** Archived tickets only, newest first. */

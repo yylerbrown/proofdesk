@@ -1,6 +1,7 @@
 import type { Actor } from "../actor.js";
 import type { Db } from "../db.js";
 import { HttpError } from "../errors.js";
+import { can, type Action } from "../permissions.js";
 import { parse } from "../validation.js";
 import { buildKey, parseKey } from "./keys.js";
 import * as repository from "./repository.js";
@@ -14,7 +15,8 @@ import {
 // The rules for tickets live here: what a valid ticket is, key handling, "not found",
 // "same status is a no-op", and which writes must happen together in one transaction.
 // Routes and pages call these functions and nothing else. Input that comes from outside
-// arrives as "unknown" and is checked here, so no caller can skip the check.
+// arrives as "unknown" and is checked here, so no caller can skip the check. Every function
+// takes the actor and asks can() in permissions.ts, so no caller can skip that either.
 
 /** What callers see. The bare database number is replaced by the public key. */
 export type Ticket = {
@@ -108,27 +110,36 @@ export function createTicketService(db: Db, prefix: string) {
     return id;
   }
 
-  /** Returns the ticket row or throws 404. */
-  function requireRow(key: string): repository.TicketRow {
+  /**
+   * Returns the ticket row if it exists and this actor may see it. Otherwise throws the same
+   * 404 in both cases, so the answer does not reveal that someone else's ticket exists.
+   */
+  function requireRow(key: string, actor: Actor): repository.TicketRow {
     const row = repository.findTicket(db, idFromKey(key));
-    if (row === undefined) {
+    if (row === undefined || !can(actor, "read", row)) {
       throw new HttpError(404, "ticket_not_found", `No ticket ${key}.`);
     }
     return row;
   }
 
-  /** Returns the ticket row, or throws 404 if it is missing and 409 if it is archived. */
-  function requireActiveRow(key: string): repository.TicketRow {
-    const row = requireRow(key);
+  /** Throws 403 unless the actor may do this action, on this ticket if one is given. */
+  function requirePermission(actor: Actor, action: Action, row?: repository.TicketRow): void {
+    if (!can(actor, action, row)) {
+      throw new HttpError(403, "forbidden", "You are not allowed to do that.");
+    }
+  }
+
+  /** Throws 409 when the ticket is archived. Used before any change to its content. */
+  function requireNotArchived(key: string, row: repository.TicketRow): void {
     if (row.archived_at !== null) {
       throw new HttpError(409, "ticket_archived", `Ticket ${key} is archived. Restore it first.`);
     }
-    return row;
   }
 
   return {
     /** Checks the input, then saves the ticket and its "created" event together. */
     createTicket(input: unknown, actor: Actor): Ticket {
+      requirePermission(actor, "create");
       const ticket = parse(createTicketSchema, input);
       const now = new Date().toISOString();
       const row = db.transaction(() => {
@@ -137,6 +148,7 @@ export function createTicketService(db: Db, prefix: string) {
           description: ticket.description,
           whereUrl: ticket.where_url ?? null,
           fixCheck: ticket.fix_check || null,
+          createdBy: actor.id,
           now,
         });
         repository.insertEvent(db, {
@@ -152,22 +164,32 @@ export function createTicketService(db: Db, prefix: string) {
       return toTicket(row);
     },
 
-    /** "archived" lists only archived tickets. Every other filter leaves them out. */
-    listTickets(filter: TicketListFilter): Ticket[] {
-      if (filter === "archived") return repository.listArchivedTickets(db).map(toTicket);
-      const status = filter === "all" ? undefined : filter;
-      return repository.listTickets(db, status).map(toTicket);
+    /**
+     * A team member or admin gets every ticket. A customer gets only the ones they filed.
+     * "archived" lists only archived tickets, for an admin. Every other filter leaves
+     * archived tickets out.
+     */
+    listTickets(filter: TicketListFilter, actor: Actor): Ticket[] {
+      if (filter === "archived") {
+        requirePermission(actor, "list_archived");
+        return repository.listArchivedTickets(db).map(toTicket);
+      }
+      const status = filter === "all" ? null : filter;
+      const createdBy = can(actor, "list_all") ? null : actor.id;
+      return repository.listTickets(db, status, createdBy).map(toTicket);
     },
 
-    getTicket(key: string): Ticket {
-      return toTicket(requireRow(key));
+    getTicket(key: string, actor: Actor): Ticket {
+      return toTicket(requireRow(key, actor));
     },
 
     /** Checks the input, then saves the new status and its event together. */
     changeStatus(key: string, input: unknown, actor: Actor): Ticket {
       const { status } = parse(changeStatusSchema, input);
       const row = db.transaction(() => {
-        const before = requireActiveRow(key);
+        const before = requireRow(key, actor);
+        requirePermission(actor, "change_status", before);
+        requireNotArchived(key, before);
         if (before.status === status) return before; // nothing changes, so nothing is logged
         const now = new Date().toISOString();
         repository.updateTicketStatus(db, before.id, status, now);
@@ -198,7 +220,9 @@ export function createTicketService(db: Db, prefix: string) {
         fix_check: ticket.fix_check || null,
       };
       const row = db.transaction(() => {
-        const before = requireActiveRow(key);
+        const before = requireRow(key, actor);
+        requirePermission(actor, "edit", before);
+        requireNotArchived(key, before);
         const changes: Record<string, { from: string | null; to: string | null }> = {};
         for (const field of ["title", "description", "where_url", "fix_check"] as const) {
           if (before[field] !== after[field]) {
@@ -234,7 +258,8 @@ export function createTicketService(db: Db, prefix: string) {
     /** Hides the ticket from the ordinary lists. Its row and its events are kept. */
     archiveTicket(key: string, actor: Actor): Ticket {
       const row = db.transaction(() => {
-        const before = requireRow(key);
+        const before = requireRow(key, actor);
+        requirePermission(actor, "archive", before);
         if (before.archived_at !== null) return before; // already archived
         const now = new Date().toISOString();
         repository.updateTicketArchived(db, before.id, now, now);
@@ -251,10 +276,11 @@ export function createTicketService(db: Db, prefix: string) {
       return toTicket(row);
     },
 
-    /** Brings an archived ticket back into the ordinary lists. */
+    /** Brings an archived ticket back into the ordinary lists. Only an admin may. */
     restoreTicket(key: string, actor: Actor): Ticket {
       const row = db.transaction(() => {
-        const before = requireRow(key);
+        const before = requireRow(key, actor);
+        requirePermission(actor, "restore", before);
         if (before.archived_at === null) return before; // not archived
         const now = new Date().toISOString();
         repository.updateTicketArchived(db, before.id, null, now);
@@ -271,9 +297,20 @@ export function createTicketService(db: Db, prefix: string) {
       return toTicket(row);
     },
 
-    listEvents(key: string): TicketEvent[] {
-      const row = requireRow(key);
+    listEvents(key: string, actor: Actor): TicketEvent[] {
+      const row = requireRow(key, actor);
       return repository.listEvents(db, row.id).map(toEvent);
+    },
+
+    /** What this actor may do to this ticket, for a page to decide which controls to show. */
+    allowedActions(ticket: Ticket, actor: Actor) {
+      const archived = ticket.archived_at !== null;
+      return {
+        edit: !archived && can(actor, "edit", ticket),
+        changeStatus: !archived && can(actor, "change_status", ticket),
+        archive: !archived && can(actor, "archive", ticket),
+        restore: archived && can(actor, "restore", ticket),
+      };
     },
   };
 }

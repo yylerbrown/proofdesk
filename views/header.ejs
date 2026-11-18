@@ -14,10 +14,17 @@
         <ul>
           <li><a href="/tickets"><strong>Support Desk</strong></a></li>
         </ul>
+        <% if (viewer) { %>
         <ul>
           <li><a href="/tickets">Tickets</a></li>
           <li><a href="/tickets/new" role="button">New ticket</a></li>
         </ul>
+        <% } %>
       </nav>
     </header>
     <main class="container">
+      <% if (viewer) { %>
+      <form method="post" action="/sign-out">
+        <small>Signed in as <%= viewer.name %> (<%= viewer.role %>). <button type="submit" class="outline secondary sign-out">Sign out</button></small>
+      </form>
+      <% } %>

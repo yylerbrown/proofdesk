@@ -1,7 +1,10 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import type { Express } from "express";
+import request from "supertest";
 import { afterEach } from "vitest";
+import { DEV_ACTORS, DEV_COOKIE, type Actor } from "../src/server/actor.js";
 import { createApp } from "../src/server/app.js";
 import { loadConfig } from "../src/server/config.js";
 import { openDatabase, type Db } from "../src/server/db.js";
@@ -15,7 +18,9 @@ export function buildTestApp(env: NodeJS.ProcessEnv = {}) {
   const db = openDatabase(path.join(dir, "test.db"));
   opened.push({ db, dir });
   runMigrations(db);
-  const config = loadConfig(env);
+  // Tests get in through the development entrance, which production refuses.
+  const devSignIn = env.NODE_ENV === "production" ? "off" : "on";
+  const config = loadConfig({ DEV_SIGN_IN: devSignIn, ...env });
   return { app: createApp(config, db), db, config };
 }
 
@@ -25,3 +30,25 @@ afterEach(() => {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+/** One of the made-up people of the development entrance, by id. */
+export function person(id: string): Actor {
+  const found = DEV_ACTORS.find((actor) => actor.id === id);
+  if (found === undefined) throw new Error(`No development person ${id}`);
+  return found;
+}
+
+export const adminActor = person("dev-admin-1");
+export const teamActor = person("dev-team-1");
+export const customerOne = person("dev-customer-1");
+export const customerTwo = person("dev-customer-2");
+
+/** Requests to the app as this person, the way a signed-in browser sends them. */
+export function as(app: Express, who: Actor) {
+  return request.agent(app).set("Cookie", `${DEV_COOKIE}=${who.id}`);
+}
+
+/** Most tests are about what the app does, not who may do it, so they act as the admin. */
+export function admin(app: Express) {
+  return as(app, adminActor);
+}

@@ -11,9 +11,11 @@
       <a href="/tickets?status=<%= status %>" <% if (current === status) { %>aria-current="page"<% } %>><%= statusLabels[status] %></a>
     </li>
     <% } %>
+    <% if (showArchivedFilter) { %>
     <li>
       <a href="/tickets?status=archived" <% if (current === "archived") { %>aria-current="page"<% } %>>Archived</a>
     </li>
+    <% } %>
   </ul>
 </nav>
 

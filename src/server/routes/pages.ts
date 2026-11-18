@@ -1,5 +1,7 @@
 import { Router } from "express";
+import { signedIn } from "../actor.js";
 import { ValidationError } from "../errors.js";
+import { can } from "../permissions.js";
 import { describeActor, describeEvent, formatTime, STATUS_LABELS } from "../pages/format.js";
 import { listQuerySchema, TICKET_STATUSES } from "../tickets/schemas.js";
 import type { TicketService } from "../tickets/service.js";
@@ -42,29 +44,33 @@ export function pagesRouter(service: TicketService): Router {
   });
 
   router.get("/tickets", (req, res) => {
+    const actor = signedIn(req);
     const { status } = parse(listQuerySchema, req.query);
     const current = status ?? "all";
     res.render("ticket-list", {
       ...helpers,
       title: "Tickets",
       current,
-      tickets: service.listTickets(current),
+      tickets: service.listTickets(current, actor),
+      showArchivedFilter: can(actor, "list_archived"),
     });
   });
 
   // Registered before "/tickets/:key" so that "new" is not read as a ticket key.
-  router.get("/tickets/new", (_req, res) => {
+  router.get("/tickets/new", (req, res) => {
+    signedIn(req);
     res.render("ticket-form", { ...newForm, values: emptyForm, errors: {} });
   });
 
   router.post("/tickets", (req, res) => {
+    const actor = signedIn(req);
     const values = readTicketForm(req.body);
     try {
       // The service checks the rules. A browser sends an empty box as "", and for the
       // optional link that means "not given".
       const ticket = service.createTicket(
         { ...values, where_url: values.where_url === "" ? undefined : values.where_url },
-        req.actor,
+        actor,
       );
       // 303 makes the browser fetch the ticket page with GET, so a refresh cannot file it twice.
       res.redirect(303, `/tickets/${ticket.key}`);
@@ -76,18 +82,21 @@ export function pagesRouter(service: TicketService): Router {
   });
 
   router.get("/tickets/:key", (req, res) => {
-    const ticket = service.getTicket(req.params.key);
-    const history = service.listEvents(req.params.key).map((event) => ({
+    const actor = signedIn(req);
+    const ticket = service.getTicket(req.params.key, actor);
+    const history = service.listEvents(req.params.key, actor).map((event) => ({
       when: event.created_at,
       what: describeEvent(event),
       who: describeActor(event),
     }));
-    res.render("ticket-show", { ...helpers, title: ticket.key, ticket, history });
+    const allowed = service.allowedActions(ticket, actor);
+    res.render("ticket-show", { ...helpers, title: ticket.key, ticket, history, allowed });
   });
 
   // The edit form is the new ticket form, filled in with the ticket as it is now.
   router.get("/tickets/:key/edit", (req, res) => {
-    const ticket = service.getTicket(req.params.key);
+    const actor = signedIn(req);
+    const ticket = service.getTicket(req.params.key, actor);
     const values = {
       title: ticket.title,
       description: ticket.description,
@@ -98,34 +107,39 @@ export function pagesRouter(service: TicketService): Router {
   });
 
   router.post("/tickets/:key/edit", (req, res) => {
+    const actor = signedIn(req);
     const values = readTicketForm(req.body);
     try {
       const ticket = service.editTicket(
         req.params.key,
         { ...values, where_url: values.where_url === "" ? undefined : values.where_url },
-        req.actor,
+        actor,
       );
       res.redirect(303, `/tickets/${ticket.key}`);
     } catch (err) {
       if (!(err instanceof ValidationError)) throw err;
       // The key is checked before it is put in the form's address.
-      const key = service.getTicket(req.params.key).key;
+      const key = service.getTicket(req.params.key, actor).key;
       res.status(400).render("ticket-form", { ...editForm(key), values, errors: err.fieldErrors });
     }
   });
 
   router.post("/tickets/:key/archive", (req, res) => {
-    const ticket = service.archiveTicket(req.params.key, req.actor);
-    res.redirect(303, `/tickets/${ticket.key}`);
+    const actor = signedIn(req);
+    service.archiveTicket(req.params.key, actor);
+    // Back to the list: an archived ticket has no page any more, except for an admin.
+    res.redirect(303, "/tickets");
   });
 
   router.post("/tickets/:key/restore", (req, res) => {
-    const ticket = service.restoreTicket(req.params.key, req.actor);
+    const actor = signedIn(req);
+    const ticket = service.restoreTicket(req.params.key, actor);
     res.redirect(303, `/tickets/${ticket.key}`);
   });
 
   router.post("/tickets/:key/status", (req, res) => {
-    const ticket = service.changeStatus(req.params.key, req.body, req.actor);
+    const actor = signedIn(req);
+    const ticket = service.changeStatus(req.params.key, req.body, actor);
     res.redirect(303, `/tickets/${ticket.key}`);
   });
 
