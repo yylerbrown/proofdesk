@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { parse } from "node-html-parser";
 import type { Express } from "express";
 import { describe, expect, it } from "vitest";
@@ -69,7 +70,7 @@ describe("the team's ticket page", () => {
     await as(app, customerOne).post("/api/tickets").send(valid);
     const html = await page(app, teamActor);
     const panel = html.querySelector("aside.ticket-panel")!;
-    expect(panel.querySelector("section button")?.text).toBe("Take ticket and start work");
+    expect(html.querySelector(".next-action button")?.text).toBe("Take ticket and start work");
     // A native details element: a summary a keyboard can open, with the actions inside it.
     const more = panel.querySelector("details.more")!;
     expect(more.firstElementChild?.tagName).toBe("SUMMARY");
@@ -92,5 +93,12 @@ describe("the team's ticket page", () => {
     const change = html.querySelector("details.change-link")!;
     expect(change.querySelector("summary")?.text).toBe("Change the link");
     expect(change.querySelector("form[action$='/change-link']")).not.toBeNull();
+  });
+});
+
+describe("the More control", () => {
+  it("is a full-size tap target, at least 44 pixels high", () => {
+    const css = fs.readFileSync("public/site.css", "utf8");
+    expect(css).toMatch(/details\.more > summary \{[^}]*min-height: 44px/);
   });
 });
