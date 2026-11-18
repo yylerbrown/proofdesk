@@ -1,7 +1,14 @@
 import { parse } from "node-html-parser";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { buildTestApp, PRODUCTION_SIGN_IN_ENV, SIGN_IN_ENV, visitor } from "./helpers.js";
+import {
+  as,
+  buildTestApp,
+  customerOne,
+  PRODUCTION_SIGN_IN_ENV,
+  SIGN_IN_ENV,
+  visitor,
+} from "./helpers.js";
 
 type TestApp = ReturnType<typeof buildTestApp>["app"];
 /** A GitHub account as the stand-in shows it. Its email is verified unless it says false. */
@@ -70,6 +77,24 @@ async function signInThroughGithub(app: TestApp, who: GithubUser, next?: string)
   return { location: back.headers.location as string, cookie, signedInAs };
 }
 
+/** The message at the top of the sign-in page, with how it is announced, or null. */
+function noticeOf(html: string) {
+  const notice = parse(html).querySelector(".sign-in-notice");
+  return notice === null ? null : { role: notice.getAttribute("role"), text: notice.text };
+}
+
+const EXPIRED = "That sign-in expired before GitHub sent you back. Sign in again.";
+
+/** Starts a GitHub sign-in and returns its state and the cookies the browser now holds. */
+async function startGithubSignIn(app: TestApp, next?: string) {
+  const start = await visitor(app)
+    .post("/sign-in/github")
+    .type("form")
+    .send(next === undefined ? {} : { next });
+  const state = new URL(start.headers.location as string).searchParams.get("state") ?? "";
+  return { state, cookie: cookiesOf(start) };
+}
+
 const ada: GithubUser = { id: 1001, login: "ada", name: "Ada Admin", email: "ada@corp.example" };
 
 function buildGithubApp() {
@@ -95,10 +120,13 @@ describe("the whole GitHub sign-in", () => {
     const result = await signInThroughGithub(app, other);
 
     expect(result.signedInAs).toBeNull();
-    expect(result.location).toMatch(/^\/sign-in\?error=/);
+    expect(result.location).toBe("/sign-in?error=account_not_linked");
     expect(db.prepare(`SELECT "accountId" FROM "account"`).all()).toEqual([{ accountId: "1001" }]);
     const page = await request(app).get(result.location);
-    expect(page.text).toContain("That sign-in did not work.");
+    expect(noticeOf(page.text)).toEqual({
+      role: "alert",
+      text: "Your email address already belongs to a different GitHub account here. Sign in with that account.",
+    });
   });
 
   it("refuses an email GitHub has not verified before anyone is created, so its owner still gets in", async () => {
@@ -117,7 +145,10 @@ describe("the whole GitHub sign-in", () => {
     const landed = new URL(refused.location, "http://desk.test");
     expect(landed.pathname).toBe("/sign-in");
     expect(landed.searchParams.get("error")).toBe("email_not_verified");
-    expect((await request(app).get(refused.location)).text).toContain("That sign-in did not work.");
+    expect(noticeOf((await request(app).get(refused.location)).text)).toEqual({
+      role: "alert",
+      text: "GitHub has not verified your email address yet. Verify it on GitHub, then sign in again.",
+    });
     for (const table of ["user", "account", "session"]) {
       expect(db.prepare(`SELECT COUNT(*) AS n FROM "${table}"`).get(), table).toEqual({ n: 0 });
     }
@@ -325,9 +356,138 @@ describe("the sign-in library's own routes", () => {
       const landed = await landingOf(app, back.headers.location as string, cookie);
       expect(landed.url.pathname).toBe("/sign-in");
       expect(landed.url.searchParams.get("error")).toBe(reason);
-      expect(landed.res.text).toContain("That sign-in did not work.");
+      expect(noticeOf(landed.res.text)).toEqual({ role: "alert", text: EXPIRED });
     },
   );
+});
+
+describe("every way back from GitHub", () => {
+  it("says a cancelled sign-in shared nothing, and then opens the ticket it started from", async () => {
+    const { app } = buildGithubApp();
+    const { state, cookie } = await startGithubSignIn(app, "/tickets/SUP-7");
+    // On GitHub the visitor pressed Cancel, so GitHub sends them back with an error.
+    const back = await request(app)
+      .get("/api/auth/callback/github")
+      .query({ error: "access_denied", error_description: "The user denied it", state })
+      .set("Cookie", cookie);
+    const landed = new URL(back.headers.location as string, SIGN_IN_ENV.BETTER_AUTH_URL);
+    expect(landed.pathname).toBe("/sign-in");
+    expect(landed.searchParams.get("error")).toBe("access_denied");
+
+    const page = await request(app).get(landed.pathname + landed.search);
+    expect(noticeOf(page.text)).toEqual({
+      role: "alert",
+      text: "You cancelled signing in with GitHub, so nothing was shared. Sign in again when you are ready.",
+    });
+    // GitHub's own description is never shown.
+    expect(page.text).not.toContain("The user denied it");
+    const next = parse(page.text).querySelector("form[action='/sign-in/github'] input[name=next]");
+    expect(next?.getAttribute("value")).toBe("/tickets/SUP-7");
+
+    // Signing in again from that page opens the ticket.
+    const again = await signInThroughGithub(app, ada, "/tickets/SUP-7");
+    expect(again.location).toBe("/tickets/SUP-7");
+  });
+
+  it("says a sign-in whose return was already used has expired", async () => {
+    const { app } = buildGithubApp();
+    githubUser = ada;
+    const { state, cookie } = await startGithubSignIn(app);
+    const callback = () =>
+      request(app)
+        .get("/api/auth/callback/github")
+        .query({ code: "made-up-code", state })
+        .set("Cookie", cookie);
+    expect((await callback()).headers.location).toBe("/tickets");
+    // The same return a second time, as from Back or a reload.
+    const replayed = await callback();
+    const landed = await landingOf(app, replayed.headers.location as string, "");
+    expect(landed.url.searchParams.get("error")).toBe("state_mismatch");
+    expect(noticeOf(landed.res.text)).toEqual({ role: "alert", text: EXPIRED });
+  });
+
+  it("names this site's callback address when GitHub refuses the return address", async () => {
+    const { app } = buildGithubApp();
+    const { state, cookie } = await startGithubSignIn(app);
+    const back = await request(app)
+      .get("/api/auth/callback/github")
+      .query({ error: "redirect_uri_mismatch", state })
+      .set("Cookie", cookie);
+    const page = await request(app).get(back.headers.location as string);
+    expect(noticeOf(page.text)).toEqual({
+      role: "alert",
+      text: "GitHub did not accept this site's return address. If you run this site, set your GitHub OAuth app's callback URL to http://desk.test/api/auth/callback/github.",
+    });
+  });
+
+  it.each(["state_mismatch", "state_not_found", "state_invalid"])(
+    "says %s means the sign-in expired",
+    async (code) => {
+      const { app } = buildGithubApp();
+      const page = await request(app).get("/sign-in").query({ error: code });
+      expect(noticeOf(page.text)).toEqual({ role: "alert", text: EXPIRED });
+    },
+  );
+
+  it("shows any other code only when it is plain lowercase letters and underscores", async () => {
+    const { app } = buildGithubApp();
+    const plain = await request(app).get("/sign-in").query({ error: "invalid_code" });
+    expect(noticeOf(plain.text)).toEqual({
+      role: "alert",
+      text: "GitHub sign-in did not finish. Sign in again. If it keeps failing, give the site's owner this code: invalid_code.",
+    });
+
+    const general = "GitHub sign-in did not finish. Sign in again.";
+    for (const error of ["<b>bold</b>", "Invalid-Code", "two words", ["a", "b"]]) {
+      const page = await request(app).get("/sign-in").query({ error });
+      expect(noticeOf(page.text), String(error)).toEqual({ role: "alert", text: general });
+      expect(page.text).not.toContain("<b>bold</b>");
+    }
+  });
+
+  it("says once that a GitHub sign-out happened", async () => {
+    const { app } = buildGithubApp();
+    const { cookie } = await signInThroughGithub(app, ada);
+    // One agent keeps cookies the way a browser does, so the second visit sends whatever
+    // the sign-out and the first visit left behind.
+    const browser = visitor(app);
+    browser.jar.setCookies(cookie.split("; "));
+    const out = await browser.post("/sign-out");
+    expect(out.headers.location).toBe("/sign-in");
+    expect(String(out.headers["set-cookie"])).toContain("sign_in_notice=signedOut");
+
+    const first = await browser.get("/sign-in");
+    expect(noticeOf(first.text)).toEqual({
+      role: "status",
+      text: "You are signed out. To sign in with a different GitHub account, sign out of GitHub first.",
+    });
+    const second = await browser.get("/sign-in");
+    expect(noticeOf(second.text)).toBeNull();
+  });
+
+  it("says nothing about signing out when nobody was signed in", async () => {
+    const { app } = buildGithubApp();
+    const out = await visitor(app).post("/sign-out");
+    expect(out.headers.location).toBe("/sign-in");
+    expect(String(out.headers["set-cookie"])).not.toContain("sign_in_notice=");
+  });
+
+  it("says nothing about GitHub when a made-up person of the development entrance signs out", async () => {
+    const { app } = buildTestApp();
+    const out = await as(app, customerOne).post("/sign-out");
+    expect(String(out.headers["set-cookie"])).not.toContain("sign_in_notice=");
+  });
+
+  it("shows no GitHub message from the address where there is no GitHub sign-in", async () => {
+    const { app } = buildTestApp();
+    const page = await request(app).get("/sign-in").query({ error: "access_denied" });
+    expect(noticeOf(page.text)).toBeNull();
+  });
+
+  it("shows no message on a plain visit", async () => {
+    const { app } = buildGithubApp();
+    expect(noticeOf((await request(app).get("/sign-in")).text)).toBeNull();
+  });
 });
 
 /**
