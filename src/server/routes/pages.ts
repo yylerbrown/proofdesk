@@ -336,6 +336,7 @@ export function pagesRouter(service: TicketService): Router {
             }
           : null,
       recordedRun: service.recordedRunKey() === ticket.key,
+      assistantSampleKey: service.assistantSampleKey(),
       handOffTo: service.handOffCandidates(ticket),
       agentHelp,
       entries,

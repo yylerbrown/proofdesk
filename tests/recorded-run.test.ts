@@ -210,3 +210,35 @@ describe("the run page on a phone", () => {
     expect(dd).not.toContain("font-size");
   });
 });
+
+describe("the demo's history and SUP-8 for the customer", () => {
+  it("names every person and assistant in history, never Unknown person or a raw id", async () => {
+    const { app } = demo();
+    const as = (id: string) => visitor(app).set("Cookie", `${DEV_COOKIE}=${id}`);
+    const who = async (key: string, viewer: string) =>
+      parse((await as(viewer).get(`/tickets/${key}`)).text)
+        .querySelectorAll("details.history tbody tr")
+        .map((row) => row.querySelectorAll("td")[2]!.text.replace(/\s+/g, " ").trim());
+    for (let n = 1; n <= 8; n++) {
+      const rows = await who(`SUP-${n}`, "demo-team");
+      expect(rows.join(" | "), `SUP-${n}`).not.toMatch(/Unknown person|demo-recorded-assistant/);
+    }
+    expect(await who("SUP-6", "demo-admin")).toContain("Second Demo Customer customer");
+    expect(await who("SUP-7", "demo-admin")).toContain("Third Demo Customer customer");
+    expect(await who("SUP-8", "demo-team")).toContain("Demo visitor ea29379c (AI agent)");
+  });
+
+  it("tells the customer the assistant's work is the team's, and how to see it", async () => {
+    const { app } = demo();
+    const page = parse(
+      (await visitor(app).set("Cookie", `${DEV_COOKIE}=demo-customer`).get("/tickets/SUP-8")).text,
+    );
+    expect(page.querySelector(".recorded-run")?.text).toBe(
+      "A recorded assistant run. Its spec, evidence and review request are for the team only, so this view does not show them: press View this ticket as a team member below, or see its transcript and files.",
+    );
+    const description = page.querySelector(".ticket-summary")!.text;
+    expect(description).toContain("what one real AI assistant did on SUP-4, the sample ticket");
+    expect(description).toContain("which the team sees");
+    expect(description).not.toContain("linked on this page");
+  });
+});
