@@ -353,19 +353,7 @@ export const ACTIONS: ApiAction[] = [
     needs: "note",
     body: noteSchema,
     status: 201,
-    run: ({ service, actor, key, body }) => {
-      const note = parse(noteSchema, body);
-      return service.addEntry(
-        key,
-        {
-          kind: "note",
-          body: note.body,
-          blocked: note.blocked,
-          suggested_reply: note.suggested_reply,
-        },
-        actor,
-      );
-    },
+    run: ({ service, actor, key, body }) => service.addNote(key, body, actor),
   },
   {
     name: "list_evidence",
@@ -424,10 +412,7 @@ export const ACTIONS: ApiAction[] = [
     needs: "note",
     body: verificationRequestSchema,
     status: 201,
-    run: ({ service, actor, key, body }) => {
-      const { message } = parse(verificationRequestSchema, body);
-      return service.requestReview(key, message, actor);
-    },
+    run: ({ service, actor, key, body }) => service.askOwnerToReview(key, body, actor),
   },
   {
     name: "list_events",
