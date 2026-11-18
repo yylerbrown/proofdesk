@@ -4,6 +4,7 @@ import { signedIn } from "../actor.js";
 import { HttpError, ValidationError } from "../errors.js";
 import { can } from "../permissions.js";
 import {
+  confirmedAt,
   describeActor,
   describeEvent,
   formatTime,
@@ -97,12 +98,15 @@ export function pagesRouter(service: TicketService): Router {
       who: describeActor(event, names),
     }));
     const allowed = service.allowedActions(ticket, actor);
+    const evidence = service.listEvidence(ticket.key, actor);
     res.status(status).render("ticket-show", {
       ...helpers,
       title: `${ticket.key}: ${ticket.title}`,
       ticket,
       entries,
       history,
+      confirmed: confirmedAt(ticket, events),
+      evidence,
       allowed,
       entry,
       problem,

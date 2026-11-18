@@ -3,59 +3,36 @@
 
 <hgroup>
   <h1 class="user-text"><%= ticket.title %></h1>
-  <p><%= ticket.key %> <%- include("status-badge", { status: ticket.status }) %> filed <%= formatTime(ticket.created_at) %>, <% if (ticket.owner_name) { %>owner <%= ticket.owner_name %><% } else { %>no owner yet<% } %></p>
+  <p><%= ticket.key %> <%- include("status-badge", { status: ticket.status }) %> filed <%- include("time", { iso: ticket.created_at }) %></p>
 </hgroup>
 
 <% if (ticket.archived_at) { %>
 <article>
-  <p>This ticket was archived on <%= formatTime(ticket.archived_at) %>. It is hidden from the lists and cannot be changed until it is restored.</p>
+  <p>This ticket was archived on <%- include("time", { iso: ticket.archived_at }) %>. It is hidden from the lists and cannot be changed until it is restored.</p>
   <% if (allowed.restore) { %>
   <form method="post" action="/tickets/<%= ticket.key %>/restore">
-    <button type="submit">Restore ticket</button>
+    <button type="submit" class="compact">Restore ticket</button>
   </form>
   <% } %>
 </article>
 <% } %>
 
-<h2>Description</h2>
-<p class="user-text"><%= ticket.description %></p>
-
-<% if (ticket.where_url) { %>
-<h2>Where did this happen?</h2>
-<p class="user-text"><a href="<%= ticket.where_url %>" rel="noopener noreferrer nofollow"><%= ticket.where_url %></a></p>
+<%# Wide screens: what the ticket is about on the left, what a person acts on in the panel on
+    the right, the conversation and history under the left part. Narrow screens: one column,
+    with the panel between the description and the conversation. %>
+<div class="ticket-layout">
+<div class="ticket-summary">
+<%# The only tick inside the product: the customer said yes, it is fixed. %>
+<% if (confirmed) { %>
+<article class="confirmed">
+  <img src="/assets/mark.svg" alt="" width="32" height="32" class="tick" />
+  <p><strong>The customer confirmed it is fixed.</strong> <%- include("time", { iso: confirmed }) %></p>
+</article>
 <% } %>
-
-<% if (ticket.fix_check || ticket.agreed_check || allowed.agreeCheck) { %>
-<h2>How will we know it's fixed?</h2>
-<% if (ticket.agreed_check) { %>
-<p><strong>Agreed check</strong></p>
-<blockquote class="user-text"><%= ticket.agreed_check %></blockquote>
-<p><strong>In the customer's words</strong></p>
-<% } %>
-<% if (ticket.fix_check) { %>
-<blockquote class="user-text"><%= ticket.fix_check %></blockquote>
-<% } else { %>
-<p>The customer did not say.</p>
-<% } %>
-<% if (allowed.agreeCheck) { %>
-<details>
-  <summary>Agree a tighter check</summary>
-  <form method="post" action="/tickets/<%= ticket.key %>/agreed-check">
-    <label>
-      Agreed check (leave empty to remove it)
-      <textarea name="agreed_check" rows="3"><%= ticket.agreed_check ?? ticket.fix_check ?? "" %></textarea>
-      <% if (problem?.form === "agreedCheck") { %><small><%= problem.message %></small><% } %>
-    </label>
-    <button type="submit">Save agreed check</button>
-  </form>
-</details>
-<% } %>
-<% } %>
-
 <% if (allowed.answer) { %>
 <article id="did-this-fix-it">
   <h2>Did this fix it?</h2>
-  <p>The team says it is fixed. Please check it<% if (ticket.try_url) { %> here: <a href="<%= ticket.try_url %>" rel="noopener noreferrer nofollow"><%= ticket.try_url %></a><% } %>.</p>
+  <p>The team says it is fixed. Please check it<% if (ticket.try_url) { %> here: <a href="<%= ticket.try_url %>" rel="noopener noreferrer nofollow" class="user-text"><%= ticket.try_url %></a><% } %>.</p>
   <% if (ticket.agreed_check) { %>
   <p>Agreed check:</p>
   <blockquote class="user-text"><%= ticket.agreed_check %></blockquote>
@@ -64,90 +41,160 @@
   <p>In your words:</p>
   <blockquote class="user-text"><%= ticket.fix_check %></blockquote>
   <% } %>
+  <% if (evidence.length > 0) { %>
+  <p>What the team showed as proof. It is what they report; please check it yourself:</p>
+  <%- include("evidence", { evidence }) %>
+  <% } %>
   <form method="post" action="/tickets/<%= ticket.key %>/answer">
     <input type="hidden" name="fixed" value="yes" />
     <input type="hidden" name="ready_token" value="<%= ticket.ready_token %>" />
-    <button type="submit">Yes, it is fixed</button>
+    <button type="submit" class="compact">Yes, it is fixed</button>
   </form>
   <form method="post" action="/tickets/<%= ticket.key %>/answer">
     <input type="hidden" name="fixed" value="no" />
     <input type="hidden" name="ready_token" value="<%= ticket.ready_token %>" />
     <label>
       No, it is not fixed. What is still wrong?
-      <textarea name="comment" rows="3" required <% if (problem?.form === "answer") { %>aria-invalid="true"<% } %>><%= problem?.form === "answer" ? problem.comment : "" %></textarea>
-      <% if (problem?.form === "answer") { %><small><%= problem.message %></small><% } %>
+      <textarea name="comment" rows="3" required <% if (problem?.form === "answer") { %>aria-invalid="true" aria-describedby="answer-error"<% } %>><%= problem?.form === "answer" ? problem.comment : "" %></textarea>
+      <% if (problem?.form === "answer") { %><small id="answer-error"><%= problem.message %></small><% } %>
     </label>
-    <button type="submit" class="secondary">No, send it back</button>
+    <button type="submit" class="secondary compact">No, send it back</button>
   </form>
 </article>
 <% } %>
 
-<% if (ticket.change_url || ticket.ready_at || allowed.linkChange) { %>
-<h2>The fix</h2>
-<% if (ticket.change_url) { %>
-<p>Change: <a href="<%= ticket.change_url %>" rel="noopener noreferrer nofollow" class="user-text"><%= ticket.change_url %></a></p>
-<% } %>
-<% if (ticket.ready_at) { %>
-<p>Waiting for the customer to check it, since <%= formatTime(ticket.ready_at) %>.</p>
-<% } %>
-<% if (allowed.linkChange) { %>
-<form method="post" action="/tickets/<%= ticket.key %>/change-link">
-  <fieldset role="group">
-    <input type="url" name="change_url" placeholder="Link to the code change" aria-label="Link to the code change" required />
-    <button type="submit" class="secondary">Save change link</button>
-  </fieldset>
-  <% if (problem?.form === "changeLink") { %><small><%= problem.message %></small><% } %>
-</form>
-<% } %>
-<% if (allowed.markReady) { %>
-<form method="post" action="/tickets/<%= ticket.key %>/ready">
-  <fieldset role="group">
-    <input type="url" name="try_url" placeholder="Page on the live site to try" aria-label="Page on the live site to try" required />
-    <button type="submit">Ask the customer</button>
-  </fieldset>
-  <% if (problem?.form === "ready") { %><small><%= problem.message %></small><% } %>
-</form>
-<% } %>
-<% } %>
+<h2>Description</h2>
+<p class="user-text"><%= ticket.description %></p>
 
-<% if (allowed.take || allowed.release) { %>
-<h2>Owner</h2>
-<div role="group">
+<% if (ticket.where_url) { %>
+<h3>Where did this happen?</h3>
+<p class="user-text"><a href="<%= ticket.where_url %>" rel="noopener noreferrer nofollow"><%= ticket.where_url %></a></p>
+<% } %>
+</div>
+
+<aside class="ticket-panel" aria-label="Status, owner and the fix">
+<section>
+  <h2>Status</h2>
+  <p><%- include("status-badge", { status: ticket.status }) %></p>
+  <% if (allowed.changeStatus) { %>
+  <form method="post" action="/tickets/<%= ticket.key %>/status">
+    <label>
+      Change to
+      <select name="status">
+        <% for (const status of statuses) { if (status === "resolved" && ticket.status !== "resolved") continue; %>
+        <option value="<%= status %>" <% if (status === ticket.status) { %>selected<% } %>><%= statusLabels[status] %></option>
+        <% } %>
+      </select>
+    </label>
+    <button type="submit" class="compact">Change status</button>
+  </form>
+  <% } %>
+</section>
+
+<section>
+  <h2>Owner</h2>
+  <p><%= ticket.owner_name ?? "Unassigned" %></p>
   <% if (allowed.take) { %>
   <form method="post" action="/tickets/<%= ticket.key %>/take">
-    <button type="submit"><% if (ticket.owner_name) { %>Take over from <%= ticket.owner_name %><% } else { %>Take this ticket<% } %></button>
+    <button type="submit" class="compact"><% if (ticket.owner_name) { %>Take over from <%= ticket.owner_name %><% } else { %>Take this ticket<% } %></button>
   </form>
   <% } %>
   <% if (allowed.release) { %>
   <form method="post" action="/tickets/<%= ticket.key %>/release">
-    <button type="submit" class="secondary">Release it</button>
+    <button type="submit" class="secondary outline compact">Release it</button>
   </form>
   <% } %>
-</div>
+</section>
+
+<% if (ticket.fix_check || ticket.agreed_check || allowed.agreeCheck) { %>
+<section>
+  <h2>How will we know it's fixed?</h2>
+  <% if (ticket.agreed_check) { %>
+  <p><strong>Agreed check</strong></p>
+  <blockquote class="user-text"><%= ticket.agreed_check %></blockquote>
+  <p><strong>In the customer's words</strong></p>
+  <% } %>
+  <% if (ticket.fix_check) { %>
+  <blockquote class="user-text"><%= ticket.fix_check %></blockquote>
+  <% } else { %>
+  <p>The customer did not say.</p>
+  <% } %>
+  <% if (allowed.agreeCheck) { %>
+  <details <% if (problem?.form === "agreedCheck") { %>open<% } %>>
+    <summary>Agree a tighter check</summary>
+    <form method="post" action="/tickets/<%= ticket.key %>/agreed-check">
+      <label>
+        Agreed check (leave empty to remove it)
+        <textarea name="agreed_check" rows="3" <% if (problem?.form === "agreedCheck") { %>aria-invalid="true" aria-describedby="agreed-check-error"<% } %>><%= ticket.agreed_check ?? ticket.fix_check ?? "" %></textarea>
+        <% if (problem?.form === "agreedCheck") { %><small id="agreed-check-error"><%= problem.message %></small><% } %>
+      </label>
+      <button type="submit" class="compact">Save agreed check</button>
+    </form>
+  </details>
+  <% } %>
+</section>
 <% } %>
 
-<% if (allowed.changeStatus) { %>
-<h2>Status</h2>
-<form method="post" action="/tickets/<%= ticket.key %>/status">
-  <fieldset role="group">
-    <select name="status" aria-label="Status">
-      <% for (const status of statuses) { if (status === "resolved" && ticket.status !== "resolved") continue; %>
-      <option value="<%= status %>" <% if (status === ticket.status) { %>selected<% } %>><%= statusLabels[status] %></option>
-      <% } %>
-    </select>
-    <button type="submit">Change status</button>
-  </fieldset>
-</form>
+<% if (evidence.length > 0) { %>
+<section>
+  <h2>Evidence</h2>
+  <%- include("evidence", { evidence }) %>
+</section>
 <% } %>
 
-<% if (allowed.edit || allowed.archive) { %>
-<h2>Change this ticket</h2>
-<div role="group">
-  <% if (allowed.edit) { %><a href="/tickets/<%= ticket.key %>/edit" role="button" class="secondary">Edit ticket</a><% } %>
-  <% if (allowed.archive) { %><a href="/tickets/<%= ticket.key %>/archive" role="button" class="secondary">Archive ticket</a><% } %>
-</div>
+<% if (ticket.change_url || ticket.ready_at || allowed.linkChange) { %>
+<section>
+  <h2>The fix</h2>
+  <% if (ticket.change_url) { %>
+  <p>Change: <a href="<%= ticket.change_url %>" rel="noopener noreferrer nofollow" class="user-text"><%= ticket.change_url %></a></p>
+  <% } %>
+  <% if (ticket.ready_at) { %>
+  <p>Waiting for the customer to check it, since <%- include("time", { iso: ticket.ready_at }) %>.</p>
+  <% } %>
+  <% if (allowed.linkChange) { %>
+  <form method="post" action="/tickets/<%= ticket.key %>/change-link">
+    <label>
+      Link to the code change
+      <input type="url" name="change_url" placeholder="https://" required <% if (problem?.form === "changeLink") { %>aria-invalid="true" aria-describedby="change-link-error"<% } %> />
+      <% if (problem?.form === "changeLink") { %><small id="change-link-error"><%= problem.message %></small><% } %>
+    </label>
+    <button type="submit" class="secondary compact">Save change link</button>
+  </form>
+  <% } %>
+  <% if (allowed.markReady) { %>
+  <form method="post" action="/tickets/<%= ticket.key %>/ready">
+    <label>
+      Page on the live site to try
+      <input type="url" name="try_url" placeholder="https://" required <% if (problem?.form === "ready") { %>aria-invalid="true" aria-describedby="ready-error"<% } %> />
+      <% if (problem?.form === "ready") { %><small id="ready-error"><%= problem.message %></small><% } %>
+    </label>
+    <button type="submit" class="compact">Ask the customer</button>
+  </form>
+  <% } %>
+</section>
 <% } %>
 
+<% if (allowed.edit) { %>
+<section>
+  <a href="/tickets/<%= ticket.key %>/edit" role="button" class="secondary outline compact">Edit ticket</a>
+</section>
+<% } %>
+
+<% if (allowed.archive || allowed.delete) { %>
+<section class="danger-zone" aria-labelledby="danger-heading">
+  <h2 id="danger-heading">Remove</h2>
+  <% if (allowed.archive) { %>
+  <p><a href="/tickets/<%= ticket.key %>/archive" role="button" class="danger compact">Archive ticket</a></p>
+  <% } %>
+  <% if (allowed.delete) { %>
+  <p><a href="/tickets/<%= ticket.key %>/delete" role="button" class="danger compact">Delete permanently</a></p>
+  <% } %>
+  <small><% if (allowed.archive && allowed.delete) { %>Both ask first, each on a page of its own.<% } else { %>It asks first, on a page of its own.<% } %></small>
+</section>
+<% } %>
+</aside>
+
+<div class="ticket-thread">
 <h2 id="conversation">Conversation</h2>
 <% if (entries.length === 0) { %>
 <p>No replies yet.</p>
@@ -156,7 +203,7 @@
 <article class="entry<% if (item.kind === "note") { %> note<% } %>">
   <header>
     <strong><%= item.author_name %></strong>
-    <small>(<%= item.author_role %>)<% if (item.kind === "note") { %>, internal note, the customer does not see this<% } %>, <%= formatTime(item.created_at) %></small>
+    <small>(<%= item.author_role %>)<% if (item.kind === "note") { %>, internal note, the customer does not see this<% } %>, <%- include("time", { iso: item.created_at }) %></small>
   </header>
   <p class="user-text"><%= item.body %></p>
 </article>
@@ -166,6 +213,7 @@
 <form method="post" action="/tickets/<%= ticket.key %>/entries">
   <% if (allowed.note) { %>
   <fieldset>
+    <legend>Who sees it</legend>
     <label><input type="radio" name="kind" value="reply" <% if (entry.kind !== "note") { %>checked<% } %> /> Reply to the customer</label>
     <label><input type="radio" name="kind" value="note" <% if (entry.kind === "note") { %>checked<% } %> /> Internal note, for the team only</label>
   </fieldset>
@@ -174,15 +222,11 @@
   <% } %>
   <label>
     Your message
-    <textarea name="body" rows="4" required <% if (entry.error) { %>aria-invalid="true"<% } %>><%= entry.body %></textarea>
-    <% if (entry.error) { %><small><%= entry.error %></small><% } %>
+    <textarea name="body" rows="4" required <% if (entry.error) { %>aria-invalid="true" aria-describedby="body-error"<% } %>><%= entry.body %></textarea>
+    <% if (entry.error) { %><small id="body-error"><%= entry.error %></small><% } %>
   </label>
-  <button type="submit">Send</button>
+  <button type="submit" class="compact">Send</button>
 </form>
-<% } %>
-
-<% if (allowed.delete) { %>
-<p><a href="/tickets/<%= ticket.key %>/delete">Delete this ticket permanently</a></p>
 <% } %>
 
 <h2>History</h2>
@@ -190,20 +234,22 @@
   <table>
     <thead>
       <tr>
-        <th>When</th>
-        <th>What</th>
-        <th>Who</th>
+        <th scope="col">When</th>
+        <th scope="col">What</th>
+        <th scope="col">Who</th>
       </tr>
     </thead>
     <tbody>
       <% for (const entry of history) { %>
       <tr>
-        <td><%= formatTime(entry.when) %></td>
+        <td><%- include("time", { iso: entry.when }) %></td>
         <td><%= entry.what %></td>
         <td><%= entry.who %></td>
       </tr>
       <% } %>
     </tbody>
   </table>
+</div>
+</div>
 </div>
 <%- include("footer") %>

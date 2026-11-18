@@ -43,14 +43,24 @@ export function timeAgo(iso: string, now: Date = new Date()): string {
   return "just now";
 }
 
-/**
- * Who has to act next on a ticket, as the viewer should read it. Once the team has asked
- * "Did this fix it?" the customer does. A resolved ticket waits on nobody.
- */
+/** Who has to act next on a ticket, in the words the viewer should read. */
 export function waitingOn(ticket: Ticket, viewer: Role): string {
-  if (ticket.status === "resolved") return "Nobody";
-  if (ticket.ready_at !== null) return viewer === "customer" ? "You" : "Customer";
+  if (ticket.waiting_on === "nobody") return "Nobody";
+  if (ticket.waiting_on === "customer") return viewer === "customer" ? "You" : "Customer";
   return viewer === "customer" ? "Support team" : "Team";
+}
+
+/**
+ * When the customer confirmed the fix, or null. Only a resolved ticket whose latest answer to
+ * "Did this fix it?" was yes counts: a proposed fix, a linked change or a ticket marked ready
+ * does not, and neither does a ticket resolved before answers existed.
+ */
+export function confirmedAt(ticket: Ticket, events: TicketEvent[]): string | null {
+  if (ticket.status !== "resolved") return null;
+  const answer = [...events].reverse().find((event) => event.type === "customer_answered");
+  if (answer === undefined) return null;
+  const parsed = z.object({ fixed: z.literal(true) }).safeParse(answer.data);
+  return parsed.success ? answer.created_at : null;
 }
 
 const statusChangeSchema = z.object({
@@ -109,6 +119,7 @@ export function describeEvent(event: TicketEvent): string {
     }
   }
   if (event.type === "reply_added") return "Reply added";
+  if (event.type === "evidence_added") return "Evidence attached";
   if (event.type === "note_added") return "Internal note added";
   if (event.type === "archived") return "Archived";
   if (event.type === "restored") return "Restored";

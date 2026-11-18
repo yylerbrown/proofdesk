@@ -3,8 +3,9 @@ FROM node:22-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
-COPY tsconfig.json tsconfig.build.json ./
+COPY tsconfig.json tsconfig.build.json tsconfig.browser.json ./
 COPY src ./src
+COPY public ./public
 RUN npm run build
 
 FROM node:22-slim AS deps
@@ -26,7 +27,7 @@ COPY --from=build /app/dist ./dist
 COPY package.json ./
 COPY migrations ./migrations
 COPY views ./views
-COPY public ./public
+COPY --from=build /app/public ./public
 COPY docker-entrypoint.sh ./
 RUN mkdir -p /data && chown node:node /data
 VOLUME /data

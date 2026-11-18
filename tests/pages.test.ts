@@ -152,7 +152,9 @@ describe("ticket page", () => {
     expect(res.text).toContain("Ten pages print without a jam.");
     expect(res.text).toContain("Ticket filed");
     expect(res.text).toContain("<td>Admin</td>");
-    expect(res.text).toMatch(/<td>\d{1,2} \w{3} \d{4}, \d{2}:\d{2} UTC<\/td>/);
+    expect(res.text).toMatch(
+      /<td><time datetime="[^"]+">\d{1,2} \w{3} \d{4}, \d{2}:\d{2} UTC<\/time>/,
+    );
     expect(res.text).toContain('<option value="new" selected>New</option>');
   });
 
@@ -321,7 +323,12 @@ describe("pages and the JSON API keep their own error formats", () => {
     const api = await admin(app).get("/api/tickets");
     expect(api.status).toBe(500);
     expect(api.body).toEqual({
-      error: { code: "internal_error", message: "Internal server error." },
+      error: {
+        code: "internal_error",
+        message: "Internal server error.",
+        hint: expect.any(String),
+        retry: true,
+      },
     });
 
     const page = await admin(app).get("/tickets");

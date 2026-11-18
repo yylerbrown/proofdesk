@@ -11,6 +11,7 @@ function event(type: string, data: unknown): TicketEvent {
     type,
     data,
     created_at: "2026-11-17T19:56:00.000Z",
+    context: null,
   };
 }
 

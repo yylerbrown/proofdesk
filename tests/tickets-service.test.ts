@@ -135,12 +135,18 @@ describe("ticket service actor", () => {
   it("records the actor it is given on the events", () => {
     const { db } = buildTestApp();
     const service = createTicketService(db, "SUP");
-    const agent: Actor = { id: "helper-1", kind: "agent", role: "team", name: "Helper" };
-    service.createTicket(input, agent);
-    service.takeTicket("SUP-1", actor);
+    const agent: Actor = {
+      id: "helper-1",
+      kind: "agent",
+      role: "team",
+      name: "Helper",
+      scopes: ["read_tickets", "write_notes"],
+    };
+    service.createTicket(input, actor);
+    service.addEntry("SUP-1", { kind: "note", body: "Looked at it." }, agent);
     expect(service.listEvents("SUP-1", actor).map((e) => e.actor)).toEqual([
-      "helper-1",
       "dev-admin-1",
+      "helper-1",
     ]);
   });
 
@@ -148,16 +154,15 @@ describe("ticket service actor", () => {
     const { db } = buildTestApp();
     const service = createTicketService(db, "SUP");
     service.createTicket(input, { id: "sam", kind: "person", role: "team", name: "Sam" });
-    service.agreeCheck(
-      "SUP-1",
-      { agreed_check: "first" },
-      { id: "sam", kind: "agent", role: "team", name: "Sam" },
-    );
-    service.agreeCheck(
-      "SUP-1",
-      { agreed_check: "second" },
-      { id: "sam", kind: "person", role: "team", name: "Sam" },
-    );
+    const note = { kind: "note", body: "x" };
+    service.addEntry("SUP-1", note, {
+      id: "sam",
+      kind: "agent",
+      role: "team",
+      name: "Sam",
+      scopes: ["read_tickets", "write_notes"],
+    });
+    service.addEntry("SUP-1", note, { id: "sam", kind: "person", role: "team", name: "Sam" });
     expect(service.listEvents("SUP-1", actor).map((e) => [e.actor, e.actor_kind])).toEqual([
       ["sam", "person"],
       ["sam", "agent"],
@@ -245,6 +250,7 @@ describe("ticket service returns what is stored", () => {
       "created_at",
       "created_by",
       "description",
+      "done_when",
       "fix_check",
       "key",
       "owner_id",
@@ -255,6 +261,7 @@ describe("ticket service returns what is stored", () => {
       "title",
       "try_url",
       "updated_at",
+      "waiting_on",
       "where_url",
     ]);
   });

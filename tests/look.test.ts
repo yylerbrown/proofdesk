@@ -47,7 +47,7 @@ describe("the welcome for a signed-out visitor", () => {
   it("says what the desk is before asking anyone to sign in", async () => {
     const { app } = buildTestApp();
     const html = await page(visitor(app), "/sign-in");
-    expect(html.querySelector("h1")?.text).toBe("Support Desk");
+    expect(html.querySelector("h1")?.text).toBe("Proofdesk");
     expect(html.querySelector("hgroup p")?.text).toContain("follow it while the team works on it");
   });
 
@@ -145,20 +145,19 @@ describe("the ticket list", () => {
   it("names the list in the page title", async () => {
     const { app } = buildTestApp();
     const html = await page(admin(app), "/tickets?status=in_progress");
-    expect(html.querySelector("title")?.text).toBe("In Progress tickets - Support Desk");
+    expect(html.querySelector("title")?.text).toBe("In Progress tickets - Proofdesk");
   });
 });
 
 describe("who is waiting", () => {
-  const base = { status: "in_progress", ready_at: null } as unknown as Ticket;
+  const on = (waiting_on: string) => ({ waiting_on }) as unknown as Ticket;
 
-  it("is the team until the customer is asked, then the customer, then nobody", () => {
-    expect(waitingOn(base, "team")).toBe("Team");
-    expect(waitingOn(base, "customer")).toBe("Support team");
-    const asked = { ...base, ready_at: "2026-11-17T19:56:00.000Z" };
-    expect(waitingOn(asked, "team")).toBe("Customer");
-    expect(waitingOn(asked, "customer")).toBe("You");
-    expect(waitingOn({ ...base, status: "resolved" }, "team")).toBe("Nobody");
+  it("is said in the viewer's words", () => {
+    expect(waitingOn(on("team"), "team")).toBe("Team");
+    expect(waitingOn(on("team"), "customer")).toBe("Support team");
+    expect(waitingOn(on("customer"), "team")).toBe("Customer");
+    expect(waitingOn(on("customer"), "customer")).toBe("You");
+    expect(waitingOn(on("nobody"), "team")).toBe("Nobody");
   });
 });
 
@@ -192,7 +191,7 @@ describe("the ticket page", () => {
     const { app } = buildTestApp();
     await admin(app).post("/api/tickets").send(valid);
     const html = await page(admin(app), "/tickets/SUP-1");
-    expect(html.querySelector("title")?.text).toBe("SUP-1: Printer jams - Support Desk");
+    expect(html.querySelector("title")?.text).toBe("SUP-1: Printer jams - Proofdesk");
   });
 
   it("gives every box a label, for the team and for the customer", async () => {
