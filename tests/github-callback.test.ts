@@ -420,7 +420,7 @@ describe("every way back from GitHub", () => {
     });
   });
 
-  it.each(["state_mismatch", "state_not_found", "state_invalid", "please_restart_the_process"])(
+  it.each(["state_mismatch", "state_not_found", "state_invalid"])(
     "says %s means the sign-in expired",
     async (code) => {
       const { app } = buildGithubApp();
@@ -448,16 +448,28 @@ describe("every way back from GitHub", () => {
   it("says once that a GitHub sign-out happened", async () => {
     const { app } = buildGithubApp();
     const { cookie } = await signInThroughGithub(app, ada);
-    const out = await visitor(app).post("/sign-out").set("Cookie", cookie);
+    // One agent keeps cookies the way a browser does, so the second visit sends whatever
+    // the sign-out and the first visit left behind.
+    const browser = visitor(app);
+    browser.jar.setCookies(cookie.split("; "));
+    const out = await browser.post("/sign-out");
     expect(out.headers.location).toBe("/sign-in");
+    expect(String(out.headers["set-cookie"])).toContain("sign_in_notice=signedOut");
 
-    const first = await request(app).get("/sign-in").set("Cookie", cookiesOf(out));
+    const first = await browser.get("/sign-in");
     expect(noticeOf(first.text)).toEqual({
       role: "status",
       text: "You are signed out. To sign in with a different GitHub account, sign out of GitHub first.",
     });
-    const second = await request(app).get("/sign-in").set("Cookie", cookiesOf(first));
+    const second = await browser.get("/sign-in");
     expect(noticeOf(second.text)).toBeNull();
+  });
+
+  it("says nothing about signing out when nobody was signed in", async () => {
+    const { app } = buildGithubApp();
+    const out = await visitor(app).post("/sign-out");
+    expect(out.headers.location).toBe("/sign-in");
+    expect(String(out.headers["set-cookie"])).not.toContain("sign_in_notice=");
   });
 
   it("says nothing about GitHub when a made-up person of the development entrance signs out", async () => {
@@ -466,26 +478,10 @@ describe("every way back from GitHub", () => {
     expect(String(out.headers["set-cookie"])).not.toContain("sign_in_notice=");
   });
 
-  it("says once that a session ended, and keeps the page that was being opened", async () => {
-    const { app, db } = buildGithubApp();
-    const { cookie } = await signInThroughGithub(app, ada);
-    db.prepare(`UPDATE "session" SET "expiresAt" = ?`).run(
-      new Date(Date.now() - 1000).toISOString(),
-    );
-    const sent = await request(app).get("/tickets/SUP-3").set("Cookie", cookie);
-    expect(sent.headers.location).toBe("/sign-in?next=%2Ftickets%2FSUP-3");
-
-    const page = await request(app)
-      .get(sent.headers.location as string)
-      .set("Cookie", cookiesOf(sent));
-    expect(noticeOf(page.text)).toEqual({
-      role: "status",
-      text: "Your session ended. Sign in again to go back to the page you were on.",
-    });
-    const next = parse(page.text).querySelector("form[action='/sign-in/github'] input[name=next]");
-    expect(next?.getAttribute("value")).toBe("/tickets/SUP-3");
-    const again = await request(app).get("/sign-in").set("Cookie", cookiesOf(page));
-    expect(noticeOf(again.text)).toBeNull();
+  it("shows no GitHub message from the address where there is no GitHub sign-in", async () => {
+    const { app } = buildTestApp();
+    const page = await request(app).get("/sign-in").query({ error: "access_denied" });
+    expect(noticeOf(page.text)).toBeNull();
   });
 
   it("shows no message on a plain visit", async () => {

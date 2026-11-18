@@ -6,7 +6,6 @@ import type { ConnectionService } from "./connections/service.js";
 import type { AgentScope } from "./permissions.js";
 import type { Db } from "./db.js";
 import { HttpError } from "./errors.js";
-import { rememberSignInNotice } from "./sign-in-notice.js";
 
 export type Role = "customer" | "team" | "admin";
 
@@ -120,9 +119,6 @@ export function actorMiddleware(
       const cookies = found.headers.getSetCookie();
       if (cookies.length > 0) res.append("Set-Cookie", cookies);
       const session = found.response;
-      // The library clears the cookie only when the browser sent one and its session is over.
-      // The sign-in page then says so once, wherever the browser is sent next.
-      if (session === null && cookies.length > 0) rememberSignInNotice(res, "sessionEnded");
       if (session !== null) {
         req.actor = {
           id: session.user.id,
