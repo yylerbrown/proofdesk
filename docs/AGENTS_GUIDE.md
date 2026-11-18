@@ -6,8 +6,8 @@ and for the assistant itself.
 
 ## Connect
 
-An admin opens **Connections**, names the connection, ticks what it may do, and copies the key,
-which is shown once. If the key is lost or leaked, revoke the connection and issue a new one.
+An admin opens **Connections** (linked from the ticket list, or at `/connections`), names the connection, ticks what it may do, and copies the key, which is shown
+once. If the key is lost or leaked, revoke the connection and issue a new one.
 
 **Claude Code**: the connection page shows this command with the real address and key filled in:
 

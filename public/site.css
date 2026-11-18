@@ -1031,23 +1031,28 @@ fieldset label {
   font-weight: var(--pd-weight-regular);
 }
 /*
- * Who sees it: two chips, Reply or Internal note, the legend before them, drawn like the list's
- * filter. Each choice is still a real radio button: it covers its whole chip, invisible, so a
- * click, a tap and the keyboard all work as before. The chosen chip is white with a grey edge (3.29);
- * Internal note turns amber, as the note will (note text on amber: 6.43).
+ * Who sees it: two chips, Reply or Internal note, in one track of their own under the legend,
+ * drawn like the list's filter. Each choice is still a real radio button: it covers its whole
+ * chip, invisible, so a click, a tap and the keyboard all work as before. The chosen chip is white
+ * with a grey edge (3.29); Internal note turns amber, as the note will (note text on amber: 6.43).
  */
-fieldset:has(input[value="note"]) {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--pd-space-1) 2px;
-}
 fieldset:has(input[value="note"]) legend {
-  float: left;
-  margin: 0;
+  margin: 0 0 var(--pd-space-1);
   padding: 0;
   color: var(--pd-muted);
   font-size: var(--pd-text-xs);
+}
+.kind-choice {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 2px;
+  border-radius: calc(var(--pd-radius) + 2px);
+  background: var(--pd-subtle);
+}
+/* On a narrow screen the chips wrap; each then fills its row of the track. */
+.kind-choice > label {
+  flex: 1 1 auto;
 }
 fieldset:has(input[value="note"]) label {
   display: inline-flex;
@@ -1065,9 +1070,6 @@ fieldset:has(input[value="note"]) label {
     background-color var(--pd-ease),
     border-color var(--pd-ease),
     color var(--pd-ease);
-}
-fieldset:has(input[value="note"]) legend {
-  margin-right: 10px;
 }
 @supports selector(:has(*)) {
   fieldset:has(input[value="note"]) input[type="radio"] {
@@ -2111,4 +2113,63 @@ dl.run-facts dt {
 dl.run-facts dd {
   margin: 0 0 var(--pd-space-3);
   overflow-wrap: anywhere;
+}
+
+/*
+ * The invitation to bring your own AI assistant, on the team's ticket list: a compact strip of
+ * small text, a side offer that never pushes the tickets far down. On a wide screen its links sit
+ * beside the text. It goes once dismissed or once an assistant is connected.
+ */
+.assistant-invite {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--pd-space-1) var(--pd-space-4);
+  margin: 0 0 var(--pd-space-4);
+  padding: var(--pd-space-2) var(--pd-space-3);
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius);
+  background: var(--pd-surface);
+  font-size: var(--pd-text-sm);
+}
+.assistant-invite p {
+  flex: 1 1 28rem;
+  margin: 0;
+}
+.invite-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--pd-space-4);
+}
+.invite-actions form {
+  margin: 0;
+}
+.invite-actions button.link {
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  font-size: inherit;
+  line-height: inherit;
+}
+.invite-connect {
+  font-weight: var(--pd-weight-semibold);
+}
+.invite-who,
+.assistant-connected {
+  color: var(--pd-muted);
+}
+/*
+ * On a phone the strip keeps to its headline and links ("See an assistant's work" shows the rest),
+ * and each link keeps a 44-pixel tap area without making the strip taller.
+ */
+@media (max-width: 639px) {
+  .invite-more {
+    display: none;
+  }
+  .invite-actions :is(a, button.link) {
+    display: inline-block;
+    margin-block: -12px;
+    padding-block: 12px;
+  }
 }
