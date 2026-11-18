@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
+import { type GithubOptions, type GithubProfile, github } from "better-auth/social-providers";
 import type { Role } from "./actor.js";
 import type { Config, SignInConfig } from "./config.js";
 import type { Db } from "./db.js";
@@ -9,22 +10,43 @@ import type { Db } from "./db.js";
  * and sessions in the same database, in the tables of migration 0006.
  */
 export function createAuth(db: Db, signIn: SignInConfig, clientIpHeader: string | undefined) {
+  const githubSettings = {
+    clientId: signIn.githubClientId,
+    clientSecret: signIn.githubClientSecret,
+    // Only the permission to read the person's email addresses. Who they are needs no
+    // permission at all. The library's default also asks for read:user, which reads
+    // private profile data the app never uses.
+    disableDefaultScope: true,
+    scope: ["user:email"],
+    // Names come only from GitHub, where a display name can be very long or empty.
+    mapProfileToUser: (profile: GithubProfile) => ({
+      name: shownName(profile.name, profile.login),
+    }),
+  } satisfies GithubOptions;
+  // GitHub asked the library's own way, so the app can look at the answer before the library.
+  const askGithub = github(githubSettings);
+
+  /**
+   * Who came back from GitHub. The library looks up the email address GitHub reports before
+   * anything else runs, and answers differently when that address already has a person here.
+   * So an address GitHub has not verified is withheld: the library then sends the browser to
+   * the sign-in page with error=email_not_found, whether or not the address is known here.
+   * Someone who already signed in with this GitHub account is found by the account, not the
+   * address, so they keep their way in.
+   */
+  async function whoCameBack(token: Parameters<typeof askGithub.getUserInfo>[0]) {
+    const info = await askGithub.getUserInfo(token);
+    if (info === null || info.user.emailVerified === true) return info;
+    if (hasGithubAccount(db, String(info.data.id))) return info;
+    return { ...info, user: { ...info.user, email: null } };
+  }
+
   return betterAuth({
     database: db,
     secret: signIn.secret,
     baseURL: signIn.baseUrl,
     socialProviders: {
-      github: {
-        clientId: signIn.githubClientId,
-        clientSecret: signIn.githubClientSecret,
-        // Only the permission to read the person's email addresses. Who they are needs no
-        // permission at all. The library's default also asks for read:user, which reads
-        // private profile data the app never uses.
-        disableDefaultScope: true,
-        scope: ["user:email"],
-        // Names come only from GitHub, where a display name can be very long or empty.
-        mapProfileToUser: (profile) => ({ name: shownName(profile.name, profile.login) }),
-      },
+      github: { ...githubSettings, getUserInfo: whoCameBack },
     },
     // One person, one GitHub account. By default the library would attach a second GitHub
     // account to an existing person when both show the same verified email address. Roles
@@ -50,7 +72,8 @@ export function createAuth(db: Db, signIn: SignInConfig, clientIpHeader: string 
         create: {
           // A person is created only with an email address GitHub has verified. Each address
           // belongs to one person here, so an account showing someone else's address first
-          // would lock its real owner out. Thrown before the row is written, the refusal
+          // would lock its real owner out. whoCameBack above already withholds such an
+          // address, so this is a second guard. Thrown before the row is written, the refusal
           // sends the browser to the sign-in page with error=email_not_verified.
           before: async (user) => {
             if (user.emailVerified !== true) {
@@ -103,6 +126,14 @@ function shownName(name: string | null, login: string): string {
   return Array.from(readerCharacters.segment(chosen), (part) => part.segment)
     .slice(0, NAME_LIMIT)
     .join("");
+}
+
+/** True when someone here has already signed in with this GitHub user number. */
+function hasGithubAccount(db: Db, githubId: string): boolean {
+  const row = db
+    .prepare(`SELECT 1 FROM "account" WHERE "providerId" = 'github' AND "accountId" = ?`)
+    .get(githubId);
+  return row !== undefined;
 }
 
 /** The GitHub user number of a signed-in person, or undefined if they have no GitHub account. */

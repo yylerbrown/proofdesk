@@ -85,6 +85,8 @@ function noticeOf(html: string) {
 }
 
 const EXPIRED = "That sign-in expired before GitHub sent you back. Sign in again.";
+const NO_VERIFIED_EMAIL =
+  "GitHub did not share a verified email address for this account. Verify one on GitHub, then sign in again.";
 
 /** Starts a GitHub sign-in and returns its state and the cookies the browser now holds. */
 async function startGithubSignIn(app: TestApp, next?: string) {
@@ -145,10 +147,10 @@ describe("the whole GitHub sign-in", () => {
     expect(refused.signedInAs).toBeNull();
     const landed = new URL(refused.location, "http://desk.test");
     expect(landed.pathname).toBe("/sign-in");
-    expect(landed.searchParams.get("error")).toBe("email_not_verified");
+    expect(landed.searchParams.get("error")).toBe("email_not_found");
     expect(noticeOf((await request(app).get(refused.location)).text)).toEqual({
       role: "alert",
-      text: "GitHub has not verified your email address yet. Verify it on GitHub, then sign in again.",
+      text: NO_VERIFIED_EMAIL,
     });
     for (const table of ["user", "account", "session"]) {
       expect(db.prepare(`SELECT COUNT(*) AS n FROM "${table}"`).get(), table).toEqual({ n: 0 });
@@ -156,6 +158,47 @@ describe("the whole GitHub sign-in", () => {
 
     // The address's owner, whose email GitHub has verified, signs in as usual.
     expect((await signInThroughGithub(app, ada)).signedInAs).toBe("Ada Admin (admin)");
+  });
+
+  it("answers an unverified address the same way whether or not it already has a person here", async () => {
+    const { app, db } = buildGithubApp();
+    await signInThroughGithub(app, ada);
+    // One GitHub account shows Ada's address in other letter case, and another an unknown
+    // address. GitHub has verified neither for them.
+    const known: GithubUser = {
+      id: 6666,
+      login: "known",
+      name: "Known",
+      email: "ADA@corp.example",
+      verified: false,
+    };
+    const unknown: GithubUser = {
+      id: 6667,
+      login: "unknown",
+      name: "Unknown",
+      email: "nobody@corp.example",
+      verified: false,
+    };
+    const first = await signInThroughGithub(app, known);
+    const second = await signInThroughGithub(app, unknown);
+
+    expect(first.location).toBe("/sign-in?error=email_not_found");
+    expect(second.location).toBe("/sign-in?error=email_not_found");
+    const firstNotice = noticeOf((await request(app).get(first.location)).text);
+    const secondNotice = noticeOf((await request(app).get(second.location)).text);
+    expect(firstNotice).toEqual({ role: "alert", text: NO_VERIFIED_EMAIL });
+    expect(secondNotice).toEqual(firstNotice);
+    expect(db.prepare(`SELECT COUNT(*) AS n FROM "user"`).get()).toEqual({ n: 1 });
+    expect(db.prepare(`SELECT COUNT(*) AS n FROM "account"`).get()).toEqual({ n: 1 });
+    expect((await signInThroughGithub(app, ada)).signedInAs).toBe("Ada Admin (admin)");
+  });
+
+  it("still lets a returning person in when GitHub no longer calls their address verified", async () => {
+    const { app } = buildGithubApp();
+    await signInThroughGithub(app, ada);
+    const result = await signInThroughGithub(app, { ...ada, verified: false });
+    expect(result.location).toBe("/tickets");
+    expect(result.signedInAs).toBe("Ada Admin (admin)");
   });
 
   it("keeps at most 100 characters of a GitHub name, and never half of one", async () => {
