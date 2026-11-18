@@ -7,6 +7,9 @@
 </hgroup>
 <% const staff = viewerRole !== "customer"; %>
 
+<% if (locals.recordedRun) { %>
+<p class="recorded-run">A recorded example of a real assistant run: what it sent is shown here as it sent it. <a href="/assistant-run">See its transcript and files</a></p>
+<% } %>
 <%# On the demo: the next role to view this same ticket as, or where resolved tickets are listed. %>
 <% if (locals.demoNext) { %>
 <div class="demo-next">

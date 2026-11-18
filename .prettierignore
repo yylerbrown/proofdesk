@@ -4,3 +4,4 @@ data
 coverage
 package-lock.json
 public/js
+docs/assistant-run

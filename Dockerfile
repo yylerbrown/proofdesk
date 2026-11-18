@@ -27,6 +27,7 @@ COPY --from=build /app/dist ./dist
 COPY package.json ./
 COPY migrations ./migrations
 COPY views ./views
+COPY docs/assistant-run ./docs/assistant-run
 COPY --from=build /app/public ./public
 COPY docker-entrypoint.sh ./
 RUN mkdir -p /data && chown node:node /data

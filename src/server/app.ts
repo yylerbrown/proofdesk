@@ -26,6 +26,7 @@ import { createTicketService, DEMO_BUDGET } from "./tickets/service.js";
 import { createConnectionService } from "./connections/service.js";
 import { connectionsRouter } from "./routes/connections.js";
 import { mcpEndpoint } from "./mcp.js";
+import { assistantRunRouter } from "./routes/assistant-run.js";
 import { teamMembers } from "./team.js";
 import { guide, openApiDocument } from "./api/describe.js";
 import { siteAddress } from "./routes/connections.js";
@@ -198,6 +199,7 @@ export function createApp(config: Config, db: Db): Express {
   app.post("/sign-in/github", signInLimit);
   app.post("/demo/connection", demoConnectionLimit);
   app.use(express.urlencoded({ extended: false, limit: BODY_LIMIT }));
+  app.use(assistantRunRouter(rootDir, () => tickets.recordedRunKey()));
   app.use(signInRouter(config, auth, () => tickets.hasDemoSeed()));
   app.use(pagesRouter(tickets));
   app.use(connectionsRouter(connections, config, () => tickets.hasDemoSeed()));

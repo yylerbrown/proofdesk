@@ -1380,3 +1380,9 @@ dl.evidence-fields dd a {
   display: inline;
   white-space: normal;
 }
+
+/* The recorded assistant run: its summary as plain text, wrapped to the column. */
+pre.run-summary {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
