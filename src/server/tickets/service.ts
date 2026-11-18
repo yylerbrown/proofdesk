@@ -327,15 +327,7 @@ export function createTicketService(
   function endAgent(row: repository.TicketRow, reason: string, actor: Actor, now: string): void {
     const ended = repository.endHandoff(db, row.id, reason, now);
     if (ended === undefined) return;
-    logEvent({
-      ticketId: row.id,
-      actor: actor.id,
-      actorKind: actor.kind,
-      context: agentContext(actor),
-      type: "agent_handoff_ended",
-      data: { connection: ended, reason },
-      now,
-    });
+    log(row.id, actor, "agent_handoff_ended", { connection: ended, reason }, now);
   }
 
   function seededOrRefused(): DemoSeed {
@@ -537,20 +529,17 @@ export function createTicketService(
         author_name: actor.name,
         created_at: now,
       });
-      logEvent({
-        ticketId: ticket.id,
-        actor: actor.id,
-        actorKind: actor.kind,
-        context: agentContext(actor),
-        type:
-          purpose === "review_request"
-            ? "review_requested"
-            : entry.kind === "note"
-              ? "note_added"
-              : "reply_added",
-        data: {},
+      log(
+        ticket.id,
+        actor,
+        purpose === "review_request"
+          ? "review_requested"
+          : entry.kind === "note"
+            ? "note_added"
+            : "reply_added",
+        {},
         now,
-      });
+      );
       return saved;
     })();
     return toEntry(row);
@@ -642,15 +631,7 @@ export function createTicketService(
   ): repository.TicketRow {
     const now = new Date().toISOString();
     repository.updateTicketOwner(db, before.id, ownerId, ownerName, now);
-    logEvent({
-      ticketId: before.id,
-      actor: actor.id,
-      actorKind: actor.kind,
-      context: agentContext(actor),
-      type: "owner_changed",
-      data: { from: before.owner_name, to: ownerName },
-      now,
-    });
+    log(before.id, actor, "owner_changed", { from: before.owner_name, to: ownerName }, now);
     return { ...before, owner_id: ownerId, owner_name: ownerName, updated_at: now };
   }
 
@@ -684,6 +665,22 @@ export function createTicketService(
     repository.insertEvent(db, { ...event, context });
   }
 
+  /**
+   * Writes a history entry for something this actor did: who did it, as a person or an agent,
+   * and for an agent its connection.
+   */
+  function log(ticketId: number, actor: Actor, type: string, data: object, now: string): void {
+    logEvent({
+      ticketId,
+      actor: actor.id,
+      actorKind: actor.kind,
+      context: agentContext(actor),
+      type,
+      data,
+      now,
+    });
+  }
+
   /** Throws 409 when the ticket is archived. Used before any change to its content. */
   function requireNotArchived(key: string, row: repository.TicketRow): void {
     if (row.archived_at !== null) {
@@ -707,15 +704,7 @@ export function createTicketService(
           createdBy: actor.id,
           now,
         });
-        logEvent({
-          ticketId: id,
-          actor: actor.id,
-          actorKind: actor.kind,
-          context: agentContext(actor),
-          type: "created",
-          data: { status: "new" },
-          now,
-        });
+        log(id, actor, "created", { status: "new" }, now);
         return repository.findTicket(db, id)!;
       })();
       return toTicket(row, actor);
@@ -787,15 +776,7 @@ export function createTicketService(
         requireOwnerStarts(key, before, actor);
         const now = new Date().toISOString();
         repository.updateTicketStatus(db, before.id, status, now);
-        logEvent({
-          ticketId: before.id,
-          actor: actor.id,
-          actorKind: actor.kind,
-          context: agentContext(actor),
-          type: "status_changed",
-          data: { from: before.status, to: status },
-          now,
-        });
+        log(before.id, actor, "status_changed", { from: before.status, to: status }, now);
         return { ...before, status, ready_at: null, ready_token: null, updated_at: now };
       })();
       return toTicket(row, actor);
@@ -841,28 +822,12 @@ export function createTicketService(
           },
           now,
         );
-        logEvent({
-          ticketId: before.id,
-          actor: actor.id,
-          actorKind: actor.kind,
-          context: agentContext(actor),
-          type: "edited",
-          data: { changes },
-          now,
-        });
+        log(before.id, actor, "edited", { changes }, now);
         // A customer who changes their check retires the team's interpretation of the old one.
         let agreed = before.agreed_check;
         if (changes.fix_check !== undefined && before.agreed_check !== null) {
           repository.updateAgreedCheck(db, before.id, null, now);
-          logEvent({
-            ticketId: before.id,
-            actor: actor.id,
-            actorKind: actor.kind,
-            context: agentContext(actor),
-            type: "check_agreed",
-            data: { from: before.agreed_check, to: null },
-            now,
-          });
+          log(before.id, actor, "check_agreed", { from: before.agreed_check, to: null }, now);
           agreed = null;
         }
         return { ...before, ...after, agreed_check: agreed, ...noQuestion, updated_at: now };
@@ -902,15 +867,7 @@ export function createTicketService(
           now,
         );
         repository.updateAgreedCheck(db, before.id, null, now);
-        logEvent({
-          ticketId: before.id,
-          actor: actor.id,
-          actorKind: actor.kind,
-          context: agentContext(actor),
-          type: "check_adopted",
-          data: { from: before.fix_check, to: words },
-          now,
-        });
+        log(before.id, actor, "check_adopted", { from: before.fix_check, to: words }, now);
         return { ...before, fix_check: words, agreed_check: null, ...noQuestion, updated_at: now };
       })();
       return toTicket(row, actor);
@@ -933,15 +890,7 @@ export function createTicketService(
         const now = new Date().toISOString();
         withdrawQuestion(before);
         repository.updateAgreedCheck(db, before.id, agreed, now);
-        logEvent({
-          ticketId: before.id,
-          actor: actor.id,
-          actorKind: actor.kind,
-          context: agentContext(actor),
-          type: "check_agreed",
-          data: { from: before.agreed_check, to: agreed },
-          now,
-        });
+        log(before.id, actor, "check_agreed", { from: before.agreed_check, to: agreed }, now);
         return { ...before, agreed_check: agreed, ...noQuestion, updated_at: now };
       })();
       return toTicket(row, actor);
@@ -958,15 +907,7 @@ export function createTicketService(
         const now = new Date().toISOString();
         withdrawQuestion(before);
         repository.updateChangeUrl(db, before.id, change_url, now);
-        logEvent({
-          ticketId: before.id,
-          actor: actor.id,
-          actorKind: actor.kind,
-          context: agentContext(actor),
-          type: "change_linked",
-          data: { from: before.change_url, to: change_url },
-          now,
-        });
+        log(before.id, actor, "change_linked", { from: before.change_url, to: change_url }, now);
         return { ...before, change_url, ...noQuestion, updated_at: now };
       })();
       return toTicket(row, actor);
@@ -1042,15 +983,13 @@ export function createTicketService(
         endAgent(before, "the customer was asked", actor, now);
         const token = randomUUID();
         repository.updateReady(db, before.id, ask, token, now);
-        logEvent({
-          ticketId: before.id,
-          actor: actor.id,
-          actorKind: actor.kind,
-          context: agentContext(actor),
-          type: "ready_for_customer",
-          data: { try_url, tried, result, response: ask.response, evidence_ids: evidenceIds },
+        log(
+          before.id,
+          actor,
+          "ready_for_customer",
+          { try_url, tried, result, response: ask.response, evidence_ids: evidenceIds },
           now,
-        });
+        );
         return {
           ...before,
           try_url,
@@ -1084,15 +1023,7 @@ export function createTicketService(
         if (before.ready_at === null) return before; // nothing is open
         const now = new Date().toISOString();
         repository.clearReady(db, before.id, now);
-        logEvent({
-          ticketId: before.id,
-          actor: actor.id,
-          actorKind: actor.kind,
-          context: agentContext(actor),
-          type: "question_withdrawn",
-          data: {},
-          now,
-        });
+        log(before.id, actor, "question_withdrawn", {}, now);
         return { ...before, ready_at: null, ready_token: null, updated_at: now };
       })();
       return toTicket(row, actor);
@@ -1139,16 +1070,14 @@ export function createTicketService(
             created_at: now,
           });
         }
-        logEvent({
-          ticketId: before.id,
-          actor: actor.id,
-          actorKind: actor.kind,
-          context: agentContext(actor),
-          type: "customer_answered",
-          // A no keeps the customer's words with the answer, so the owner sees them with it.
-          data: fixed === "yes" ? { fixed: true } : { fixed: false, comment },
+        // A no keeps the customer's words with the answer, so the owner sees them with it.
+        log(
+          before.id,
+          actor,
+          "customer_answered",
+          fixed === "yes" ? { fixed: true } : { fixed: false, comment },
           now,
-        });
+        );
         return { ...before, status, ...noQuestion, updated_at: now } as repository.TicketRow;
       })();
       return toTicket(row, actor);
@@ -1204,15 +1133,7 @@ export function createTicketService(
         if (before.owner_id === null) before = setOwner(before, actor.id, actor.name, actor);
         const now = new Date().toISOString();
         repository.updateTicketStatus(db, before.id, "in_progress", now);
-        logEvent({
-          ticketId: before.id,
-          actor: actor.id,
-          actorKind: actor.kind,
-          context: agentContext(actor),
-          type: "status_changed",
-          data: { from: "new", to: "in_progress" },
-          now,
-        });
+        log(before.id, actor, "status_changed", { from: "new", to: "in_progress" }, now);
         return { ...before, status: "in_progress" as const, updated_at: now };
       })();
       return toTicket(row, actor);
@@ -1254,15 +1175,7 @@ export function createTicketService(
           author_name: actor.name,
           created_at: now,
         });
-        logEvent({
-          ticketId: before.id,
-          actor: actor.id,
-          actorKind: actor.kind,
-          context: agentContext(actor),
-          type: "reopened",
-          data: { reason, to: status, owner: before.owner_name },
-          now,
-        });
+        log(before.id, actor, "reopened", { reason, to: status, owner: before.owner_name }, now);
         return { ...before, status, ...noQuestion, updated_at: now } as repository.TicketRow;
       })();
       return toTicket(row, actor);
@@ -1343,15 +1256,7 @@ export function createTicketService(
         if (repository.activeHandoff(db, before.id)?.connection_id === connection.id) return before;
         endAgent(before, "handed to another agent", actor, now);
         repository.startHandoff(db, before.id, connection.id, actor.id, now);
-        logEvent({
-          ticketId: before.id,
-          actor: actor.id,
-          actorKind: actor.kind,
-          context: agentContext(actor),
-          type: "agent_handed",
-          data: { connection: connection.name },
-          now,
-        });
+        log(before.id, actor, "agent_handed", { connection: connection.name }, now);
         return before;
       })();
       return toTicket(row, actor);
@@ -1431,15 +1336,7 @@ export function createTicketService(
         withdrawQuestion(before);
         endAgent(before, "the ticket was archived", actor, now);
         repository.updateTicketArchived(db, before.id, now, now);
-        logEvent({
-          ticketId: before.id,
-          actor: actor.id,
-          actorKind: actor.kind,
-          context: agentContext(actor),
-          type: "archived",
-          data: {},
-          now,
-        });
+        log(before.id, actor, "archived", {}, now);
         return { ...before, archived_at: now, ...noQuestion, updated_at: now };
       })();
       return toTicket(row, actor);
@@ -1453,15 +1350,7 @@ export function createTicketService(
         if (before.archived_at === null) return before; // not archived
         const now = new Date().toISOString();
         repository.updateTicketArchived(db, before.id, null, now);
-        logEvent({
-          ticketId: before.id,
-          actor: actor.id,
-          actorKind: actor.kind,
-          context: agentContext(actor),
-          type: "restored",
-          data: {},
-          now,
-        });
+        log(before.id, actor, "restored", {}, now);
         return { ...before, archived_at: null, updated_at: now };
       })();
       return toTicket(row, actor);
@@ -1592,15 +1481,13 @@ export function createTicketService(
           scenario: evidence.scenario ?? null,
           created_at: now,
         });
-        logEvent({
-          ticketId: ticket.id,
-          actor: actor.id,
-          actorKind: actor.kind,
-          context: agentContext(actor),
-          type: "evidence_added",
-          data: { kind: evidence.kind, summary: evidence.summary },
+        log(
+          ticket.id,
+          actor,
+          "evidence_added",
+          { kind: evidence.kind, summary: evidence.summary },
           now,
-        });
+        );
         return saved;
       })();
       return toEvidence(row);
@@ -1811,15 +1698,7 @@ export function createTicketService(
           connection_id: actor.connection?.id ?? null,
           created_at: now,
         });
-        logEvent({
-          ticketId: ticket.id,
-          actor: actor.id,
-          actorKind: actor.kind,
-          context: agentContext(actor),
-          type: "spec_proposed",
-          data: { scenarios: spec.scenarios.length },
-          now,
-        });
+        log(ticket.id, actor, "spec_proposed", { scenarios: spec.scenarios.length }, now);
         return saved;
       })();
       return toSpec(row, actor);
@@ -1840,15 +1719,7 @@ export function createTicketService(
         const state = decision === "accept" ? "accepted" : "discarded";
         const now = new Date().toISOString();
         repository.decideSpec(db, spec.id, state, actor, now);
-        logEvent({
-          ticketId: ticket.id,
-          actor: actor.id,
-          actorKind: actor.kind,
-          context: agentContext(actor),
-          type: decision === "accept" ? "spec_accepted" : "spec_discarded",
-          data: {},
-          now,
-        });
+        log(ticket.id, actor, decision === "accept" ? "spec_accepted" : "spec_discarded", {}, now);
         return repository.findSpec(db, spec.id)!;
       })();
       return toSpec(row, actor);
