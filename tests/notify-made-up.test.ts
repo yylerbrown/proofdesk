@@ -1,5 +1,6 @@
 import request from "supertest";
 import type { Express } from "express";
+import { roleNowOf } from "../src/server/people/role-now.js";
 import { describe, expect, it } from "vitest";
 import { DEMO_ACTORS, DEV_COOKIE, type Actor } from "../src/server/actor.js";
 import type { Db } from "../src/server/db.js";
@@ -51,6 +52,7 @@ describe("notices for the made-up people of the demo", () => {
       demo: true,
       mailConfigured: false,
       madeUpPeople: madeUpPeopleOf(config),
+      roleNow: (db, id) => roleNowOf(config, db, id),
     };
     // A fresh demo database collects the samples' history too, so they show notices as well.
     collectNotices(db, settings);
@@ -116,6 +118,7 @@ describe("notices for the made-up people of the development entrance", () => {
       demo: false,
       mailConfigured: true,
       madeUpPeople: madeUpPeopleOf(config),
+      roleNow: (db, id) => roleNowOf(config, db, id),
     };
     await ok(
       as(app, customerOne)

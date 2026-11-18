@@ -5,6 +5,7 @@ import { openDatabase, type Db } from "./db.js";
 import { seedDemo } from "./demo.js";
 import type { LogLine } from "./http-basics.js";
 import { runMigrations } from "./migrate.js";
+import { forgetRolesNamedInSettings } from "./people/service.js";
 import { checkPurposeBeforeMigrating } from "./purpose.js";
 import { createTicketService } from "./tickets/service.js";
 
@@ -43,6 +44,9 @@ export function openSite(config: Config, log: LogLine, sayMigrations = true): Si
           "Set it to at least one GitHub user number, so the site always has an admin.",
       );
     }
+    // A role chosen on the People page for someone the settings now name is forgotten, so it
+    // cannot come back when the settings stop naming them.
+    forgetRolesNamedInSettings(db, config);
     // createApp checks the database's purpose first, so the demo is only seeded into a demo
     // database. It logs one line per request.
     const app = createApp(config, db, { log });

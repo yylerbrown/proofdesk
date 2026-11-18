@@ -58,6 +58,19 @@ export function saveRole(db: Db, personId: string, role: Role, now: string): voi
   ).run(personId, role, now);
 }
 
+/** Forgets the role chosen for a person, so they fall back to the server settings or customer. */
+export function forgetRole(db: Db, personId: string): void {
+  db.prepare("DELETE FROM people_roles WHERE person_id = ?").run(personId);
+}
+
+/** When this person's role last changed, or undefined when it never has. */
+export function lastChangeTimeOf(db: Db, personId: string): string | undefined {
+  const row = db
+    .prepare("SELECT MAX(created_at) AS at FROM role_changes WHERE person_id = ?")
+    .get(personId) as { at: string | null };
+  return row.at ?? undefined;
+}
+
 /** Adds one line to the history of role changes. */
 export function recordChange(
   db: Db,

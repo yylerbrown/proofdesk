@@ -148,6 +148,26 @@ export function insertNotice(db: Db, notice: NewNotice): boolean {
   return result.changes === 1;
 }
 
+/**
+ * How many notices about one ticket went to one person, or are waiting to go, since this time.
+ * Notices kept as not sent do not count: nobody was emailed.
+ */
+export function countRecentNotices(
+  db: Db,
+  ticketId: number,
+  recipientId: string,
+  since: string,
+): number {
+  const row = db
+    .prepare(
+      `SELECT COUNT(*) AS n FROM email_outbox
+       WHERE ticket_id = ? AND recipient_id = ? AND state IN ('pending', 'sent')
+         AND created_at > ?`,
+    )
+    .get(ticketId, recipientId, since) as { n: number };
+  return row.n;
+}
+
 /** Every notice about one ticket, oldest first. */
 export function noticesOfTicket(db: Db, ticketId: number): NoticeRow[] {
   return db
@@ -213,6 +233,15 @@ export function markRetry(
   db.prepare(
     "UPDATE email_outbox SET last_error = ?, updated_at = ?, next_attempt_at = ? WHERE id = ?",
   ).run(error, now, nextAttemptAt, id);
+}
+
+/** Keeps a pending notice and marks it not sent, with the reason. */
+export function markNotSent(db: Db, id: number, now: string, reason: string): void {
+  db.prepare(
+    `UPDATE email_outbox
+     SET state = 'not_sent', not_sent_reason = ?, updated_at = ?, next_attempt_at = NULL
+     WHERE id = ? AND state = 'pending'`,
+  ).run(reason, now, id);
 }
 
 export function markFailed(db: Db, id: number, now: string, error: string): void {

@@ -33,6 +33,9 @@ export const RESET_TIMES: ResetTimes = {
   forcedAfterMs: 48 * HOUR,
 };
 
+/** How long a request refused by a forced reset is asked to wait before it sends again. */
+export const RETRY_AFTER_RESET_SECONDS = 10;
+
 /** How many earlier databases stay on the disk, set aside. Older ones are deleted. */
 export const KEEP_SET_ASIDE = 3;
 
@@ -94,7 +97,8 @@ export function createDemoReset(options: {
 
   let site = options.site;
   let samplesFrom = seededAt(site, now());
-  let inFlight = 0;
+  // The answers still being written, so a forced reset can refuse them cleanly.
+  const open = new Set<http.ServerResponse>();
   // When the last request other than a health check arrived or ended, or null if none has.
   let lastRequestAt: number | null = null;
   let timer: NodeJS.Timeout | null = null;
@@ -103,10 +107,10 @@ export function createDemoReset(options: {
     // The host checks /api/health every 30 seconds. Those checks are not visitors, so they
     // do not keep the demo from being quiet.
     const visitor = !(req.url ?? "").startsWith("/api/health");
-    inFlight += 1;
+    open.add(res);
     if (visitor) lastRequestAt = now();
     res.on("close", () => {
-      inFlight -= 1;
+      open.delete(res);
       if (visitor) lastRequestAt = now();
     });
     site.app(req, res);
@@ -115,12 +119,38 @@ export function createDemoReset(options: {
   function check(): boolean {
     const age = now() - samplesFrom;
     if (age < times.oldAfterMs) return false;
-    // A request being answered always waits for the next check, so its database is never
-    // closed under it.
-    if (inFlight > 0) return false;
+    // Samples this old reset whatever happens, so neither a busy demo nor a request held
+    // open can put the reset off for ever.
+    const forced = age >= times.forcedAfterMs;
+    // Before that, a request being answered always waits for the next check, so its
+    // database is never closed under it.
+    if (open.size > 0 && !forced) return false;
     const quiet = lastRequestAt === null || now() - lastRequestAt >= times.quietForMs;
-    if (!quiet && age < times.forcedAfterMs) return false;
+    if (!quiet && !forced) return false;
+    refuseOpenRequests();
     return reset();
+  }
+
+  /**
+   * Answers every request still open with a plain 503 before a forced reset closes the
+   * database it was using. Without this, such a request would meet a closed database. An
+   * answer already under way cannot change its status, so its connection is closed instead.
+   */
+  function refuseOpenRequests(): void {
+    for (const res of open) {
+      if (res.headersSent) {
+        res.destroy();
+        continue;
+      }
+      res.writeHead(503, {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Retry-After": String(RETRY_AFTER_RESET_SECONDS),
+        Connection: "close",
+      });
+      res.end(
+        `The demo is going back to its samples. Send this again in ${RETRY_AFTER_RESET_SECONDS} seconds.\n`,
+      );
+    }
   }
 
   /** Moves the database aside and serves a freshly seeded one. False when it failed. */

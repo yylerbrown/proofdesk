@@ -1,9 +1,10 @@
 import { z } from "zod";
-import { entrancePeople, type Actor } from "../actor.js";
+import { entrancePeople, type Actor, type Role } from "../actor.js";
 import type { Config } from "../config.js";
 import type { Db } from "../db.js";
 import { OTHER_DEMO_CUSTOMERS } from "../demo.js";
 import { emailMeOf } from "../people/repository.js";
+import { roleNowOf } from "../people/role-now.js";
 import { buildKey } from "../tickets/keys.js";
 import { RESOLVE_REASON_LABELS, RESOLVE_REASONS } from "../tickets/schemas.js";
 import { composeNotice } from "./compose.js";
@@ -30,6 +31,12 @@ export type NotifySettings = {
    * what would have been emailed.
    */
   madeUpPeople: readonly MadeUpPerson[];
+  /**
+   * A person's role at this moment, or undefined for nobody. An owner notice quotes the
+   * customer, so it goes only to someone who is on the team when it is written. It is required,
+   * so a caller cannot leave the check out by mistake.
+   */
+  roleNow: (db: Db, personId: string) => Role | undefined;
 };
 
 /**
@@ -43,6 +50,7 @@ export function notifySettingsOf(config: Config): NotifySettings {
     demo: config.demo,
     mailConfigured: config.mail !== null,
     madeUpPeople: madeUpPeopleOf(config),
+    roleNow: (db, personId) => roleNowOf(config, db, personId),
   };
 }
 
@@ -62,12 +70,22 @@ export function madeUpPeopleOf(config: Config): MadeUpPerson[] {
 /** How many history events one call reads at most. The next call carries on from there. */
 export const EVENTS_PER_COLLECT = 500;
 
+/**
+ * How many notices about one ticket one person is sent in an hour at most. Past it, the next
+ * ones are still written, as not sent with a reason, so the ticket's notices page says so.
+ */
+export const NOTICES_PER_TICKET_PER_HOUR = 10;
+
+const HOUR_MS = 60 * 60 * 1000;
+
 /** The reasons a notice is kept but not sent. */
 export const NOT_SENT_REASONS = {
   demo: "This is the demo, which never sends email.",
   madeUp: "This person is made up and has no address.",
   noMailServer: "Email is off on this site: no mail server is set up.",
   unverified: "This person's email address is not verified, so no email goes to it.",
+  switchedOff: "This person switched off email about their tickets before it was sent.",
+  tooMany: "Too many notices about this ticket in an hour, so this one was not sent.",
 } as const;
 
 /**
@@ -124,6 +142,11 @@ function writeNoticesOf(
     // Someone with no stored address, who is not one of the made-up people, gets no row.
     if (recipient === undefined) continue;
     if (!wantsEmail(db, planned.recipientId)) continue;
+    // An owner notice quotes the customer, so only someone on the team now may get it. A team
+    // member who was made a customer still owns their resolved tickets, and hears nothing more.
+    if (planned.audience === "owner" && !onTheTeam(settings.roleNow(db, planned.recipientId))) {
+      continue;
+    }
     const ticketKey = buildKey(settings.ticketPrefix, event.ticket_id);
     const { subject, body } = composeNotice({
       kind: planned.kind,
@@ -136,7 +159,10 @@ function writeNoticesOf(
       tryUrl: planned.kind === "asked_to_check" ? stringField(data, "try_url") : null,
       resolvedReason: planned.kind === "resolved_by_team" ? resolvedReason(data) : null,
     });
-    const notSent = notSentReason(settings, recipient);
+    const createdAt = new Date();
+    const notSent =
+      notSentReason(settings, recipient) ??
+      overHourlyCap(db, event.ticket_id, planned.recipientId, createdAt);
     rows.push({
       event_id: event.id,
       ticket_id: event.ticket_id,
@@ -147,10 +173,25 @@ function writeNoticesOf(
       body,
       state: notSent === null ? "pending" : "not_sent",
       not_sent_reason: notSent,
-      created_at: new Date().toISOString(),
+      created_at: createdAt.toISOString(),
     });
   }
   return rows;
+}
+
+/** Whether a role is one of the team's. */
+function onTheTeam(role: Role | undefined): boolean {
+  return role === "team" || role === "admin";
+}
+
+/**
+ * The reason for holding a notice back when this person has already been sent, or is waiting
+ * for, NOTICES_PER_TICKET_PER_HOUR notices about this ticket in the last hour; otherwise null.
+ */
+function overHourlyCap(db: Db, ticketId: number, recipientId: string, now: Date): string | null {
+  const since = new Date(now.getTime() - HOUR_MS).toISOString();
+  const recent = repository.countRecentNotices(db, ticketId, recipientId, since);
+  return recent >= NOTICES_PER_TICKET_PER_HOUR ? NOT_SENT_REASONS.tooMany : null;
 }
 
 /**

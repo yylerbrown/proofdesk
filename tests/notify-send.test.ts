@@ -4,6 +4,7 @@ import { openDatabase, type Db } from "../src/server/db.js";
 import { createNotifier } from "../src/server/notify/notifier.js";
 import { NOT_SENT_REASONS } from "../src/server/notify/outbox.js";
 import { claimNotice } from "../src/server/notify/repository.js";
+import { saveEmailMe } from "../src/server/people/repository.js";
 import {
   CLAIM_LEASE_MS,
   MOST_ATTEMPTS,
@@ -483,5 +484,19 @@ describe("the server stopping mid-send", () => {
     } finally {
       reopened.close();
     }
+  });
+});
+
+describe("switching email off", () => {
+  it("also stops the notices already waiting to be sent", async () => {
+    const { transport, caught } = catcher();
+    const db = await pendingNotices(1);
+    saveEmailMe(db, "dev-customer-1", false, new Date().toISOString());
+    const result = await sendDueNotices(db, transport, SEND_SETTINGS);
+    expect(result).toEqual({ sent: 0, failed: 0 });
+    expect(caught).toEqual([]);
+    const [row] = rows(db);
+    expect(row!.state).toBe("not_sent");
+    expect(row!.not_sent_reason).toBe(NOT_SENT_REASONS.switchedOff);
   });
 });

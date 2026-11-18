@@ -141,6 +141,31 @@ export function markRevoked(db: Db, id: number, now: string): void {
   );
 }
 
+/**
+ * Revokes every live connection one person issued, at this time, and returns how many. Demo
+ * connections are issued by the demo itself, never by a person, and are left alone.
+ */
+export function revokeIssuedBy(db: Db, personId: string, now: string): number {
+  const result = db
+    .prepare(
+      `UPDATE agent_connections SET revoked_at = ?
+       WHERE issued_by = ? AND demo = 0 AND revoked_at IS NULL`,
+    )
+    .run(now, personId);
+  return result.changes;
+}
+
+/** How many connections one person issued that were revoked at exactly this time. */
+export function countRevokedAt(db: Db, personId: string, at: string): number {
+  const row = db
+    .prepare(
+      `SELECT COUNT(*) AS n FROM agent_connections
+       WHERE issued_by = ? AND demo = 0 AND revoked_at = ?`,
+    )
+    .get(personId, at) as { n: number };
+  return row.n;
+}
+
 export function markUsed(db: Db, id: number, now: string): void {
   db.prepare("UPDATE agent_connections SET last_used_at = ? WHERE id = ?").run(now, id);
 }
