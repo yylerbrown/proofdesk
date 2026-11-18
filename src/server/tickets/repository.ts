@@ -254,8 +254,10 @@ export function updateReady(db: Db, id: number, ask: AskRecord, token: string, n
 }
 
 /** Withdraws the question "Did this fix it?", because what it was about has changed. */
-export function clearReady(db: Db, id: number): void {
-  db.prepare("UPDATE tickets SET ready_at = NULL, ready_token = NULL WHERE id = ?").run(id);
+export function clearReady(db: Db, id: number, now: string): void {
+  db.prepare(
+    "UPDATE tickets SET ready_at = NULL, ready_token = NULL, updated_at = ? WHERE id = ?",
+  ).run(now, id);
 }
 
 export function insertEvent(db: Db, event: NewEvent): void {
