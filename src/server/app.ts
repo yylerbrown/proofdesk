@@ -19,6 +19,7 @@ import {
 import { healthRouter } from "./routes/health.js";
 import { pagesRouter } from "./routes/pages.js";
 import { signInRouter } from "./routes/sign-in.js";
+import { checkDatabasePurpose } from "./purpose.js";
 import { sameOriginOnly } from "./same-origin.js";
 import { ticketsRouter } from "./routes/tickets.js";
 import { createTicketService } from "./tickets/service.js";
@@ -39,6 +40,8 @@ const picoCssFile = path.join(rootDir, "node_modules/@picocss/pico/css/pico.min.
 
 /** Builds the Express app without listening, so tests can drive it directly. */
 export function createApp(config: Config, db: Db): Express {
+  // Refuses a demo server on a real database, and the other way round, before anything else.
+  checkDatabasePurpose(db, config.demo);
   const app = express();
   app.disable("x-powered-by");
   app.set("view engine", "ejs");

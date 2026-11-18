@@ -18,6 +18,8 @@ export type Actor = {
   name: string;
   /** True for the demo admin, who may look at everything and change nothing. */
   readOnly?: boolean;
+  /** True for the people of the public demo. */
+  demo?: boolean;
 };
 
 /**
@@ -37,9 +39,16 @@ export const DEV_ACTORS: Actor[] = [
  * demo's data is shared by every visitor, and an admin could archive or delete all of it.
  */
 export const DEMO_ACTORS: Actor[] = [
-  { id: "demo-customer", kind: "person", role: "customer", name: "Demo Customer" },
-  { id: "demo-team", kind: "person", role: "team", name: "Demo Team Member" },
-  { id: "demo-admin", kind: "person", role: "admin", name: "Demo Admin", readOnly: true },
+  { id: "demo-customer", kind: "person", role: "customer", name: "Demo Customer", demo: true },
+  { id: "demo-team", kind: "person", role: "team", name: "Demo Team Member", demo: true },
+  {
+    id: "demo-admin",
+    kind: "person",
+    role: "admin",
+    name: "Demo Admin",
+    readOnly: true,
+    demo: true,
+  },
 ];
 
 /** The made-up people this server offers on its sign-in page: development, demo, or none. */
