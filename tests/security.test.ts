@@ -241,11 +241,12 @@ describe("where the SQL lives", () => {
 
 // The one script tag the pages carry: a file from this site that shows times in local time.
 // The site's own scripts, each a file served from this site: local times, copy buttons, and
-// quick answers.
+// quick answers and the menus.
 const OWN_SCRIPTS = [
   '<script type="module" src="/assets/js/local-time.js"></script>',
   '<script type="module" src="/assets/js/copy.js"></script>',
   '<script type="module" src="/assets/js/quick.js"></script>',
+  '<script type="module" src="/assets/js/menus.js"></script>',
 ];
 
 // The one image tag: the mark beside the name in the header.
