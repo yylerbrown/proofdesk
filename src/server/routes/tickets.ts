@@ -32,6 +32,14 @@ export function ticketsRouter(service: TicketService): Router {
     res.json(service.editTicket(req.params.key, req.body, signedIn(req)));
   });
 
+  router.post("/tickets/:key/take", (req, res) => {
+    res.json(service.takeTicket(req.params.key, signedIn(req)));
+  });
+
+  router.post("/tickets/:key/release", (req, res) => {
+    res.json(service.releaseTicket(req.params.key, signedIn(req)));
+  });
+
   router.post("/tickets/:key/archive", (req, res) => {
     res.json(service.archiveTicket(req.params.key, signedIn(req)));
   });

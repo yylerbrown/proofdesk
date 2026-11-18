@@ -181,7 +181,7 @@ describe("status control", () => {
     const res = await admin(app)
       .post("/tickets/SUP-1/status")
       .type("form")
-      .send({ status: "in_progress" });
+      .send({ status: "resolved" });
     expect(res.status).toBe(303);
     expect(res.headers.location).toBe("/tickets/SUP-1");
 
@@ -189,12 +189,12 @@ describe("status control", () => {
     expect(events.body).toHaveLength(2);
     expect(events.body[1]).toMatchObject({
       type: "status_changed",
-      data: { from: "new", to: "in_progress" },
+      data: { from: "new", to: "resolved" },
     });
 
     const page = await admin(app).get("/tickets/SUP-1");
-    expect(page.text).toContain("Status changed from New to In Progress");
-    expect(page.text).toContain('<option value="in_progress" selected>In Progress</option>');
+    expect(page.text).toContain("Status changed from New to Resolved");
+    expect(page.text).toContain('<option value="resolved" selected>Resolved</option>');
   });
 
   it("writes no history entry when the status stays the same", async () => {

@@ -81,6 +81,7 @@ describe("create and get", () => {
       fix_check: "I can open my account page.",
       created_by: "dev-admin-1",
       owner_id: null,
+      owner_name: null,
       agent_id: null,
       created_at: expect.stringMatching(/^\d{4}-\d\d-\d\dT[\d:.]+Z$/),
       updated_at: expect.stringMatching(/^\d{4}-\d\d-\d\dT[\d:.]+Z$/),
@@ -135,6 +136,7 @@ describe("GET /api/tickets", () => {
     for (const title of ["First", "Second", "Third"]) {
       await admin(app).post("/api/tickets").send({ title, description: "d" });
     }
+    await admin(app).post("/api/tickets/SUP-2/take");
     await admin(app).patch("/api/tickets/SUP-2").send({ status: "in_progress" });
     await admin(app).patch("/api/tickets/SUP-3").send({ status: "resolved" });
     return app;
@@ -184,9 +186,9 @@ describe("PATCH /api/tickets/:key", () => {
     const before = db.prepare("SELECT COUNT(*) AS n FROM ticket_events").get();
     expect(before).toEqual({ n: 1 }); // the "created" event
 
-    const res = await admin(app).patch("/api/tickets/SUP-1").send({ status: "in_progress" });
+    const res = await admin(app).patch("/api/tickets/SUP-1").send({ status: "resolved" });
     expect(res.status).toBe(200);
-    expect(res.body.status).toBe("in_progress");
+    expect(res.body.status).toBe("resolved");
 
     const events = db
       .prepare("SELECT actor, type, data FROM ticket_events WHERE type = 'status_changed'")
@@ -195,7 +197,7 @@ describe("PATCH /api/tickets/:key", () => {
       {
         actor: "dev-admin-1",
         type: "status_changed",
-        data: JSON.stringify({ from: "new", to: "in_progress" }),
+        data: JSON.stringify({ from: "new", to: "resolved" }),
       },
     ]);
   });
@@ -236,9 +238,10 @@ describe("PATCH /api/tickets/:key", () => {
 });
 
 describe("GET /api/tickets/:key/events", () => {
-  it("returns creation then status change, oldest first", async () => {
+  it("returns creation then each change, oldest first", async () => {
     const { app } = buildTestApp();
     await admin(app).post("/api/tickets").send(valid);
+    await admin(app).post("/api/tickets/SUP-1/take");
     await admin(app).patch("/api/tickets/SUP-1").send({ status: "in_progress" });
     await admin(app).patch("/api/tickets/SUP-1").send({ status: "resolved" });
 
@@ -246,6 +249,7 @@ describe("GET /api/tickets/:key/events", () => {
     expect(res.status).toBe(200);
     expect(res.body.map((e: { type: string; data: unknown }) => [e.type, e.data])).toEqual([
       ["created", { status: "new" }],
+      ["owner_changed", { from: null, to: "Admin" }],
       ["status_changed", { from: "new", to: "in_progress" }],
       ["status_changed", { from: "in_progress", to: "resolved" }],
     ]);
@@ -256,7 +260,7 @@ describe("GET /api/tickets/:key/events", () => {
     const { app } = buildTestApp();
     await admin(app).post("/api/tickets").send(valid);
     await admin(app).post("/api/tickets").send(valid);
-    await admin(app).patch("/api/tickets/SUP-1").send({ status: "in_progress" });
+    await admin(app).patch("/api/tickets/SUP-1").send({ status: "resolved" });
     await admin(app).patch("/api/tickets/SUP-2").send({ status: "resolved" });
     await admin(app).patch("/api/tickets/SUP-2").send({ status: "new" });
 
@@ -266,7 +270,7 @@ describe("GET /api/tickets/:key/events", () => {
     const first = await admin(app).get("/api/tickets/SUP-1/events");
     expect(summary(first.body)).toEqual([
       ["SUP-1", "created", { status: "new" }],
-      ["SUP-1", "status_changed", { from: "new", to: "in_progress" }],
+      ["SUP-1", "status_changed", { from: "new", to: "resolved" }],
     ]);
 
     const second = await admin(app).get("/api/tickets/SUP-2/events");

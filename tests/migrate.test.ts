@@ -36,6 +36,7 @@ const ALL = [
   "0007_tickets_created_by_index.sql",
   "0008_permanent_delete.sql",
   "0009_ticket_entries.sql",
+  "0010_ticket_owner.sql",
 ];
 
 describe("runMigrations", () => {

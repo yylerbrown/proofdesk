@@ -26,6 +26,8 @@ const statusChangeSchema = z.object({
   to: z.enum(TICKET_STATUSES),
 });
 
+const ownerChangeSchema = z.object({ from: z.string().nullable(), to: z.string().nullable() });
+
 const editSchema = z.object({ changes: z.record(z.string(), z.unknown()) });
 
 const FIELD_LABELS: Record<string, string> = {
@@ -51,6 +53,12 @@ export function describeEvent(event: TicketEvent): string {
     if (edit.success) {
       const fields = Object.keys(edit.data.changes).map((field) => FIELD_LABELS[field] ?? field);
       return `Edited: ${fields.join(", ")}`;
+    }
+  }
+  if (event.type === "owner_changed") {
+    const owner = ownerChangeSchema.safeParse(event.data);
+    if (owner.success) {
+      return owner.data.to === null ? "Released, now without an owner" : `Owner: ${owner.data.to}`;
     }
   }
   if (event.type === "reply_added") return "Reply added";
