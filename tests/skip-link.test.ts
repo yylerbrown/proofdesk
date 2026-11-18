@@ -10,13 +10,16 @@ import { admin, buildTestApp, visitor } from "./helpers.js";
 // filter row does not cut off, and times that never break inside themselves.
 
 describe("the skip link", () => {
-  it("is the first thing in the page and lands on the main part", async () => {
+  it("is the first thing in the page and points at the main part", async () => {
     const { app } = buildTestApp();
     const html = parse((await admin(app).get("/tickets")).text);
     const first = html.querySelector("body")?.childNodes.find((node) => node.nodeType === 1);
     expect(first?.toString()).toBe('<a href="#main" class="skip-link">Skip to main content</a>');
     const main = html.querySelector("main#main");
-    expect(main?.getAttribute("tabindex")).toBe("-1");
+    expect(main).not.toBeNull();
+    // main never takes focus itself: in WebKit a mouse press inside it would then move focus to
+    // main and close the More menu before its click lands. The link moves the Tab start instead.
+    expect(main?.hasAttribute("tabindex")).toBe(false);
   });
 });
 

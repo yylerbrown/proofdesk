@@ -526,10 +526,6 @@ header nav .viewer strong {
 .skip-link:focus {
   transform: none;
 }
-/* The skip link lands on the page's main part, which only takes focus for that; no ring. */
-main:focus {
-  outline: none;
-}
 
 /* ---------- 3. Demo strip ---------- */
 
