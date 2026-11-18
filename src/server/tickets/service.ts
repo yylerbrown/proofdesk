@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { DEMO_ACTORS, DEV_ACTORS, type Actor, type Role } from "../actor.js";
 import { DEMO_SEED_PEOPLE } from "../demo.js";
 import type { Db } from "../db.js";
-import { demoNotReady, HttpError, ValidationError } from "../errors.js";
+import { demoNotReady, forbidden, HttpError, ValidationError } from "../errors.js";
 import { can, type Action } from "../permissions.js";
 import { parse } from "../validation.js";
 import { addEvidenceSchema, readProveReport, type StageReading } from "./evidence.js";
@@ -688,7 +688,7 @@ export function createTicketService(
   /** Throws 403 unless the actor may do this action, on this ticket if one is given. */
   function requirePermission(actor: Actor, action: Action, row?: repository.TicketRow): void {
     if (!can(actor, action, row)) {
-      throw new HttpError(403, "forbidden", "You are not allowed to do that.");
+      throw forbidden(actor);
     }
   }
 
@@ -861,7 +861,12 @@ export function createTicketService(
         requirePermission(actor, "change_status", before);
         const { status } = parse(changeStatusSchema, input);
         requireNotArchived(key, before);
-        if (before.status === status) return before; // nothing changes, so nothing is logged
+        if (before.status === status) {
+          // Work that has started is the owner's: anyone else asking to start it is refused,
+          // even though nothing would change.
+          if (status === "in_progress") requireOwnerStarts(key, before, actor);
+          return before; // nothing changes, so nothing is logged
+        }
         if (status === "resolved") throw needsCustomer(key);
         // The status moves only by the workflow's own steps. This is now only "start work".
         if (before.status === "resolved") {
@@ -1119,6 +1124,8 @@ export function createTicketService(
             `Only the owner of ticket ${key} can withdraw its question.`,
           );
         }
+        // Archiving already withdrew any question.
+        requireNotArchived(key, before);
         if (before.ready_at === null) return before; // nothing is open
         const now = new Date().toISOString();
         repository.clearReady(db, before.id, now);
@@ -1354,6 +1361,15 @@ export function createTicketService(
         if (before.status === "resolved") {
           throw new HttpError(409, "not_open", `Ticket ${key} is already resolved.`);
         }
+        // The customer has replied, and said it is not fixed: that reason would not be true.
+        if (
+          reason === "fixed_no_reply" &&
+          repository.latestAnswer(db, before.id)?.fixed === false
+        ) {
+          throw new ValidationError("The customer said it is not fixed. Choose another reason.", {
+            reason: ["The customer said it is not fixed. Choose another reason."],
+          });
+        }
         let duplicateOf: string | null = null;
         if (reason === "duplicate") {
           // A key typed in lower case, such as sup-3, names the same ticket.
@@ -1499,6 +1515,8 @@ export function createTicketService(
             `Only the owner of ticket ${key}, or an admin, can end it.`,
           );
         }
+        // Archiving already ended any assistant's work.
+        requireNotArchived(key, before);
         endAgent(before, "ended by a person", actor, new Date().toISOString());
         return before;
       })();
@@ -1532,7 +1550,13 @@ export function createTicketService(
         const before = requireRow(key, actor);
         requirePermission(actor, "release", before);
         requireNotArchived(key, before);
-        if (before.owner_id === null) return before; // nobody owns it
+        if (before.owner_id === null) {
+          throw new HttpError(
+            409,
+            "no_owner",
+            `Nobody owns ticket ${key}, so there is nothing to release.`,
+          );
+        }
         // Only the owner lets go of a ticket, and only before work starts.
         if (before.owner_id !== actor.id) {
           throw new HttpError(
@@ -1764,7 +1788,7 @@ export function createTicketService(
       // at least one of them. writeEntry then checks the one they sent.
       const ticket = requireRow(key, actor);
       if (!can(actor, "reply", ticket) && !can(actor, "note", ticket)) {
-        throw new HttpError(403, "forbidden", "You are not allowed to do that.");
+        throw forbidden(actor);
       }
       const entry = parse(addEntrySchema, input);
       // Only an assistant's note can be a suggested reply; on anything else the flag means nothing.
@@ -2033,7 +2057,9 @@ export function createTicketService(
           ticket.status !== "resolved" &&
           (ticket.owner_id === actor.id || actor.role === "admin"),
         agreeCheck: !archived && can(actor, "agree_check", ticket),
-        linkChange: !archived && can(actor, "link_change", ticket),
+        // A resolved ticket keeps the link it has, and the page offers no new one: a change
+        // linked after resolving would never be checked by the customer.
+        linkChange: !archived && can(actor, "link_change", ticket) && ticket.status !== "resolved",
         start:
           !archived &&
           can(actor, "change_status", ticket) &&
@@ -2063,6 +2089,7 @@ export function createTicketService(
           ticket.ready_at === null,
         // The same rules as withdrawQuestionAsked.
         withdrawQuestion:
+          !archived &&
           can(actor, "mark_ready", ticket) &&
           ticket.owner_id === actor.id &&
           ticket.ready_at !== null,

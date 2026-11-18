@@ -8,6 +8,15 @@ export type TicketStatus = (typeof TICKET_STATUSES)[number];
 const blankIsMissing = (value: unknown) =>
   typeof value === "string" && value.trim() === "" ? undefined : value;
 
+// A browser sends each line break in a text box as two characters, "\r\n", while the box's
+// maxlength counts it as one. Every text box's words are read with "\n" alone, so a line break
+// counts once here too, and each one is stored the same way.
+const textBox = () =>
+  z
+    .string()
+    .overwrite((text) => text.replace(/\r\n?/g, "\n"))
+    .trim();
+
 // The messages are written for a person, because the ticket form shows them under each box.
 // A link that must be an http or https address, as for "Where did this happen?".
 export const httpLink = z
@@ -22,13 +31,9 @@ export const createTicketSchema = z.object({
     .trim()
     .min(3, "Must be at least 3 characters.")
     .max(120, "Must be at most 120 characters."),
-  description: z
-    .string()
-    .trim()
-    .min(1, "Must not be empty.")
-    .max(5000, "Must be at most 5000 characters."),
+  description: textBox().min(1, "Must not be empty.").max(5000, "Must be at most 5000 characters."),
   where_url: httpLink.optional(),
-  fix_check: z.string().trim().max(500, "Must be at most 500 characters.").optional(),
+  fix_check: textBox().max(500, "Must be at most 500 characters.").optional(),
 });
 
 // Permanent deletion is confirmed by typing the ticket's key.
@@ -41,11 +46,7 @@ export type EntryKind = (typeof ENTRY_KINDS)[number];
 
 export const addEntrySchema = z.object({
   kind: z.enum(ENTRY_KINDS),
-  body: z
-    .string()
-    .trim()
-    .min(1, "Must not be empty.")
-    .max(5000, "Must be at most 5000 characters."),
+  body: textBox().min(1, "Must not be empty.").max(5000, "Must be at most 5000 characters."),
   // A reply a person publishes from an internal note: that note's id.
   based_on: z.coerce.number().int().positive().optional(),
   // An assistant's note that says it is blocked. Only an assistant's note is ever marked.
@@ -56,11 +57,7 @@ export const addEntrySchema = z.object({
 
 // An internal note on its own, for the notes route and tool.
 export const noteSchema = z.object({
-  body: z
-    .string()
-    .trim()
-    .min(1, "Must not be empty.")
-    .max(5000, "Must be at most 5000 characters."),
+  body: textBox().min(1, "Must not be empty.").max(5000, "Must be at most 5000 characters."),
   blocked: z.boolean().optional().meta({
     description:
       "True when you are blocked: say what blocks you in the note's first line. The team sees it beside the check and in the list until you write an ordinary note again.",
@@ -85,25 +82,21 @@ export const giveToAgentSchema = z.object({
 
 // The customer says a resolved ticket is still happening, and what recurred.
 export const reopenSchema = z.object({
-  reason: z
-    .string()
-    .trim()
+  reason: textBox()
     .min(1, "Give a reason for reopening it.")
     .max(2000, "Must be at most 2000 characters."),
 });
 
 // An agent asking the ticket's named owner to request the customer's check.
 export const verificationRequestSchema = z.object({
-  message: z
-    .string()
-    .trim()
+  message: textBox()
     .min(1, "Say what was done and what evidence is attached.")
     .max(2000, "Must be at most 2000 characters."),
 });
 
 // The agreed version of the check. An empty text removes it, leaving the customer's words.
 export const agreeCheckSchema = z.object({
-  agreed_check: z.string().trim().max(500, "Must be at most 500 characters."),
+  agreed_check: textBox().max(500, "Must be at most 500 characters."),
 });
 
 export const linkChangeSchema = z.object({ change_url: httpLink });
@@ -115,15 +108,15 @@ export const markReadySchema = z.object({
   try_url: z.preprocess(blankIsMissing, httpLink.optional()),
   tried: z.preprocess(
     blankIsMissing,
-    z.string().trim().max(2000, "Must be at most 2000 characters.").optional(),
+    textBox().max(2000, "Must be at most 2000 characters.").optional(),
   ),
   result: z.preprocess(
     blankIsMissing,
-    z.string().trim().max(2000, "Must be at most 2000 characters.").optional(),
+    textBox().max(2000, "Must be at most 2000 characters.").optional(),
   ),
   response: z.preprocess(
     blankIsMissing,
-    z.string().trim().max(2000, "Must be at most 2000 characters.").optional(),
+    textBox().max(2000, "Must be at most 2000 characters.").optional(),
   ),
   evidence_ids: z
     .preprocess(
@@ -138,7 +131,7 @@ export const answerSchema = z.object({
   fixed: z.enum(["yes", "no"]),
   // The token of the question the customer was shown.
   ready_token: z.string().min(1, "Reload the ticket and answer again."),
-  comment: z.string().trim().max(5000, "Must be at most 5000 characters.").optional(),
+  comment: textBox().max(5000, "Must be at most 5000 characters.").optional(),
 });
 
 export const changeStatusSchema = z.object({
@@ -209,7 +202,7 @@ export const resolveSchema = z.object({
   reason: z.enum(RESOLVE_REASONS, { error: "Choose a reason." }),
   note: z.preprocess(
     blankIsMissing,
-    z.string().trim().max(500, "Must be at most 500 characters.").optional(),
+    textBox().max(500, "Must be at most 500 characters.").optional(),
   ),
   duplicate_of: z.preprocess(
     blankIsMissing,

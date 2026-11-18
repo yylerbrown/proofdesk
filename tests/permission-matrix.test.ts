@@ -430,35 +430,10 @@ const TABLE: Record<string, Row> = {
 
 // Cells where the code answers differently from the table. The table keeps the rules'
 // answer; the test expects the code's answer here, and fails once the two agree, so that the
-// entry is removed. Keyed "action / who / state". Each one is a request that changes nothing,
-// and the test checks that it changed nothing.
-const STATUS_ALREADY_SET =
-  "Only the owner starts work, but anyone on the team who asks to start work that has " +
-  "started is answered 200, because nothing changes.";
-const NOBODY_TO_RELEASE =
-  "Only the owner releases a ticket, but on one nobody owns anyone on the team is answered " +
-  "200, because nothing changes.";
-const NO_AGENT_ON_ARCHIVED =
-  "Other changes to an archived ticket wait for it to be restored, but ending an agent's " +
-  "work there answers 200: archiving already ended it, so nothing changes.";
-const NO_QUESTION_ON_ARCHIVED =
-  "Other changes to an archived ticket wait for it to be restored, but withdrawing the " +
-  "question there answers 200: archiving already withdrew it, so nothing changes.";
-const KNOWN_DISAGREEMENTS: Record<string, { code: Cell; why: string }> = {
-  "change_status / teamNotOwner / in progress": { code: OK, why: STATUS_ALREADY_SET },
-  "change_status / teamNotOwner / waiting": { code: OK, why: STATUS_ALREADY_SET },
-  "change_status / admin / in progress": { code: OK, why: STATUS_ALREADY_SET },
-  "change_status / admin / waiting": { code: OK, why: STATUS_ALREADY_SET },
-  "change_status / demoTeam / in progress": { code: OK, why: STATUS_ALREADY_SET },
-  "change_status / demoTeam / waiting": { code: OK, why: STATUS_ALREADY_SET },
-  "release_ticket / owner / new": { code: OK, why: NOBODY_TO_RELEASE },
-  "release_ticket / teamNotOwner / new": { code: OK, why: NOBODY_TO_RELEASE },
-  "release_ticket / admin / new": { code: OK, why: NOBODY_TO_RELEASE },
-  "release_ticket / demoTeam / new": { code: OK, why: NOBODY_TO_RELEASE },
-  "end_agent_work / owner / archived": { code: OK, why: NO_AGENT_ON_ARCHIVED },
-  "end_agent_work / admin / archived": { code: OK, why: NO_AGENT_ON_ARCHIVED },
-  "withdraw_question / owner / archived": { code: OK, why: NO_QUESTION_ON_ARCHIVED },
-};
+// entry is removed. Keyed "action / who / state". Each one must be a request that changes
+// nothing, and the test checks that it changed nothing. There are none now: a request that
+// would change nothing is still refused when the rules refuse it.
+const KNOWN_DISAGREEMENTS: Record<string, { code: Cell; why: string }> = {};
 
 // ---- The ticket in each state, built once through the API ---------------------------------
 
