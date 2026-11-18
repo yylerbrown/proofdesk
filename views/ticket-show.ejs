@@ -183,8 +183,11 @@
     </form>
   </details>
   <% } %>
+  <% if (agentHelp.demoSample) { %>
+  <p class="agent-help">Handed to <strong>demo assistants</strong>: each visitor's assistant connection works on this sample.</p>
+  <% } %>
   <% if (agentHelp.current) { %>
-  <p class="agent-help"><strong><%= agentHelp.current.name %></strong> (AI assistant) is working on it, since <%- include("time", { iso: agentHelp.current.granted_at }) %>.</p>
+  <p class="agent-help">Handed to <strong><%= agentHelp.current.name %></strong> (AI assistant), since <%- include("time", { iso: agentHelp.current.granted_at }) %>.</p>
   <% if (allowed.endAgentWork) { %>
   <form method="post" action="/tickets/<%= ticket.key %>/agent/end">
     <button type="submit" class="secondary outline compact">Stop the assistant</button>
@@ -222,8 +225,8 @@
 <% if ((ticket.fix_check || ticket.agreed_check || allowed.agreeCheck) && !allowed.answer) { %>
 <section>
   <h2>How will we know it's fixed?</h2>
-  <% if (assistantBlocked) { %>
-  <p class="assistant-blocked"><strong>Assistant blocked:</strong> <span class="user-text"><%= assistantBlocked %></span></p>
+  <% if (assistantSignal) { %>
+  <p class="<%= assistantSignal.label === "Assistant blocked:" ? "assistant-blocked" : "review-requested" %>"><strong><%= assistantSignal.label %></strong> <span class="user-text"><%= assistantSignal.text %></span></p>
   <% } %>
   <% if (ticket.agreed_check) { %>
   <p><strong>Team's check</strong></p>

@@ -174,7 +174,7 @@ export function pagesRouter(service: TicketService): Router {
       viewerRole: actor.role,
       viewerId: actor.id,
       askBlocked: askBlockedReason(ticket, actor),
-      assistantBlocked: service.assistantBlocked([ticket], actor).get(ticket.key) ?? null,
+      assistantSignal: service.assistantSignals([ticket], actor).get(ticket.key) ?? null,
       demoNext: demoNext(ticket, actor),
       handOffTo: service.handOffCandidates(ticket),
       agentHelp,
@@ -228,7 +228,7 @@ export function pagesRouter(service: TicketService): Router {
     const current = status ?? "all";
     const pageNumber = page ?? 1;
     const tickets = service.listTickets(current, actor, pageNumber);
-    const blocked = service.assistantBlocked(tickets, actor);
+    const signals = service.assistantSignals(tickets, actor);
     res.render("ticket-list", {
       ...helpers,
       title:
@@ -240,9 +240,9 @@ export function pagesRouter(service: TicketService): Router {
       current,
       tickets: tickets.map((ticket) => ({
         ...ticket,
-        // An assistant that said it is blocked is what the team needs to see first.
-        waiting: blocked.has(ticket.key)
-          ? `Assistant blocked: ${blocked.get(ticket.key)}`
+        // What an assistant said it needs is what the team needs to see first.
+        waiting: signals.has(ticket.key)
+          ? `${signals.get(ticket.key)!.label} ${signals.get(ticket.key)!.text}`
           : waitingOn(ticket, actor.role),
       })),
       viewerRole: actor.role,

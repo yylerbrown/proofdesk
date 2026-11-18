@@ -184,7 +184,7 @@ describe("handing a ticket to an agent", () => {
     await as(app, teamActor).post("/tickets/SUP-1/agent").type("form").send({ connection_id: "1" });
     const after = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     expect(after.querySelector(".agent-help")?.text).toContain(
-      "Night shift (AI assistant) is working on it",
+      "Handed to Night shift (AI assistant), since",
     );
     expect(after.querySelector("form[action$='/agent/end'] button")?.text).toBe(
       "Stop the assistant",

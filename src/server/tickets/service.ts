@@ -145,6 +145,9 @@ export type TicketEvidence = {
 export const DEMO_SEED_KEY = "demo_seeded";
 
 /** What seeding wrote: the rows, and each sample ticket's text as first written. */
+/** What an assistant last said it needs from the team, as a label and its words. */
+export type AssistantSignal = { label: "Assistant blocked:" | "Review requested by"; text: string };
+
 export type DemoSeed = {
   tickets: number[];
   /** The sample made for assistants: on the demo, it is handed to every visitor's connection. */
@@ -356,6 +359,23 @@ export function createTicketService(
     return seed.assistant !== undefined ? [seed.assistant] : seed.tickets;
   }
 
+  /**
+   * The connection a ticket is handed to, as text: for an assistant, its own connection when the
+   * ticket is handed to it; for the team, whoever has it; for a customer, nothing.
+   */
+  function handedTo(row: repository.TicketRow, actor?: Actor): string | null {
+    if (actor === undefined) return row.agent_id;
+    if (actor.kind === "agent") {
+      const own = actor.connection?.id;
+      if (own === undefined) return null;
+      if (isDemoAgent(actor)) return demoSeed()?.assistant === row.id ? String(own) : null;
+      return repository.handedTicketIds(db, own).includes(row.id) ? String(own) : null;
+    }
+    if (actor.role === "customer") return null;
+    const handoff = repository.activeHandoff(db, row.id);
+    return handoff === undefined ? row.agent_id : String(handoff.connection_id);
+  }
+
   function toTicket(row: repository.TicketRow, actor?: Actor): Ticket {
     if (isDemoAgent(actor)) {
       // The sample text as first written, whatever a visitor has changed since.
@@ -390,7 +410,7 @@ export function createTicketService(
       created_by: row.created_by,
       owner_id: row.owner_id,
       owner_name: row.owner_name,
-      agent_id: row.agent_id,
+      agent_id: handedTo(row, actor),
       created_at: row.created_at,
       updated_at: row.updated_at,
       archived_at: row.archived_at,
@@ -1360,6 +1380,8 @@ export function createTicketService(
       return {
         current: repository.activeHandoff(db, id) ?? null,
         candidates: repository.liveConnections(db, new Date().toISOString()),
+        // On the demo, the sample made for assistants is handed to every visitor's connection.
+        demoSample: demoSeed()?.assistant === id,
       };
     },
 
@@ -1629,22 +1651,29 @@ export function createTicketService(
     },
 
     /**
-     * For the team: the open tickets whose assistant last said it is blocked, each with the
-     * first line of that note. Nothing for anyone who may not read internal notes.
+     * For the team: what an open ticket's assistant last said it needs, from its latest note.
+     * "Assistant blocked: <first line>" until it writes an ordinary note again, or "Review
+     * requested by <connection>" until the owner asks the customer. Nothing for anyone who may
+     * not read internal notes.
      */
-    assistantBlocked(tickets: Ticket[], actor: Actor): Map<string, string> {
-      const ids = new Map<number, string>();
+    assistantSignals(tickets: Ticket[], actor: Actor): Map<string, AssistantSignal> {
+      const open = new Map<number, Ticket>();
       for (const ticket of tickets) {
         if (ticket.status === "resolved" || !can(actor, "read_notes", ticket)) continue;
         const id = parseKey(prefix, ticket.key);
-        if (id !== null) ids.set(id, ticket.key);
+        if (id !== null) open.set(id, ticket);
       }
-      const blocked = new Map<string, string>();
-      for (const note of repository.blockedAgentNotes(db, [...ids.keys()])) {
-        const firstLine = note.body.split("\n")[0]!.trim().slice(0, 140);
-        blocked.set(ids.get(note.ticket_id)!, firstLine);
+      const signals = new Map<string, AssistantSignal>();
+      for (const note of repository.latestAgentNotes(db, [...open.keys()])) {
+        const ticket = open.get(note.ticket_id)!;
+        if (note.blocked === 1) {
+          const firstLine = note.body.split("\n")[0]!.trim().slice(0, 140);
+          signals.set(ticket.key, { label: "Assistant blocked:", text: firstLine });
+        } else if (note.purpose === "review_request" && ticket.ready_at === null) {
+          signals.set(ticket.key, { label: "Review requested by", text: note.author_name });
+        }
       }
-      return blocked;
+      return signals;
     },
 
     /** The conversation, oldest first. Internal notes only for those who may read them. */
@@ -1685,6 +1714,18 @@ export function createTicketService(
         };
       }
       const assistant = assistantKey === undefined ? undefined : parseKey(prefix, assistantKey);
+      // The history says the sample is handed to the demo's assistants, as a real hand-off does.
+      if (assistant !== null && assistant !== undefined) {
+        logEvent({
+          ticketId: assistant,
+          actor: "demo-team",
+          actorKind: "person",
+          context: null,
+          type: "agent_handed",
+          data: { connection: "demo assistants" },
+          now: new Date().toISOString(),
+        });
+      }
       const seed: DemoSeed = {
         tickets: ids("tickets"),
         ...(assistant === null || assistant === undefined ? {} : { assistant }),
