@@ -390,6 +390,24 @@ export function latestAnswer(
   return { fixed: data.fixed === true, at: event.created_at, comment };
 }
 
+/**
+ * True when the customer's latest word on a ticket says it is not fixed: their latest answer
+ * or reopening is a reopening, or an answer of no.
+ */
+export function customerSaysNotFixed(db: Db, ticketId: number): boolean {
+  const event = db
+    .prepare(
+      `SELECT type, data FROM ticket_events
+       WHERE ticket_id = ? AND type IN ('customer_answered', 'reopened')
+       ORDER BY id DESC LIMIT 1`,
+    )
+    .get(ticketId) as { type: string; data: string } | undefined;
+  if (event === undefined) return false;
+  if (event.type === "reopened") return true;
+  const data = JSON.parse(event.data) as { fixed?: boolean };
+  return data.fixed !== true;
+}
+
 /** The agent connection a ticket is handed to right now, or undefined. */
 export function activeHandoff(
   db: Db,

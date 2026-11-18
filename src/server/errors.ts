@@ -84,6 +84,8 @@ const HINTS: Record<string, string> = {
     "The customer confirmed this fix with their Yes, so only they can reopen it. Reply on the ticket if it needs more work.",
   cannot_return_to_new: "Started work stays in progress. Hand the ticket to someone else instead.",
   not_owner: "Only the ticket's owner can do this. Ask them, or have it handed to you.",
+  no_owner:
+    "Nobody owns this ticket, so there is nothing to release. Take it (POST .../take) to work on it.",
   already_owned: "Someone already owns this ticket. Ask them to hand it to you.",
   not_new: "This ticket has already started.",
   not_resolved: "The ticket is still open; there is nothing to reopen.",

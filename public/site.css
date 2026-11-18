@@ -1657,11 +1657,11 @@ article.entry > p {
 .ticket-panel label {
   margin-bottom: var(--pd-space-2);
 }
-/* Resolving with a reason: "Duplicate of" shows only for a duplicate, and the note once another
-   reason is chosen. A browser that cannot read :has shows both, which still works. */
+/* Resolving with a reason: "Duplicate of" shows only for a duplicate, and the note once any
+   reason is chosen, a duplicate included, so no hidden box can carry words the customer would
+   see. A browser that cannot read :has shows both, which still works. */
 .resolve form:not(:has(option[value="duplicate"]:checked)) .resolve-duplicate,
-.resolve form:has(option[value=""]:checked) .resolve-note,
-.resolve form:has(option[value="duplicate"]:checked) .resolve-note {
+.resolve form:has(option[value=""]:checked) .resolve-note {
   display: none;
 }
 .ticket-panel form > button {

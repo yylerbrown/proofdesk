@@ -914,7 +914,10 @@ export function createTicketService(
         if (!isFiler) after.fix_check = before.fix_check;
         const changes: Record<string, { from: string | null; to: string | null }> = {};
         for (const field of ["title", "description", "where_url", "fix_check"] as const) {
-          if (before[field] !== after[field]) {
+          // Text saved before line breaks were stored plainly may still hold \r\n: the same
+          // words with the same line breaks are not a change.
+          const stored = before[field]?.replace(/\r\n?/g, "\n") ?? null;
+          if (stored !== after[field]) {
             changes[field] = { from: before[field], to: after[field] };
           }
         }
@@ -1361,10 +1364,12 @@ export function createTicketService(
         if (before.status === "resolved") {
           throw new HttpError(409, "not_open", `Ticket ${key} is already resolved.`);
         }
-        // The customer has replied, and said it is not fixed: that reason would not be true.
+        // The customer's standing word is that it is not fixed (a No, or their reopening it,
+        // and nobody has asked them again since): then that reason would not be true.
         if (
           reason === "fixed_no_reply" &&
-          repository.latestAnswer(db, before.id)?.fixed === false
+          before.ready_at === null &&
+          repository.customerSaysNotFixed(db, before.id)
         ) {
           throw new ValidationError("The customer said it is not fixed. Choose another reason.", {
             reason: ["The customer said it is not fixed. Choose another reason."],

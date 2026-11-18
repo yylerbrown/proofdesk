@@ -268,8 +268,9 @@
         <select name="reason" required <%= focusIf("resolve", "reason") %>>
           <option value="" <% if (!resolving.reason) { %>selected<% } %>>Choose a reason</option>
           <% for (const [value, label] of Object.entries(resolveReasons)) { %>
-          <%# After the customer's No, "has not replied" would not be true. %>
-          <% if (value === "fixed_no_reply" && ticket.customer_answer?.fixed === false) continue; %>
+          <%# While the customer's No or reopening is their standing word, "has not replied"
+              would not be true. The same rule as the callout at the top and the service. %>
+          <% if (value === "fixed_no_reply" && notFixed) continue; %>
           <option value="<%= value %>" <% if (resolving.reason === value) { %>selected<% } %>><%= label %></option>
           <% } %>
         </select>
