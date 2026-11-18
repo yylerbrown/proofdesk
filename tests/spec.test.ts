@@ -367,21 +367,22 @@ describe("test specs on the demo", () => {
     expect(page.text).toContain("(reported, not verified)");
   });
 
-  it("offers the demo's team the line, pointing at the demo's own connection button, and never the customer", async () => {
+  it("offers the demo's team the line only on the sample a demo key can read, never the customer", async () => {
     const { app } = buildDemo();
-    // A sample in progress that is not the one handed to the demo's assistants.
-    const open = "SUP-1";
-    const asCustomer = await visitor(app)
-      .set("Cookie", `${DEV_COOKIE}=demo-customer`)
-      .get(`/tickets/${open}`);
-    expect(parse(asCustomer.text).querySelector(".spec-prompt")).toBeNull();
-    const page = parse(
-      (await visitor(app).set("Cookie", `${DEV_COOKIE}=demo-team`).get(`/tickets/${open}`)).text,
+    const as = (id: string, key: string) =>
+      visitor(app).set("Cookie", `${DEV_COOKIE}=${id}`).get(`/tickets/${key}`);
+    expect(
+      parse((await as("demo-customer", sample)).text).querySelector(".spec-prompt"),
+    ).toBeNull();
+    // A demo key reads only the sample made for assistants, so the line is not offered elsewhere.
+    expect(parse((await as("demo-team", "SUP-1")).text).querySelector(".spec-prompt")).toBeNull();
+    const line = parse((await as("demo-team", sample)).text).querySelector(".spec-prompt")!;
+    expect(line.text).toContain(`Using Proofdesk, write a test spec for ${sample}`);
+    // It leads to the welcome page's own block for getting a key, not to the top of the page.
+    expect(line.querySelector("a")!.getAttribute("href")).toBe("/sign-in#connect");
+    const welcome = parse(
+      (await visitor(app).set("Cookie", `${DEV_COOKIE}=demo-customer`).get("/sign-in")).text,
     );
-    const line = page.querySelector(".spec-prompt")!;
-    expect(line.text).toContain(`Using Proofdesk, write a test spec for ${open}`);
-    expect(line.querySelector("a")!.getAttribute("href")).toBe("/sign-in");
-    const welcome = await visitor(app).set("Cookie", `${DEV_COOKIE}=demo-customer`).get("/sign-in");
-    expect(welcome.text).toContain('action="/demo/connection"');
+    expect(welcome.querySelector("#connect form[action='/demo/connection']")).not.toBeNull();
   });
 });
