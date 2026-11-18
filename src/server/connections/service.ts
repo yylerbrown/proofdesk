@@ -11,8 +11,25 @@ import * as repository from "./repository.js";
 // guarantee of one particular agent. An admin issues it with chosen scopes and sees the key
 // once. Losing the key means revoking the connection and issuing another.
 
-/** What a new connection may do unless the admin chooses otherwise: read, write notes, attach evidence. */
-export const DEFAULT_SCOPES: AgentScope[] = ["read_tickets", "write_notes", "attach_evidence"];
+/** What a visitor's demo connection may do: read the samples, write notes, attach evidence, propose a test spec. */
+export const DEMO_SCOPES: AgentScope[] = [
+  "read_tickets",
+  "write_notes",
+  "attach_evidence",
+  "propose_specs",
+];
+
+/** How long a demo connection lasts, and how many may be live at once. */
+export const DEMO_CONNECTION_HOURS = 24;
+export const DEMO_CONNECTION_LIMIT = 200;
+
+/** What a new connection may do unless the admin chooses otherwise: read, write notes, attach evidence, propose a test spec. */
+export const DEFAULT_SCOPES: AgentScope[] = [
+  "read_tickets",
+  "write_notes",
+  "attach_evidence",
+  "propose_specs",
+];
 
 // A form sends one checkbox as a text and several as a list; both are read as a list.
 const scopeList = z.preprocess(
@@ -81,7 +98,8 @@ export function createConnectionService(db: Db) {
     const prefix = randomBytes(4).toString("hex");
     const key = `pd_${prefix}_${randomBytes(24).toString("base64url")}`;
     const id = repository.insertConnection(db, {
-      name,
+      // A demo visitor's connection is told apart by its key's prefix.
+      name: options.demo ? `${name} ${prefix}` : name,
       keyPrefix: prefix,
       keyHash: hashOf(key).toString("hex"),
       scopes,
@@ -101,8 +119,74 @@ export function createConnectionService(db: Db) {
       return issue(name, scopes, actor.id, { demo: false, expiresAt: null });
     },
 
+    /**
+     * A visitor's own short-lived connection to the public demo. No admin issues it: anyone
+     * on the demo's welcome page may ask. It sees only the sample tickets and what it writes
+     * itself, it expires within a day, and only so many may be live at once.
+     */
+    issueDemo() {
+      const now = new Date();
+      if (repository.countLiveDemo(db, now.toISOString()) >= DEMO_CONNECTION_LIMIT) {
+        throw new HttpError(
+          409,
+          "budget_full",
+          "The demo has as many assistant connections as it can hold. Try again later.",
+        );
+      }
+      const expiresAt = new Date(now.getTime() + DEMO_CONNECTION_HOURS * 3600 * 1000);
+      const issued = issue("Demo visitor", DEMO_SCOPES, "demo-welcome-page", {
+        demo: true,
+        expiresAt: expiresAt.toISOString(),
+      });
+      return issued;
+    },
+
+    /**
+     * Records what an agent asked for and how it ended. A person's requests are not recorded
+     * here: their history is the ticket's own.
+     */
+    record(
+      actor: Actor,
+      entry: {
+        door: "api" | "mcp";
+        action: string;
+        ticketKey: string;
+        idempotencyKey: string | undefined;
+        outcome: "done" | "refused" | "failed";
+        code: string | null;
+      },
+    ): void {
+      if (actor.kind !== "agent" || actor.connection === undefined) return;
+      repository.insertActivity(db, {
+        connection_id: actor.connection.id,
+        door: entry.door,
+        action: entry.action,
+        ticket_key: entry.ticketKey === "" ? null : entry.ticketKey,
+        idempotency_key: entry.idempotencyKey ?? null,
+        outcome: entry.outcome,
+        code: entry.code,
+        created_at: new Date().toISOString(),
+      });
+    },
+
+    /** One connection and its latest activity, for the team. */
+    activity(id: number, viewer: Actor) {
+      if (!can(viewer, "read_activity")) {
+        throw new HttpError(403, "forbidden", "Only the team sees agent activity.");
+      }
+      const row = repository.findById(db, id);
+      if (row === undefined) throw new HttpError(404, "not_found", "There is no such connection.");
+      return {
+        connection: toConnection(row),
+        activity: repository.listActivity(db, id, 200),
+      };
+    },
+
+    /** The issued connections, for the team to see. Only an admin issues or revokes them. */
     list(actor: Actor): Connection[] {
-      requireAdmin(actor);
+      if (!can(actor, "read_activity")) {
+        throw new HttpError(403, "forbidden", "Only the team sees agent connections.");
+      }
       return repository.listIssued(db).map(toConnection);
     },
 

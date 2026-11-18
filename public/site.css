@@ -1140,3 +1140,11 @@ textarea:focus {
     transition: none !important;
   }
 }
+
+/* The test spec: collapsed by default, its scenarios numbered and plain. */
+.spec summary small {
+  font-weight: normal;
+}
+.scenarios li p {
+  margin-bottom: 0.25rem;
+}

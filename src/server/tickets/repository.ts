@@ -227,6 +227,32 @@ export function insertEvent(db: Db, event: NewEvent): void {
   );
 }
 
+export type IdempotencyRow = {
+  actor: string;
+  key: string;
+  action: string;
+  request_hash: string;
+  response: string;
+  ticket_id: number | null;
+  created_at: string;
+};
+
+export function findIdempotency(db: Db, actor: string, key: string): IdempotencyRow | undefined {
+  return db
+    .prepare("SELECT * FROM idempotency_keys WHERE actor = ? AND key = ?")
+    .get(actor, key) as IdempotencyRow | undefined;
+}
+
+/** Remembers a write's answer, and forgets answers older than a day. */
+export function saveIdempotency(db: Db, row: IdempotencyRow): void {
+  const dayAgo = new Date(Date.parse(row.created_at) - 24 * 3600 * 1000).toISOString();
+  db.prepare("DELETE FROM idempotency_keys WHERE created_at < ?").run(dayAgo);
+  db.prepare(
+    `INSERT INTO idempotency_keys (actor, key, action, request_hash, response, ticket_id, created_at)
+     VALUES (@actor, @key, @action, @request_hash, @response, @ticket_id, @created_at)`,
+  ).run(row);
+}
+
 /** The named human owner of a ticket right now, or null. */
 export function ownerOf(db: Db, ticketId: number): string | null {
   const row = db.prepare("SELECT owner_id FROM tickets WHERE id = ?").get(ticketId) as
@@ -276,7 +302,13 @@ export function insertMeta(db: Db, key: string, value: string): void {
  * column. Permanent deletion removes their rows. A test fails if a table with a ticket_id
  * column is missing here, so a new table cannot be forgotten.
  */
-export const TICKET_TABLES = ["ticket_events", "ticket_entries", "ticket_evidence"];
+export const TICKET_TABLES = [
+  "ticket_events",
+  "ticket_entries",
+  "ticket_evidence",
+  "idempotency_keys",
+  "ticket_specs",
+];
 
 /**
  * Removes a ticket and every row that belongs to it, and records that it was deleted.
@@ -347,6 +379,9 @@ export type EvidenceRow = {
   author_kind: ActorKind;
   author_name: string;
   connection_id: number | null;
+  /** The spec and the number of its scenario this evidence says it proves, if any. */
+  spec_id: number | null;
+  scenario: number | null;
   created_at: string;
 };
 
@@ -357,9 +392,9 @@ export function insertEvidence(db: Db, evidence: NewEvidence): EvidenceRow {
     .prepare(
       `INSERT INTO ticket_evidence
          (ticket_id, kind, summary, link, revision, command, result, report,
-          author, author_kind, author_name, connection_id, created_at)
+          author, author_kind, author_name, connection_id, spec_id, scenario, created_at)
        VALUES (@ticket_id, @kind, @summary, @link, @revision, @command, @result, @report,
-          @author, @author_kind, @author_name, @connection_id, @created_at)`,
+          @author, @author_kind, @author_name, @connection_id, @spec_id, @scenario, @created_at)`,
     )
     .run(evidence);
   return { id: Number(result.lastInsertRowid), ...evidence };
@@ -415,4 +450,108 @@ export function userNames(db: Db, ids: string[]): Map<string, string> {
     if (row !== undefined) names.set(id, row.name);
   }
   return names;
+}
+
+export type SpecState = "proposed" | "accepted" | "replaced" | "discarded";
+
+export type SpecRow = {
+  id: number;
+  ticket_id: number;
+  summary: string;
+  scenarios: string; // JSON array of scenarios
+  state: SpecState;
+  author: string;
+  author_kind: ActorKind;
+  author_name: string;
+  connection_id: number | null;
+  created_at: string;
+  decided_by: string | null;
+  decided_by_name: string | null;
+  decided_at: string | null;
+};
+
+export type NewSpec = Omit<
+  SpecRow,
+  "id" | "state" | "decided_by" | "decided_by_name" | "decided_at"
+>;
+
+/** The spec in force on a ticket, proposed or accepted, if any. */
+export function findActiveSpec(db: Db, ticketId: number): SpecRow | undefined {
+  return db
+    .prepare("SELECT * FROM ticket_specs WHERE ticket_id = ? AND state IN ('proposed', 'accepted')")
+    .get(ticketId) as SpecRow | undefined;
+}
+
+/** The latest spec one author proposed on a ticket that was not discarded, if any. */
+export function findLatestSpecBy(db: Db, ticketId: number, author: string): SpecRow | undefined {
+  return db
+    .prepare(
+      `SELECT * FROM ticket_specs WHERE ticket_id = ? AND author = ? AND state != 'discarded'
+       ORDER BY id DESC LIMIT 1`,
+    )
+    .get(ticketId, author) as SpecRow | undefined;
+}
+
+/** Inserts a proposed spec, after marking the one in force as replaced. */
+export function insertSpec(db: Db, spec: NewSpec): SpecRow {
+  db.prepare(
+    "UPDATE ticket_specs SET state = 'replaced' WHERE ticket_id = ? AND state IN ('proposed', 'accepted')",
+  ).run(spec.ticket_id);
+  const result = db
+    .prepare(
+      `INSERT INTO ticket_specs
+         (ticket_id, summary, scenarios, state, author, author_kind, author_name, connection_id,
+          created_at)
+       VALUES (@ticket_id, @summary, @scenarios, 'proposed', @author, @author_kind, @author_name,
+          @connection_id, @created_at)`,
+    )
+    .run(spec);
+  return findSpec(db, Number(result.lastInsertRowid))!;
+}
+
+export function findSpec(db: Db, id: number): SpecRow | undefined {
+  return db.prepare("SELECT * FROM ticket_specs WHERE id = ?").get(id) as SpecRow | undefined;
+}
+
+/** Records a person's decision on a spec: accepted or discarded. */
+export function decideSpec(
+  db: Db,
+  id: number,
+  state: "accepted" | "discarded",
+  by: { id: string; name: string },
+  now: string,
+): void {
+  db.prepare(
+    "UPDATE ticket_specs SET state = ?, decided_by = ?, decided_by_name = ?, decided_at = ? WHERE id = ?",
+  ).run(state, by.id, by.name, now, id);
+}
+
+/** How many specs one author proposed on a ticket. */
+export function countSpecsBy(db: Db, ticketId: number, author: string): number {
+  const row = db
+    .prepare("SELECT COUNT(*) AS n FROM ticket_specs WHERE ticket_id = ? AND author = ?")
+    .get(ticketId, author);
+  return (row as { n: number }).n;
+}
+
+export function countSpecs(db: Db, ticketId: number): number {
+  const row = db
+    .prepare("SELECT COUNT(*) AS n FROM ticket_specs WHERE ticket_id = ?")
+    .get(ticketId);
+  return (row as { n: number }).n;
+}
+
+/**
+ * The numbers of a spec's scenarios that have evidence naming them. Pass an author to count
+ * only their evidence.
+ */
+export function scenariosWithEvidence(db: Db, specId: number, author: string | null): number[] {
+  const rows = db
+    .prepare(
+      `SELECT DISTINCT scenario FROM ticket_evidence
+       WHERE spec_id = @specId AND scenario IS NOT NULL AND (@author IS NULL OR author = @author)
+       ORDER BY scenario`,
+    )
+    .all({ specId, author }) as { scenario: number }[];
+  return rows.map((row) => row.scenario);
 }

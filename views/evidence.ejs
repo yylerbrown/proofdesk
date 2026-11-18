@@ -19,6 +19,7 @@
     <% } else if (item.report !== null) { %>
     <p><small>A report is attached. Proofdesk cannot read its stages.</small></p>
     <% } %>
+    <% if (item.scenario) { %><p><small>Says it proves scenario <%= item.scenario %> of the test spec.</small></p><% } %>
     <% if (item.revision || item.command || item.result) { %>
     <p><small><% if (item.revision) { %>Revision <code class="user-text"><%= item.revision %></code>. <% } %><% if (item.command) { %>Ran <code class="user-text"><%= item.command %></code>. <% } %><% if (item.result) { %>Result: <span class="user-text"><%= item.result %></span>.<% } %></small></p>
     <% } %>

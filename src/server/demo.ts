@@ -51,4 +51,23 @@ export function seedDemo(service: TicketService): void {
     { title: "Test ticket, please ignore", description: "Filed by mistake." },
     customer,
   );
+
+  // A sample made for a visitor's own AI assistant to work on: a clear check and a small,
+  // complete example it can reproduce on its own machine.
+  service.createTicket(
+    {
+      title: "Sample for your AI assistant: the total adds tax twice",
+      description:
+        "This is a sample ticket for trying an AI assistant. The checkout total is too high. " +
+        "This is the code that computes it:\n\n" +
+        "function total(price, taxRate) {\n  return price + price * taxRate + price * taxRate;\n}\n\n" +
+        "total(100, 0.1) returns 120.",
+      fix_check: "total(100, 0.1) returns 110, and a test shows it",
+    },
+    customer,
+  );
+
+  // Record what was seeded, so a visitor's assistant is shown only this, never what other
+  // visitors write.
+  service.recordDemoSeed();
 }

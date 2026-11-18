@@ -20,7 +20,10 @@ export type Action =
   | "mark_ready"
   | "answer"
   | "manage_connections"
-  | "attach_evidence";
+  | "attach_evidence"
+  | "read_activity"
+  | "propose_spec"
+  | "decide_spec";
 
 /**
  * What an AI agent may be allowed to do, each named by the operation it permits. A connection
@@ -31,6 +34,7 @@ export const AGENT_SCOPES = [
   "write_notes",
   "send_replies",
   "attach_evidence",
+  "propose_specs",
   "link_changes",
   "change_status",
 ] as const;
@@ -66,6 +70,9 @@ export const CAPABILITIES: Record<Action, Capability> = {
   answer: { people: "Only the customer who filed it.", agent: "people_only" },
   manage_connections: { people: "An admin.", agent: "people_only" },
   attach_evidence: { people: "The team.", agent: "attach_evidence" },
+  read_activity: { people: "The team.", agent: "people_only" },
+  propose_spec: { people: "The team.", agent: "propose_specs" },
+  decide_spec: { people: "The team.", agent: "people_only" },
 };
 
 /** The two facts about a ticket that permissions depend on. */
@@ -113,6 +120,7 @@ export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean
   if (action === "list_all") return isStaff;
   if (action === "list_archived") return isStaff;
   if (action === "manage_connections") return actor.role === "admin" && actor.kind === "person";
+  if (action === "read_activity") return isStaff && actor.kind === "person";
 
   // Every other action is about one ticket.
   if (ticket === undefined) return false;
@@ -134,6 +142,9 @@ export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean
   if (action === "agree_check") return isStaff;
   if (action === "link_change") return isStaff;
   if (action === "attach_evidence") return isStaff;
+  // A test spec is a suggestion until a person on the team accepts it. The customer reads it.
+  if (action === "propose_spec") return isStaff;
+  if (action === "decide_spec") return isStaff;
   if (action === "mark_ready") return isStaff;
   // Only the person who filed the ticket answers "Did this fix it?". Not the team for them.
   if (action === "answer") return isOwn;

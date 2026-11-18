@@ -64,6 +64,46 @@ export function listIssued(db: Db): ConnectionRow[] {
     .all() as ConnectionRow[];
 }
 
+/** How many demo connections can still be used right now. */
+export function countLiveDemo(db: Db, now: string): number {
+  const row = db
+    .prepare(
+      "SELECT COUNT(*) AS n FROM agent_connections WHERE demo = 1 AND revoked_at IS NULL AND expires_at > ?",
+    )
+    .get(now) as { n: number };
+  return row.n;
+}
+
+export type ActivityRow = {
+  id: number;
+  connection_id: number;
+  door: "api" | "mcp";
+  action: string;
+  ticket_key: string | null;
+  idempotency_key: string | null;
+  outcome: "done" | "refused" | "failed";
+  code: string | null;
+  created_at: string;
+};
+
+/** Records one thing a connection asked for, and prunes rows older than 30 days. */
+export function insertActivity(db: Db, row: Omit<ActivityRow, "id">): void {
+  const monthAgo = new Date(Date.parse(row.created_at) - 30 * 24 * 3600 * 1000).toISOString();
+  db.prepare("DELETE FROM agent_activity WHERE created_at < ?").run(monthAgo);
+  db.prepare(
+    `INSERT INTO agent_activity
+       (connection_id, door, action, ticket_key, idempotency_key, outcome, code, created_at)
+     VALUES (@connection_id, @door, @action, @ticket_key, @idempotency_key, @outcome, @code, @created_at)`,
+  ).run(row);
+}
+
+/** A connection's latest activity, newest first. */
+export function listActivity(db: Db, connectionId: number, limit: number): ActivityRow[] {
+  return db
+    .prepare("SELECT * FROM agent_activity WHERE connection_id = ? ORDER BY id DESC LIMIT ?")
+    .all(connectionId, limit) as ActivityRow[];
+}
+
 export function markRevoked(db: Db, id: number, now: string): void {
   db.prepare("UPDATE agent_connections SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL").run(
     now,

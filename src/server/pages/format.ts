@@ -120,6 +120,9 @@ export function describeEvent(event: TicketEvent): string {
   }
   if (event.type === "reply_added") return "Reply added";
   if (event.type === "evidence_added") return "Evidence attached";
+  if (event.type === "spec_proposed") return "Test spec proposed";
+  if (event.type === "spec_accepted") return "Test spec accepted";
+  if (event.type === "spec_discarded") return "Test spec discarded";
   if (event.type === "note_added") return "Internal note added";
   if (event.type === "archived") return "Archived";
   if (event.type === "restored") return "Restored";
@@ -131,7 +134,11 @@ export function describeEvent(event: TicketEvent): string {
  * taken for a person. The names of demo people already say "Demo".
  */
 export function describeActor(event: TicketEvent, names: Map<string, string>): string {
+  // An agent is named by the connection it came through, as recorded with the entry.
+  const connectionName = (event.context as { connection_name?: unknown } | null)?.connection_name;
   const name =
-    names.get(event.actor) ?? (event.actor_kind === "agent" ? event.actor : "Unknown person");
+    (typeof connectionName === "string" ? connectionName : undefined) ??
+    names.get(event.actor) ??
+    (event.actor_kind === "agent" ? event.actor : "Unknown person");
   return event.actor_kind === "agent" ? `${name} (AI agent)` : name;
 }

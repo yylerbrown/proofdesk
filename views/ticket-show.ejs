@@ -45,6 +45,7 @@
   <p>What the team showed as proof. They report it; Proofdesk has not checked it.</p>
   <%- include("evidence", { evidence }) %>
   <% } %>
+  <%- include("spec-coverage", { specPanel }) %>
   <form method="post" action="/tickets/<%= ticket.key %>/answer">
     <input type="hidden" name="fixed" value="yes" />
     <input type="hidden" name="ready_token" value="<%= ticket.ready_token %>" />
@@ -133,6 +134,8 @@
   <% } %>
 </section>
 <% } %>
+
+<%- include("spec", { specPanel }) %>
 
 <% if (evidence.length > 0) { %>
 <section>

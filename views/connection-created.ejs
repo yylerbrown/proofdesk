@@ -1,7 +1,13 @@
 <%- include("header") %>
 <div class="column-form">
+<% if (connection.demo) { %>
+<h1>Your demo connection</h1>
+<p class="callout"><strong>Copy the key now.</strong> It is shown only on this page. It stops working <%- include("time", { iso: connection.expires_at }) %>; you can get another from the welcome page.</p>
+<p>Your assistant sees only the sample tickets, as they were first written, and what it writes itself. It never sees what other visitors write, and they never see what it writes.</p>
+<% } else { %>
 <h1>Connection issued</h1>
 <p class="callout"><strong>Copy the key now.</strong> It is shown only on this page. If it is lost, revoke the connection and issue a new one.</p>
+<% } %>
 
 <p>It may: <%= connection.scopes.map((s) => scopeLabels[s]).join("; ") %>.</p>
 
@@ -10,7 +16,12 @@
   <input type="text" readonly value="<%= key %>" class="key" />
 </label>
 
-<p>An assistant that can run commands can call the API with it, for example:</p>
+<h2>Connect Claude Code</h2>
+<p>Paste this in a terminal:</p>
+<pre class="paste" id="claude-code"><code>claude mcp add --transport http proofdesk <%= address %>/mcp --header "Authorization: Bearer <%= key %>"</code></pre>
+
+<h2>Other assistants</h2>
+<p>The MCP endpoint is <code><%= address %>/mcp</code>; send the key as <code>Authorization: Bearer &lt;key&gt;</code>. In Claude Desktop, add a custom connector with that address and the key as a request header, where your organization has that option. An assistant that runs commands can also call the API directly:</p>
 <pre class="paste"><code>curl -H "Authorization: Bearer <%= key %>" "<%= address %>/api/tickets?status=new"</code></pre>
 
 <p><a href="/connections">Back to connections</a></p>

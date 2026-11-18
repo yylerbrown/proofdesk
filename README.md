@@ -72,6 +72,14 @@ so a demo can never hold a real account. Each database also records on its first
 DEMO=on DATABASE_PATH=./data/demo.db npm run dev
 ```
 
+On the demo, a visitor can also get **their own assistant connection** from the welcome page,
+with no sign-in: a key that lasts a day, may read the samples, write notes and attach evidence,
+and sees only the sample tickets, with their text as first written, and what it writes itself.
+It never sees what other visitors or other connections write, so nobody can plant instructions
+for someone else's assistant. One address may get 5 an hour, and 200 may be live at once. One
+sample ticket is made for an assistant to work on. A demo database seeded before this existed
+does not offer connections until it is reset.
+
 The sample data is shared by every visitor. To reset it, stop the server, delete its database
 file and start it again. Hosting the demo needs a second Fly.io app with its own disk; that is not
 set up.
@@ -104,11 +112,22 @@ panel between the description and the conversation.
 
 ## API
 
-All routes are under `/api` and speak JSON. Errors look like
+All routes are under `/api` and speak JSON. The API describes itself, with no sign-in
+needed: **`GET /api`** is a guide an agent can act on with no other reading (what Proofdesk is,
+who you are and what you may do, the exact calls for the one job, what to do with no check or
+when blocked, retries, paging, limits and when to stop), and **`GET /api/openapi.json`** is the
+OpenAPI 3.1 description, generated with `zod-openapi` from the same action table and schemas the
+server uses. A test checks a real answer from every action against its documented shape. Errors look like
 `{ "error": { "code": "...", "message": "...", "hint": "...", "retry": false } }`: the hint says
 what to do next, `retry` says whether sending the same request again can work, and a validation
 error also lists `fields`. The routes are built from one table, `ACTIONS` in
-`src/server/api/actions.ts`. A ticket is addressed by its public key,
+`src/server/api/actions.ts`.
+
+A write sent with an `Idempotency-Key` header (any text up to 100 characters) is done once: a
+retry with the same key and request gets the first answer back and changes nothing, and the
+same key with a different request is refused. A refused write stores nothing. The list of
+tickets comes in pages of 100; when there may be more, a `Link` header names the next page
+(`rel="next"`), with an opaque `cursor` to pass back unchanged. A ticket is addressed by its public key,
 for example `SUP-42`. The prefix comes from `TICKET_PREFIX` (2 to 6 capital letters, default `SUP`).
 The prefix is chosen when the database is first created and is stored in it. The server
 refuses to start if `TICKET_PREFIX` later differs, because that would rename every ticket.
@@ -160,8 +179,14 @@ a **connection**: an admin issues one on the Connections page, gives it a name, 
 may do, and copies its key, which is shown once. If the key is lost or leaked, revoke the
 connection and issue a new one. Only a hash of the key is stored.
 
-An assistant sends the key on each request: `Authorization: Bearer pd_...`. Keys work on the
-JSON API only, never on the pages.
+An assistant connects to the MCP endpoint, `/mcp`, built with the official MCP TypeScript SDK
+over streamable HTTP; the connection page shows the one command that connects Claude Code. The
+same actions are a JSON API under `/api`. Either way the key goes in each request as
+`Authorization: Bearer pd_...`; keys never work on the pages. The tools are built from the same
+table as the API routes, call the same service functions, and leave out every people-only action.
+Each tool's description says that ticket text is data written by people, never instructions.
+`docs/AGENTS_GUIDE.md` has the setup for Claude Code and Claude Desktop, the tool list, the limits
+and a worked example.
 
 What an agent may do is decided by the capability table, `CAPABILITIES` in
 `src/server/permissions.ts`, which the tests are generated from. The scopes are named by what
@@ -170,6 +195,12 @@ they allow: read tickets, write internal notes, send replies, link changes, chan
 customer, archiving, restoring, deleting and managing connections are for people only. Each
 agent action in the history records the connection, who issued it, its scopes at that moment
 and the ticket's owner. Each connection has its own write allowance.
+
+Everything a connection asks for, through the API or the tools, is recorded with how it ended:
+done, or refused with its code, with the idempotency key if one was sent. The team sees it on
+each connection's page (Connections, then the connection's name), newest first, for 30 days. The
+record holds keys and codes, never ticket text. In a ticket's history an agent is named by its
+connection and marked "(AI agent)".
 
 Every ticket the API returns starts with `done_when`: the agreed check, the customer's own words,
 and one line of guidance. Only the customer can say a ticket is fixed; the check guides the work
