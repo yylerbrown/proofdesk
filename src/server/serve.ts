@@ -1,5 +1,4 @@
 import http from "node:http";
-import type { Db } from "./db.js";
 import type { LogLine } from "./http-basics.js";
 
 /**
@@ -25,12 +24,13 @@ export type Running = {
 export function startServer(options: {
   handler: http.RequestListener;
   port: number;
-  db: Db;
+  /** Closes the database. Called once, when the server stops or fails to start. */
+  closeDatabase: () => void;
   log: LogLine;
   exit: (code: number) => void;
   drainMs?: number;
 }): Running {
-  const { handler, port, db, log, exit } = options;
+  const { handler, port, closeDatabase, log, exit } = options;
   const drainMs = options.drainMs ?? DRAIN_MS;
   let stopping: Promise<void> | null = null;
 
@@ -47,16 +47,19 @@ export function startServer(options: {
   });
 
   const listening = new Promise<number>((resolve) => {
-    server.once("error", (error: NodeJS.ErrnoException) => {
+    const failedToStart = (error: NodeJS.ErrnoException) => {
       if (error.code === "EADDRINUSE") {
         log(`Port ${port} is already in use, so the server did not start.`);
       } else {
         log(`The server could not start: ${error.message}`);
       }
-      if (db.open) db.close();
+      closeDatabase();
       exit(1);
-    });
+    };
+    server.once("error", failedToStart);
     server.listen(port, () => {
+      // Started: a later server error is not a failed start, so this listener goes.
+      server.off("error", failedToStart);
       const address = server.address();
       resolve(typeof address === "object" && address !== null ? address.port : port);
     });
@@ -70,7 +73,7 @@ export function startServer(options: {
         if (done) return;
         done = true;
         clearTimeout(deadline);
-        if (db.open) db.close();
+        closeDatabase();
         log("Stopped.");
         resolve();
         exit(0);

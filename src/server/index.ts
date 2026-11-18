@@ -1,43 +1,42 @@
-import { createApp } from "./app.js";
+import type http from "node:http";
 import { loadConfig } from "./config.js";
-import { seedDemo } from "./demo.js";
+import { createDemoReset } from "./demo-reset.js";
 import { startServer } from "./serve.js";
-import { openAndMigrate } from "./start.js";
-import { createTicketService } from "./tickets/service.js";
+import { openSite, type Site } from "./start.js";
 
 // Every line goes to standard output, where the host collects it.
 const log = (line: string) => console.log(line);
 
 const config = loadConfig();
-// A database labelled for the other purpose is refused before any migration touches it.
-const { db, applied } = openAndMigrate(config);
-if (applied.length > 0) log(`Applied migrations: ${applied.join(", ")}`);
-// createApp checks the database's purpose first, so the demo is only seeded into a demo
-// database. It logs one line per request.
-const app = createApp(config, db, { log });
-if (config.demo) {
-  const service = createTicketService(db, config.ticketPrefix);
-  seedDemo(service);
-  // A database filled by older code has no record of its samples, and assistant connections
-  // stay off until it is reset. Say so where an operator looks first.
-  if (!service.hasDemoSeed()) {
-    console.warn(
-      "This demo's database was filled before its samples were recorded, so assistant " +
-        "connections are off. Reset it: docs/DEPLOY.md, Resetting the demo.",
-    );
-  }
-}
+const site = openSite(config, log);
+
+// The demo goes back to its samples by itself once a day (src/server/demo-reset.ts), so its
+// requests go to whichever app is current. The real site serves its one app and never resets.
+const demoReset = config.demo ? createDemoReset({ config, log, site }) : null;
+const handler: http.RequestListener = demoReset === null ? site.app : demoReset.handler;
+const current = (): Site => (demoReset === null ? site : demoReset.current());
 
 const running = startServer({
-  handler: app,
+  handler,
   port: config.port,
-  db,
+  closeDatabase: () => {
+    const { db } = current();
+    if (db.open) db.close();
+  },
   log,
   exit: (code) => process.exit(code),
 });
-void running.listening.then((port) => log(`Listening on port ${port}`));
+void running.listening.then((port) => {
+  log(`Listening on port ${port}`);
+  demoReset?.start();
+});
 
 // The host sends SIGTERM (fly.toml sets it) before it replaces or stops the machine; Ctrl+C
 // sends SIGINT. A second signal while stopping changes nothing: the first stop has a deadline.
-process.on("SIGTERM", () => void running.shutdown("SIGTERM"));
-process.on("SIGINT", () => void running.shutdown("SIGINT"));
+// The demo's reset timer stops first, so no reset starts while requests finish.
+function stop(reason: string) {
+  demoReset?.stop();
+  void running.shutdown(reason);
+}
+process.on("SIGTERM", () => stop("SIGTERM"));
+process.on("SIGINT", () => stop("SIGINT"));
