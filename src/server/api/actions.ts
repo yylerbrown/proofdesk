@@ -12,6 +12,7 @@ import {
   listQuerySchema,
   markReadySchema,
 } from "../tickets/schemas.js";
+import { addEvidenceSchema } from "../tickets/evidence.js";
 import type { TicketService } from "../tickets/service.js";
 import { parse } from "../validation.js";
 
@@ -213,6 +214,24 @@ export const ACTIONS: ApiAction[] = [
     status: 201,
     page: "POST /tickets/:key/entries",
     run: ({ service, actor, key, body }) => service.addEntry(key, body, actor),
+  },
+  {
+    name: "list_evidence",
+    method: "get",
+    path: "/tickets/:key/evidence",
+    summary: "The evidence attached to a ticket, as reported. Proofdesk verifies none of it.",
+    needs: "read",
+    run: ({ service, actor, key }) => service.listEvidence(key, actor),
+  },
+  {
+    name: "add_evidence",
+    method: "post",
+    path: "/tickets/:key/evidence",
+    summary: "Attach evidence that the check was met. It never resolves the ticket.",
+    needs: "attach_evidence",
+    body: addEvidenceSchema,
+    status: 201,
+    run: ({ service, actor, key, body }) => service.addEvidence(key, body, actor),
   },
   {
     name: "list_events",

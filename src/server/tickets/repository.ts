@@ -246,8 +246,12 @@ export function listEvents(db: Db, ticketId: number, limit: number): EventRow[] 
 }
 
 /** How many rows a ticket has in a table that has a ticket_id column. */
-export function countRows(db: Db, table: "ticket_events" | "ticket_entries", id: number): number {
-  // The table name is one of the two fixed names above, never from a request.
+export function countRows(
+  db: Db,
+  table: "ticket_events" | "ticket_entries" | "ticket_evidence",
+  id: number,
+): number {
+  // The table name is one of the fixed names above, never from a request.
   const row = db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE ticket_id = ?`).get(id);
   return (row as { n: number }).n;
 }
@@ -272,7 +276,7 @@ export function insertMeta(db: Db, key: string, value: string): void {
  * column. Permanent deletion removes their rows. A test fails if a table with a ticket_id
  * column is missing here, so a new table cannot be forgotten.
  */
-export const TICKET_TABLES = ["ticket_events", "ticket_entries"];
+export const TICKET_TABLES = ["ticket_events", "ticket_entries", "ticket_evidence"];
 
 /**
  * Removes a ticket and every row that belongs to it, and records that it was deleted.
@@ -328,6 +332,49 @@ export type EntryRow = {
 };
 
 export type NewEntry = Omit<EntryRow, "id">;
+
+export type EvidenceRow = {
+  id: number;
+  ticket_id: number;
+  kind: string;
+  summary: string;
+  link: string | null;
+  revision: string | null;
+  command: string | null;
+  result: string | null;
+  report: string | null; // JSON text, as sent
+  author: string;
+  author_kind: ActorKind;
+  author_name: string;
+  connection_id: number | null;
+  created_at: string;
+};
+
+export type NewEvidence = Omit<EvidenceRow, "id">;
+
+export function insertEvidence(db: Db, evidence: NewEvidence): EvidenceRow {
+  const result = db
+    .prepare(
+      `INSERT INTO ticket_evidence
+         (ticket_id, kind, summary, link, revision, command, result, report,
+          author, author_kind, author_name, connection_id, created_at)
+       VALUES (@ticket_id, @kind, @summary, @link, @revision, @command, @result, @report,
+          @author, @author_kind, @author_name, @connection_id, @created_at)`,
+    )
+    .run(evidence);
+  return { id: Number(result.lastInsertRowid), ...evidence };
+}
+
+/** The latest `limit` pieces of evidence on a ticket, oldest first. */
+export function listEvidence(db: Db, ticketId: number, limit: number): EvidenceRow[] {
+  return db
+    .prepare(
+      `SELECT * FROM (
+         SELECT * FROM ticket_evidence WHERE ticket_id = ? ORDER BY id DESC LIMIT ?
+       ) ORDER BY id ASC`,
+    )
+    .all(ticketId, limit) as EvidenceRow[];
+}
 
 /** Inserts an entry and returns it with its number. */
 export function insertEntry(db: Db, entry: NewEntry): EntryRow {
