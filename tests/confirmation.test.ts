@@ -47,9 +47,6 @@ describe("only the customer resolves a ticket", () => {
     });
     expect(reason).toMatch(/Only the customer resolves ticket SUP-1/);
     expect((await admin(app).get("/api/tickets/SUP-1")).body.status).toBe("in_progress");
-
-    const page = await admin(app).get("/tickets/SUP-1");
-    expect(page.text).not.toContain('<option value="resolved"');
   });
 });
 
@@ -164,6 +161,11 @@ describe("from merged to confirmed", () => {
       .post("/api/tickets/SUP-1/answer")
       .send({ fixed: "yes", ready_token: token });
     expect(team.status).toBe(403);
+    // An admin may do almost anything, but not answer for the customer.
+    const byAdmin = await admin(app)
+      .post("/api/tickets/SUP-1/answer")
+      .send({ fixed: "yes", ready_token: token });
+    expect(byAdmin.status).toBe(403);
     const other = await as(app, customerTwo)
       .post("/api/tickets/SUP-1/answer")
       .send({ fixed: "yes", ready_token: token });

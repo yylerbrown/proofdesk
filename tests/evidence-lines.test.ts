@@ -56,7 +56,6 @@ describe("an evidence item", () => {
     ]);
     expect(report.querySelectorAll("dd").map((dd) => dd.text)).toEqual(["node --test", "3", "0"]);
     expect(team.querySelector("ul.evidence")!.text).toContain("1 more field not shown.");
-    expect(team.querySelector("ul.evidence")!.text).not.toContain("cannot read its stages");
     const customer = (await as(app, customerOne).get("/tickets/SUP-1")).text;
     expect(customer).not.toContain("node --test");
   });

@@ -36,7 +36,7 @@ Each one takes under a minute on the demo, starting from its welcome page.
 **Update status: to Resolved**
 
 - Start as: Demo Team Member, owning the ticket
-- Press: **Use sample fix** (or fill in and **Save change link**), **Ask the customer to verify**, then **View this ticket as the customer who filed it** and **Yes, resolve ticket**
+- Press: **Use sample fix** (or type any link and press **Save change link**), then **Ask the customer to verify**, then **View this ticket as the customer who filed it** and **Yes, resolve ticket**
 - You should see: **Resolved**, and "Customer confirmed it is fixed." Wherever the team looks for Resolved, the page says it comes from the customer's Yes and how to ask.
 
 **A working product**
@@ -122,7 +122,7 @@ the tools, the limits and a worked example.
 ## Run it yourself
 
 Check `node -v` first: Node 22.14 or newer (`.nvmrc` says 22). Older versions are refused by
-`npm ci`, because a dependency needs it.
+`npm ci`, because a dependency needs it. With nvm: `nvm install 22 && nvm use 22`.
 
 Get the source:
 
@@ -166,7 +166,10 @@ NODE_ENV=production DEMO=on \
   DATABASE_PATH=./data/demo.db npm start
 ```
 
-For the real thing, replace `DEMO=on` with the four GitHub settings below.
+For the real thing, leave out `DEMO=on` and pass the four GitHub settings below as real
+environment variables, with an https `BETTER_AUTH_URL` and a database of its own, such as
+`DATABASE_PATH=./data/app.db`. Production refuses an http address, and the server refuses a
+demo database for real tickets.
 
 **Docker.** Without keys, a container can only run as the demo. Give the demo its own volume: a
 database records for good whether it is for the demo or for real tickets.
@@ -181,6 +184,7 @@ docker run --rm -p 3000:3000 -e DEMO=on \
 ```
 
 A real run needs the four GitHub settings, with `-e` or `--env-file`, and a different volume.
+`PORT` changes the port inside the container, so `-e PORT=8080` needs `-p 8080:8080`.
 
 ### Settings
 
@@ -212,6 +216,11 @@ All of them are in `.env.example`, with comments.
 3. Set `DEV_SIGN_IN=off`. To make yourself an admin, put your GitHub user number (the `id` at
    `https://api.github.com/users/<your user name>`) in `ADMIN_GITHUB_IDS`.
 
+The `.env` file and the http address are for `npm run dev`. A production build (`npm start`)
+does not read `.env` and refuses an http address: pass the four settings as real environment
+variables, with an https `BETTER_AUTH_URL` and its own `DATABASE_PATH`, such as
+`./data/app.db`.
+
 ## What's next
 
 Each accepted scenario of a ticket's test spec gets a permanent id, such as `SUP-42/S1`, carried in
@@ -225,11 +234,15 @@ rendered on the server with EJS and the Pico CSS stylesheet, and GitHub sign-in 
 Auth. Inputs are checked with zod.
 
 - **Three layers.** Routes only read the request and call the service. The service holds the
-  rules and the transactions. The repository holds all the SQL.
-- **One permission function**, `can()` in `src/server/permissions.ts`, decides who may do what,
-  for people and for agents, whatever the door (a page, the JSON API or an agent tool). Its
-  table, `CAPABILITIES`, says for each action which people may take it and which agent scope it
-  needs, or that it is for people only.
+  rules and the transactions. The repositories hold the ticket and connection SQL; startup
+  checks, sign-in lookups, the team list and one demo-seeding query keep a few queries of their
+  own.
+- **One permission function**, `can()` in `src/server/permissions.ts`, decides by role, by who
+  filed the ticket and by agent scope, for people and for agents, whatever the door (a page, the
+  JSON API or an agent tool). The service adds the owner and state rules, such as only the
+  ticket's owner asking the customer, and only once work has started and the change is linked.
+  Its table, `CAPABILITIES`, says for each action which people may take it and which agent
+  scope it needs, or that it is for people only.
 - **Three statuses**: New, In Progress and Resolved. Only the customer's Yes resolves. Every
   ticket in progress has a named person who owns it, never an agent.
 - **History is add-only.** Every change writes a history entry in the same transaction, saying
@@ -241,7 +254,7 @@ Auth. Inputs are checked with zod.
 
 | Command                | What it runs                                                                                                                                                                    |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm test`             | Every unit and route test with vitest: 742 when this was written.                                                                                                               |
+| `npm test`             | Every unit and route test with vitest: about 800.                                                                                                                               |
 | `npm run test:browser` | One real-browser journey with Playwright: a customer files, the team works it, No then Yes, and a second customer is refused. Run `npx playwright install chromium` once first. |
 | `npm run typecheck`    | TypeScript, strict.                                                                                                                                                             |
 | `npm run lint`         | ESLint.                                                                                                                                                                         |
@@ -281,6 +294,42 @@ code. The specification ([`docs/SPEC.md`](docs/SPEC.md)), the history of every s
 - **Not built on purpose:** a board with status columns or dragging, priority ordering, closing a
   ticket without the customer, a second filter beyond status, and any model call of the site's
   own.
+
+## Known limits and design debt
+
+Shortcuts in the code that were kept for now, each with the plan for it.
+
+- **One large ticket service.** `src/server/tickets/service.ts` is about 1,900 lines doing about
+  eight jobs: workflow, conversation, evidence, specs, retries, demo seeding, demo visibility and
+  page helpers. It will be split behind the same exports, with the test suite as the safety net.
+- **Visibility is decided inline.** Who sees which rows (the customer, a handed agent, a demo
+  agent, a notes reader) is checked in about 25 places across the read paths. The next read
+  path, such as search or reports, goes through one visibility module first.
+- **Owner and state checks are written twice.** `can()` knows nothing of who owns a ticket or
+  what state it is in. Each command checks ownership and state itself, and the ticket page
+  restates those checks to choose its controls. The plan is one precondition per command, which
+  the command throws and the page reads, so the two cannot disagree.
+- **Writes return hand-built rows.** A write command returns a copy of the row built by hand
+  instead of reading it back, in about a dozen places. They match the SQL today and one that did
+  not was fixed, but the pattern can drift.
+- **Two dispatch wrappers.** The JSON API and the MCP endpoint each wrap the same action table in
+  about 30 lines of their own. Two actions, `add_note` and `ask_owner_to_review`, parse their
+  input in that table rather than in the service.
+- **A few queries outside the repositories.** The startup checks, the sign-in lookup, the team
+  list and one demo-seeding query run their own SQL, and the team list makes one query for each
+  person who has signed in, on every ticket page. The error module imports a page helper, so
+  the error types depend on page code.
+- **Loose ends in the schema.** `tickets.agent_id` is kept but never written. The later link
+  columns (`ticket_evidence.spec_id` and `connection_id`, `ticket_specs.connection_id`,
+  `ticket_entries.based_on`) have no `REFERENCES` clause and are checked in code only.
+- **Event types and error codes are plain strings.** The tests check them; the compiler does not.
+- **Two compatibility branches have no test:** the lookup for a No recorded before comments were
+  kept, and a demo seed recorded before the sample for assistants was named. They stay until the
+  live databases are checked, then go or get a test.
+- **Test setup is copied between files.** Several files build their own ask-the-customer setup,
+  agent keys are issued by reading the admin page, files are named after pull requests rather
+  than rules, and the people side of the permission rules is picked by hand rather than
+  generated from the table.
 
 ---
 
@@ -352,12 +401,16 @@ curl -b jar -H "Origin: http://localhost:3000" \
 curl -b jar http://localhost:3000/api/tickets
 ```
 
+These use the default port. With `PORT` set to another one, change the address and the `Origin`
+header to match it, or the API answers `cross_site_request`.
+
 ### Security
 
 Each item has a test that fails if it is removed (`tests/security.test.ts` unless another is
 named).
 
-- Every SQL statement is a fixed string with bound values.
+- Every SQL statement is a fixed string with bound values, except one in demo seeding that names
+  its table from a fixed list in the code, never from input.
 - Templates escape ticket text; links are limited to http and https.
 - `helmet` sets the security headers; the content security policy allows scripts and styles
   only from this server, and no page has an inline script or style.

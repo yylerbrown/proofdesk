@@ -77,10 +77,10 @@ const HINTS: Record<string, string> = {
   internal_error: "Something failed on the server. Try again later.",
 };
 
-/** Whether sending the same request again can work: only after waiting, or after a failure. */
 /** Refusals that sending the same request again can never change, whatever their status. */
 const NEVER_RETRY = new Set(["demo_not_ready"]);
 
+/** Whether sending the same request again can work: only after waiting, or after a failure. */
 function canRetry(shown: ShownError): boolean {
   if (NEVER_RETRY.has(shown.code)) return false;
   return shown.status === 429 || shown.status >= 500;
