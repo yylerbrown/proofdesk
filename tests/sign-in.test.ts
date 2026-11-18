@@ -2,7 +2,8 @@ import { betterAuth } from "better-auth";
 import { getMigrations } from "better-auth/db/migration";
 import { testUtils } from "better-auth/plugins";
 import request from "supertest";
-import { describe, expect, it } from "vitest";
+import { parse } from "node-html-parser";
+import { describe, expect, it, vi } from "vitest";
 import { FILING_LIMIT, SIGN_IN_LIMIT } from "../src/server/limits.js";
 import { createAuth } from "../src/server/auth.js";
 import { DEV_COOKIE } from "../src/server/actor.js";
@@ -51,6 +52,36 @@ async function signedInBrowser(db: TestDb, githubId: string, name: string) {
   const login = await test.login({ userId: user.id });
   return { userId: user.id, cookie: login.headers.get("cookie") ?? "" };
 }
+
+describe("the team list on a ticket page", () => {
+  it("names everyone signed in as team or admin, read in one query however many there are", async () => {
+    const { app, db } = buildSignInApp();
+    const boss = await signedInBrowser(db, "1001", "Ada Admin");
+    const customer = await signedInBrowser(db, "5005", "Sam Customer");
+    await signedInBrowser(db, "2002", "Bo Team");
+    await visitor(app).post("/api/tickets").set("Cookie", customer.cookie).send(valid);
+
+    const prepare = vi.spyOn(db, "prepare");
+    const accountQueries = () =>
+      prepare.mock.calls.filter(([sql]) => String(sql).includes('"account"')).length;
+    const handOffTo = async () => {
+      const page = await request(app).get("/tickets/SUP-1").set("Cookie", boss.cookie);
+      return parse(page.text)
+        .querySelectorAll("form[action$='/hand-off'] option")
+        .map((option) => option.text);
+    };
+    expect(await handOffTo()).toEqual(["Ada Admin", "Bo Team"]);
+    const few = accountQueries();
+
+    await signedInBrowser(db, "2003", "Cy Team");
+    await signedInBrowser(db, "5006", "Di Customer");
+    prepare.mockClear();
+    expect(await handOffTo()).toEqual(["Ada Admin", "Bo Team", "Cy Team"]);
+    // Two more people, and not one more query for them.
+    expect(accountQueries()).toBe(few);
+    prepare.mockRestore();
+  });
+});
 
 describe("the sign-in library's tables", () => {
   it("are all created by our own migration, with nothing left for the library to add", async () => {

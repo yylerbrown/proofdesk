@@ -235,8 +235,8 @@ rendered on the server with EJS and the Pico CSS stylesheet, and GitHub sign-in 
 Auth. Inputs are checked with zod.
 
 - **Three layers.** Routes only read the request and call the service. The service holds the
-  rules and the transactions. The repositories hold the ticket and connection SQL; startup
-  checks, sign-in lookups and the team list keep a few queries of their own.
+  rules and the transactions. The repositories hold the ticket, connection and team-list SQL;
+  startup checks and sign-in lookups keep a few queries of their own.
 - **One permission function**, `can()` in `src/server/permissions.ts`, decides by role, by who
   filed the ticket and by agent scope, for people and for agents, whatever the door (a page, the
   JSON API or an agent tool). The service adds the owner and state rules, such as only the
@@ -315,10 +315,8 @@ Shortcuts in the code that were kept for now, each with the plan for it.
 - **Two dispatch wrappers.** The JSON API and the MCP endpoint each wrap the same action table in
   about 30 lines of their own. Two actions, `add_note` and `ask_owner_to_review`, parse their
   input in that table rather than in the service.
-- **A few queries outside the repositories.** The startup checks, the sign-in lookup and the team
-  list run their own SQL, and the team list makes one query for each
-  person who has signed in, on every ticket page. The error module imports a page helper, so
-  the error types depend on page code.
+- **A few queries outside the repositories.** The startup checks and the sign-in lookup run their
+  own SQL. The error module imports a page helper, so the error types depend on page code.
 - **Loose ends in the schema.** `tickets.agent_id` is kept but never written. The later link
   columns (`ticket_evidence.spec_id` and `connection_id`, `ticket_specs.connection_id`,
   `ticket_entries.based_on`) have no `REFERENCES` clause and are checked in code only.
@@ -454,7 +452,8 @@ and `app.db-shm` aside on its disk and restart the machine. After a deploy, chec
   API, `connections.ts`, `sign-in.ts`.
 - `src/server/tickets/` holds the ticket service, its repository and schemas.
 - `src/server/permissions.ts` holds `can()` and the capability table.
-- `src/server/mcp.ts` is the MCP endpoint; `src/server/connections/` the agent connections.
+- `src/server/mcp.ts` is the MCP endpoint; `src/server/connections/` the agent connections;
+  `src/server/team/` who can own a ticket.
 - `views/` holds the page templates; `public/theme.css` every colour and font.
 - `migrations/` holds numbered SQL files; `tests/` the tests; `ops/prove/` the patch checker.
 
