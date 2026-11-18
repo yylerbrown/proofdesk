@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import nodemailer, { type Transporter } from "nodemailer";
 import request from "supertest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DEMO_ACTORS, DEV_COOKIE } from "../src/server/actor.js";
@@ -9,8 +10,8 @@ import type { Db } from "../src/server/db.js";
 import { createDemoReset } from "../src/server/demo-reset.js";
 import { createNotifier } from "../src/server/notify/notifier.js";
 import { openSite } from "../src/server/start.js";
-import { buildTestApp, customerOne, FROM_THIS_SITE, teamActor } from "./helpers.js";
-import { giveAddresses } from "./notify-life.js";
+import { as as asPerson, buildTestApp, customerOne, FROM_THIS_SITE, teamActor } from "./helpers.js";
+import { giveAddresses, ok } from "./notify-life.js";
 
 // How the notifier is wired to the server: a run after every answered request that changed
 // something, a timer as a safety net that stops with the server, and always the database the
@@ -65,6 +66,49 @@ describe("after a request", () => {
     await request(handler).get("/tickets");
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(collected).toEqual([]);
+  });
+});
+
+describe("a mail server that stalls", () => {
+  it("never holds back collecting: a change is written while a send is still on its way", async () => {
+    const { app, db, config } = buildTestApp({
+      SMTP_URL: "smtp://127.0.0.1:2525",
+      MAIL_FROM: "notices@example.com",
+    });
+    giveAddresses(db);
+    const release: (() => void)[] = [];
+    const stalls = nodemailer.createTransport({
+      name: "stalls",
+      version: "1",
+      send: (mail, done) => {
+        release.push(() => done(null, { messageId: mail.data.messageId } as never));
+      },
+    }) as Transporter;
+    const notifier = createNotifier({
+      config,
+      currentDb: () => db,
+      log: () => undefined,
+      transport: stalls,
+    });
+    await ok(
+      asPerson(app, customerOne).post("/api/tickets").send({ title: "Jams", description: "x" }),
+      201,
+    );
+    await ok(asPerson(app, teamActor).post("/api/tickets/SUP-1/take-and-start"));
+    const reply = { kind: "reply", body: "On it." };
+    await ok(asPerson(app, teamActor).post("/api/tickets/SUP-1/entries").send(reply), 201);
+    const first = notifier.run();
+    await vi.waitFor(() => expect(release.length).toBe(1));
+    // The first mail is stuck on its way. A second change is collected at once all the same.
+    await ok(asPerson(app, teamActor).post("/api/tickets/SUP-1/entries").send(reply), 201);
+    void notifier.run();
+    expect(count(db)).toBe(2);
+    release.shift()!();
+    await vi.waitFor(() => expect(release.length).toBe(1));
+    release.shift()!();
+    await first;
+    const states = db.prepare("SELECT state FROM email_outbox ORDER BY id").all();
+    expect(states).toEqual([{ state: "sent" }, { state: "sent" }]);
   });
 });
 

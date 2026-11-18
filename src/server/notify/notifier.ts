@@ -8,15 +8,17 @@ import { sendDueNotices } from "./send.js";
 
 // The notifier collects notices from the ticket history and sends the pending ones. It runs
 // right after any request that changed something has been answered, and on a short timer as a
-// safety net. It never runs inside a request, so a slow mail server never slows a page. Each
+// safety net. It never runs inside a request, so a slow mail server never slows a page.
+// Collecting is one short transaction and happens at once on every run; only sending waits for
+// the send before it, so a slow mail server never holds a notice back from being written. Each
 // run reads the database the site is serving now: the demo swaps in a fresh one when it resets.
 
 /** How often the timer runs, in case a run after a request was missed. */
 export const NOTIFY_EVERY_MS = 5000;
 
 /**
- * How long nodemailer waits for the mail server at each stage. Together they stay well under
- * the shortest wait between tries (RETRY_WAITS_MS in send.ts).
+ * How long nodemailer waits for the mail server at each stage. A whole send stays well under
+ * the time a claim holds a notice (CLAIM_LEASE_MS in send.ts).
  */
 export const MAIL_TIMEOUTS = {
   connectionTimeout: 10_000,
@@ -25,7 +27,9 @@ export const MAIL_TIMEOUTS = {
 };
 
 export type Notifier = {
-  /** Collects and sends now. Resolves once this run, and any asked for during it, is done. */
+  /**
+   * Collects now, then sends. Resolves once this send, and any asked for during it, is done.
+   */
   run: () => Promise<void>;
   /** Asks for a run as soon as the current work is done. */
   soon: () => void;
@@ -37,9 +41,18 @@ export type Notifier = {
   stop: () => void;
 };
 
-/** The mail server connection for these settings. */
+/** Mail servers on this machine, such as a local mail catcher for trying the site out. */
+const THIS_MACHINE = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/**
+ * The mail server connection for these settings. An smtps:// address is encrypted from the
+ * start. An smtp:// address must switch to an encrypted connection before signing in, unless the
+ * server is on this machine, so a password never crosses the network in the clear.
+ */
 export function mailTransport(mail: MailConfig): Transporter {
-  return nodemailer.createTransport({ url: mail.smtpUrl, ...MAIL_TIMEOUTS });
+  const url = new URL(mail.smtpUrl);
+  const requireTLS = url.protocol === "smtp:" && !THIS_MACHINE.has(url.hostname);
+  return nodemailer.createTransport({ url: mail.smtpUrl, requireTLS, ...MAIL_TIMEOUTS });
 }
 
 /** Requests that only read never change anything, so they need no run after them. */
@@ -66,7 +79,8 @@ export function createNotifier(options: {
   let stopped = false;
   let timer: NodeJS.Timeout | null = null;
 
-  async function once(): Promise<void> {
+  /** Writes the notices of every change since the last collect. */
+  function collect(): void {
     const db = currentDb();
     if (!db.open) return;
     try {
@@ -74,9 +88,13 @@ export function createNotifier(options: {
     } catch (err) {
       // A database error holds no setting, so its message is safe to log.
       log(`Notices could not be collected: ${err instanceof Error ? err.message : String(err)}`);
-      return;
     }
-    if (transport === null || mail === null) return;
+  }
+
+  /** Sends the pending notices that are due. */
+  async function send(): Promise<void> {
+    const db = currentDb();
+    if (!db.open || transport === null || mail === null) return;
     const result = await sendDueNotices(db, transport, {
       from: mail.from,
       ticketPrefix: config.ticketPrefix,
@@ -87,8 +105,10 @@ export function createNotifier(options: {
   }
 
   function run(): Promise<void> {
+    collect();
+    if (transport === null) return Promise.resolve();
     if (running !== null) {
-      // Collect again once the current run is done, so nothing written during it waits.
+      // Send again once the current send is done, so nothing collected during it waits.
       again = true;
       return running;
     }
@@ -96,7 +116,7 @@ export function createNotifier(options: {
       try {
         do {
           again = false;
-          await once();
+          await send();
         } while (again && !stopped);
       } catch (err) {
         log(`Email notices stopped with an error: ${err instanceof Error ? err.name : "error"}.`);

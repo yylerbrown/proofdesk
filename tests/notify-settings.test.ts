@@ -1,7 +1,7 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { loadConfig } from "../src/server/config.js";
-import { createNotifier } from "../src/server/notify/notifier.js";
+import { createNotifier, mailTransport } from "../src/server/notify/notifier.js";
 import { notifySettingsOf } from "../src/server/notify/outbox.js";
 import { buildTestApp } from "./helpers.js";
 
@@ -9,6 +9,9 @@ import { buildTestApp } from "./helpers.js";
 // server can carry its password, which never shows in an error, a log line or a page.
 
 const PASSWORD = "pw-NEVER-SHOWN-4417";
+
+/** The few connection options these tests read from nodemailer's transport. */
+type Options = { requireTLS?: boolean; secure?: boolean; auth?: { pass?: string } };
 const SMTP_URL = `smtps://notices:${PASSWORD}@mail.example.com:465`;
 const MAIL_FROM = "notices@example.com";
 
@@ -54,6 +57,37 @@ describe("the mail settings", () => {
     expect(refusal({ SMTP_URL, MAIL_FROM: "notices@example.com\r\nBcc: x@example.com" })).toMatch(
       /MAIL_FROM/,
     );
+  });
+
+  it("say a password with a slash must be percent-encoded, and take it once it is", () => {
+    for (const password of ["pa/ss+word", "pa#ss"]) {
+      const message = refusal({
+        SMTP_URL: `smtps://notices:${password}@mail.example.com:465`,
+        MAIL_FROM,
+      });
+      expect(message).toMatch(/percent-encoded/);
+      expect(message).not.toContain(password);
+    }
+    const encoded = "smtps://notices:pa%2Fss%2Bw%40rd@mail.example.com:465";
+    const mail = loadConfig({ SMTP_URL: encoded, MAIL_FROM }).mail!;
+    const options = (mailTransport(mail) as unknown as { transporter: { options: Options } })
+      .transporter.options;
+    expect(options.auth?.pass).toBe("pa/ss+w@rd");
+  });
+
+  it("sign in over an encrypted connection, unless the mail server is on this machine", () => {
+    const optionsOf = (smtpUrl: string): Options =>
+      (
+        mailTransport({ smtpUrl, from: MAIL_FROM }) as unknown as {
+          transporter: { options: Options };
+        }
+      ).transporter.options;
+    expect(optionsOf("smtp://notices:pw@mail.example.com:587").requireTLS).toBe(true);
+    expect(optionsOf("smtps://notices:pw@mail.example.com:465").secure).toBe(true);
+    // A local mail catcher, for trying the site out, usually offers no encryption.
+    expect(optionsOf("smtp://127.0.0.1:1025").requireTLS).toBe(false);
+    expect(optionsOf("smtp://localhost:1025").requireTLS).toBe(false);
+    expect(optionsOf("smtp://[::1]:1025").requireTLS).toBe(false);
   });
 
   it("are ignored on the demo, which never sends", () => {

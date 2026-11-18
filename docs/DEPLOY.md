@@ -47,6 +47,11 @@ Done once, already done:
    The server refuses to start in production without the four sign-in settings, or with an
    address that does not start with `https://`.
 
+The commands below name the demo app; for the real site use `--app proofdesk`.
+
+**The real site always deploys with `--config fly.proofdesk.toml`.** `fly.toml` sets `DEMO=on`;
+deployed with it, the real site refuses to start, as designed.
+
 ## Email notices
 
 Off until two settings are set; the real site has neither today. Without them every notice is
@@ -62,8 +67,17 @@ kept as not sent, with the reason, and nothing is emailed. The demo never sends,
      MAIL_FROM=<an address on the checked domain>
    ```
 
+   Percent-encode any `/`, `+`, `#`, `@` or `:` in the user or password, for example `/` as
+   `%2F`, `+` as `%2B` and `@` as `%40`; without it the server refuses the address at start.
+   With `smtp://` the server must offer an encrypted connection before the sign-in, or nothing
+   is sent; `smtps://` is encrypted from the start.
+
    The server refuses to start with one of the two and not the other. It never prints the
    address of the mail server, in a log line, an error or the health check.
+
+   Deploy the change that sends email first and let it start once before setting the two
+   secrets. That first start writes the notices of every change since email notices were added,
+   and without the secrets they are kept as not sent rather than mailed late.
 
 3. **Check it.** The log says "Email notices are sent through the mail server that is set." at
    start. Ask a customer "Did this fix it?" on a test ticket: their email arrives within seconds.
@@ -71,11 +85,6 @@ kept as not sent, with the reason, and nothing is emailed. The demo never sends,
    as failed with a short reason in the `email_outbox` table.
 
 Only addresses GitHub verified are mailed, and only to the people the notice rules name.
-
-The commands below name the demo app; for the real site use `--app proofdesk`.
-
-**The real site always deploys with `--config fly.proofdesk.toml`.** `fly.toml` sets `DEMO=on`;
-deployed with it, the real site refuses to start, as designed.
 
 ## Deploy
 

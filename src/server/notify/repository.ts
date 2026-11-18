@@ -174,8 +174,8 @@ export function dueNotices(db: Db, now: string, most: number): NoticeRow[] {
 }
 
 /**
- * Claims a pending notice for one try: counts the try and moves its next time forward. True
- * when this call claimed it, false when someone else changed it first.
+ * Claims a pending notice for one try: counts the try and holds the notice until the lease
+ * ends. True when this call claimed it, false when someone else changed it first.
  */
 export function claimNotice(
   db: Db,
@@ -202,13 +202,17 @@ export function markSent(db: Db, id: number, now: string): void {
   ).run(now, now, id);
 }
 
-/** Keeps a notice pending after a failed try. Its claim already set when it is tried next. */
-export function markRetry(db: Db, id: number, now: string, error: string): void {
-  db.prepare("UPDATE email_outbox SET last_error = ?, updated_at = ? WHERE id = ?").run(
-    error,
-    now,
-    id,
-  );
+/** Keeps a notice pending after a failed try, to be tried again at this time. */
+export function markRetry(
+  db: Db,
+  id: number,
+  now: string,
+  error: string,
+  nextAttemptAt: string,
+): void {
+  db.prepare(
+    "UPDATE email_outbox SET last_error = ?, updated_at = ?, next_attempt_at = ? WHERE id = ?",
+  ).run(error, now, nextAttemptAt, id);
 }
 
 export function markFailed(db: Db, id: number, now: string, error: string): void {

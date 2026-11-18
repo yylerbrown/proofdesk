@@ -4,10 +4,11 @@ import type { Db } from "../db.js";
 import { buildKey } from "../tickets/keys.js";
 import * as repository from "./repository.js";
 
-// Sending: the pending notices go out through a mail server, a few at a time. Each one is first
-// claimed in a transaction, which counts the try and moves its next time forward, so two
-// processes or two timer ticks never send the same notice. A failed try waits longer each time,
-// and after the last one the notice is failed and keeps its reason.
+// Sending: the pending notices go out through a mail server, one after another. Each one is
+// claimed in a transaction right before its own send. The claim counts the try and holds the
+// notice for a while (the lease), so two processes or two timer ticks never send it twice. A
+// failed try then waits longer each time, and after the last one the notice is failed and keeps
+// its reason.
 
 /** How many notices one call sends at most. The next call carries on. */
 export const SEND_BATCH = 5;
@@ -18,11 +19,15 @@ export const MOST_ATTEMPTS = 5;
 const MINUTE = 60 * 1000;
 
 /**
- * How long to wait after each try before the next one: after the first, a minute, and so on.
- * Each wait is longer than one try can take (see MAIL_TIMEOUTS in notifier.ts), because the
- * claim uses the wait to keep everyone else off the notice while it is being sent.
+ * How long a claim keeps everyone else off a notice while it is being sent. It is far longer
+ * than one send can take with the mail server's waits (MAIL_TIMEOUTS in notifier.ts), and each
+ * notice is claimed only when its own send starts, so the lease never has to cover another one.
+ * A try that is cut off (the server stopping mid-send) is tried again once the lease is over.
  */
-export const RETRY_WAITS_MS = [1 * MINUTE, 5 * MINUTE, 15 * MINUTE, 60 * MINUTE, 60 * MINUTE];
+export const CLAIM_LEASE_MS = 15 * MINUTE;
+
+/** How long to wait after each failed try before the next one: after the first, a minute. */
+export const RETRY_WAITS_MS = [1 * MINUTE, 5 * MINUTE, 15 * MINUTE, 60 * MINUTE];
 
 /** What sending needs to know. */
 export type SendSettings = {
@@ -33,8 +38,9 @@ export type SendSettings = {
 };
 
 /**
- * Sends the notices that are due, one after another. Returns how many were sent and how many
- * tries failed. A database closed during a try (the server stopping) ends the call quietly.
+ * Sends the notices that are due, one after another, at most SEND_BATCH. Returns how many were
+ * sent and how many tries failed. A database closed during a try (the server stopping) ends the
+ * call quietly, and the notices not yet reached keep their tries.
  */
 export async function sendDueNotices(
   db: Db,
@@ -44,7 +50,10 @@ export async function sendDueNotices(
 ): Promise<{ sent: number; failed: number }> {
   let sent = 0;
   let failed = 0;
-  for (const notice of claimDue(db, now())) {
+  for (let i = 0; i < SEND_BATCH; i += 1) {
+    if (!db.open) break;
+    const notice = claimNext(db, now());
+    if (notice === null) break;
     const problem = problemWith(notice);
     if (problem !== null) {
       repository.markFailed(db, notice.id, now().toISOString(), problem);
@@ -58,17 +67,19 @@ export async function sendDueNotices(
       error = plainReason(err);
     }
     // The server may have stopped while the mail was on its way. The notice keeps its claim and
-    // is tried again once its wait is over.
+    // is tried again once the lease is over.
     if (!db.open) break;
-    const at = now().toISOString();
+    const at = now();
     if (error === null) {
-      repository.markSent(db, notice.id, at);
+      repository.markSent(db, notice.id, at.toISOString());
       sent += 1;
     } else if (notice.attempts >= MOST_ATTEMPTS) {
-      repository.markFailed(db, notice.id, at, error);
+      repository.markFailed(db, notice.id, at.toISOString(), error);
       failed += 1;
     } else {
-      repository.markRetry(db, notice.id, at, error);
+      const wait = RETRY_WAITS_MS[notice.attempts - 1]!;
+      const next = new Date(at.getTime() + wait).toISOString();
+      repository.markRetry(db, notice.id, at.toISOString(), error, next);
       failed += 1;
     }
   }
@@ -76,26 +87,24 @@ export async function sendDueNotices(
 }
 
 /**
- * Claims the notices that are due, in one transaction that takes the write lock first. A notice
- * already tried the most times (its last try was cut off) is failed here rather than sent.
- * Returns the claimed notices, each with its try counted.
+ * Claims the oldest notice that is due, in one transaction that takes the write lock first. A
+ * notice already tried the most times (its last try was cut off) is failed here rather than
+ * sent. Returns the claimed notice with its try counted, or null when none is due.
  */
-function claimDue(db: Db, now: Date): repository.NoticeRow[] {
-  const claim = db.transaction(() => {
+function claimNext(db: Db, now: Date): repository.NoticeRow | null {
+  const claim = db.transaction((): repository.NoticeRow | null => {
     const at = now.toISOString();
-    const claimed: repository.NoticeRow[] = [];
-    for (const notice of repository.dueNotices(db, at, SEND_BATCH)) {
+    for (;;) {
+      const [notice] = repository.dueNotices(db, at, 1);
+      if (notice === undefined) return null;
       if (notice.attempts >= MOST_ATTEMPTS) {
         repository.markFailed(db, notice.id, at, "The last try was cut off, so it was not sent.");
         continue;
       }
-      const wait = RETRY_WAITS_MS[notice.attempts]!;
-      const next = new Date(now.getTime() + wait).toISOString();
-      if (repository.claimNotice(db, notice.id, notice.attempts, at, next)) {
-        claimed.push({ ...notice, attempts: notice.attempts + 1, next_attempt_at: next });
-      }
+      const leaseEnds = new Date(now.getTime() + CLAIM_LEASE_MS).toISOString();
+      if (!repository.claimNotice(db, notice.id, notice.attempts, at, leaseEnds)) return null;
+      return { ...notice, attempts: notice.attempts + 1, next_attempt_at: leaseEnds };
     }
-    return claimed;
   });
   return claim.immediate();
 }

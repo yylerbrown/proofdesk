@@ -40,7 +40,11 @@ const schema = z.object({
   // The mail server that email notices are sent through, for example
   // smtps://user:password@mail.example.com:465. Set together with MAIL_FROM, or not at all.
   SMTP_URL: z
-    .url({ protocol: /^smtps?$/, error: "must be an smtp:// or smtps:// address" })
+    .url({
+      protocol: /^smtps?$/,
+      error:
+        "must be an smtp:// or smtps:// address, with any / + # @ or : in the user or password percent-encoded",
+    })
     .optional(),
   // The address notices are sent from, for example notices@example.com.
   MAIL_FROM: z.email({ error: "must be an email address" }).optional(),

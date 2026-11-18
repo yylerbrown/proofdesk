@@ -3,10 +3,13 @@ import { describe, expect, it, vi } from "vitest";
 import { openDatabase, type Db } from "../src/server/db.js";
 import { createNotifier } from "../src/server/notify/notifier.js";
 import { NOT_SENT_REASONS } from "../src/server/notify/outbox.js";
+import { claimNotice } from "../src/server/notify/repository.js";
 import {
+  CLAIM_LEASE_MS,
   MOST_ATTEMPTS,
   plainReason,
   RETRY_WAITS_MS,
+  SEND_BATCH,
   sendDueNotices,
 } from "../src/server/notify/send.js";
 import { seedDemo } from "../src/server/demo.js";
@@ -92,6 +95,39 @@ type Row = {
 
 function rows(db: Db): Row[] {
   return db.prepare("SELECT * FROM email_outbox ORDER BY id").all() as Row[];
+}
+
+/** A test app with one ticket and this many pending notices about it, ready to send. */
+async function pendingNotices(howMany: number): Promise<Db> {
+  const { app, db } = buildTestApp(MAIL_ENV);
+  await ok(
+    as(app, customerOne).post("/api/tickets").send({ title: "Printer jams", description: "x" }),
+    201,
+  );
+  for (let event = 1; event <= howMany; event += 1) {
+    db.prepare(
+      `INSERT INTO email_outbox (event_id, ticket_id, recipient_id, kind, address, subject, body,
+         state, created_at, updated_at)
+       VALUES (?, 1, 'dev-customer-1', 'team_replied', 'dev-customer-1@example.com', 'Subject',
+         'Body', 'pending', 'now', 'now')`,
+    ).run(event);
+  }
+  return db;
+}
+
+/** A transport that hands each mail to this function instead of sending it. */
+function transportOf(send: (messageId: string) => Promise<void>): Transporter {
+  return nodemailer.createTransport({
+    name: "test",
+    version: "1",
+    send: (mail, done) => {
+      const messageId = String(mail.data.messageId);
+      send(messageId).then(
+        () => done(null, { messageId } as never),
+        (err: Error) => done(err, undefined as never),
+      );
+    },
+  }) as Transporter;
 }
 
 /** A test app with a mail server set, and a notifier sending through this transport. */
@@ -360,5 +396,92 @@ describe("two senders at once", () => {
     expect(delivered.length).toBe(8);
     expect(new Set(delivered).size).toBe(8);
     expect(rows(db).every((row) => row.state === "sent" && row.attempts === 1)).toBe(true);
+  });
+});
+
+describe("two senders and a slow mail server", () => {
+  it("never send one notice twice, however long each mail takes", async () => {
+    const db = await pendingNotices(SEND_BATCH);
+    // A second connection to the same file, as a second process would hold.
+    const other = openDatabase(db.name);
+    let clock = Date.parse("2026-01-01T00:00:00Z");
+    const now = () => new Date(clock);
+    const delivered: string[] = [];
+    let secondSenderTried = 0;
+    const quick = transportOf(async (id) => {
+      delivered.push(id);
+    });
+    // Each mail from the first sender takes fifteen seconds, and while it is on its way the
+    // second sender's timer ticks.
+    const slow = transportOf(async (id) => {
+      clock += 15 * 1000;
+      const before = delivered.length;
+      await sendDueNotices(other, quick, SEND_SETTINGS, now);
+      secondSenderTried += delivered.length - before;
+      delivered.push(id);
+    });
+    try {
+      await sendDueNotices(db, slow, SEND_SETTINGS, now);
+    } finally {
+      other.close();
+    }
+    expect(secondSenderTried).toBeGreaterThan(0);
+    expect(delivered.length).toBe(SEND_BATCH);
+    expect(new Set(delivered).size).toBe(SEND_BATCH);
+    expect(rows(db).every((row) => row.state === "sent" && row.attempts === 1)).toBe(true);
+  });
+
+  it("takes no notice another sender changed first", async () => {
+    const db = await pendingNotices(1);
+    const at = new Date().toISOString();
+    const until = new Date(Date.now() + CLAIM_LEASE_MS).toISOString();
+    expect(claimNotice(db, 1, 0, at, until)).toBe(true);
+    // A second claim made from the same earlier reading of the notice finds it changed.
+    expect(claimNotice(db, 1, 0, at, until)).toBe(false);
+    db.prepare("UPDATE email_outbox SET state = 'sent' WHERE id = 1").run();
+    expect(claimNotice(db, 1, 1, at, until)).toBe(false);
+    expect((rows(db)[0] as Row).attempts).toBe(1);
+  });
+
+  it("waits only the retry wait after a failed try, not the whole hold of the claim", async () => {
+    const db = await pendingNotices(1);
+    let clock = Date.parse("2026-01-01T00:00:00Z");
+    let tries = 0;
+    const refuses = transportOf(async () => {
+      tries += 1;
+      throw Object.assign(new Error("refused"), { code: "ECONNECTION" });
+    });
+    await sendDueNotices(db, refuses, SEND_SETTINGS, () => new Date(clock));
+    expect(tries).toBe(1);
+    clock += RETRY_WAITS_MS[0]! + 1000;
+    expect(RETRY_WAITS_MS[0]! + 1000).toBeLessThan(CLAIM_LEASE_MS);
+    await sendDueNotices(db, refuses, SEND_SETTINGS, () => new Date(clock));
+    expect(tries).toBe(2);
+  });
+});
+
+describe("the server stopping mid-send", () => {
+  it("ends quietly, and counts a try only for the notice that was on its way", async () => {
+    const db = await pendingNotices(3);
+    const closes = transportOf(async () => {
+      db.close();
+    });
+    await expect(sendDueNotices(db, closes, SEND_SETTINGS)).resolves.toEqual({
+      sent: 0,
+      failed: 0,
+    });
+    const reopened = openDatabase(db.name);
+    try {
+      const after = reopened
+        .prepare("SELECT state, attempts FROM email_outbox ORDER BY id")
+        .all() as { state: string; attempts: number }[];
+      expect(after).toEqual([
+        { state: "pending", attempts: 1 },
+        { state: "pending", attempts: 0 },
+        { state: "pending", attempts: 0 },
+      ]);
+    } finally {
+      reopened.close();
+    }
   });
 });
