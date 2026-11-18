@@ -136,7 +136,7 @@ export const ACTIONS: ApiAction[] = [
     method: "patch",
     path: "/tickets/:key",
     summary:
-      "Start work: move a New ticket you own to in_progress. Nothing else moves the status this way: the customer's Yes resolves (or the owner or an admin resolves with a reason, resolve_with_reason), and only the customer reopens.",
+      "Start work: move a New ticket you own to in_progress. Nothing else moves the status this way: the customer's Yes resolves (or the owner or an admin resolves with a reason, resolve_with_reason), and a resolved ticket moves only by reopen.",
     needs: "change_status",
     body: changeStatusSchema,
     run: ({ service, actor, key, body }) => service.changeStatus(key, body, actor),
@@ -235,7 +235,7 @@ export const ACTIONS: ApiAction[] = [
     method: "post",
     path: "/tickets/:key/reopen",
     summary:
-      "The customer who filed a resolved ticket says it is still happening. It goes back to its owner.",
+      "Reopen a resolved ticket, with a reason. The customer who filed it can, after their own Yes or the team's resolution. The ticket's owner or an admin can reopen one the team resolved, never one the customer confirmed. Never an agent. It goes back to its owner, in progress, or to the inbox if it has none.",
     needs: "reopen",
     body: reopenSchema,
     output: ticketOutput,
@@ -246,7 +246,7 @@ export const ACTIONS: ApiAction[] = [
     method: "post",
     path: "/tickets/:key/resolve",
     summary:
-      "Resolve a New or In Progress ticket without the customer's Yes, with a reason: fixed_no_reply, duplicate (with duplicate_of), wont_fix, cannot_reproduce, or other (with a note). The ticket's owner or an admin; never an agent. It shows as resolved by the team, apart from Customer confirmed, and the customer can reopen it.",
+      "Resolve a New or In Progress ticket without the customer's Yes, with a reason: fixed_no_reply, duplicate (with duplicate_of), wont_fix, cannot_reproduce, or other (with a note). The ticket's owner or an admin; never an agent. It shows as resolved by the team, apart from Customer confirmed. The customer can reopen it, and so can its owner or an admin.",
     needs: "resolve_with_reason",
     body: resolveSchema,
     output: ticketOutput,

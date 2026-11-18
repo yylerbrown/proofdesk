@@ -66,14 +66,18 @@ const HINTS: Record<string, string> = {
   needs_change_link: "Link the change first (PUT .../change-link), then ask the customer.",
   not_in_progress: "Move the ticket to in_progress first.",
   not_waiting: "The team has not asked this question yet, or it was withdrawn.",
-  only_filer_reopens: "Only the customer who filed it can reopen a resolved ticket.",
+  only_filer_reopens:
+    "A resolved ticket moves only by reopening it (POST .../reopen): the customer who filed it can, and so can its owner or an admin when the team resolved it.",
+  customer_confirmed:
+    "The customer confirmed this fix with their Yes, so only they can reopen it. Reply on the ticket if it needs more work.",
   cannot_return_to_new: "Started work stays in progress. Hand the ticket to someone else instead.",
   not_owner: "Only the ticket's owner can do this. Ask them, or have it handed to you.",
   already_owned: "Someone already owns this ticket. Ask them to hand it to you.",
   not_new: "This ticket has already started.",
   not_resolved: "The ticket is still open; there is nothing to reopen.",
   owner_changed: "Reload the ticket: it has changed hands since you opened it.",
-  not_open: "The ticket is resolved. Only the customer who filed it can reopen it.",
+  not_open:
+    "The ticket is resolved. The customer who filed it can reopen it, and so can its owner or an admin when the team resolved it.",
   question_open: "Withdraw the open question first (POST .../withdraw-question), then ask again.",
   needs_check: "Ask the customer how they will know it is fixed, or offer them wording to adopt.",
   no_interpretation: "The team has not offered any wording for the check.",

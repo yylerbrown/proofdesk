@@ -248,6 +248,7 @@ const CUSTOMER_EVENT_TYPES = new Set([
   "question_withdrawn",
   "customer_answered",
   "reopened",
+  "reopened_by_team",
   "check_adopted",
   "resolved_by_team",
   "evidence_added",
@@ -867,7 +868,7 @@ export function createTicketService(
           throw new HttpError(
             409,
             "only_filer_reopens",
-            `Ticket ${key} is resolved. Only the customer who filed it can reopen it.`,
+            `Ticket ${key} is resolved. Reopen it instead, if you may.`,
           );
         }
         if (status === "new") {
@@ -1247,11 +1248,34 @@ export function createTicketService(
      * The customer who filed a resolved ticket says it is still happening. It goes back to
      * its owner, in progress, or to the inbox if it has none. Their reason is a public reply,
      * and their earlier Yes stays in the history.
+     *
+     * The ticket's owner, or an admin, may also reopen a ticket the team resolved, to undo a
+     * resolution made by mistake. Their reason goes into the history, which the customer sees.
+     * A ticket the customer confirmed with their Yes stays theirs to reopen.
      */
     reopen(key: string, input: unknown, actor: Actor): Ticket {
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "reopen", before);
+        // Who may reopen is checked before what they sent, as for every action.
+        const byCustomer = before.created_by === actor.id;
+        if (!byCustomer && before.status === "resolved") {
+          // A resolution by the team has a reason. The customer's Yes has none.
+          if (before.resolved_reason === null) {
+            throw new HttpError(
+              403,
+              "customer_confirmed",
+              `The customer confirmed ticket ${key} is fixed. Only they can reopen it.`,
+            );
+          }
+          if (before.owner_id !== actor.id && actor.role !== "admin") {
+            throw new HttpError(
+              403,
+              "not_owner",
+              `Only ${before.owner_name ?? "its owner"}, who owns ticket ${key}, or an admin can reopen it.`,
+            );
+          }
+        }
         const { reason } = parse(reopenSchema, input);
         requireNotArchived(key, before);
         if (before.status !== "resolved") {
@@ -1261,25 +1285,37 @@ export function createTicketService(
             `Ticket ${key} is not resolved, so it is still open.`,
           );
         }
-        requireRoom(
-          () => repository.countRows(db, "ticket_entries", before.id),
-          budget.entriesPerTicket,
-          "replies on this ticket",
-        );
+        if (byCustomer) {
+          requireRoom(
+            () => repository.countRows(db, "ticket_entries", before.id),
+            budget.entriesPerTicket,
+            "replies on this ticket",
+          );
+        }
         const status = before.owner_id === null ? "new" : "in_progress";
         const now = new Date().toISOString();
         repository.updateTicketStatus(db, before.id, status, now);
-        repository.insertEntry(db, {
-          ticket_id: before.id,
-          kind: "reply",
-          body: reason,
-          author: actor.id,
-          author_kind: actor.kind,
-          author_role: actor.role,
-          author_name: actor.name,
-          created_at: now,
-        });
-        log(before.id, actor, "reopened", { reason, to: status, owner: before.owner_name }, now);
+        if (byCustomer) {
+          repository.insertEntry(db, {
+            ticket_id: before.id,
+            kind: "reply",
+            body: reason,
+            author: actor.id,
+            author_kind: actor.kind,
+            author_role: actor.role,
+            author_name: actor.name,
+            created_at: now,
+          });
+          log(before.id, actor, "reopened", { reason, to: status, owner: before.owner_name }, now);
+        } else {
+          log(
+            before.id,
+            actor,
+            "reopened_by_team",
+            { reason, to: status, owner: before.owner_name },
+            now,
+          );
+        }
         return { ...before, status, ...noQuestion, updated_at: now } as repository.TicketRow;
       })();
       return toTicket(row, actor);
@@ -2005,7 +2041,14 @@ export function createTicketService(
           can(actor, "change_status", ticket) &&
           ticket.status === "new" &&
           ticket.owner_id === null,
-        reopen: !archived && can(actor, "reopen", ticket) && ticket.status === "resolved",
+        // The same rules as reopen.
+        reopen:
+          !archived &&
+          can(actor, "reopen", ticket) &&
+          ticket.status === "resolved" &&
+          (ticket.created_by === actor.id ||
+            (ticket.resolution?.by === "team" &&
+              (ticket.owner_id === actor.id || actor.role === "admin"))),
         adoptCheck: !archived && can(actor, "adopt_check", ticket) && ticket.agreed_check !== null,
         attachEvidence: !archived && can(actor, "attach_evidence", ticket),
         markReady:
