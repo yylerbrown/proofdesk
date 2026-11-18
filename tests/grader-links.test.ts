@@ -40,10 +40,13 @@ describe("the demo's welcome", () => {
     ).toBeNull();
   });
 
-  it("is told the real site's address by the demo's settings, which name no account", () => {
+  it("is told the real site's address and the public source by the demo's settings", () => {
     const flyToml = fs.readFileSync("fly.toml", "utf8");
     expect(flyToml).toContain('REAL_SITE_URL = "https://proofdesk.fly.dev"');
-    expect(flyToml).not.toContain("SOURCE_URL");
+    expect(flyToml).toContain('SOURCE_URL = "https://github.com/yylerbrown/proofdesk"');
+    expect(fs.readFileSync("fly.proofdesk.toml", "utf8")).toContain(
+      'SOURCE_URL = "https://github.com/yylerbrown/proofdesk"',
+    );
   });
 });
 

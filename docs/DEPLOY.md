@@ -86,11 +86,10 @@ set-aside folder keeps what visitors wrote; delete it when it is no longer neede
 
 ## The source link
 
-The welcome page links **Source and setup** to the repository's README when `SOURCE_URL` holds the
-repository's https address. It is not written into `fly.toml`, because the address names the
-account that owns the repository: set it on each app, for example
-`fly secrets set SOURCE_URL=<the repository's address> --app support-desk-demo`. The link opens
-for strangers only once the repository is public.
+The welcome page links **Source and setup** to the README of the public copy of the source,
+<https://github.com/yylerbrown/proofdesk>, and `GET /api` names it, from `SOURCE_URL` in both `fly.toml` and
+`fly.proofdesk.toml`. That copy is republished after each batch of merges; the working repository
+stays private, so nothing links to it.
 
 ## After every deploy
 

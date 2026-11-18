@@ -16,6 +16,8 @@ primary_region = "sjc"
   # Where Fly's proxy puts the visitor's address. Used for rate limits. See docs/DEPLOY.md:
   # this must be checked on the first deploy.
   CLIENT_IP_HEADER = "fly-client-ip"
+  # The public copy of the source, linked from the welcome page as "Source and setup".
+  SOURCE_URL = "https://github.com/yylerbrown/proofdesk"
   # This app is the public demo: sample data and the three demo people, no GitHub sign-in.
   # Without it the server would start in production with no sign-in settings and refuse.
   DEMO = "on"

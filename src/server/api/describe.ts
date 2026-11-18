@@ -53,7 +53,7 @@ function you(actor: Actor | null) {
 }
 
 /** The guide: what Proofdesk is, who you are here, and exactly how to do the one job. */
-export function guide(actor: Actor | null, address: string) {
+export function guide(actor: Actor | null, address: string, sourceUrl?: string) {
   const key = "-H 'Authorization: Bearer <key>'";
   return {
     name: "Proofdesk",
@@ -108,6 +108,8 @@ export function guide(actor: Actor | null, address: string) {
       guide: `${address}/api`,
       openapi: `${address}/api/openapi.json`,
       mcp: `${address}/mcp`,
+      // The public source, with its README, when this server knows it.
+      ...(sourceUrl ? { source: `${sourceUrl}#readme` } : {}),
     },
     capabilities: Object.entries(CAPABILITIES).map(([action, c]) => ({
       action,
