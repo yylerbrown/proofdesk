@@ -78,6 +78,26 @@ curl -X POST http://localhost:3000/api/tickets \
   -d '{"title": "Printer is broken", "description": "It jams on every page."}'
 ```
 
+## Security
+
+What is in place, and the test file that fails if it is removed (`tests/security.test.ts`
+unless another is named):
+
+- **SQL.** Every statement in `src/server/tickets/repository.ts` is a fixed string with `?`
+  placeholders. Values are bound by the database driver and never joined into SQL text.
+- **Script injection.** Templates print ticket text with `<%= %>`, which escapes it. The link
+  field accepts only http and https addresses. See also `tests/pages.test.ts`.
+- **Headers.** The `helmet` library sets the security headers. The content security policy
+  allows scripts and styles only from this server, so an inline script cannot run. No page
+  contains an inline script or an inline style.
+- **Fields a caller must not control.** The service reads only the title, description, link and
+  check (and the status, for a status change). Anything else in a request is dropped.
+- **Size.** A request body over 100 KB is refused with 413. Each field also has its own limit.
+- **Errors.** An unexpected failure is logged on the server and answered with a fixed message.
+
+Not in place yet, and needed before the site is shown to anyone: sign-in and roles, a defence
+against forged cross-site requests, and rate limits. They come with the sign-in step.
+
 ## Tests and checks
 
 ```sh
