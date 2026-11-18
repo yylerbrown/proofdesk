@@ -212,3 +212,14 @@ describe("limits for a connection", () => {
     expect(other.status).toBe(201);
   });
 });
+
+describe("the connections page after a key is used", () => {
+  it("shows when each connection last acted", async () => {
+    const { app } = buildTestApp();
+    const key = await issue(app, ["read_tickets"]);
+    await agent(app, key).get("/api/tickets");
+    const res = await admin(app).get("/connections");
+    expect(res.status).toBe(200);
+    expect(parse(res.text).querySelector("tbody time")?.getAttribute("datetime")).toMatch(/Z$/);
+  });
+});
