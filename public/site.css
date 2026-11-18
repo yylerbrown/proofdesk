@@ -251,6 +251,22 @@ header nav .viewer strong {
   .site-header .sign-out button {
     min-height: 32px;
     font-size: var(--pd-text-xs);
+    white-space: nowrap;
+  }
+  /* Sign out keeps its one line; who is signed in takes the rest of the row and may wrap. */
+  .site-header nav ul.account > li:last-child {
+    flex: none;
+  }
+  .site-header nav ul.account > li.viewer {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  /* The role switch grows with its words, so they never cross its border. */
+  .site-header details.dropdown.switch-role > summary {
+    height: auto;
+    padding-block: 4px;
+    white-space: normal;
+    line-height: 1.4;
   }
 }
 /* The brand already goes to the list, so the Tickets link can go on the smallest phones. */
@@ -1385,4 +1401,20 @@ dl.evidence-fields dd a {
 .run-summary pre {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+/* The ticket list: the title is a link to the ticket too, read as text. */
+table.tickets td.title-cell a {
+  color: inherit;
+  text-decoration: none;
+}
+table.tickets td.title-cell a:hover {
+  text-decoration: underline;
+}
+/* The demo's sample fix: a quiet button with its note beside it. */
+form.sample-fix {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pd-space-2);
 }

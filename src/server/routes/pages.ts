@@ -42,6 +42,16 @@ type Problem = {
   values?: Record<string, string>;
 };
 
+/**
+ * On the demo, what "Use sample fix" fills in, each value marked as a demo sample, so a visitor
+ * can reach the customer's question without inventing evidence.
+ */
+const SAMPLE_FIX = {
+  change_url: "https://example.com/demo-sample-fix",
+  tried: "Demo sample value: I followed the customer's steps on the page to try.",
+  result: "Demo sample value: it worked as the customer's check describes.",
+};
+
 /** The sample a demo visitor files when they start the ticket workflow. Made up, like the demo. */
 const WALKTHROUGH_SAMPLE = {
   title: "The export button downloads an empty file",
@@ -183,6 +193,20 @@ export function pagesRouter(service: TicketService): Router {
       askBlocked: askBlockedReason(ticket, actor),
       assistantSignal: service.assistantSignals([ticket], actor).get(ticket.key) ?? null,
       demoNext: demoNext(ticket, actor),
+      // On the demo, the owner of a ticket in progress may fill the fix with sample values.
+      sampleFix:
+        actor.demo === true &&
+        ticket.owner_id === actor.id &&
+        ticket.status === "in_progress" &&
+        ticket.ready_at === null,
+      askSample:
+        actor.demo === true && req.query.sample === "1"
+          ? {
+              try_url: ticket.try_url ?? ticket.where_url ?? "https://example.com/demo-sample-page",
+              tried: SAMPLE_FIX.tried,
+              result: SAMPLE_FIX.result,
+            }
+          : null,
       recordedRun: service.recordedRunKey() === ticket.key,
       handOffTo: service.handOffCandidates(ticket),
       agentHelp,
@@ -418,6 +442,19 @@ export function pagesRouter(service: TicketService): Router {
 
   router.post("/tickets/:key/agreed-check", ticketForm("agreedCheck", service.agreeCheck));
   router.post("/tickets/:key/change-link", ticketForm("changeLink", service.linkChange));
+
+  // On the demo only: link a sample change, then open the ask filled with sample values.
+  router.post("/tickets/:key/sample-fix", (req, res) => {
+    const actor = signedIn(req);
+    if (actor.demo !== true) {
+      throw new HttpError(404, "not_found", "There is no page at this address.");
+    }
+    const ticket = service.getTicket(req.params.key as string, actor);
+    if (ticket.change_url === null) {
+      service.linkChange(ticket.key, { change_url: SAMPLE_FIX.change_url }, actor);
+    }
+    res.redirect(303, `/tickets/${ticket.key}?sample=1#ask`);
+  });
   router.post("/tickets/:key/ready", ticketForm("ready", service.markReady));
   router.post("/tickets/:key/answer", ticketForm("answer", service.answer));
   router.post("/tickets/:key/reopen", ticketForm("reopen", service.reopen));
