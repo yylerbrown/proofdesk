@@ -4,28 +4,28 @@
 <form method="post" action="<%= action %>">
   <label>
     Title
-    <input type="text" name="title" value="<%= values.title %>" required <% if (errors.title) { %>aria-invalid="true"<% } %> />
-    <% if (errors.title) { %><small><%= errors.title.join(" ") %></small><% } %>
+    <input type="text" name="title" value="<%= values.title %>" required <% if (errors.title) { %>aria-invalid="true" aria-describedby="title-error"<% } %> />
+    <% if (errors.title) { %><small id="title-error"><%= errors.title.join(" ") %></small><% } %>
   </label>
 
   <label>
     Description
-    <textarea name="description" rows="6" required <% if (errors.description) { %>aria-invalid="true"<% } %>><%= values.description %></textarea>
-    <% if (errors.description) { %><small><%= errors.description.join(" ") %></small><% } %>
+    <textarea name="description" rows="6" required <% if (errors.description) { %>aria-invalid="true" aria-describedby="description-error"<% } %>><%= values.description %></textarea>
+    <% if (errors.description) { %><small id="description-error"><%= errors.description.join(" ") %></small><% } %>
   </label>
 
   <label>
     Where did this happen? (optional, a link)
-    <input type="url" name="where_url" value="<%= values.where_url %>" placeholder="https://" <% if (errors.where_url) { %>aria-invalid="true"<% } %> />
-    <% if (errors.where_url) { %><small><%= errors.where_url.join(" ") %></small><% } %>
+    <input type="url" name="where_url" value="<%= values.where_url %>" placeholder="https://" <% if (errors.where_url) { %>aria-invalid="true" aria-describedby="where_url-error"<% } %> />
+    <% if (errors.where_url) { %><small id="where_url-error"><%= errors.where_url.join(" ") %></small><% } %>
   </label>
 
   <label>
     How will we know it's fixed? (optional)
-    <textarea name="fix_check" rows="3" <% if (errors.fix_check) { %>aria-invalid="true"<% } %>><%= values.fix_check %></textarea>
-    <% if (errors.fix_check) { %><small><%= errors.fix_check.join(" ") %></small><% } %>
+    <textarea name="fix_check" rows="3" <% if (errors.fix_check) { %>aria-invalid="true" aria-describedby="fix_check-error"<% } %>><%= values.fix_check %></textarea>
+    <% if (errors.fix_check) { %><small id="fix_check-error"><%= errors.fix_check.join(" ") %></small><% } %>
   </label>
 
-  <button type="submit"><%= submitLabel %></button>
+  <button type="submit" class="compact"><%= submitLabel %></button>
 </form>
 <%- include("footer") %>
