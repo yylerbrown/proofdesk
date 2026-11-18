@@ -183,6 +183,7 @@ export function pagesRouter(service: TicketService): Router {
       askBlocked: askBlockedReason(ticket, actor),
       assistantSignal: service.assistantSignals([ticket], actor).get(ticket.key) ?? null,
       demoNext: demoNext(ticket, actor),
+      recordedRun: service.recordedRunKey() === ticket.key,
       handOffTo: service.handOffCandidates(ticket),
       agentHelp,
       entries,

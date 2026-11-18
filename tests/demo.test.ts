@@ -83,6 +83,7 @@ describe("the sample data", () => {
     const list = await asDemo(app, demoTeam.id).get("/api/tickets");
     // Open tickets newest first, then the resolved one.
     expect(list.body.map((t: { key: string }) => t.key)).toEqual([
+      "SUP-8",
       "SUP-7",
       "SUP-6",
       "SUP-4",
@@ -104,7 +105,7 @@ describe("the sample data", () => {
     const { db, config } = buildDemo();
     const service = createTicketService(db, config.ticketPrefix);
     seedDemo(service);
-    expect(service.listTickets("all", demoAdmin)).toHaveLength(7);
+    expect(service.listTickets("all", demoAdmin)).toHaveLength(8);
   });
 });
 
@@ -152,7 +153,7 @@ describe("the other demo people", () => {
     expect((await team.delete("/api/tickets/SUP-1").send({ confirm: "SUP-1" })).status).toBe(403);
     const mine = await asDemo(app, demoCustomer.id).post("/api/tickets/SUP-1/archive");
     expect(mine.status).toBe(403);
-    expect((await team.get("/api/tickets")).body).toHaveLength(7);
+    expect((await team.get("/api/tickets")).body).toHaveLength(8);
     expect((await team.get("/tickets/SUP-1")).text).not.toContain("/tickets/SUP-1/archive");
   });
 

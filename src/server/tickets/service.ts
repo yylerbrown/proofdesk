@@ -152,6 +152,8 @@ export type DemoSeed = {
   tickets: number[];
   /** The sample made for assistants: on the demo, it is handed to every visitor's connection. */
   assistant?: number;
+  /** The recorded example of a real assistant run, copied from its transcript. */
+  recorded?: number;
   entries: number[];
   events: number[];
   text: Record<string, Partial<repository.TicketRow>>;
@@ -1698,7 +1700,7 @@ export function createTicketService(
      * Records what seeding wrote, so a demo connection can be shown only that. Called once,
      * right after the demo's sample data is created on an empty database.
      */
-    recordDemoSeed(assistantKey?: string): void {
+    recordDemoSeed(assistantKey?: string, recordedKey?: string): void {
       const ids = (table: string) =>
         (db.prepare(`SELECT id FROM ${table}`).all() as { id: number }[]).map((r) => r.id);
       const text: DemoSeed["text"] = {};
@@ -1729,6 +1731,9 @@ export function createTicketService(
       const seed: DemoSeed = {
         tickets: ids("tickets"),
         ...(assistant === null || assistant === undefined ? {} : { assistant }),
+        ...(recordedKey === undefined
+          ? {}
+          : { recorded: parseKey(prefix, recordedKey) ?? undefined }),
         entries: ids("ticket_entries"),
         events: ids("ticket_events"),
         text,
@@ -1739,6 +1744,12 @@ export function createTicketService(
     /** Whether the demo's seeding was recorded, which demo connections need. */
     hasDemoSeed(): boolean {
       return demoSeed() !== null;
+    },
+
+    /** The demo's recorded example of a real assistant run, by key, or null when there is none. */
+    recordedRunKey(): string | null {
+      const id = demoSeed()?.recorded;
+      return id === undefined ? null : buildKey(prefix, id);
     },
 
     /**

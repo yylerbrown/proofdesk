@@ -1,0 +1,150 @@
+import fs from "node:fs";
+import { parse } from "node-html-parser";
+import request from "supertest";
+import { describe, expect, it } from "vitest";
+import { DEV_COOKIE } from "../src/server/actor.js";
+import { seedDemo } from "../src/server/demo.js";
+import { createTicketService } from "../src/server/tickets/service.js";
+import { buildTestApp, visitor } from "./helpers.js";
+
+// The recorded example of a real assistant run: the demo ticket carries what the assistant sent,
+// copied from its transcript and compared with it here, and its files are public.
+
+const RUN = "docs/assistant-run";
+
+/** What the assistant sent to each Proofdesk tool, read from the kept transcript. */
+function sent(): Record<string, Record<string, unknown>> {
+  const inputs: Record<string, Record<string, unknown>> = {};
+  for (const line of fs.readFileSync(`${RUN}/transcript.public.jsonl`, "utf8").split("\n")) {
+    if (!line.trim()) continue;
+    const event = JSON.parse(line) as { message?: { content?: unknown } };
+    const content = event?.message?.content;
+    if (!Array.isArray(content)) continue;
+    for (const block of content as { type?: string; name?: string; input?: object }[]) {
+      if (block.type === "tool_use" && block.name?.includes("proofdesk")) {
+        inputs[block.name.split("__").at(-1)!] = block.input as Record<string, unknown>;
+      }
+    }
+  }
+  return inputs;
+}
+
+function demo() {
+  const built = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
+  seedDemo(createTicketService(built.db, built.config.ticketPrefix));
+  const asTeam = () => visitor(built.app).set("Cookie", `${DEV_COOKIE}=demo-team`);
+  return { ...built, asTeam };
+}
+
+describe("the recorded run on the demo", () => {
+  it("is labelled, carries the same check, and was left as the run left it", async () => {
+    const { asTeam } = demo();
+    const ticket = (await asTeam().get("/api/tickets/SUP-8")).body;
+    expect(ticket.title).toBe(
+      "Recorded example of a real assistant run on 18 Nov 2026: the total adds tax twice",
+    );
+    expect(ticket.fix_check).toBe("total(100, 0.1) returns 110, and a test shows it");
+    expect(ticket).toMatchObject({ status: "in_progress", owner_name: "Demo Team Member" });
+    expect(ticket.ready_at).toBeNull();
+  });
+
+  it("holds the spec, the evidence and the review request exactly as the assistant sent them", async () => {
+    const { asTeam } = demo();
+    const inputs = sent();
+    const spec = (await asTeam().get("/api/tickets/SUP-8")).body.spec;
+    expect(spec.state).toBe("proposed");
+    expect(spec.summary).toBe(inputs.propose_spec!.summary);
+    expect(
+      spec.scenarios.map(({ title, given, when, then, test_name }: Record<string, string>) => ({
+        title,
+        given,
+        when,
+        then,
+        test_name,
+      })),
+    ).toEqual(inputs.propose_spec!.scenarios);
+
+    const [evidence] = (await asTeam().get("/api/tickets/SUP-8/evidence")).body;
+    const reported = inputs.add_evidence!;
+    expect(evidence).toMatchObject({
+      kind: reported.kind,
+      summary: reported.summary,
+      command: reported.command,
+      result: reported.result,
+      revision: reported.revision,
+      scenario: reported.scenario,
+      reported_by: { kind: "agent", name: "Demo visitor ea29379c" },
+    });
+    expect(evidence.report).toEqual(reported.report);
+
+    const notes = (await asTeam().get("/api/tickets/SUP-8/entries")).body as Record<
+      string,
+      unknown
+    >[];
+    expect(notes.at(-1)).toMatchObject({
+      kind: "note",
+      purpose: "review_request",
+      author_name: "Demo visitor ea29379c",
+      body: `Asks the owner to review the evidence: ${inputs.ask_owner_to_review!.message}`,
+    });
+  });
+
+  it("labels the evidence with the assistant that reported it, and links the run", async () => {
+    const { asTeam } = demo();
+    const html = parse((await asTeam().get("/tickets/SUP-8")).text);
+    expect(html.querySelector("ul.evidence")?.text).toContain(
+      "Reported by Demo visitor ea29379c (AI agent)",
+    );
+    expect(html.querySelector(".recorded-run a")?.getAttribute("href")).toBe("/assistant-run");
+  });
+});
+
+describe("the assistant's work, on its own page", () => {
+  it("is open to anyone, from the welcome page, with the summary and links to each file", async () => {
+    const { app } = demo();
+    const welcome = parse((await visitor(app).get("/sign-in")).text);
+    expect(welcome.querySelector(".assistant-run-link a")?.text).toBe("See an assistant's work");
+    const page = parse((await visitor(app).get("/assistant-run")).text);
+    expect(page.querySelector("h1")?.text).toBe("An assistant's work");
+    expect(page.querySelector("pre.run-summary")?.text).toContain("Calls and results");
+    const links = page.querySelectorAll("main a").map((a) => a.getAttribute("href"));
+    expect(links).toEqual(
+      expect.arrayContaining([
+        "/assistant-run/files/transcript.public.jsonl",
+        "/assistant-run/files/sup4/total.js",
+        "/assistant-run/files/sup4/total.test.js",
+        "/tickets/SUP-8",
+      ]),
+    );
+  });
+
+  it("serves the kept files as plain text, exactly as kept", async () => {
+    const { app } = demo();
+    for (const file of ["transcript.public.jsonl", "sup4/total.js", "sup4/total.test.js"]) {
+      const res = await request(app)
+        .get(`/assistant-run/files/${file}`)
+        .buffer(true)
+        .parse((r, cb) => {
+          let body = "";
+          r.on("data", (chunk: Buffer) => (body += chunk.toString()));
+          r.on("end", () => cb(null, body));
+        });
+      expect(res.status, file).toBe(200);
+      expect(res.headers["content-type"], file).toMatch(/^text\/plain/);
+      expect(res.body, file).toBe(fs.readFileSync(`${RUN}/${file}`, "utf8"));
+    }
+  });
+
+  it("keeps no key, local path or personal detail in what it publishes", () => {
+    for (const file of [
+      "transcript.public.jsonl",
+      "summary.md",
+      "sup4/total.js",
+      "sup4/total.test.js",
+    ]) {
+      const text = fs.readFileSync(`${RUN}/${file}`, "utf8");
+      expect(text, file).not.toMatch(/pd_[0-9a-f]{8}_[A-Za-z0-9_-]{8,}/);
+      expect(text, file).not.toMatch(/\/Users\/|Bearer [A-Za-z0-9]/);
+    }
+  });
+});
