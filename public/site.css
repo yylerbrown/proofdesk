@@ -1697,6 +1697,21 @@ p.saved {
 .welcome section > p {
   color: var(--pd-muted);
 }
+/* GitHub's mark on its sign-in button, in the button's own text colour. */
+.github-mark {
+  display: inline-block;
+  width: 1.15em;
+  height: 1.15em;
+  margin-right: var(--pd-space-2);
+  vertical-align: -0.2em;
+  background-color: currentColor;
+  -webkit-mask: url("/assets/github-mark.svg") center / contain no-repeat;
+  mask: url("/assets/github-mark.svg") center / contain no-repeat;
+}
+.welcome .github-reads {
+  margin-top: var(--pd-space-2);
+  color: var(--pd-muted);
+}
 /* The made-up people: one bordered list, a row each, the whole row is the button. */
 .people {
   margin: 0 0 var(--pd-space-5);
