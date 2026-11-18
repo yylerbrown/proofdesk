@@ -11,7 +11,7 @@ import { noticesFor, type EventFacts, type PlannedNotice } from "./rules.js";
 
 // The outbox: notices worked out from the ticket history. collectNotices reads the events after
 // the cursor, writes a row for each notice the rules allow, and moves the cursor, in one
-// transaction. Nothing here sends anything; a later step does that from the pending rows.
+// transaction. Nothing here sends anything: send.ts does that from the pending rows.
 
 /** What collecting needs from the server's settings. */
 export type NotifySettings = {
@@ -30,6 +30,20 @@ export type NotifySettings = {
    */
   madeUpPeople: readonly MadeUpPerson[];
 };
+
+/**
+ * The notice settings of this server. The link in each notice goes to its public address: the
+ * one set for it, or the one GitHub sign-in returns to, or this machine for development.
+ */
+export function notifySettingsOf(config: Config): NotifySettings {
+  return {
+    ticketPrefix: config.ticketPrefix,
+    siteUrl: config.publicUrl ?? config.signIn?.baseUrl ?? `http://localhost:${config.port}`,
+    demo: config.demo,
+    mailConfigured: config.mail !== null,
+    madeUpPeople: madeUpPeopleOf(config),
+  };
+}
 
 /** A made-up person, by id and display name. */
 export type MadeUpPerson = { id: string; name: string };
@@ -52,6 +66,7 @@ export const NOT_SENT_REASONS = {
   demo: "This is the demo, which never sends email.",
   madeUp: "This person is made up and has no address.",
   noMailServer: "Email is off on this site: no mail server is set up.",
+  unverified: "This person's email address is not verified, so no email goes to it.",
 } as const;
 
 /**
@@ -146,17 +161,21 @@ function wantsEmail(): boolean {
   return true;
 }
 
-/** Who a notice goes to: a name and an address, which is empty for a made-up person. */
-type Recipient = { name: string; address: string; madeUp: boolean };
+/**
+ * Who a notice goes to: a name and an address, which is empty for a made-up person, and
+ * whether the address is verified.
+ */
+type Recipient = { name: string; address: string; madeUp: boolean; verified: boolean };
 
 /** The recipient with this id, or undefined when there is nobody to write to. */
 function recipientOf(db: Db, id: string, settings: NotifySettings): Recipient | undefined {
   const person = repository.personOf(db, id);
   if (person !== undefined && person.email !== "") {
-    return { name: person.name, address: person.email, madeUp: false };
+    return { name: person.name, address: person.email, madeUp: false, verified: person.verified };
   }
   const madeUp = settings.madeUpPeople.find((someone) => someone.id === id);
-  if (madeUp !== undefined) return { name: madeUp.name, address: "", madeUp: true };
+  if (madeUp !== undefined)
+    return { name: madeUp.name, address: "", madeUp: true, verified: false };
   return undefined;
 }
 
@@ -165,6 +184,8 @@ function notSentReason(settings: NotifySettings, recipient: Recipient): string |
   if (settings.demo) return NOT_SENT_REASONS.demo;
   // A made-up person has no address, so their notice is never sent.
   if (recipient.madeUp) return NOT_SENT_REASONS.madeUp;
+  // Only an address GitHub verified is ever mailed.
+  if (!recipient.verified) return NOT_SENT_REASONS.unverified;
   if (!settings.mailConfigured) return NOT_SENT_REASONS.noMailServer;
   return null;
 }
