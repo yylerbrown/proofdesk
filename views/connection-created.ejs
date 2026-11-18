@@ -16,14 +16,19 @@
   Key for <span class="user-text"><%= connection.name %></span>
   <input type="text" readonly value="<%= key %>" class="key" />
 </label>
+<button type="button" class="copy secondary" data-copy="<%= key %>" hidden>Copy</button>
 
 <h2>Connect Claude Code</h2>
 <p>Paste this in a terminal:</p>
+<% const claudeCode = `claude mcp add --transport http proofdesk ${address}/mcp --header "Authorization: Bearer ${key}"`; %>
 <pre class="paste" id="claude-code"><code>claude mcp add --transport http proofdesk <%= address %>/mcp --header "Authorization: Bearer <%= key %>"</code></pre>
+<button type="button" class="copy secondary" data-copy="<%= claudeCode %>" hidden>Copy</button>
 
 <h2>Other assistants</h2>
 <p>The MCP endpoint is <code><%= address %>/mcp</code>; send the key as <code>Authorization: Bearer &lt;key&gt;</code>. In Claude Desktop, add a custom connector with that address and the key as a request header, where your organization has that option. An assistant that runs commands can also call the API directly:</p>
+<% const curlCommand = `curl -H "Authorization: Bearer ${key}" "${address}/api/tickets?status=new"`; %>
 <pre class="paste"><code>curl -H "Authorization: Bearer <%= key %>" "<%= address %>/api/tickets?status=new"</code></pre>
+<button type="button" class="copy secondary" data-copy="<%= curlCommand %>" hidden>Copy</button>
 
 <% if (connection.demo) { %>
 <p><a href="/sign-in">Back to the welcome page</a></p>

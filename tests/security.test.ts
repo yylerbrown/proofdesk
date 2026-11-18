@@ -69,7 +69,8 @@ describe("security headers", () => {
     ];
     for (const address of pages) {
       const res = await admin(app).get(address);
-      if (res.status === 200) expect(res.text, address).toContain(OWN_SCRIPT);
+      if (res.status === 200)
+        for (const own of OWN_SCRIPTS) expect(res.text, address).toContain(own);
       expect(withoutOwnScript(res.text), address).not.toMatch(/<script/i);
       expect(res.text, address).not.toMatch(/<style/i);
       expect(res.text, address).not.toMatch(/\sstyle=/i);
@@ -224,14 +225,18 @@ describe("SQL injection", () => {
 });
 
 // The one script tag the pages carry: a file from this site that shows times in local time.
-const OWN_SCRIPT = '<script type="module" src="/assets/js/local-time.js"></script>';
+// The site's own scripts, each a file served from this site: local times, and copy buttons.
+const OWN_SCRIPTS = [
+  '<script type="module" src="/assets/js/local-time.js"></script>',
+  '<script type="module" src="/assets/js/copy.js"></script>',
+];
 
 // The one image tag: the mark beside the name in the header.
 const OWN_MARK = '<img src="/assets/mark.svg" alt="" width="24" height="24" />';
 
 /** A page without its own script and mark tags, so that any other such tag stands out. */
 function withoutOwnScript(html: string): string {
-  return html.replace(OWN_SCRIPT, "").replace(OWN_MARK, "");
+  return OWN_SCRIPTS.reduce((rest, own) => rest.replace(own, ""), html).replace(OWN_MARK, "");
 }
 
 describe("script injection in pages", () => {
