@@ -23,6 +23,11 @@ describe("values written once", () => {
     expect(sources.split(words)).toHaveLength(2);
   });
 
+  it("who wrote a history entry is filled in by one helper in the ticket service", () => {
+    const service = fs.readFileSync("src/server/tickets/service.ts", "utf8");
+    expect(service.split("context: agentContext(actor)")).toHaveLength(2);
+  });
+
   it("the demo's scopes are the default scopes", () => {
     expect(DEMO_SCOPES).toBe(DEFAULT_SCOPES);
   });
