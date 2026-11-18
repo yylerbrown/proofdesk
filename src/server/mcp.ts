@@ -222,9 +222,10 @@ export function mcpEndpoint(
 }
 
 /**
- * Answers an error raised on /mcp before the SDK answers (a body that is not JSON or is too
- * large, or the write allowance) as a JSON-RPC error an MCP client can read, never as a page.
- * The HTTP status stays, and `data` carries the same code, hint and retry flag as the API.
+ * Answers an error raised on /mcp before the SDK answers (a body that is not JSON, is too
+ * large or was not read, or the write allowance) as a JSON-RPC error an MCP client can read,
+ * never as a page. The HTTP status stays, and `data` carries the same code, hint and retry
+ * flag as the API.
  */
 export const mcpErrorHandler: ErrorRequestHandler = (err, _req, res, next) => {
   if (res.headersSent) {
