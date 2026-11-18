@@ -73,14 +73,22 @@ export type Auth = ReturnType<typeof createAuth>;
 const NAME_LIMIT = 100;
 
 /**
+ * Splits text into the characters a reader sees. A flag, an emoji with a skin tone or a
+ * family emoji is made of several joined together, and counts as one.
+ */
+const readerCharacters = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+
+/**
  * The name kept for a person: their GitHub display name cut to NAME_LIMIT characters, or
- * their GitHub login when the display name is empty or only spaces. Array.from splits the
- * name into whole characters, so the cut never leaves half of one, such as half an emoji.
+ * their GitHub login when the display name is empty or only spaces. The cut counts the
+ * characters a reader sees, so it never leaves half of one, such as half a flag.
  */
 function shownName(name: string | null, login: string): string {
   const trimmed = (name ?? "").trim();
   const chosen = trimmed === "" ? login : trimmed;
-  return Array.from(chosen).slice(0, NAME_LIMIT).join("");
+  return Array.from(readerCharacters.segment(chosen), (part) => part.segment)
+    .slice(0, NAME_LIMIT)
+    .join("");
 }
 
 /** The GitHub user number of a signed-in person, or undefined if they have no GitHub account. */

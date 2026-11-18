@@ -133,6 +133,21 @@ describe("the whole GitHub sign-in", () => {
     ]);
   });
 
+  // Each of these is one character to a reader, made of several joined together.
+  it.each([
+    ["a flag", "\u{1F1E8}\u{1F1E6}"],
+    ["an emoji with a skin tone", "\u{1F44D}\u{1F3FD}"],
+    ["a family emoji", "\u{1F469}‍\u{1F469}‍\u{1F467}"],
+    ["a keycap", "1️⃣"],
+  ])("keeps %s whole when it is the 100th character of a GitHub name", async (_case, joined) => {
+    const { app, db } = buildGithubApp();
+    const name = "W".repeat(99) + joined + "W";
+    await signInThroughGithub(app, { id: 4005, login: "joined", name, email: "d@x.test" });
+    expect(db.prepare(`SELECT "name" FROM "user"`).get()).toEqual({
+      name: "W".repeat(99) + joined,
+    });
+  });
+
   it.each([
     ["empty", ""],
     ["only spaces", "   "],
