@@ -82,15 +82,20 @@ export function publicReplyOf(db: Db, event: EventRow): PublicReply | undefined 
     .get(event.ticket_id, event.actor, event.created_at) as PublicReply | undefined;
 }
 
+/** A signed-in person: their name, their email address and whether GitHub verified it. */
+export type Person = { name: string; email: string; verified: boolean };
+
 /**
- * A signed-in person's name and verified email address, from the sign-in library's table of
- * people. Undefined for anyone who has never signed in, such as the made-up people and
- * assistants. Sign-in already refuses an address that is not verified; the query says so too.
+ * A signed-in person, from the sign-in library's table of people. Undefined for anyone who has
+ * never signed in, such as the made-up people and assistants. Sign-in already refuses an
+ * address that is not verified, but the table says, and a notice is only sent to one that is.
  */
-export function personOf(db: Db, id: string): { name: string; email: string } | undefined {
-  return db
-    .prepare('SELECT name, email FROM "user" WHERE id = ? AND "emailVerified" = 1')
-    .get(id) as { name: string; email: string } | undefined;
+export function personOf(db: Db, id: string): Person | undefined {
+  const row = db
+    .prepare('SELECT name, email, "emailVerified" AS verified FROM "user" WHERE id = ?')
+    .get(id) as { name: string; email: string; verified: number } | undefined;
+  if (row === undefined) return undefined;
+  return { name: row.name, email: row.email, verified: row.verified === 1 };
 }
 
 /** One stored notice. */
@@ -110,6 +115,7 @@ export type NoticeRow = {
   created_at: string;
   updated_at: string;
   sent_at: string | null;
+  next_attempt_at: string | null;
 };
 
 export type NewNotice = Pick<
@@ -154,4 +160,61 @@ export function noticesOfTicketFor(db: Db, ticketId: number, recipientId: string
   return db
     .prepare("SELECT * FROM email_outbox WHERE ticket_id = ? AND recipient_id = ? ORDER BY id")
     .all(ticketId, recipientId) as NoticeRow[];
+}
+
+/** The pending notices whose time to be tried has come, oldest first, at most this many. */
+export function dueNotices(db: Db, now: string, most: number): NoticeRow[] {
+  return db
+    .prepare(
+      `SELECT * FROM email_outbox
+       WHERE state = 'pending' AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
+       ORDER BY id LIMIT ?`,
+    )
+    .all(now, most) as NoticeRow[];
+}
+
+/**
+ * Claims a pending notice for one try: counts the try and moves its next time forward. True
+ * when this call claimed it, false when someone else changed it first.
+ */
+export function claimNotice(
+  db: Db,
+  id: number,
+  attempts: number,
+  now: string,
+  nextAttemptAt: string,
+): boolean {
+  const result = db
+    .prepare(
+      `UPDATE email_outbox
+       SET attempts = attempts + 1, next_attempt_at = ?, updated_at = ?
+       WHERE id = ? AND state = 'pending' AND attempts = ?`,
+    )
+    .run(nextAttemptAt, now, id, attempts);
+  return result.changes === 1;
+}
+
+export function markSent(db: Db, id: number, now: string): void {
+  db.prepare(
+    `UPDATE email_outbox
+     SET state = 'sent', sent_at = ?, updated_at = ?, last_error = NULL, next_attempt_at = NULL
+     WHERE id = ?`,
+  ).run(now, now, id);
+}
+
+/** Keeps a notice pending after a failed try. Its claim already set when it is tried next. */
+export function markRetry(db: Db, id: number, now: string, error: string): void {
+  db.prepare("UPDATE email_outbox SET last_error = ?, updated_at = ? WHERE id = ?").run(
+    error,
+    now,
+    id,
+  );
+}
+
+export function markFailed(db: Db, id: number, now: string, error: string): void {
+  db.prepare(
+    `UPDATE email_outbox
+     SET state = 'failed', last_error = ?, updated_at = ?, next_attempt_at = NULL
+     WHERE id = ?`,
+  ).run(error, now, id);
 }

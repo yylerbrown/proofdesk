@@ -97,6 +97,7 @@ All of them are in `.env.example`, with comments.
 | `REAL_SITE_URL`                                                                     | Optional, on the demo: the production site's https address, named on the welcome page as where GitHub sign-in with roles runs.                                              |
 | `SOURCE_URL`                                                                        | Optional: the repository's https address. The welcome page then links **Source and setup** to its README, and `GET /api` names it. Both Fly apps set it to the public copy. |
 | `PUBLIC_URL`                                                                        | Optional: the address people and assistants reach this server at, for the commands to paste. Else `BETTER_AUTH_URL`, else each request's own address. The demo sets it.     |
+| `SMTP_URL`, `MAIL_FROM`                                                             | Optional: the mail server (`smtps://user:password@host:465`) and the sender for email notices. Both or neither. Without them, or on the demo, nothing is sent.              |
 | `GIT_COMMIT`                                                                        | Reported by `GET /api/health`.                                                                                                                                              |
 
 ### GitHub sign-in
@@ -275,7 +276,8 @@ code. The specification ([`docs/SPEC.md`](docs/SPEC.md)), the history of every s
 
 - **Last writer wins** for edits to a ticket and to the team's check. Only the customer's answer
   carries a version check, so an old page cannot answer a newer question.
-- **No email.** Nobody is told when something changes; people look at the ticket.
+- **Email needs a mail server.** Notices are sent only once `SMTP_URL` and `MAIL_FROM` are set,
+  and nobody can turn them off for themselves yet.
 - **Evidence is reported, not verified.** Proofdesk shows who reported it and checks none of it.
 - **One machine.** SQLite on one disk; rate-limit counts are in memory and reset on a restart.
   Several machines would need Postgres and a shared store for the rate limits.

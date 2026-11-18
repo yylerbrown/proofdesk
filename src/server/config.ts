@@ -37,6 +37,13 @@ const schema = z.object({
   SOURCE_URL: z.url({ protocol: /^https$/ }).optional(),
   // The address people and assistants reach this server at, given in the commands to paste.
   PUBLIC_URL: z.url({ protocol: /^https?$/ }).optional(),
+  // The mail server that email notices are sent through, for example
+  // smtps://user:password@mail.example.com:465. Set together with MAIL_FROM, or not at all.
+  SMTP_URL: z
+    .url({ protocol: /^smtps?$/, error: "must be an smtp:// or smtps:// address" })
+    .optional(),
+  // The address notices are sent from, for example notices@example.com.
+  MAIL_FROM: z.email({ error: "must be an email address" }).optional(),
 });
 
 const SIGN_IN_NAMES = [
@@ -45,6 +52,14 @@ const SIGN_IN_NAMES = [
   "GITHUB_CLIENT_ID",
   "GITHUB_CLIENT_SECRET",
 ] as const;
+
+/** The two settings email notices need. They are set together or not at all. */
+export type MailConfig = {
+  /** The mail server's address. It may hold a password, so it is never logged or shown. */
+  smtpUrl: string;
+  /** The address notices are sent from. */
+  from: string;
+};
 
 /** The four settings GitHub sign-in needs. They are set together or not at all. */
 export type SignInConfig = {
@@ -81,6 +96,8 @@ export type Config = {
   clientIpHeader: string | undefined;
   teamGithubIds: string[];
   adminGithubIds: string[];
+  /** The mail server for email notices, or null when none is set. Always null on the demo. */
+  mail: MailConfig | null;
 };
 
 /** Parses and validates environment variables. Throws a readable error when invalid. */
@@ -104,6 +121,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     REAL_SITE_URL: env.REAL_SITE_URL || undefined,
     SOURCE_URL: env.SOURCE_URL || undefined,
     PUBLIC_URL: env.PUBLIC_URL || undefined,
+    SMTP_URL: env.SMTP_URL || undefined,
+    MAIL_FROM: env.MAIL_FROM || undefined,
   });
   if (!result.success) {
     const details = result.error.issues
@@ -155,6 +174,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
         "production. Over plain http the session cookie would travel unprotected.",
     );
   }
+  // The mail settings come as a pair: both, or neither.
+  if ((data.SMTP_URL === undefined) !== (data.MAIL_FROM === undefined)) {
+    const other = data.SMTP_URL === undefined ? "SMTP_URL" : "MAIL_FROM";
+    throw new Error(`Invalid environment configuration: also set ${other}, or neither.`);
+  }
   const signIn =
     missing.length > 0
       ? null
@@ -181,5 +205,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     clientIpHeader: data.CLIENT_IP_HEADER,
     teamGithubIds: data.TEAM_GITHUB_IDS,
     adminGithubIds: data.ADMIN_GITHUB_IDS,
+    // The demo never sends email, whatever is set.
+    mail:
+      data.DEMO === "on" || data.SMTP_URL === undefined || data.MAIL_FROM === undefined
+        ? null
+        : { smtpUrl: data.SMTP_URL, from: data.MAIL_FROM },
   };
 }

@@ -47,6 +47,31 @@ Done once, already done:
    The server refuses to start in production without the four sign-in settings, or with an
    address that does not start with `https://`.
 
+## Email notices
+
+Off until two settings are set; the real site has neither today. Without them every notice is
+kept as not sent, with the reason, and nothing is emailed. The demo never sends, whatever is set.
+
+1. **A mail provider account** that sends over SMTP, with a sending domain it has checked. The
+   site's owner creates it; it is not part of this repository.
+2. **The secrets.** The address holds the provider's password, so it goes in as a secret:
+
+   ```sh
+   fly secrets set --app proofdesk \
+     SMTP_URL="smtps://<user>:<password>@<provider's SMTP host>:465" \
+     MAIL_FROM=<an address on the checked domain>
+   ```
+
+   The server refuses to start with one of the two and not the other. It never prints the
+   address of the mail server, in a log line, an error or the health check.
+
+3. **Check it.** The log says "Email notices are sent through the mail server that is set." at
+   start. Ask a customer "Did this fix it?" on a test ticket: their email arrives within seconds.
+   A notice that could not be sent is tried five times, waiting longer each time, and then kept
+   as failed with a short reason in the `email_outbox` table.
+
+Only addresses GitHub verified are mailed, and only to the people the notice rules name.
+
 The commands below name the demo app; for the real site use `--app proofdesk`.
 
 **The real site always deploys with `--config fly.proofdesk.toml`.** `fly.toml` sets `DEMO=on`;
