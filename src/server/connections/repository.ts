@@ -86,8 +86,11 @@ export type ActivityRow = {
   created_at: string;
 };
 
-/** Records one thing a connection asked for, and prunes rows older than 30 days. */
-export function insertActivity(db: Db, row: Omit<ActivityRow, "id">): void {
+/**
+ * Records one thing a connection asked for, then keeps only that connection's latest `keep`
+ * rows. Also prunes rows older than 30 days, which an index on created_at makes quick.
+ */
+export function insertActivity(db: Db, row: Omit<ActivityRow, "id">, keep: number): void {
   const monthAgo = new Date(Date.parse(row.created_at) - 30 * 24 * 3600 * 1000).toISOString();
   db.prepare("DELETE FROM agent_activity WHERE created_at < ?").run(monthAgo);
   db.prepare(
@@ -95,6 +98,13 @@ export function insertActivity(db: Db, row: Omit<ActivityRow, "id">): void {
        (connection_id, door, action, ticket_key, idempotency_key, outcome, code, created_at)
      VALUES (@connection_id, @door, @action, @ticket_key, @idempotency_key, @outcome, @code, @created_at)`,
   ).run(row);
+  // The row just past the latest `keep`, and every older one, go.
+  db.prepare(
+    `DELETE FROM agent_activity
+     WHERE connection_id = ?
+       AND id <= (SELECT id FROM agent_activity WHERE connection_id = ?
+                  ORDER BY id DESC LIMIT 1 OFFSET ?)`,
+  ).run(row.connection_id, row.connection_id, keep);
 }
 
 /** A connection's latest activity, newest first. */

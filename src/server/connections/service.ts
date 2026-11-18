@@ -15,6 +15,15 @@ import * as repository from "./repository.js";
 export const DEMO_CONNECTION_HOURS = 24;
 export const DEMO_CONNECTION_LIMIT = 200;
 
+/** How many of a connection's latest requests its activity trail keeps. Older ones are dropped. */
+export const ACTIVITY_KEPT = 1000;
+
+// What the activity trail stores of what an agent sent: a ticket key only when it has a
+// ticket key's form, and an idempotency key only when a write would accept it. Anything else
+// is stored as nothing, so a request cannot make its row as large as it likes.
+const TICKET_KEY_FORM = /^[A-Z]{2,6}-[1-9][0-9]{0,15}$/;
+const IDEMPOTENCY_KEY_MAX = 100;
+
 /** What a new connection may do unless the admin chooses otherwise: read, write notes, attach evidence, propose a test spec. */
 export const DEFAULT_SCOPES: AgentScope[] = [
   "read_tickets",
@@ -152,16 +161,23 @@ export function createConnectionService(db: Db) {
       },
     ): void {
       if (actor.kind !== "agent" || actor.connection === undefined) return;
-      repository.insertActivity(db, {
-        connection_id: actor.connection.id,
-        door: entry.door,
-        action: entry.action,
-        ticket_key: entry.ticketKey === "" ? null : entry.ticketKey,
-        idempotency_key: entry.idempotencyKey ?? null,
-        outcome: entry.outcome,
-        code: entry.code,
-        created_at: new Date().toISOString(),
-      });
+      repository.insertActivity(
+        db,
+        {
+          connection_id: actor.connection.id,
+          door: entry.door,
+          action: entry.action,
+          ticket_key: TICKET_KEY_FORM.test(entry.ticketKey) ? entry.ticketKey : null,
+          idempotency_key:
+            entry.idempotencyKey !== undefined && entry.idempotencyKey.length <= IDEMPOTENCY_KEY_MAX
+              ? entry.idempotencyKey
+              : null,
+          outcome: entry.outcome,
+          code: entry.code,
+          created_at: new Date().toISOString(),
+        },
+        ACTIVITY_KEPT,
+      );
     },
 
     /** One connection and its latest activity, for the team. */

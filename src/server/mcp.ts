@@ -40,7 +40,9 @@ function inputSchema(row: ApiAction) {
         }
       : {}),
     ...(row.path.includes(":key")
-      ? { key: z.string().meta({ description: "The ticket's key, for example SUP-42." }) }
+      ? {
+          key: z.string().max(30).meta({ description: "The ticket's key, for example SUP-42." }),
+        }
       : {}),
     ...(row.query?.shape ?? {}),
     ...((row.body as z.ZodObject | undefined)?.shape ?? {}),
