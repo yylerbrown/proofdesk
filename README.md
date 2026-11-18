@@ -104,7 +104,12 @@ panel between the description and the conversation.
 
 ## API
 
-All routes are under `/api` and speak JSON. Errors look like
+All routes are under `/api` and speak JSON. The API describes itself, with no sign-in
+needed: **`GET /api`** is a guide an agent can act on with no other reading (what Proofdesk is,
+who you are and what you may do, the exact calls for the one job, what to do with no check or
+when blocked, retries, paging, limits and when to stop), and **`GET /api/openapi.json`** is the
+OpenAPI 3.1 description, generated with `zod-openapi` from the same action table and schemas the
+server uses. A test checks a real answer from every action against its documented shape. Errors look like
 `{ "error": { "code": "...", "message": "...", "hint": "...", "retry": false } }`: the hint says
 what to do next, `retry` says whether sending the same request again can work, and a validation
 error also lists `fields`. The routes are built from one table, `ACTIONS` in

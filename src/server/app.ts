@@ -26,6 +26,8 @@ import { createTicketService, DEMO_BUDGET } from "./tickets/service.js";
 import { createConnectionService } from "./connections/service.js";
 import { connectionsRouter } from "./routes/connections.js";
 import { mcpEndpoint } from "./mcp.js";
+import { guide, openApiDocument } from "./api/describe.js";
+import { siteAddress } from "./routes/connections.js";
 
 // The top folder of the project. It is two levels above this file, both in src/server (when
 // run from source) and in dist/server (when run after a build).
@@ -34,13 +36,9 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../.
 // refused with 413 before any of it is looked at. The biggest valid ticket is about 6 KB.
 const BODY_LIMIT = "100kb";
 
-// How many tickets one person may file in ten minutes, and how many sign-ins one address
-// may start in a minute.
-export const FILING_LIMIT = 20;
-export const SIGN_IN_LIMIT = 10;
-// How many requests that change something one person (or one address) may make in ten
-// minutes, across every page and API route. Reading is not counted.
-export const WRITE_LIMIT = 120;
+// The limits live in limits.ts, where the API's guide reads them too.
+import { FILING_LIMIT, SIGN_IN_LIMIT, WRITE_LIMIT } from "./limits.js";
+export { FILING_LIMIT, SIGN_IN_LIMIT, WRITE_LIMIT };
 
 const picoCssFile = path.join(rootDir, "node_modules/@picocss/pico/css/pico.min.css");
 
@@ -153,6 +151,16 @@ export function createApp(config: Config, db: Db): Express {
   api.post("/tickets", filingLimit);
   api.use(express.json({ limit: BODY_LIMIT }));
   api.use(healthRouter(config, db));
+  // The API describes itself, with no sign-in needed: a guide at /api, and the
+  // machine-readable description at /api/openapi.json. With a key, the guide also says what
+  // that connection may do.
+  const openapi = openApiDocument();
+  api.get("/", (req, res) => {
+    res.json(guide(req.actor, siteAddress(config, req)));
+  });
+  api.get("/openapi.json", (_req, res) => {
+    res.json(openapi);
+  });
   api.use(ticketsRouter(tickets));
   api.use(notFoundHandler);
   api.use(errorHandler);

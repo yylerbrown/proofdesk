@@ -41,6 +41,12 @@ directly:
 curl -H "Authorization: Bearer <key>" "https://<your Proofdesk address>/api/tickets?status=new"
 ```
 
+## Ask Proofdesk itself
+
+`GET /api` is the same guide in JSON, with the exact calls, and with your key it says what your
+connection may and may not do. `GET /api/openapi.json` is the full machine-readable description.
+Over MCP, the server's instructions and each tool's description say the same.
+
 ## The one path
 
 1. **Find work**: `list_tickets` with `status: "new"` or `"in_progress"`.
