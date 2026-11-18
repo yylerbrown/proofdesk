@@ -1,3 +1,4 @@
+import { parse } from "node-html-parser";
 import { describe, expect, it } from "vitest";
 import {
   admin,
@@ -283,9 +284,14 @@ describe("an answer belongs to the question that was asked", () => {
     expect((await admin(app).get("/api/tickets/SUP-1/events")).body).toHaveLength(before);
   });
 
-  it("puts the question's token in both answer forms on the page", async () => {
+  it("puts the question's token in every answer form on the page", async () => {
     const { app, token } = await waiting();
-    const page = await as(app, customerOne).get("/tickets/SUP-1");
-    expect(page.text.split(`name="ready_token" value="${token}"`)).toHaveLength(3);
+    const page = parse((await as(app, customerOne).get("/tickets/SUP-1")).text);
+    const forms = page.querySelectorAll("form[action$='/answer']");
+    // Yes, No, and the three quick answers.
+    expect(forms).toHaveLength(5);
+    for (const form of forms) {
+      expect(form.querySelector("input[name=ready_token]")?.getAttribute("value")).toBe(token);
+    }
   });
 });

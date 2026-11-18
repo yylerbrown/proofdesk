@@ -1338,3 +1338,22 @@ details.more {
   padding-top: 6px;
   border-top: var(--pd-hairline);
 }
+
+/* Quick answers and replies: a row of small quiet buttons, each one plain words. */
+.quick-answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pd-space-2);
+  margin-bottom: var(--pd-space-4);
+}
+.quick-answers form {
+  margin: 0;
+}
+.quick-answers button.quick {
+  margin: 0;
+  padding: 4px 10px;
+  font-size: var(--pd-text-sm);
+}
+.quick-label {
+  margin: var(--pd-space-3) 0 var(--pd-space-2);
+}
