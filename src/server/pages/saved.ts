@@ -13,6 +13,7 @@ export const SAVED_MESSAGES = {
   taken: "You own this ticket now.",
   started: "You own this ticket, and it is in progress.",
   handedOff: "Handed off. The new owner has it now.",
+  adopted: "These are now your check, in your own name.",
   withdrawn: "Question withdrawn. You can ask the customer again when you are ready.",
   agentGiven: "Handed to the assistant. It can work on this ticket only.",
   agentEnded: "The assistant has stopped working on this ticket.",

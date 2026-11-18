@@ -78,7 +78,7 @@
   <% } %>
   <% } %>
   <% if (ticket.agreed_check) { %>
-  <p>Agreed check:</p>
+  <p>The team's interpretation of your check:</p>
   <blockquote class="user-text"><%= ticket.agreed_check %></blockquote>
   <% } %>
   <% if (ticket.fix_check) { %>
@@ -194,8 +194,13 @@
 <section>
   <h2>How will we know it's fixed?</h2>
   <% if (ticket.agreed_check) { %>
-  <p><strong>Agreed check</strong></p>
+  <p><strong>Team's interpretation</strong></p>
   <blockquote class="user-text"><%= ticket.agreed_check %></blockquote>
+  <% if (allowed.adoptCheck) { %>
+  <form method="post" action="/tickets/<%= ticket.key %>/adopt-check">
+    <button type="submit" class="secondary compact">Use these words as my check</button>
+  </form>
+  <% } %>
   <p><strong>In the customer's words</strong></p>
   <% } %>
   <% if (ticket.fix_check) { %>
@@ -205,10 +210,10 @@
   <% } %>
   <% if (allowed.agreeCheck) { %>
   <details <% if (problem?.form === "agreedCheck") { %>open<% } %>>
-    <summary>Agree a tighter check</summary>
+    <summary>Offer a clearer check</summary>
     <form method="post" action="/tickets/<%= ticket.key %>/agreed-check">
       <label>
-        Agreed check (leave empty to remove it)
+        Team's interpretation (leave empty to remove it)
         <textarea name="agreed_check" rows="3" <% if (problem?.form === "agreedCheck") { %>aria-invalid="true" aria-describedby="agreed-check-error"<% } %>><%= ticket.agreed_check ?? ticket.fix_check ?? "" %></textarea>
       </label>
       <% if (problem?.form === "agreedCheck") { %><small id="agreed-check-error"><%= problem.message %></small><% } %>

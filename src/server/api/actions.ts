@@ -143,11 +143,23 @@ export const ACTIONS: ApiAction[] = [
     output: ticketOutput,
     method: "put",
     path: "/tickets/:key/agreed-check",
-    summary: "Set the agreed version of the customer's check. Empty removes it.",
+    summary:
+      "Set the team's interpretation of the customer's check. Empty removes it. The customer's own words never change.",
     needs: "agree_check",
     body: agreeCheckSchema,
     page: "POST /tickets/:key/agreed-check",
     run: ({ service, actor, key, body }) => service.agreeCheck(key, body, actor),
+  },
+  {
+    name: "adopt_check",
+    output: ticketOutput,
+    method: "post",
+    path: "/tickets/:key/adopt-check",
+    summary:
+      "The customer adopts the team's interpretation as their own check, in those exact words.",
+    needs: "adopt_check",
+    page: "POST /tickets/:key/adopt-check",
+    run: ({ service, actor, key }) => service.adoptCheck(key, actor),
   },
   {
     name: "link_change",

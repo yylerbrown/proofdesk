@@ -63,6 +63,8 @@ const HINTS: Record<string, string> = {
   owner_changed: "Reload the ticket: it has changed hands since you opened it.",
   not_open: "The ticket is resolved. Only the customer who filed it can reopen it.",
   question_open: "Withdraw the open question first (POST .../withdraw-question), then ask again.",
+  needs_check: "Ask the customer how they will know it is fixed, or offer them wording to adopt.",
+  no_interpretation: "The team has not offered any wording for the check.",
   question_changed: "Get the ticket again and answer with its current ready_token.",
   idempotency_key_reused:
     "Use a new idempotency key for a new request. Reuse a key only to retry the very same request.",

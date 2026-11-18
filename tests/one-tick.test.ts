@@ -9,7 +9,11 @@ import { admin, as, buildTestApp, customerOne, resolveTicket } from "./helpers.j
 // where the mark sits beside the name) it appears in exactly one place: on a ticket the
 // customer resolved by answering yes.
 
-const valid = { title: "Printer jams", description: "It jams on page two." };
+const valid = {
+  title: "Printer jams",
+  description: "It jams on page two.",
+  fix_check: "Ten pages print",
+};
 
 /** The page under the header, as the customer sees it. */
 async function ticketMain(app: Express, address = "/tickets/SUP-1") {

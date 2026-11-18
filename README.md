@@ -12,7 +12,7 @@ who visits, so do not type anything private.
 | View as              | Can                                                                                                                                                                                   | Cannot                                                                          |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | **Demo Customer**    | File a ticket. Read, edit and reply on the tickets the Demo Customer filed (every visitor shares this one customer). Answer "Did this fix it?" on them.                               | See the team's internal notes, change a status, archive or delete.              |
-| **Demo Team Member** | See every ticket. Take one and become its owner, move it to In Progress, reply, write internal notes, agree a tighter check, link the code change, attach evidence, ask the customer. | Resolve a ticket (only the customer can), archive, restore or delete.           |
+| **Demo Team Member** | See every ticket. Take one and become its owner, move it to In Progress, reply, write internal notes, offer a clearer check, link the code change, attach evidence, ask the customer. | Resolve a ticket (only the customer can), archive, restore or delete.           |
 | **Demo Admin**       | See everything, archived tickets included.                                                                                                                                            | Change anything: the demo admin is read-only, so no visitor can empty the demo. |
 
 To switch person, use **Sign out** in the header and pick another.
@@ -30,7 +30,7 @@ customer, except the GitHub accounts the owner has named as team members or admi
    **Evidence** choose **Attach evidence** to say what you checked. Then **Ask the customer**, with
    the page on the live site to try. Nothing the team does resolves the ticket.
 3. **The customer decides.** As Demo Customer, open the ticket. **Did this fix it?** shows their
-   own check, the team's agreed version and the evidence. **No** needs a few words: the ticket goes
+   own check, the team's interpretation if any, what the owner tried and the evidence. **No** needs a few words: the ticket goes
    back to its owner with those words shown first, and the team asks again when it is fixed.
    **Yes** resolves it, and only then does the ticket show the tick: "The customer confirmed it
    is fixed."
@@ -176,7 +176,7 @@ code. The specification ([`docs/SPEC.md`](docs/SPEC.md)), the history of every s
 
 ## Known limits
 
-- **Last writer wins** for edits to a ticket and to the agreed check. Only the customer's answer
+- **Last writer wins** for edits to a ticket and to the team's interpretation. Only the customer's answer
   carries a version check, so an old page cannot answer a newer question.
 - **Evidence is reported, not verified.** Proofdesk shows who reported it and checks none of it.
 - **No email.** Nobody is told when something changes; people look at the ticket.
@@ -187,6 +187,10 @@ code. The specification ([`docs/SPEC.md`](docs/SPEC.md)), the history of every s
   environment cleaned, and its check for skipped or focused tests is a text match.
 - **Permanent deletion** does not reach backups, the host's snapshots of the disk until they
   expire, or anything already sent elsewhere.
+- **Left out of the workflow on purpose:** an immutable record of each question asked, beyond
+  the history entry; human review decisions recorded against each piece of evidence;
+  reassigning tickets when someone leaves the team; documentation generated from conditional
+  rules; and upgrading tickets resolved before the customer's Yes was required.
 - **Demo visitors share identities.** Everyone who views as Demo Customer is the same customer.
 
 ---
@@ -206,7 +210,8 @@ agents, and `GET /api/openapi.json` the full description, generated from the sam
 | `GET /api/tickets/:key`                       | One ticket, starting with `done_when` (the checks) and `waiting_on`.                                                                                                                                        |                                                                      |
 | `PATCH /api/tickets/:key`                     | Starts work: moves a New ticket you own to `in_progress`. Nothing else.                                                                                                                                     | `{ "status": "in_progress" }`                                        |
 | `PUT /api/tickets/:key`                       | Replaces the ticket's text.                                                                                                                                                                                 | Same as filing.                                                      |
-| `PUT /api/tickets/:key/agreed-check`          | Sets the team's agreed version of the check. Empty removes it.                                                                                                                                              | `{ "agreed_check": "..." }`                                          |
+| `PUT /api/tickets/:key/agreed-check`          | Sets the team's interpretation of the check. Empty removes it. The customer's own words never change.                                                                                                       | `{ "agreed_check": "..." }`                                          |
+| `POST /api/tickets/:key/adopt-check`          | The customer adopts the team's interpretation as their own check.                                                                                                                                           |                                                                      |
 | `PUT /api/tickets/:key/change-link`           | Links the code change.                                                                                                                                                                                      | `{ "change_url": "https://..." }`                                    |
 | `POST /api/tickets/:key/ready`                | The owner asks the customer "Did this fix it?", saying what they tried and what happened. Needs In Progress and a change link; after a No, `response` too.                                                  | `{ "try_url", "tried", "result", "response"?, "evidence_ids"? }`     |
 | `POST /api/tickets/:key/withdraw-question`    | The owner takes back a question the customer has not answered. Asking again with the same details is a retry; with different ones, withdraw first.                                                          |                                                                      |

@@ -80,7 +80,7 @@ describe("the agreed check", () => {
     expect(form.status).toBe(303);
 
     const customer = await as(app, customerOne).get("/tickets/SUP-1");
-    expect(customer.text).toContain("Agreed check");
+    expect(customer.text).toContain("Team's interpretation");
     expect(customer.text).toContain(`${tighter} &lt;b&gt;now&lt;/b&gt;`);
     expect(customer.text).toContain("In the customer's words");
     expect(customer.text).toContain(words);
@@ -88,6 +88,6 @@ describe("the agreed check", () => {
 
     const team = await as(app, teamActor).get("/tickets/SUP-1");
     expect(team.text).toContain('action="/tickets/SUP-1/agreed-check"');
-    expect(team.text).toContain("Check agreed:");
+    expect(team.text).toContain("interpretation of the check:");
   });
 });

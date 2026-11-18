@@ -112,6 +112,7 @@ describe("real answers", () => {
       "agree_check",
       await admin(app).put(`${t}/agreed-check`).send({ agreed_check: "A 10-page PDF prints" }),
     );
+    expectShape("adopt_check", await as(app, customerOne).post(`${t}/adopt-check`));
     expectShape("take_ticket", await admin(app).post(`${t}/take`));
     expectShape(
       "hand_off",

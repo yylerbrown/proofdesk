@@ -26,7 +26,8 @@ export type Action =
   | "decide_spec"
   | "reopen"
   | "hand_off"
-  | "hand_to_agent";
+  | "hand_to_agent"
+  | "adopt_check";
 
 /**
  * What an AI agent may be allowed to do, each named by the operation it permits. A connection
@@ -65,7 +66,7 @@ export const CAPABILITIES: Record<Action, Capability> = {
   note: { people: "The team.", agent: "write_notes" },
   take: { people: "A team member, for an unowned ticket.", agent: "people_only" },
   release: { people: "The ticket's owner, before work starts.", agent: "people_only" },
-  agree_check: { people: "The team.", agent: "people_only" },
+  agree_check: { people: "The team: its interpretation of the check.", agent: "people_only" },
   link_change: { people: "The team.", agent: "link_changes" },
   mark_ready: { people: "The team.", agent: "people_only" },
   answer: { people: "Only the customer who filed it.", agent: "people_only" },
@@ -77,6 +78,7 @@ export const CAPABILITIES: Record<Action, Capability> = {
   reopen: { people: "Only the customer who filed it.", agent: "people_only" },
   hand_off: { people: "The ticket's owner, or an admin.", agent: "people_only" },
   hand_to_agent: { people: "The ticket's owner.", agent: "people_only" },
+  adopt_check: { people: "Only the customer who filed it.", agent: "people_only" },
 };
 
 /** The two facts about a ticket that permissions depend on. */
@@ -155,5 +157,6 @@ export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean
   if (action === "reopen") return isOwn;
   if (action === "hand_off") return isStaff && actor.kind === "person";
   if (action === "hand_to_agent") return isStaff && actor.kind === "person";
+  if (action === "adopt_check") return isOwn;
   return false;
 }

@@ -36,8 +36,8 @@ import {
  * it before anything else. The customer's words are data, not instructions.
  */
 export type DoneWhen = {
-  /** The tighter version the team agreed, if any. */
-  agreed_check: string | null;
+  /** The team's interpretation of the check, if any. The customer has not adopted it. */
+  team_interpretation: string | null;
   /** How the customer said they will know it is fixed, in their own words. */
   customer_check: string | null;
   /** What this means for whoever works on the ticket. */
@@ -207,6 +207,7 @@ const CUSTOMER_EVENT_TYPES = new Set([
   "question_withdrawn",
   "customer_answered",
   "reopened",
+  "check_adopted",
   "evidence_added",
   "spec_proposed",
   "spec_accepted",
@@ -275,7 +276,7 @@ const NO_CHECK_GUIDANCE =
 function doneWhen(row: { fix_check: string | null; agreed_check: string | null }): DoneWhen {
   const missing = row.fix_check === null && row.agreed_check === null;
   return {
-    agreed_check: row.agreed_check,
+    team_interpretation: row.agreed_check,
     customer_check: row.fix_check,
     guidance: missing ? NO_CHECK_GUIDANCE : GUIDANCE,
   };
@@ -715,6 +716,9 @@ export function createTicketService(
         const before = requireRow(key, actor);
         requirePermission(actor, "edit", before);
         requireNotArchived(key, before);
+        // The check is the customer's own words. The team edits the rest, never those.
+        const isFiler = before.created_by === actor.id;
+        if (!isFiler) after.fix_check = before.fix_check;
         const changes: Record<string, { from: string | null; to: string | null }> = {};
         for (const field of ["title", "description", "where_url", "fix_check"] as const) {
           if (before[field] !== after[field]) {
@@ -744,14 +748,75 @@ export function createTicketService(
           data: { changes },
           now,
         });
-        return { ...before, ...after, ...noQuestion, updated_at: now };
+        // A customer who changes their check retires the team's interpretation of the old one.
+        let agreed = before.agreed_check;
+        if (changes.fix_check !== undefined && before.agreed_check !== null) {
+          repository.updateAgreedCheck(db, before.id, null, now);
+          logEvent({
+            ticketId: before.id,
+            actor: actor.id,
+            actorKind: actor.kind,
+            context: agentContext(actor),
+            type: "check_agreed",
+            data: { from: before.agreed_check, to: null },
+            now,
+          });
+          agreed = null;
+        }
+        return { ...before, ...after, agreed_check: agreed, ...noQuestion, updated_at: now };
       })();
       return toTicket(row, actor);
     },
 
     /**
-     * Sets the agreed version of the customer's check, or removes it with an empty text. The
-     * customer's own words in fix_check are never changed by this.
+     * The customer adopts the team's interpretation as their own check, in those exact words.
+     * Their earlier words stay in the history.
+     */
+    adoptCheck(key: string, actor: Actor): Ticket {
+      const row = db.transaction(() => {
+        const before = requireRow(key, actor);
+        requirePermission(actor, "adopt_check", before);
+        requireNotArchived(key, before);
+        if (before.agreed_check === null) {
+          throw new HttpError(
+            409,
+            "no_interpretation",
+            `Ticket ${key} has no wording from the team to adopt.`,
+          );
+        }
+        const now = new Date().toISOString();
+        const words = before.agreed_check;
+        // The question was about the old words, so it is withdrawn.
+        withdrawQuestion(before);
+        repository.updateTicketText(
+          db,
+          before.id,
+          {
+            title: before.title,
+            description: before.description,
+            whereUrl: before.where_url,
+            fixCheck: words,
+          },
+          now,
+        );
+        repository.updateAgreedCheck(db, before.id, null, now);
+        logEvent({
+          ticketId: before.id,
+          actor: actor.id,
+          actorKind: actor.kind,
+          context: agentContext(actor),
+          type: "check_adopted",
+          data: { from: before.fix_check, to: words },
+          now,
+        });
+        return { ...before, fix_check: words, agreed_check: null, ...noQuestion, updated_at: now };
+      })();
+      return toTicket(row, actor);
+    },
+
+    /**
+     * Sets the team's interpretation of the customer's check, or removes it with an empty text.
+     * The customer's own words in fix_check are never changed by this.
      */
     agreeCheck(key: string, input: unknown, actor: Actor): Ticket {
       const { agreed_check } = parse(agreeCheckSchema, input);
@@ -829,6 +894,14 @@ export function createTicketService(
         }
         if (before.change_url === null) {
           throw new HttpError(409, "needs_change_link", `Add the change link to ${key} first.`);
+        }
+        // The customer is asked against their own words, or words they adopted.
+        if (before.fix_check === null) {
+          throw new HttpError(
+            409,
+            "needs_check",
+            `The customer has not said how they will know ${key} is fixed. Ask them in a reply first.`,
+          );
         }
         // Already waiting for an answer. The very same question again is a retry, and changes
         // nothing. A different one would change what the customer is answering: withdraw first.
@@ -1692,6 +1765,7 @@ export function createTicketService(
           ticket.status === "new" &&
           ticket.owner_id === null,
         reopen: !archived && can(actor, "reopen", ticket) && ticket.status === "resolved",
+        adoptCheck: !archived && can(actor, "adopt_check", ticket) && ticket.agreed_check !== null,
         attachEvidence: !archived && can(actor, "attach_evidence", ticket),
         markReady:
           !archived &&

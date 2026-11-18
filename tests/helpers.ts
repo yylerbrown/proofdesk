@@ -83,6 +83,14 @@ export function admin(app: Express) {
  * moves it to In Progress, adds the change link and asks; the person who filed it says yes.
  */
 export async function resolveTicket(app: Express, key: string, filedBy: Actor) {
+  // The customer is asked against their own check, so a ticket filed without one gets one
+  // from the customer first, as it would in use.
+  const filed = (await admin(app).get(`/api/tickets/${key}`)).body;
+  if (filed.fix_check === null) {
+    await as(app, filedBy)
+      .put(`/api/tickets/${key}`)
+      .send({ title: filed.title, description: filed.description, fix_check: "It works now" });
+  }
   await admin(app).post(`/api/tickets/${key}/take`);
   await admin(app).patch(`/api/tickets/${key}`).send({ status: "in_progress" });
   await admin(app)

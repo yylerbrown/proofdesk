@@ -32,7 +32,7 @@ function setup() {
 }
 
 describe("editing a ticket (service)", () => {
-  it("changes the text and records each changed field with its old and new value", () => {
+  it("changes the text and records each changed field; the team never changes the customer's check", () => {
     const { service } = setup();
     const edited = service.editTicket(
       "SUP-1",
@@ -43,7 +43,8 @@ describe("editing a ticket (service)", () => {
       title: "Printer jams on every page",
       description: original.description,
       where_url: original.where_url,
-      fix_check: null,
+      // A team member's edit leaves the customer's own words as they were.
+      fix_check: original.fix_check,
       status: "new",
     });
     expect(edited).toEqual(service.getTicket("SUP-1", actor));
@@ -56,7 +57,6 @@ describe("editing a ticket (service)", () => {
       data: {
         changes: {
           title: { from: original.title, to: "Printer jams on every page" },
-          fix_check: { from: original.fix_check, to: null },
         },
       },
     });

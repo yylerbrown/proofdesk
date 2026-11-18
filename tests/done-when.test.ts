@@ -5,6 +5,7 @@ import { admin, as, buildTestApp, customerOne, resolveTicket } from "./helpers.j
 // anything else, followed by who the ticket is waiting on.
 
 const valid = { title: "Printer jams", description: "It jams on page two." };
+const withCheck = { ...valid, fix_check: "Ten pages print" };
 
 describe("done_when", () => {
   it("leads every ticket, with the agreed check and the customer's own words", async () => {
@@ -22,7 +23,7 @@ describe("done_when", () => {
       const ticket = Array.isArray(res.body) ? res.body[0] : res.body;
       expect(Object.keys(ticket).slice(0, 2)).toEqual(["done_when", "waiting_on"]);
       expect(ticket.done_when).toMatchObject({
-        agreed_check: "A 10-page PDF prints twice",
+        team_interpretation: "A 10-page PDF prints twice",
         customer_check: "Ten pages print",
       });
     }
@@ -47,7 +48,7 @@ describe("done_when", () => {
   it("says what to do when there is no check: ask, do not guess", async () => {
     const { app } = buildTestApp();
     const ticket = (await admin(app).post("/api/tickets").send(valid)).body;
-    expect(ticket.done_when).toMatchObject({ agreed_check: null, customer_check: null });
+    expect(ticket.done_when).toMatchObject({ team_interpretation: null, customer_check: null });
     expect(ticket.done_when.guidance).toMatch(/Do not guess/);
   });
 });
@@ -55,7 +56,7 @@ describe("done_when", () => {
 describe("waiting_on", () => {
   it("is the team, then the customer once asked, then nobody once resolved", async () => {
     const { app } = buildTestApp();
-    await as(app, customerOne).post("/api/tickets").send(valid);
+    await as(app, customerOne).post("/api/tickets").send(withCheck);
     expect((await admin(app).get("/api/tickets/SUP-1")).body.waiting_on).toBe("team");
     await admin(app).post("/api/tickets/SUP-1/take");
     await admin(app).patch("/api/tickets/SUP-1").send({ status: "in_progress" });

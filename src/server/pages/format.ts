@@ -109,7 +109,9 @@ export function describeEvent(event: TicketEvent): string {
   if (event.type === "check_agreed") {
     const check = ownerChangeSchema.safeParse(event.data);
     if (check.success) {
-      return check.data.to === null ? "Agreed check removed" : `Check agreed: ${check.data.to}`;
+      return check.data.to === null
+        ? "Team's interpretation of the check removed"
+        : `Team's interpretation of the check: ${check.data.to}`;
     }
   }
   if (event.type === "change_linked") return "Change link added";
@@ -138,6 +140,8 @@ export function describeEvent(event: TicketEvent): string {
     }
   }
   if (event.type === "question_withdrawn") return "Question to the customer withdrawn";
+  if (event.type === "check_adopted")
+    return "The customer adopted the team's wording as their check";
   if (event.type === "archived") return "Archived";
   if (event.type === "restored") return "Restored";
   return event.type;

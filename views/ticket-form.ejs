@@ -33,7 +33,12 @@
   <label>
     How will we know it's fixed? (optional)
     <small id="fix_check-hint" class="hint">One thing you can check yourself, like "I can sign in on my phone".</small>
+    <% if (locals.checkLocked) { %>
+    <textarea rows="3" readonly aria-describedby="fix_check-locked"><%= values.fix_check %></textarea>
+    <small id="fix_check-locked">The customer's own words. Only they can change them; offer a clearer check on the ticket instead.</small>
+    <% } else { %>
     <textarea name="fix_check" rows="3" aria-describedby="<%= fixCheckDescribedBy %>" <% if (errors.fix_check) { %>aria-invalid="true"<% } %>><%= values.fix_check %></textarea>
+    <% } %>
     <% if (errors.fix_check) { %><small id="fix_check-error"><%= errors.fix_check.join(" ") %></small><% } %>
   </label>
 
