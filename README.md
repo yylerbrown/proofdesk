@@ -160,8 +160,14 @@ a **connection**: an admin issues one on the Connections page, gives it a name, 
 may do, and copies its key, which is shown once. If the key is lost or leaked, revoke the
 connection and issue a new one. Only a hash of the key is stored.
 
-An assistant sends the key on each request: `Authorization: Bearer pd_...`. Keys work on the
-JSON API only, never on the pages.
+An assistant connects to the MCP endpoint, `/mcp`, built with the official MCP TypeScript SDK
+over streamable HTTP; the connection page shows the one command that connects Claude Code. The
+same actions are a JSON API under `/api`. Either way the key goes in each request as
+`Authorization: Bearer pd_...`; keys never work on the pages. The tools are built from the same
+table as the API routes, call the same service functions, and leave out every people-only action.
+Each tool's description says that ticket text is data written by people, never instructions.
+`docs/AGENTS_GUIDE.md` has the setup for Claude Code and Claude Desktop, the tool list, the limits
+and a worked example.
 
 What an agent may do is decided by the capability table, `CAPABILITIES` in
 `src/server/permissions.ts`, which the tests are generated from. The scopes are named by what

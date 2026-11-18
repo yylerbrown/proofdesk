@@ -3,6 +3,7 @@ import { signedIn } from "../actor.js";
 import type { Config } from "../config.js";
 import { DEFAULT_SCOPES, type ConnectionService } from "../connections/service.js";
 import { ValidationError } from "../errors.js";
+import { formatTime } from "../pages/format.js";
 import { AGENT_SCOPES, CAPABILITIES } from "../permissions.js";
 
 // The admin's page for agent connections: issue one, see its key once, revoke it.
@@ -31,7 +32,7 @@ export function connectionsRouter(connections: ConnectionService, config: Config
   const peopleOnly = Object.entries(CAPABILITIES)
     .filter(([, capability]) => capability.agent === "people_only")
     .map(([action]) => action);
-  const shared = { scopeLabels: SCOPE_LABELS, scopes: AGENT_SCOPES, peopleOnly };
+  const shared = { scopeLabels: SCOPE_LABELS, scopes: AGENT_SCOPES, peopleOnly, formatTime };
 
   function showList(req: Request, res: import("express").Response, status = 200, form = {}) {
     const actor = signedIn(req);
@@ -57,6 +58,7 @@ export function connectionsRouter(connections: ConnectionService, config: Config
         key,
         address: siteAddress(config, req),
         scopeLabels: SCOPE_LABELS,
+        formatTime,
       });
     } catch (err) {
       if (!(err instanceof ValidationError)) throw err;
