@@ -109,3 +109,22 @@ export function openTicketsOwnedBy(db: Db, personId: string): { id: number; arch
     .all(personId) as { id: number; archived: number }[];
   return rows.map((row) => ({ id: row.id, archived: row.archived === 1 }));
 }
+
+/**
+ * Whether a person wants email about their tickets: their choice on the account page, or yes
+ * when they never made one.
+ */
+export function emailMeOf(db: Db, personId: string): boolean {
+  const row = db
+    .prepare("SELECT email_me FROM email_settings WHERE person_id = ?")
+    .get(personId) as { email_me: number } | undefined;
+  return row === undefined ? true : row.email_me === 1;
+}
+
+/** Stores a person's choice about email notices, replacing any earlier one. */
+export function saveEmailMe(db: Db, personId: string, emailMe: boolean, now: string): void {
+  db.prepare(
+    `INSERT INTO email_settings (person_id, email_me, updated_at) VALUES (?, ?, ?)
+     ON CONFLICT (person_id) DO UPDATE SET email_me = excluded.email_me, updated_at = excluded.updated_at`,
+  ).run(personId, emailMe ? 1 : 0, now);
+}

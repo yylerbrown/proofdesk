@@ -70,10 +70,11 @@ async function signInThroughGithub(app: TestApp, who: GithubUser, next?: string)
     .set("Cookie", cookiesOf(start));
   const cookie = cookiesOf(back);
   const page = await request(app).get("/tickets").set("Cookie", cookie);
-  const found = /Signed in as <strong>([^<]*)<\/strong> <small class="role-label">([^<]*)</.exec(
-    page.text,
-  );
-  const signedInAs = found === null ? null : `${found[1]} (${found[2]})`;
+  const found =
+    /Signed in as <a href="\/account" class="account-link"><strong>([^<]*)<\/strong><\/a> <small class="role-label">([^<]*)</.exec(
+      page.text,
+    );
+  const signedInAs = found === null ? null : `${found[1]} (${(found[2] ?? "").toLowerCase()})`;
   return { location: back.headers.location as string, cookie, signedInAs };
 }
 
