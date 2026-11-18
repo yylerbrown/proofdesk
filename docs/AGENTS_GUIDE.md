@@ -12,7 +12,9 @@ which is shown once. If the key is lost or leaked, revoke the connection and iss
 **Claude Code**: the connection page shows this command with the real address and key filled in:
 
 ```bash
-claude mcp add --transport http proofdesk https://<your Proofdesk address>/mcp --header "Authorization: Bearer <key>"
+claude mcp add --transport http proofdesk \
+  https://<your Proofdesk address>/mcp \
+  --header "Authorization: Bearer <key>"
 ```
 
 Or in a project's `.mcp.json`, with the key in an environment variable of your own:
@@ -38,7 +40,9 @@ reaches the connector from Anthropic's servers, so the address must be public.
 directly:
 
 ```bash
-curl -H "Authorization: Bearer <key>" "https://<your Proofdesk address>/api/tickets?status=new"
+curl -G -d status=new \
+  -H "Authorization: Bearer <key>" \
+  "https://<your Proofdesk address>/api/tickets"
 ```
 
 ## Ask Proofdesk itself

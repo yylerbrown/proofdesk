@@ -159,13 +159,15 @@ describe("starting work", () => {
     expect(taken.body.error.code).toBe("already_owned");
   });
 
-  it("puts Take first in the panel, and offers Start work only to the owner", async () => {
+  it("puts Take under the status, as the next action, and offers Start work only to the owner", async () => {
     const { app } = buildTestApp();
     await admin(app).post("/api/tickets").send(valid);
     const unowned = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     const panel = unowned.querySelector("aside.ticket-panel")!;
     expect(panel.querySelector("h2")?.text).toBe("Owner");
-    expect(panel.querySelector("button")?.text.trim()).toBe("Take ticket and start work");
+    expect(unowned.querySelector(".next-action button")?.text.trim()).toBe(
+      "Take ticket and start work",
+    );
     // Taking without starting work is a secondary action, in More.
     expect(panel.querySelector("details.more form[action$='/take'] button")?.text).toBe(
       "Take this ticket",
@@ -173,10 +175,10 @@ describe("starting work", () => {
     expect(panel.text).not.toContain("Start work\n");
     await as(app, teamActor).post("/api/tickets/SUP-1/take");
     const mine = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    expect(mine.querySelector("aside.ticket-panel form[action$='/status'] button")?.text).toBe(
+    expect(mine.querySelector(".next-action form[action$='/status'] button")?.text).toBe(
       "Start work",
     );
     const theirs = parse((await admin(app).get("/tickets/SUP-1")).text);
-    expect(theirs.querySelector("aside.ticket-panel form[action$='/status']")).toBeNull();
+    expect(theirs.querySelector("form[action$='/status']")).toBeNull();
   });
 });

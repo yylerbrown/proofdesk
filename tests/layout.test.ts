@@ -38,7 +38,8 @@ describe("the ticket page layout", () => {
       "Archive ticket",
       "Delete permanently",
     ]);
-    expect(panel?.querySelector("form[action$='/take-and-start']")).not.toBeNull();
+    // The next action sits under the status; the panel keeps the secondary ones.
+    expect(html.querySelector(".next-action form[action$='/take-and-start']")).not.toBeNull();
     expect(panel?.querySelector("form[action$='/take']")).not.toBeNull();
     expect(html.querySelector(".ticket-summary h2")?.text).toBe("Description");
     expect(html.querySelector(".ticket-thread #conversation")).not.toBeNull();
