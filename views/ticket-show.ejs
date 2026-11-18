@@ -318,7 +318,7 @@
   <% } %>
   <% if (ticket.ready_at) { %>
   <p>Waiting for <%= viewerRole === "customer" ? "you to check it" : "the customer who filed this ticket" %>, since <%- include("time", { iso: ticket.ready_at }) %>.</p>
-  <% if (ticket.owner_id === viewerId) { %>
+  <% if (allowed.withdrawQuestion) { %>
   <form method="post" action="/tickets/<%= ticket.key %>/withdraw-question">
     <button type="submit" class="secondary outline compact">Withdraw the question</button>
   </form>
