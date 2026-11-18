@@ -59,6 +59,22 @@ describe("permanent deletion", () => {
     expect(onDisk()).toBe(false);
   });
 
+  it("also removes the answer kept for retrying the filing of the ticket", async () => {
+    const { app, db } = buildTestApp();
+    await as(app, customerOne)
+      .post("/api/tickets")
+      .set("Idempotency-Key", "file-once")
+      .send({ title: `Card ${SECRET}`, description: `My card number is ${SECRET}` });
+    const kept = "SELECT COUNT(*) AS n FROM idempotency_keys";
+    expect(count(db, `${kept} WHERE ticket_id = 1`)).toBe(1);
+
+    const res = await admin(app).delete("/api/tickets/SUP-1").send({ confirm: "SUP-1" });
+    expect(res.body).toEqual({ deleted: true, files_cleaned: true });
+    expect(count(db, kept)).toBe(0);
+    const files = [db.name, `${db.name}-wal`].filter(fs.existsSync);
+    expect(files.some((file) => fs.readFileSync(file).includes(SECRET))).toBe(false);
+  });
+
   it("never gives the number to a new ticket", async () => {
     const { app } = await setup();
     await admin(app).delete("/api/tickets/SUP-2").send({ confirm: "SUP-2" });
