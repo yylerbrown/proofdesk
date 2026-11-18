@@ -282,6 +282,14 @@ describe("edit, archive and restore on the pages", () => {
     expect(eventCount(db)).toBe(1);
   });
 
+  it("sends the browser to the ticket instead of offering an edit form for an archived one", async () => {
+    const { app } = setup();
+    await admin(app).post("/api/tickets/SUP-1/archive");
+    const res = await admin(app).get("/tickets/SUP-1/edit");
+    expect(res.status).toBe(303);
+    expect(res.headers.location).toBe("/tickets/SUP-1");
+  });
+
   it("returns an HTML 404 page when editing a ticket that does not exist", async () => {
     const { app } = setup();
     expect((await admin(app).get("/tickets/SUP-9/edit")).status).toBe(404);

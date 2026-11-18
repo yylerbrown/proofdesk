@@ -4,7 +4,7 @@ import type { Actor } from "../src/server/actor.js";
 import { openDatabase } from "../src/server/db.js";
 import { ValidationError } from "../src/server/errors.js";
 import { createTicketService } from "../src/server/tickets/service.js";
-import { adminActor, buildTestApp } from "./helpers.js";
+import { adminActor, buildTestApp, customerOne } from "./helpers.js";
 
 type TestDb = ReturnType<typeof buildTestApp>["db"];
 
@@ -285,5 +285,31 @@ describe("ticket key prefix is pinned to the database", () => {
     } finally {
       reopened.close();
     }
+  });
+});
+
+describe("a customer's list", () => {
+  it("is read through the index on created_by, not by reading every ticket", () => {
+    const { db } = buildTestApp();
+    const service = createTicketService(db, "SUP");
+    // Catch the SQL the service really uses for a customer's list, then ask SQLite how it
+    // would run it.
+    const seen: string[] = [];
+    const prepare = db.prepare.bind(db);
+    const spy = vi.spyOn(db, "prepare").mockImplementation((sql: string) => {
+      seen.push(sql);
+      return prepare(sql);
+    });
+    service.listTickets("all", customerOne);
+    spy.mockRestore();
+
+    const listSql = seen.find((sql) => sql.includes("FROM tickets") && sql.includes("created_by"));
+    expect(listSql).toBeDefined();
+    const plan = db
+      .prepare(`EXPLAIN QUERY PLAN ${listSql}`)
+      .all({ createdBy: customerOne.id, status: null }) as { detail: string }[];
+    expect(plan.map((step) => step.detail).join(" | ")).toContain(
+      "USING INDEX idx_tickets_created_by",
+    );
   });
 });

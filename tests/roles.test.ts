@@ -278,7 +278,10 @@ describe("archiving asks first", () => {
     const { app } = await twoCustomers();
     expect((await as(app, customerOne).get("/tickets/SUP-2/archive")).status).toBe(404);
     await as(app, teamActor).post("/api/tickets/SUP-1/archive");
-    expect((await as(app, teamActor).get("/tickets/SUP-1/archive")).status).toBe(403);
+    // Already archived: nothing to ask, so the browser is sent to the ticket.
+    const again = await as(app, teamActor).get("/tickets/SUP-1/archive");
+    expect(again.status).toBe(303);
+    expect(again.headers.location).toBe("/tickets/SUP-1");
   });
 });
 

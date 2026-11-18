@@ -101,7 +101,13 @@ export function createApp(config: Config, db: Db): Express {
       config.clientIpHeader === undefined ? undefined : req.get(config.clientIpHeader);
     return fromProxy ?? req.ip ?? "";
   }
-  const filingLimit = rateLimit({ ...tooMany, windowMs: 10 * 60 * 1000, limit: FILING_LIMIT });
+  // Refused tickets (a form with a mistake in it) do not count towards the filing limit.
+  const filingLimit = rateLimit({
+    ...tooMany,
+    windowMs: 10 * 60 * 1000,
+    limit: FILING_LIMIT,
+    skipFailedRequests: true,
+  });
   const signInLimit = rateLimit({ ...tooMany, windowMs: 60 * 1000, limit: SIGN_IN_LIMIT });
 
   // The JSON API. Its own handlers at the end turn every error inside it into JSON.

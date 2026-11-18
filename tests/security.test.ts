@@ -41,6 +41,11 @@ describe("security headers", () => {
     expect(policy["object-src"]).toBe("'none'");
   });
 
+  it("tells browsers to use only HTTPS for this site, in production", async () => {
+    const res = await visitor(buildTestApp({ NODE_ENV: "production" }).app).get("/tickets");
+    expect(res.headers["strict-transport-security"]).toMatch(/max-age=\d+/);
+  });
+
   it("tells browsers to switch to HTTPS in production only", async () => {
     const development = await admin(buildTestApp().app).get("/tickets");
     expect(development.headers["content-security-policy"]).not.toContain(
@@ -177,6 +182,10 @@ describe("fields a caller must not control", () => {
   });
 });
 
+// Every statement in the repository binds its values with ? or @name, so hostile text is
+// stored as text. The first test below proves that. The two after it check that the list
+// filter and the key are refused before any SQL runs; they would pass even with SQL built
+// from strings, so they are about validation, not about how SQL is written.
 describe("SQL injection", () => {
   const attack = "x'); DROP TABLE tickets; --";
 
@@ -234,7 +243,8 @@ describe("script injection in pages", () => {
     });
     // The link box refuses some of these outright. File without it then, so the other
     // three fields are still checked.
-    if (filed.status !== 303) {
+    const linkAccepted = filed.status === 303;
+    if (!linkAccepted) {
       const again = await submitForm(app, {
         title: `T ${text}`,
         description: `D ${text}`,
@@ -245,7 +255,19 @@ describe("script injection in pages", () => {
     await admin(app)
       .post("/tickets/SUP-1/edit")
       .type("form")
-      .send({ title: `T2 ${text}`, description: `D2 ${text}`, fix_check: `C2 ${text}` });
+      .send({
+        title: `T2 ${text}`,
+        description: `D2 ${text}`,
+        fix_check: `C2 ${text}`,
+        // Keep the hostile link through the edit, so the pages below still show it.
+        where_url: linkAccepted ? `https://example.com/?q=${text}` : "",
+      });
+    if (linkAccepted) {
+      const page = await admin(app).get("/tickets/SUP-1");
+      expect(page.text).toContain('href="https://example.com/?q=');
+      const form = await admin(app).get("/tickets/SUP-1/edit");
+      expect(form.text).toContain('name="where_url" value="https://example.com/?q=');
+    }
 
     const pages = ["/tickets", "/tickets/SUP-1", "/tickets/SUP-1/edit"];
     for (const address of pages) {

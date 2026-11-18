@@ -146,7 +146,8 @@ export function createTicketService(db: Db, prefix: string) {
   function idFromKey(key: string): number {
     const id = parseKey(prefix, key);
     if (id === null) {
-      throw new HttpError(400, "invalid_key", `"${key}" is not a valid ticket key.`);
+      // A fixed message: echoing the key would let anyone put their own text on a page.
+      throw new HttpError(400, "invalid_key", "That is not a valid ticket key.");
     }
     return id;
   }
@@ -241,8 +242,8 @@ export function createTicketService(db: Db, prefix: string) {
         return repository.listArchivedTickets(db).map(toTicket);
       }
       const status = filter === "all" ? null : filter;
-      const createdBy = can(actor, "list_all") ? null : actor.id;
-      return repository.listTickets(db, status, createdBy).map(toTicket);
+      if (can(actor, "list_all")) return repository.listAllTickets(db, status).map(toTicket);
+      return repository.listTicketsFiledBy(db, actor.id, status).map(toTicket);
     },
 
     getTicket(key: string, actor: Actor): Ticket {

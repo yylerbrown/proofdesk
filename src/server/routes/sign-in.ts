@@ -57,7 +57,8 @@ export function signInRouter(config: Config, auth: Auth | null): Router {
     if (started.response.url === undefined) {
       throw new Error("The sign-in library did not return an address to go to.");
     }
-    res.setHeader("Set-Cookie", started.headers.getSetCookie());
+    // append, not set: the actor middleware may already have added a refreshed cookie.
+    res.append("Set-Cookie", started.headers.getSetCookie());
     res.redirect(303, started.response.url);
   });
 
@@ -85,7 +86,7 @@ export function signInRouter(config: Config, auth: Auth | null): Router {
         headers: fromNodeHeaders(req.headers),
         returnHeaders: true,
       });
-      res.setHeader("Set-Cookie", ended.headers.getSetCookie());
+      res.append("Set-Cookie", ended.headers.getSetCookie());
     }
     res.clearCookie(DEV_COOKIE);
     res.redirect(303, "/sign-in");
