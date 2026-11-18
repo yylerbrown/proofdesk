@@ -1703,8 +1703,6 @@ export function createTicketService(
      * right after the demo's sample data is created on an empty database.
      */
     recordDemoSeed(assistantKey?: string, recordedKey?: string): void {
-      const ids = (table: string) =>
-        (db.prepare(`SELECT id FROM ${table}`).all() as { id: number }[]).map((r) => r.id);
       const text: DemoSeed["text"] = {};
       for (const row of repository.listAllTickets(db, null, { limit: 1000, offset: 0 })) {
         text[String(row.id)] = {
@@ -1731,13 +1729,13 @@ export function createTicketService(
         });
       }
       const seed: DemoSeed = {
-        tickets: ids("tickets"),
+        tickets: repository.allIds(db, "tickets"),
         ...(assistant === null || assistant === undefined ? {} : { assistant }),
         ...(recordedKey === undefined
           ? {}
           : { recorded: parseKey(prefix, recordedKey) ?? undefined }),
-        entries: ids("ticket_entries"),
-        events: ids("ticket_events"),
+        entries: repository.allIds(db, "ticket_entries"),
+        events: repository.allIds(db, "ticket_events"),
         text,
       };
       repository.insertMeta(db, DEMO_SEED_KEY, JSON.stringify(seed));

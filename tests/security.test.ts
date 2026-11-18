@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 import { admin, buildTestApp, visitor } from "./helpers.js";
 
@@ -221,6 +222,16 @@ describe("SQL injection", () => {
     const res = await admin(app).get(`/api/tickets/${encodeURIComponent(key)}`);
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("invalid_key");
+  });
+});
+
+// The services hold the rules and the repositories hold the SQL, so a rule is never hidden
+// in a query and a query is never written beside a rule.
+describe("where the SQL lives", () => {
+  it("the ticket and connection services run no SQL of their own", () => {
+    for (const file of ["src/server/tickets/service.ts", "src/server/connections/service.ts"]) {
+      expect(fs.readFileSync(file, "utf8"), file).not.toMatch(/\.prepare\(/);
+    }
   });
 });
 
