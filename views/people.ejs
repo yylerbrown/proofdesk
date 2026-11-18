@@ -1,0 +1,62 @@
+<%- include("header") %>
+<div class="column-wide">
+<h1>People</h1>
+<p>Everyone who has signed in. Choose who is on the support team. A change applies on their next page, with no restart.</p>
+<% if (!canChange) { %>
+<p class="role-note"><small>On the real site an admin changes roles here, and it applies at once. The demo admin changes nothing.</small></p>
+<% } %>
+<ul class="role-lines">
+  <% for (const role of roles) { %><li><small><%= roleLines[role] %></small></li><% } %>
+</ul>
+
+<% if (people.length === 0) { %>
+<p class="empty">Nobody has signed in with GitHub yet.</p>
+<% } else { %>
+<div class="overflow-auto">
+  <table class="people">
+    <thead>
+      <tr><th scope="col">Name</th><th scope="col">Email address</th><th scope="col">First signed in</th><th scope="col">Role</th></tr>
+    </thead>
+    <tbody>
+      <% for (const person of people) { %>
+      <tr>
+        <td class="user-text"><%= person.name %></td>
+        <td class="user-text"><%= person.email ?? "None, a made-up person" %></td>
+        <td><% if (person.firstSignedIn) { %><%- include("time", { iso: person.firstSignedIn }) %><% } else { %>Never<% } %></td>
+        <td>
+          <% if (person.locked) { %>
+          <%= person.locked %><% if (person.locked === "You") { %>, <%= roleLabels[person.role] %><% } %>
+          <% } else { %>
+          <form method="post" action="/people" class="inline role-choice">
+            <input type="hidden" name="person" value="<%= person.id %>" />
+            <label>
+              <span class="visually-hidden">Role of <%= person.name %></span>
+              <select name="role" <% if (!canChange) { %>disabled<% } %>>
+                <% for (const role of roles) { %>
+                <option value="<%= role %>" <% if (role === person.role) { %>selected<% } %>><%= roleLabels[role] %></option>
+                <% } %>
+              </select>
+            </label>
+            <button type="submit" <% if (!canChange) { %>disabled<% } %>>Save</button>
+          </form>
+          <% } %>
+        </td>
+      </tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+<% } %>
+
+<h2>Role changes</h2>
+<% if (changes.length === 0) { %>
+<p class="empty">No role has been changed here yet.</p>
+<% } else { %>
+<ul class="role-changes">
+  <% for (const change of changes) { %>
+  <li><%- include("time", { iso: change.at }) %>. <span class="user-text"><%= change.sentence %></span></li>
+  <% } %>
+</ul>
+<% } %>
+</div>
+<%- include("footer") %>

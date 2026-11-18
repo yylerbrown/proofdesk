@@ -114,11 +114,21 @@ export function githubIdOf(db: Db, userId: string): string | undefined {
 }
 
 /**
- * The role of a GitHub user number. Admins and team members are named in configuration.
- * Everyone else who signs in is a customer.
+ * The role the server settings give a GitHub user number, or undefined when neither
+ * ADMIN_GITHUB_IDS nor TEAM_GITHUB_IDS names it. A role set there cannot be changed in the
+ * product, so the site can never lock its own admins out.
  */
-export function roleOf(config: Config, githubId: string | undefined): Role {
+export function settingsRoleOf(config: Config, githubId: string | undefined): Role | undefined {
   if (githubId !== undefined && config.adminGithubIds.includes(githubId)) return "admin";
   if (githubId !== undefined && config.teamGithubIds.includes(githubId)) return "team";
-  return "customer";
+  return undefined;
+}
+
+/**
+ * The one answer to "what is this person's role": the server settings first, then the role
+ * an admin chose on the People page, otherwise customer. It is asked on every request, so a
+ * change applies on the person's next page with no restart.
+ */
+export function roleOf(config: Config, githubId: string | undefined, chosen?: Role | null): Role {
+  return settingsRoleOf(config, githubId) ?? chosen ?? "customer";
 }

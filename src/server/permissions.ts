@@ -28,7 +28,9 @@ export type Action =
   | "hand_off"
   | "hand_to_agent"
   | "adopt_check"
-  | "resolve_with_reason";
+  | "resolve_with_reason"
+  | "list_people"
+  | "change_role";
 
 /**
  * What an AI agent may be allowed to do, each named by the operation it permits. A connection
@@ -94,6 +96,8 @@ export const CAPABILITIES: Record<Action, Capability> = {
     people: "The ticket's owner, or an admin, with a reason.",
     agent: "people_only",
   },
+  list_people: { people: "An admin.", agent: "people_only" },
+  change_role: { people: "An admin, for someone else.", agent: "people_only" },
 };
 
 /** The two facts about a ticket that permissions depend on. */
@@ -103,7 +107,13 @@ export type TicketFacts = {
 };
 
 // What a read-only person, the demo admin, may still do: look.
-const READ_ONLY_ACTIONS: Action[] = ["list_all", "list_archived", "read", "read_notes"];
+const READ_ONLY_ACTIONS: Action[] = [
+  "list_all",
+  "list_archived",
+  "read",
+  "read_notes",
+  "list_people",
+];
 
 /**
  * The one function that answers every permission question: may this actor do this action,
@@ -142,6 +152,9 @@ export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean
   if (action === "list_archived") return isStaff;
   if (action === "manage_connections") return actor.role === "admin" && actor.kind === "person";
   if (action === "read_activity") return isStaff && actor.kind === "person";
+  // Choosing who is on the team. The people service adds who may be changed.
+  if (action === "list_people") return actor.role === "admin" && actor.kind === "person";
+  if (action === "change_role") return actor.role === "admin" && actor.kind === "person";
 
   // Every other action is about one ticket.
   if (ticket === undefined) return false;

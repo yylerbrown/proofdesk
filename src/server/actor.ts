@@ -6,6 +6,7 @@ import type { ConnectionService } from "./connections/service.js";
 import type { AgentScope } from "./permissions.js";
 import type { Db } from "./db.js";
 import { HttpError } from "./errors.js";
+import { chosenRoleOf } from "./people/repository.js";
 
 export type Role = "customer" | "team" | "admin";
 
@@ -123,7 +124,8 @@ export function actorMiddleware(
         req.actor = {
           id: session.user.id,
           kind: "person",
-          role: roleOf(config, githubIdOf(db, session.user.id)),
+          // Read on every request, so a role changed on the People page counts at once.
+          role: roleOf(config, githubIdOf(db, session.user.id), chosenRoleOf(db, session.user.id)),
           name: session.user.name,
         };
       }
