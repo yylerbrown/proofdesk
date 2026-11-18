@@ -3,7 +3,7 @@ import { parse } from "node-html-parser";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { DEV_COOKIE } from "../src/server/actor.js";
-import { seedDemo } from "../src/server/demo.js";
+import { RECORDED_ASSISTANT, seedDemo } from "../src/server/demo.js";
 import { createTicketService } from "../src/server/tickets/service.js";
 import { buildTestApp, visitor } from "./helpers.js";
 
@@ -73,7 +73,7 @@ describe("the recorded run on the demo", () => {
       result: reported.result,
       revision: reported.revision,
       scenario: reported.scenario,
-      reported_by: { kind: "agent", name: "Demo visitor ea29379c" },
+      reported_by: { kind: "agent", name: RECORDED_ASSISTANT.name },
     });
     expect(evidence.report).toEqual(reported.report);
 
@@ -84,7 +84,7 @@ describe("the recorded run on the demo", () => {
     expect(notes.at(-1)).toMatchObject({
       kind: "note",
       purpose: "review_request",
-      author_name: "Demo visitor ea29379c",
+      author_name: RECORDED_ASSISTANT.name,
       body: `Asks the owner to review the evidence: ${inputs.ask_owner_to_review!.message}`,
     });
   });
@@ -93,7 +93,7 @@ describe("the recorded run on the demo", () => {
     const { asTeam } = demo();
     const html = parse((await asTeam().get("/tickets/SUP-8")).text);
     expect(html.querySelector("ul.evidence")?.text).toContain(
-      "Reported by Demo visitor ea29379c (AI agent)",
+      "Reported by Demo visitor's assistant (AI agent)",
     );
     expect(html.querySelector(".recorded-run a")?.getAttribute("href")).toBe("/assistant-run");
   });
@@ -107,7 +107,7 @@ describe("the recorded run on the demo", () => {
     const signal = check.querySelector(".assistant-signal")!;
     expect(signal.querySelector(".signal-from")?.text).toBe("From the AI assistant");
     expect(signal.querySelector(".review-requested")?.text).toBe(
-      "Review requested by Demo visitor ea29379c",
+      "Review requested by Demo visitor's assistant",
     );
     // The customer's words come first, under the heading; the request follows them.
     const inside = check.innerHTML;
@@ -211,7 +211,7 @@ describe("the run page on a phone", () => {
   });
 });
 
-describe("the demo's history and SUP-8 for the customer", () => {
+describe("the demo's history and the assistant samples' customer", () => {
   it("names every person and assistant in history, never Unknown person or a raw id", async () => {
     const { app } = demo();
     const as = (id: string) => visitor(app).set("Cookie", `${DEV_COOKIE}=${id}`);
@@ -225,20 +225,33 @@ describe("the demo's history and SUP-8 for the customer", () => {
     }
     expect(await who("SUP-6", "demo-admin")).toContain("Second Demo Customer customer");
     expect(await who("SUP-7", "demo-admin")).toContain("Third Demo Customer customer");
-    expect(await who("SUP-8", "demo-team")).toContain("Demo visitor ea29379c (AI agent)");
+    expect(await who("SUP-8", "demo-team")).toContain("Demo visitor's assistant (AI agent)");
+    // Named in plain words, with no connection id.
+    expect(RECORDED_ASSISTANT.name).not.toMatch(/[0-9a-f]{6,}/);
   });
 
-  it("tells the customer the assistant's work is the team's, and how to see it", async () => {
+  it("files both assistant samples for another customer, out of the demo customer's own list", async () => {
     const { app } = demo();
-    const page = parse(
-      (await visitor(app).set("Cookie", `${DEV_COOKIE}=demo-customer`).get("/tickets/SUP-8")).text,
-    );
-    expect(page.querySelector(".recorded-run")?.text).toBe(
-      "A recorded assistant run. Its spec, evidence and review request are for the team only, so this view does not show them: press View this ticket as a team member below, or see its transcript and files.",
-    );
-    const description = page.querySelector(".ticket-summary")!.text;
+    const as = (id: string) => visitor(app).set("Cookie", `${DEV_COOKIE}=${id}`);
+    const mine = (await as("demo-customer").get("/api/tickets")).body as { key: string }[];
+    const keys = mine.map((ticket) => ticket.key);
+    expect(keys).not.toContain("SUP-4");
+    expect(keys).not.toContain("SUP-8");
+    expect((await as("demo-customer").get("/tickets/SUP-8")).status).toBe(404);
+    for (const key of ["SUP-4", "SUP-8"]) {
+      const rows = parse((await as("demo-admin").get(`/tickets/${key}`)).text)
+        .querySelectorAll("details.history tbody tr")
+        .map((row) => row.text.replace(/\s+/g, " ").trim());
+      expect(
+        rows.find((row) => row.includes("Ticket filed")),
+        key,
+      ).toContain("Second Demo Customer");
+    }
+    // The team still reads where SUP-8's words come from.
+    const description = parse((await as("demo-team").get("/tickets/SUP-8")).text).querySelector(
+      ".ticket-summary",
+    )!.text;
     expect(description).toContain("what one real AI assistant did on SUP-4, the sample ticket");
     expect(description).toContain("which the team sees");
-    expect(description).not.toContain("linked on this page");
   });
 });
