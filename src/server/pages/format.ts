@@ -53,6 +53,19 @@ export function waitingOn(ticket: Ticket, viewer: Role): string {
   return viewer === "customer" ? "Support team" : "Team";
 }
 
+/**
+ * When the customer confirmed the fix, or null. Only a resolved ticket whose latest answer to
+ * "Did this fix it?" was yes counts: a proposed fix, a linked change or a ticket marked ready
+ * does not, and neither does a ticket resolved before answers existed.
+ */
+export function confirmedAt(ticket: Ticket, events: TicketEvent[]): string | null {
+  if (ticket.status !== "resolved") return null;
+  const answer = [...events].reverse().find((event) => event.type === "customer_answered");
+  if (answer === undefined) return null;
+  const parsed = z.object({ fixed: z.literal(true) }).safeParse(answer.data);
+  return parsed.success ? answer.created_at : null;
+}
+
 const statusChangeSchema = z.object({
   from: z.enum(TICKET_STATUSES),
   to: z.enum(TICKET_STATUSES),

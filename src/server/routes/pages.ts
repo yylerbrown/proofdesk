@@ -4,6 +4,7 @@ import { signedIn } from "../actor.js";
 import { HttpError, ValidationError } from "../errors.js";
 import { can } from "../permissions.js";
 import {
+  confirmedAt,
   describeActor,
   describeEvent,
   formatTime,
@@ -103,6 +104,7 @@ export function pagesRouter(service: TicketService): Router {
       ticket,
       entries,
       history,
+      confirmed: confirmedAt(ticket, events),
       allowed,
       entry,
       problem,

@@ -22,6 +22,13 @@
     with the panel between the description and the conversation. %>
 <div class="ticket-layout">
 <div class="ticket-summary">
+<%# The only tick inside the product: the customer said yes, it is fixed. %>
+<% if (confirmed) { %>
+<article class="confirmed">
+  <img src="/assets/mark.svg" alt="" width="32" height="32" class="tick" />
+  <p><strong>The customer confirmed it is fixed.</strong> <%- include("time", { iso: confirmed }) %></p>
+</article>
+<% } %>
 <% if (allowed.answer) { %>
 <article id="did-this-fix-it">
   <h2>Did this fix it?</h2>
