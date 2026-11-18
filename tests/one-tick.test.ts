@@ -1,6 +1,8 @@
 import { parse } from "node-html-parser";
 import type { Express } from "express";
 import { describe, expect, it } from "vitest";
+import { confirmedAt } from "../src/server/pages/format.js";
+import type { Ticket, TicketEvent } from "../src/server/tickets/service.js";
 import { admin, as, buildTestApp, customerOne, resolveTicket } from "./helpers.js";
 
 // The tick means "the customer confirmed it". Inside the product (the page under the header,
@@ -68,5 +70,26 @@ describe("the tick", () => {
     await resolveTicket(app, "SUP-1", customerOne);
     await admin(app).patch("/api/tickets/SUP-1").send({ status: "in_progress" });
     expect(ticks(await ticketMain(app))).toHaveLength(0);
+  });
+});
+
+describe("confirmedAt", () => {
+  const resolved = { status: "resolved" } as unknown as Ticket;
+  const answer = (fixed: boolean, at: string): TicketEvent => ({
+    id: 1,
+    ticket_key: "SUP-1",
+    actor: "dev-customer-1",
+    actor_kind: "person",
+    type: "customer_answered",
+    data: { fixed },
+    created_at: at,
+  });
+
+  it("counts only the latest answer, and only a yes", () => {
+    const yes = answer(true, "2026-11-17T10:00:00.000Z");
+    const no = answer(false, "2026-11-17T11:00:00.000Z");
+    expect(confirmedAt(resolved, [no, yes])).toBe("2026-11-17T10:00:00.000Z");
+    expect(confirmedAt(resolved, [yes, no])).toBeNull();
+    expect(confirmedAt(resolved, [])).toBeNull();
   });
 });
