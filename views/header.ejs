@@ -11,20 +11,25 @@
     <link rel="stylesheet" href="/assets/site.css" />
   </head>
   <body>
+    <% if (demo) { %>
+    <p class="demo-strip">Demo: sample data, shared with everyone who visits.</p>
+    <% } %>
     <header class="site-header">
       <nav class="container">
         <ul>
           <li><a href="/tickets" class="brand"><img src="/assets/mark.svg" alt="" width="24" height="24" /><strong>Proofdesk</strong></a></li>
         </ul>
         <% if (viewer) { %>
-        <ul>
-          <li><a href="/tickets">Tickets</a></li>
+        <ul class="links">
+          <li class="tickets-link"><a href="/tickets">Tickets</a></li>
           <% if (viewer.role === "admin" && !viewer.readOnly) { %><li><a href="/connections">Connections</a></li><% } %>
-          <li><a href="/tickets/new" role="button" class="outline">New ticket</a></li>
+          <li><a href="/tickets/new" role="button">New ticket</a></li>
+        </ul>
+        <ul class="account">
           <li class="viewer">Signed in as <strong><%= viewer.name %></strong> <small class="role-label"><%= viewer.role %></small></li>
           <li>
             <form method="post" action="/sign-out" class="sign-out">
-              <button type="submit" class="outline secondary">Sign out</button>
+              <button type="submit" class="link">Sign out</button>
             </form>
           </li>
         </ul>
@@ -32,9 +37,6 @@
       </nav>
     </header>
     <main class="container">
-      <% if (demo) { %>
-      <p><mark>Demo: sample data, shared with everyone who visits.</mark></p>
-      <% } %>
       <% if (locals.saved) { %>
       <p role="status" class="saved"><%= locals.saved %></p>
       <% } %>
