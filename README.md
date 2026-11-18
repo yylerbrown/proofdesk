@@ -231,6 +231,42 @@ code. The specification ([`docs/SPEC.md`](docs/SPEC.md)), the history of every s
   ticket without the customer, a second filter beyond status, and any model call of the site's
   own.
 
+## Known limits and design debt
+
+Shortcuts in the code that were kept for now, each with the plan for it.
+
+- **One large ticket service.** `src/server/tickets/service.ts` is about 1,900 lines doing about
+  eight jobs: workflow, conversation, evidence, specs, retries, demo seeding, demo visibility and
+  page helpers. It will be split behind the same exports, with the test suite as the safety net.
+- **Visibility is decided inline.** Who sees which rows (the customer, a handed agent, a demo
+  agent, a notes reader) is checked in about 25 places across the read paths. The next read
+  path, such as search or reports, goes through one visibility module first.
+- **Owner and state checks are written twice.** `can()` knows nothing of who owns a ticket or
+  what state it is in. Each command checks ownership and state itself, and the ticket page
+  restates those checks to choose its controls. The plan is one precondition per command, which
+  the command throws and the page reads, so the two cannot disagree.
+- **Writes return hand-built rows.** A write command returns a copy of the row built by hand
+  instead of reading it back, in about a dozen places. They match the SQL today and one that did
+  not was fixed, but the pattern can drift.
+- **Two dispatch wrappers.** The JSON API and the MCP endpoint each wrap the same action table in
+  about 30 lines of their own. Two actions, `add_note` and `ask_owner_to_review`, parse their
+  input in that table rather than in the service.
+- **A few queries outside the repositories.** The startup checks, the sign-in lookup, the team
+  list and one demo-seeding query run their own SQL, and the team list makes one query for each
+  person who has signed in, on every ticket page. The error module imports a page helper, so
+  the error types depend on page code.
+- **Loose ends in the schema.** `tickets.agent_id` is kept but never written. The later link
+  columns (`ticket_evidence.spec_id` and `connection_id`, `ticket_specs.connection_id`,
+  `ticket_entries.based_on`) have no `REFERENCES` clause and are checked in code only.
+- **Event types and error codes are plain strings.** The tests check them; the compiler does not.
+- **Two compatibility branches have no test:** the lookup for a No recorded before comments were
+  kept, and a demo seed recorded before the sample for assistants was named. They stay until the
+  live databases are checked, then go or get a test.
+- **Test setup is copied between files.** Several files build their own ask-the-customer setup,
+  agent keys are issued by reading the admin page, files are named after pull requests rather
+  than rules, and the people side of the permission rules is picked by hand rather than
+  generated from the table.
+
 ---
 
 ## Reference
