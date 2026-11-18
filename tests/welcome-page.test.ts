@@ -1,0 +1,105 @@
+import { parse } from "node-html-parser";
+import { describe, expect, it } from "vitest";
+import { seedDemo } from "../src/server/demo.js";
+import { ticketFromNext } from "../src/server/routes/sign-in.js";
+import { createTicketService } from "../src/server/tickets/service.js";
+import { as, buildTestApp, customerOne, SIGN_IN_ENV, visitor } from "./helpers.js";
+
+// The welcome page ties each explanation to its button, names the ticket a link asked for,
+// and is titled for what it is.
+
+function demo() {
+  const built = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
+  seedDemo(createTicketService(built.db, built.config.ticketPrefix));
+  return built;
+}
+
+async function page(app: ReturnType<typeof demo>["app"], address = "/sign-in") {
+  return parse((await visitor(app).get(address)).text);
+}
+
+/** The text a screen reader gives as a button's description, from its aria-describedby. */
+function description(html: ReturnType<typeof parse>, button: ReturnType<typeof parse> | null) {
+  const ids = button?.getAttribute("aria-describedby")?.split(" ") ?? [];
+  return ids.map((id) => html.getElementById(id)?.text.trim()).join(" ");
+}
+
+describe("the welcome page's buttons", () => {
+  it("describe 'Try the ticket workflow' with its steps, right after the button", async () => {
+    const html = await page(demo().app);
+    const button = html.querySelector("form.try-workflow button");
+    expect(description(html, button)).toContain("File a ticket as the customer");
+    expect(html.querySelector("form.try-workflow + .try-steps")).not.toBeNull();
+  });
+
+  it("describe each role button with its own line", async () => {
+    const html = await page(demo().app);
+    const rows = html.querySelectorAll(".people li");
+    expect(rows.length).toBe(3);
+    for (const row of rows) {
+      expect(description(html, row.querySelector("button"))).toBe(
+        row.querySelector(".try")?.text.trim(),
+      );
+    }
+  });
+});
+
+describe("a welcome page reached from a ticket link", () => {
+  it("names the ticket above the big button, and says the workflow files a new one", async () => {
+    const html = await page(demo().app, "/sign-in?next=%2Ftickets%2FSUP-8");
+    expect(html.querySelector(".next-ticket + form.try-workflow")).not.toBeNull();
+    expect(html.querySelector(".next-ticket")?.text).toBe(
+      "Pick a role below to open SUP-8. Try the ticket workflow files a new ticket instead.",
+    );
+    // Each role button's description says which ticket it opens.
+    const first = html.querySelector(".people li button");
+    expect(description(html, first)).toMatch(/^Pick a role below to open SUP-8\./);
+  });
+
+  it("names the ticket on the development entrance too", async () => {
+    const { app } = buildTestApp();
+    const html = await page(app, "/sign-in?next=%2Ftickets%2FSUP-3");
+    expect(html.querySelector(".next-ticket")?.text).toBe("Pick a person below to open SUP-3.");
+  });
+
+  it("names nothing for any other address", async () => {
+    const { app } = demo();
+    for (const next of ["/tickets", "/tickets/new", "/tickets/SUP-8/edit", "https://elsewhere"]) {
+      const html = await page(app, `/sign-in?next=${encodeURIComponent(next)}`);
+      expect(html.querySelector(".next-ticket")).toBeNull();
+      expect(html.querySelector(".people li button")?.getAttribute("aria-describedby")).toBe(
+        "try-demo-customer",
+      );
+    }
+  });
+});
+
+describe("ticketFromNext", () => {
+  it("gives the key only for one ticket's page with this site's prefix", () => {
+    expect(ticketFromNext("/tickets/SUP-8", "SUP")).toBe("SUP-8");
+    expect(ticketFromNext("/tickets/SUP-08", "SUP")).toBeNull();
+    expect(ticketFromNext("/tickets/ABC-8", "SUP")).toBeNull();
+    expect(ticketFromNext("/tickets/SUP-8?tab=history", "SUP")).toBeNull();
+    expect(ticketFromNext("/tickets/SUP-8/", "SUP")).toBeNull();
+    expect(ticketFromNext("/tickets/<b>", "SUP")).toBeNull();
+  });
+});
+
+describe("the welcome page's tab title", () => {
+  const title = async (response: Promise<{ text: string }>) =>
+    parse((await response).text).querySelector("title")?.text;
+
+  it("is Welcome on the demo", async () => {
+    expect(await title(visitor(demo().app).get("/sign-in"))).toBe("Welcome - Proofdesk");
+  });
+
+  it("is Welcome for someone signed in", async () => {
+    const { app } = buildTestApp();
+    expect(await title(as(app, customerOne).get("/sign-in"))).toBe("Welcome - Proofdesk");
+  });
+
+  it("stays Sign in for a signed-out visitor on the real site", async () => {
+    const { app } = buildTestApp(SIGN_IN_ENV);
+    expect(await title(visitor(app).get("/sign-in"))).toBe("Sign in - Proofdesk");
+  });
+});

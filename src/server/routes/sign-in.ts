@@ -4,6 +4,7 @@ import { DEV_COOKIE, entrancePeople } from "../actor.js";
 import type { Auth } from "../auth.js";
 import type { Config } from "../config.js";
 import { HttpError } from "../errors.js";
+import { parseKey } from "../tickets/keys.js";
 
 // The sign-in page and its two ways in: GitHub, when its settings are present, and the
 // development entrance, when DEV_SIGN_IN is on. The configuration refuses the development
@@ -22,6 +23,17 @@ export function safeNext(value: unknown): string {
   return isLocalPath ? value : "/tickets";
 }
 
+/**
+ * The ticket a sign-in will open, such as "SUP-8" for "/tickets/SUP-8", so the welcome page
+ * can name it. Any other address, including a ticket page with more after it, gives null.
+ */
+export function ticketFromNext(next: string, prefix: string): string | null {
+  const start = "/tickets/";
+  if (!next.startsWith(start)) return null;
+  const key = next.slice(start.length);
+  return parseKey(prefix, key) === null ? null : key;
+}
+
 export function signInRouter(
   config: Config,
   auth: Auth | null,
@@ -34,11 +46,15 @@ export function signInRouter(
     const next = safeNext(req.query.next);
     // The sign-in library returns here with "?error=..." when a GitHub sign-in fails.
     const failed = req.query.error !== undefined;
+    // On the demo, or for someone already signed in, this page welcomes rather than signs in.
+    const welcoming = config.demo || req.actor !== null;
     res.render("sign-in", {
-      title: "Sign in",
+      title: welcoming ? "Welcome" : "Sign in",
       people,
       github: auth !== null,
       next,
+      // When the visitor followed a link to one ticket, the page names it.
+      nextTicket: ticketFromNext(next, config.ticketPrefix),
       failed,
       demo: config.demo,
       // On the demo, the welcome page offers a visitor their own assistant connection.

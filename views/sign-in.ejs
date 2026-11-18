@@ -48,22 +48,28 @@
   <% if (locals.realSiteUrl) { %>
   <p class="real-site"><small>GitHub sign-in with roles runs on the real site: <a href="<%= realSiteUrl %>"><%= new URL(realSiteUrl).host %></a></small></p>
   <% } %>
+  <% if (nextTicket) { %>
+  <p class="next-ticket" id="next-ticket">Pick a role below to open <strong><%= nextTicket %></strong>.<% if (locals.walkthrough) { %> Try the ticket workflow files a new ticket instead.<% } %></p>
+  <% } %>
   <% if (locals.walkthrough) { %>
   <%# The first and strongest choice: one ticket, from the customer's words to their Yes. %>
   <form method="post" action="/sign-in/dev" class="try-workflow">
     <input type="hidden" name="id" value="<%= walkthrough.id %>" />
     <input type="hidden" name="next" value="/tickets/new?try=1" />
-    <button type="submit" class="large">Try the ticket workflow</button>
+    <button type="submit" class="large" aria-describedby="try-steps">Try the ticket workflow</button>
   </form>
+  <p class="try-steps" id="try-steps"><small>File a ticket as the customer, work on it as the team, then say whether it is fixed as the customer. The same ticket stays open as you switch. About two minutes.</small></p>
   <% if (locals.sourceUrl) { %>
   <p class="source-link"><a href="<%= sourceUrl %>#readme">Source and setup</a></p>
   <% } %>
-  <p class="try-steps"><small>File a ticket as the customer, work on it as the team, then say whether it is fixed as the customer. The same ticket stays open as you switch. About two minutes.</small></p>
   <h3>Or look around as</h3>
   <% } %>
   <% } else { %>
   <h2 id="entrance">Development entrance</h2>
   <p>These people are made up. Pick one to act as. This is only offered when the server runs with DEV_SIGN_IN=on, which it refuses to do in production.</p>
+  <% if (nextTicket) { %>
+  <p class="next-ticket" id="next-ticket">Pick a person below to open <strong><%= nextTicket %></strong>.</p>
+  <% } %>
   <% } %>
   <ul class="people">
     <% for (const person of people) { %>
@@ -71,9 +77,10 @@
       <form method="post" action="/sign-in/dev">
         <input type="hidden" name="id" value="<%= person.id %>" />
         <input type="hidden" name="next" value="<%= next %>" />
-        <button type="submit" class="secondary"><%= person.readOnly ? "Admin preview (read-only)" : `View as ${person.name}` %></button>
+        <%# The button's description is its line below, and the ticket it opens when there is one. %>
+        <button type="submit" class="secondary" aria-describedby="<%= nextTicket ? "next-ticket " : "" %>try-<%= person.id %>"><%= person.readOnly ? "Admin preview (read-only)" : `View as ${person.name}` %></button>
       </form>
-      <small class="try"><%= tries[person.role] %></small>
+      <small class="try" id="try-<%= person.id %>"><%= tries[person.role] %></small>
     </li>
     <% } %>
   </ul>
