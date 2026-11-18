@@ -1,16 +1,11 @@
 import { z } from "zod";
+import { httpLink } from "./schemas.js";
 import { SCENARIO_LIMIT } from "./spec.js";
 
 // Evidence that a ticket's check was met. Proofdesk stores it as reported and shows who
 // reported it; it verifies nothing. The original report is kept exactly as sent.
 
 export const EVIDENCE_KINDS = ["test", "check_run", "change_link", "note"] as const;
-
-const httpLink = z
-  .string()
-  .trim()
-  .max(500, "Must be at most 500 characters.")
-  .pipe(z.url({ protocol: /^https?$/, error: "Must be a link that starts with http or https." }));
 
 /** The most a report may hold, as JSON text. */
 export const REPORT_LIMIT = 20000;

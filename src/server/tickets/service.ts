@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { DEMO_ACTORS, DEV_ACTORS, type Actor } from "../actor.js";
 import type { Db } from "../db.js";
-import { HttpError, ValidationError } from "../errors.js";
+import { demoNotReady, HttpError, ValidationError } from "../errors.js";
 import { can, type Action } from "../permissions.js";
 import { parse } from "../validation.js";
 import { addEvidenceSchema, readProveReport, type StageReading } from "./evidence.js";
@@ -340,13 +340,7 @@ export function createTicketService(
 
   function seededOrRefused(): DemoSeed {
     const seed = demoSeed();
-    if (seed === null) {
-      throw new HttpError(
-        503,
-        "demo_not_ready",
-        "Assistant connections are off on this demo until its operator resets its database.",
-      );
-    }
+    if (seed === null) throw demoNotReady();
     return seed;
   }
 
