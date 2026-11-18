@@ -3,29 +3,42 @@
 Every step here is the owner's to run. Nothing in the repository creates accounts, disks,
 secrets or machines.
 
-The app `support-desk-demo` exists, at `https://support-desk-demo.fly.dev`. The settings are in
-`fly.toml`: one machine, always on, with a disk at `/data` for the SQLite file.
+There are two apps, both in the `sjc` region, each with one machine, always on, and its own disk
+named `support_desk_data` at `/data` for the SQLite file:
 
-## Before the first deploy
+| App                 | Address                             | Settings             | What it is                                                                               |
+| ------------------- | ----------------------------------- | -------------------- | ---------------------------------------------------------------------------------------- |
+| `support-desk-demo` | `https://support-desk-demo.fly.dev` | `fly.toml`           | The public demo: `DEMO=on`, the three demo people and sample tickets, no GitHub sign-in. |
+| `proofdesk`         | `https://proofdesk.fly.dev`         | `fly.proofdesk.toml` | The real site, with GitHub sign-in.                                                      |
 
-1. **A GitHub OAuth app for the hosted copy.** A second one, separate from the local one,
-   because the callback address differs:
-   - Homepage URL: `https://support-desk-demo.fly.dev`
-   - Authorization callback URL: `https://support-desk-demo.fly.dev/api/auth/callback/github`
-2. **The disk**, once:
+A database records whether it is for the demo or for real tickets, and the server refuses to
+start on the wrong one, so the two can never share a disk.
 
-   ```sh
-   fly volumes create support_desk_data --app support-desk-demo --region sea --size 1
-   ```
+## The disks
 
-3. **The secrets.** Generate a new secret for production; do not reuse the local one. Set
+Made once, already done:
+
+```sh
+fly volumes create support_desk_data --app support-desk-demo --region sjc --size 1
+fly volumes create support_desk_data --app proofdesk --region sjc --size 1
+```
+
+## The real site's sign-in
+
+Done once, already done:
+
+1. **A GitHub OAuth app for it**, separate from the local one, because the callback address
+   differs:
+   - Homepage URL: `https://proofdesk.fly.dev`
+   - Authorization callback URL: `https://proofdesk.fly.dev/api/auth/callback/github`
+2. **The secrets.** Generate a new secret for production; do not reuse the local one. Set
    `ADMIN_GITHUB_IDS` to the GitHub user numbers of the admins (and `TEAM_GITHUB_IDS` for team
    members). A number can be read at `https://api.github.com/users/<user name>`.
 
    ```sh
-   fly secrets set --app support-desk-demo \
+   fly secrets set --app proofdesk \
      BETTER_AUTH_SECRET="$(openssl rand -base64 32)" \
-     BETTER_AUTH_URL=https://support-desk-demo.fly.dev \
+     BETTER_AUTH_URL=https://proofdesk.fly.dev \
      GITHUB_CLIENT_ID=<from the OAuth app> \
      GITHUB_CLIENT_SECRET=<from the OAuth app> \
      ADMIN_GITHUB_IDS=<numbers>
@@ -34,17 +47,21 @@ The app `support-desk-demo` exists, at `https://support-desk-demo.fly.dev`. The 
    The server refuses to start in production without the four sign-in settings, or with an
    address that does not start with `https://`.
 
+The commands below name the demo app; for the real site use `--app proofdesk`, and deploy it with
+`--config fly.proofdesk.toml`.
+
 ## Deploy
 
 By hand, from the project folder:
 
 ```sh
 fly deploy --app support-desk-demo
+fly deploy --config fly.proofdesk.toml
 ```
 
 Or from GitHub: create a deploy token with `fly tokens create deploy --app support-desk-demo`,
 save it as the repository secret `FLY_API_TOKEN`, and run the **Deploy** workflow from the
-Actions tab. It never runs on its own.
+Actions tab. It never runs on its own, and it deploys the demo (`fly.toml`) only.
 
 With one machine and one disk, each deploy has a few seconds of downtime.
 
@@ -58,7 +75,8 @@ deploying. Look at `fly logs` straight after the first deploy: it must show `Lis
 ## After the first deploy: five checks
 
 1. `curl https://support-desk-demo.fly.dev/api/health` answers `"status":"ok"` with the commit.
-2. Sign in with GitHub on the hosted copy and see "(admin)" at the top.
+2. On the demo, choose "View as Demo Admin" and see the `admin` label at the top. On the real
+   site, sign in with GitHub instead.
 3. **The visitor's address cannot be chosen by the visitor.** The server counts sign-in starts
    per address, ten a minute, reading the address from the `fly-client-ip` header that Fly's
    proxy sets. Fly's documentation does not say whether the proxy replaces a value a visitor

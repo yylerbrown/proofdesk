@@ -81,8 +81,7 @@ sample ticket is made for an assistant to work on. A demo database seeded before
 does not offer connections until it is reset.
 
 The sample data is shared by every visitor. To reset it, stop the server, delete its database
-file and start it again. Hosting the demo needs a second Fly.io app with its own disk; that is not
-set up.
+file and start it again. The demo is hosted at `https://support-desk-demo.fly.dev`.
 
 ## Pages
 
@@ -306,8 +305,8 @@ unless another is named):
 
 ## Deploying
 
-The hosted copy runs on Fly.io: one machine, always on, with a disk for the SQLite file. The
-settings are in `fly.toml` and every step is in `docs/DEPLOY.md`. The **Deploy** workflow runs only
+The demo runs on Fly.io: one machine, always on, with a disk for the SQLite file. The real site,
+`proofdesk`, with GitHub sign-in, is a second app with its own disk (`fly.proofdesk.toml`). The settings are in `fly.toml` and every step is in `docs/DEPLOY.md`. The **Deploy** workflow runs only
 when started by hand.
 
 ## Tests and checks
