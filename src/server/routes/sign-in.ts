@@ -49,8 +49,12 @@ export function signInRouter(
     // GitHub sign-in, as on the demo, there is no such return, so the address is ignored.
     // Otherwise there may be a message kept for this page after signing out. Either way the
     // kept message is used up, so it shows once.
+    // Someone already signed in has nothing to try again, so a failure in the address is not
+    // shown to them.
     const kept = takeSignInNotice(req, res);
-    const failed = auth === null ? null : noticeForError(req.query.error, config.signIn?.baseUrl);
+    const signedOut = req.actor === null;
+    const failed =
+      auth === null || !signedOut ? null : noticeForError(req.query.error, config.signIn?.baseUrl);
     const notice = failed ?? kept;
     // On the demo, or for someone already signed in, this page welcomes rather than signs in.
     const welcoming = config.demo || req.actor !== null;

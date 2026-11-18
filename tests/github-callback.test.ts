@@ -240,6 +240,15 @@ describe("the whole GitHub sign-in", () => {
     expect(page.querySelector("h1")?.text).toBe("Proofdesk");
   });
 
+  it("tells someone already signed in nothing about a failed sign-in, since there is nothing to try", async () => {
+    const { app } = buildGithubApp();
+    const { cookie } = await signInThroughGithub(app, ada);
+    const address = "/sign-in?error=account_not_linked";
+    expect(noticeOf((await request(app).get(address).set("Cookie", cookie)).text)).toBeNull();
+    // A signed-out visitor at the same address is still told what went wrong.
+    expect(noticeOf((await request(app).get(address)).text)?.role).toBe("alert");
+  });
+
   it("ends a session seven days after sign-in, however recently it was used", async () => {
     const { app } = buildGithubApp();
     const day = 24 * 60 * 60 * 1000;
@@ -344,10 +353,11 @@ describe("the sign-in library's own routes", () => {
     ["no state", { code: "made-up-code" }, "state_not_found"],
     ["a state it never gave out", { code: "made-up-code", state: "unknown" }, "state_mismatch"],
   ])(
-    "send a GitHub return with %s to the sign-in page with its reason",
+    "send a GitHub return with %s to the sign-in page, where someone signed in is not told to try again",
     async (_name, query, reason) => {
       const { app } = buildGithubApp();
-      // Someone signed in already, as when a GitHub tab left open overnight comes back.
+      // Someone signed in already, as when a GitHub tab left open overnight comes back. They
+      // are still signed in, so there is nothing to try again.
       const { cookie } = await signInThroughGithub(app, ada);
       const back = await request(app)
         .get("/api/auth/callback/github")
@@ -356,7 +366,8 @@ describe("the sign-in library's own routes", () => {
       const landed = await landingOf(app, back.headers.location as string, cookie);
       expect(landed.url.pathname).toBe("/sign-in");
       expect(landed.url.searchParams.get("error")).toBe(reason);
-      expect(noticeOf(landed.res.text)).toEqual({ role: "alert", text: EXPIRED });
+      expect(noticeOf(landed.res.text)).toBeNull();
+      expect(parse(landed.res.text).querySelector(".signed-in")?.text).toContain("Ada Admin");
     },
   );
 });
