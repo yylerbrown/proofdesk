@@ -9,9 +9,9 @@
 <% } %>
 
 <form method="post" action="/tickets/<%= ticket.key %>/archive">
-  <div role="group">
-    <a href="/tickets/<%= ticket.key %>" role="button" class="secondary">Keep ticket</a>
-    <button type="submit">Archive ticket</button>
+  <div class="choice">
+    <a href="/tickets/<%= ticket.key %>" role="button" class="secondary outline compact">Keep ticket</a>
+    <button type="submit" class="danger compact">Archive ticket</button>
   </div>
 </form>
 <%- include("footer") %>

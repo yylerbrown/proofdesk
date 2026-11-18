@@ -44,8 +44,8 @@
     <input type="hidden" name="ready_token" value="<%= ticket.ready_token %>" />
     <label>
       No, it is not fixed. What is still wrong?
-      <textarea name="comment" rows="3" required <% if (problem?.form === "answer") { %>aria-invalid="true"<% } %>><%= problem?.form === "answer" ? problem.comment : "" %></textarea>
-      <% if (problem?.form === "answer") { %><small><%= problem.message %></small><% } %>
+      <textarea name="comment" rows="3" required <% if (problem?.form === "answer") { %>aria-invalid="true" aria-describedby="answer-error"<% } %>><%= problem?.form === "answer" ? problem.comment : "" %></textarea>
+      <% if (problem?.form === "answer") { %><small id="answer-error"><%= problem.message %></small><% } %>
     </label>
     <button type="submit" class="secondary compact">No, send it back</button>
   </form>
@@ -114,8 +114,8 @@
     <form method="post" action="/tickets/<%= ticket.key %>/agreed-check">
       <label>
         Agreed check (leave empty to remove it)
-        <textarea name="agreed_check" rows="3"><%= ticket.agreed_check ?? ticket.fix_check ?? "" %></textarea>
-        <% if (problem?.form === "agreedCheck") { %><small><%= problem.message %></small><% } %>
+        <textarea name="agreed_check" rows="3" <% if (problem?.form === "agreedCheck") { %>aria-invalid="true" aria-describedby="agreed-check-error"<% } %>><%= ticket.agreed_check ?? ticket.fix_check ?? "" %></textarea>
+        <% if (problem?.form === "agreedCheck") { %><small id="agreed-check-error"><%= problem.message %></small><% } %>
       </label>
       <button type="submit" class="compact">Save agreed check</button>
     </form>
@@ -137,8 +137,8 @@
   <form method="post" action="/tickets/<%= ticket.key %>/change-link">
     <label>
       Link to the code change
-      <input type="url" name="change_url" placeholder="https://" required <% if (problem?.form === "changeLink") { %>aria-invalid="true"<% } %> />
-      <% if (problem?.form === "changeLink") { %><small><%= problem.message %></small><% } %>
+      <input type="url" name="change_url" placeholder="https://" required <% if (problem?.form === "changeLink") { %>aria-invalid="true" aria-describedby="change-link-error"<% } %> />
+      <% if (problem?.form === "changeLink") { %><small id="change-link-error"><%= problem.message %></small><% } %>
     </label>
     <button type="submit" class="secondary compact">Save change link</button>
   </form>
@@ -147,8 +147,8 @@
   <form method="post" action="/tickets/<%= ticket.key %>/ready">
     <label>
       Page on the live site to try
-      <input type="url" name="try_url" placeholder="https://" required <% if (problem?.form === "ready") { %>aria-invalid="true"<% } %> />
-      <% if (problem?.form === "ready") { %><small><%= problem.message %></small><% } %>
+      <input type="url" name="try_url" placeholder="https://" required <% if (problem?.form === "ready") { %>aria-invalid="true" aria-describedby="ready-error"<% } %> />
+      <% if (problem?.form === "ready") { %><small id="ready-error"><%= problem.message %></small><% } %>
     </label>
     <button type="submit" class="compact">Ask the customer</button>
   </form>
@@ -204,8 +204,8 @@
   <% } %>
   <label>
     Your message
-    <textarea name="body" rows="4" required <% if (entry.error) { %>aria-invalid="true"<% } %>><%= entry.body %></textarea>
-    <% if (entry.error) { %><small><%= entry.error %></small><% } %>
+    <textarea name="body" rows="4" required <% if (entry.error) { %>aria-invalid="true" aria-describedby="body-error"<% } %>><%= entry.body %></textarea>
+    <% if (entry.error) { %><small id="body-error"><%= entry.error %></small><% } %>
   </label>
   <button type="submit" class="compact">Send</button>
 </form>
