@@ -1277,3 +1277,64 @@ button.copy {
   padding: 2px 10px;
   font-size: var(--pd-text-xs);
 }
+
+/*
+ * "More": the page's secondary actions in a small menu, a native details element, so it needs no
+ * script and opens by keyboard. Calm and light, like a popover: a hairline and no elevation.
+ */
+details.more {
+  position: relative;
+  margin-top: var(--pd-space-4);
+}
+.ticket-panel details.more > summary {
+  display: inline-block;
+  padding: 4px 12px;
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius);
+  color: var(--pd-text);
+  font-size: var(--pd-text-sm);
+  font-weight: var(--pd-weight-medium);
+  list-style: none;
+}
+.ticket-panel details.more > summary::after {
+  display: none;
+}
+.ticket-panel details.more[open] > summary,
+.ticket-panel details.more > summary:hover {
+  background: var(--pd-subtle);
+}
+.more-menu {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 220px;
+  padding: var(--pd-space-2);
+  border: var(--pd-hairline);
+  border-radius: var(--pd-radius-lg);
+  background: var(--pd-surface);
+  box-shadow: var(--pd-shadow);
+}
+.more-menu form {
+  margin: 0;
+}
+.more-menu button,
+.more-menu a {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 6px 8px;
+  border: 0;
+  background: none;
+  font-size: var(--pd-text-sm);
+  text-align: left;
+}
+.more-menu button:hover,
+.more-menu a:hover {
+  background: var(--pd-subtle);
+}
+.more-menu .danger-zone {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: var(--pd-hairline);
+}

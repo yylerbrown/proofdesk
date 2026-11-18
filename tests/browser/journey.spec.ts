@@ -75,13 +75,10 @@ test("a customer files a ticket, the team works it, and only the customer resolv
     await expect(listRow(team, key)).toContainText("Unassigned");
     await listRow(team, key).getByRole("link", { name: key, exact: true }).click();
 
-    await team.getByRole("button", { name: "Take this ticket" }).click();
-    await expect(savedMessage(team)).toContainText("You own this ticket now");
-    await expect(team.getByRole("button", { name: "Take this ticket" })).toHaveCount(0);
-
-    // Only the owner starts work, with one button.
-    await team.getByRole("button", { name: "Start work" }).click();
-    await expect(savedMessage(team)).toContainText("Status changed");
+    // One action owns the ticket and starts work; taking without starting is in More.
+    await team.getByRole("button", { name: "Take ticket and start work" }).click();
+    await expect(savedMessage(team)).toContainText("You own this ticket, and it is in progress");
+    await expect(team.getByRole("button", { name: "Take ticket and start work" })).toHaveCount(0);
     await expectTicketStatus(team, key, "In Progress");
   });
 
