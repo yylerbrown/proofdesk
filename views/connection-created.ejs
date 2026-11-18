@@ -1,6 +1,7 @@
 <%- include("header") %>
+<div class="column-form">
 <h1>Connection issued</h1>
-<p><strong>Copy the key now.</strong> It is shown only on this page. If it is lost, revoke the connection and issue a new one.</p>
+<p class="callout"><strong>Copy the key now.</strong> It is shown only on this page. If it is lost, revoke the connection and issue a new one.</p>
 
 <p>It may: <%= connection.scopes.map((s) => scopeLabels[s]).join("; ") %>.</p>
 
@@ -13,4 +14,5 @@
 <pre class="paste"><code>curl -H "Authorization: Bearer <%= key %>" "<%= address %>/api/tickets?status=new"</code></pre>
 
 <p><a href="/connections">Back to connections</a></p>
+</div>
 <%- include("footer") %>
