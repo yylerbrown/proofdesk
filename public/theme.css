@@ -50,10 +50,17 @@
   --pd-text: #1b1c19; /* 16.39 on bg, 17.12 on surface, 15.26 on subtle, 15.45 on note */
   --pd-muted: #5c5e57; /* 6.30 on bg, 6.58 on surface, 5.86 on subtle, 5.94 on note */
   --pd-ink: #1b1c19; /* primary button fill */
+  --pd-ink-hover: #33352f; /* primary button on hover: a step lighter, white words 12.42 */
   --pd-on-ink: #ffffff; /* 17.12 on ink */
+  --pd-control-border: #dcdcd6; /* quiet button edge; the words identify the button (1.4.11) */
   --pd-focus: #2160e0; /* focus ring: 5.27 on bg, 5.51 on surface */
-  --pd-danger: #b42318; /* danger text 6.29 on bg, 6.57 on surface */
+  --pd-focus-halo: rgba(33, 96, 224, 0.18); /* soft halo beside a focused box's blue edge */
+  --pd-danger: #b42318; /* danger text 6.29 on bg, 6.57 on surface, 5.94 on danger-bg */
+  --pd-danger-bg: #fcf1ef; /* a refused action: text 15.46, muted 5.94 */
+  --pd-danger-halo: rgba(180, 35, 24, 0.14); /* soft halo around a refused box with focus */
   --pd-on-danger: #ffffff; /* 6.57 on danger fill */
+  --pd-selection: #dce6fa; /* selected text: text 13.65 */
+  --pd-header-bg: rgba(250, 250, 249, 0.86); /* the header, see-through over a scrolled page */
   --pd-note-bg: #fbf3dc; /* internal-note tint */
   --pd-note-text: #7a4f00; /* note label 6.43 on note-bg */
   --pd-note-bar: #a87400; /* note edge 3.67 on note-bg */
@@ -71,7 +78,7 @@
   --pd-badge-resolved: var(--pd-status-resolved);
   --pd-badge-archived: var(--pd-status-archived);
   --pd-badge-text: var(--pd-text);
-  --pd-badge-dot: 8px;
+  --pd-badge-dot: 12px;
 
   /* Type. Root is 15px (see --pico-font-size below), so 1rem = 15px and user zoom still works. */
   --pd-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -79,9 +86,9 @@
   --pd-text-xs: 0.8rem; /* 12px  line 1.4   track 0         rail labels, tags, demo strip */
   --pd-text-sm: 0.8667rem; /* 13px  line 1.45  track -0.003em  meta, badges, buttons, tables */
   --pd-text-md: 1rem; /* 15px  line 1.55  track -0.009em  body, inputs (16px on phones) */
-  --pd-text-lg: 1.1333rem; /* 17px  line 1.45  track -0.013em  section headings, the check */
-  --pd-text-xl: 1.4667rem; /* 22px  line 1.3   track -0.018em  page title */
-  --pd-text-2xl: 1.7333rem; /* 26px  line 1.25  track -0.02em   welcome title only */
+  --pd-text-lg: 1.1333rem; /* 17px  line 1.45  track -0.014em  section headings, the check */
+  --pd-text-xl: 1.6rem; /* 24px  line 1.25  track -0.021em  page title */
+  --pd-text-2xl: 1.7333rem; /* 26px  line 1.2   track -0.024em  welcome title only */
   --pd-weight-regular: 400; /* body */
   --pd-weight-medium: 500; /* names, buttons, list titles, current tab */
   --pd-weight-semibold: 600; /* headings. Nothing is 700. */
@@ -96,16 +103,23 @@
   --pd-space-7: 48px;
   --pd-space-8: 64px;
   --pd-gutter: 16px; /* page side gutter; 32px from 768px (site.css) */
-  --pd-page: 1080px; /* widest content */
-  --pd-measure: 680px; /* main column of the ticket page; forms are 640px */
-  --pd-rail: 272px; /* ticket page action rail */
+  /*
+   * Widest content: the header, the ticket list and the ticket page share this one frame, so their
+   * edges line up. Wider windows get margins, not longer lines. Reading text and forms stay
+   * narrower inside it (--pd-measure, 640px forms, 420px welcome).
+   */
+  --pd-page: 1200px;
+  --pd-measure: 760px; /* longest line of reading text */
+  --pd-rail: 288px; /* ticket page panel; 320px from 1280px (site.css) */
   --pd-header-h: 56px;
   --pd-radius-sm: 4px; /* tags, code, badges */
-  --pd-radius: 6px; /* buttons, inputs, notes */
-  --pd-radius-lg: 10px; /* answer box, role list */
+  --pd-radius: 6px; /* buttons, inputs, menu items */
+  --pd-radius-lg: 10px; /* cards: the list, the panel, the answer box, menus */
   --pd-hairline: 1px solid var(--pd-border);
-  --pd-shadow: none; /* no elevation anywhere */
+  /* The one shadow: popovers only (the More menu and the role switch). Nothing else floats. */
+  --pd-shadow: 0 1px 2px rgba(27, 28, 25, 0.05), 0 10px 28px -8px rgba(27, 28, 25, 0.16);
   --pd-ease: 120ms ease-out; /* colour and background changes only */
+  --pd-ease-move: 160ms cubic-bezier(0.2, 0, 0, 1); /* the few small movements */
 
   /* Pico's own names, set from the above. */
   --pico-font-family: var(--pd-font);
@@ -126,8 +140,8 @@
   --pico-primary-hover-underline: var(--pd-text);
   --pico-primary-background: var(--pd-ink);
   --pico-primary-border: var(--pd-ink);
-  --pico-primary-hover-background: #000000;
-  --pico-primary-hover-border: #000000;
+  --pico-primary-hover-background: var(--pd-ink-hover);
+  --pico-primary-hover-border: var(--pd-ink-hover);
   --pico-primary-focus: var(--pd-focus);
   --pico-primary-inverse: var(--pd-on-ink);
   --pico-secondary: var(--pd-muted);
@@ -158,7 +172,8 @@
   --pico-box-shadow: none;
   --pico-dropdown-background-color: var(--pd-surface);
   --pico-dropdown-border-color: var(--pd-border);
-  --pico-dropdown-box-shadow: none;
+  --pico-dropdown-box-shadow: var(--pd-shadow);
+  --pico-text-selection-color: var(--pd-selection);
   --pico-dropdown-color: var(--pd-text);
   --pico-dropdown-hover-background-color: var(--pd-subtle);
   --pico-accordion-border-color: var(--pd-border);
@@ -181,6 +196,21 @@
   --pico-nav-breadcrumb-divider: "/";
 }
 
+/*
+ * Sizes that change with the window. They name the same element as the block above, so they win
+ * over it (a plain :root here would lose, and the wider gutter would never apply).
+ */
+@media (min-width: 768px) {
+  :root:not([data-theme="dark"]) {
+    --pd-gutter: 32px;
+  }
+}
+@media (min-width: 1280px) {
+  :root:not([data-theme="dark"]) {
+    --pd-rail: 320px;
+  }
+}
+
 /* Dark set (later, only if cheap). It takes effect only when the html element has no
    data-theme attribute; header.ejs then also changes its meta to content="light dark". */
 @media (prefers-color-scheme: dark) {
@@ -194,10 +224,18 @@
     --pd-text: #ececea; /* 15.49 bg, 14.46 surface, 12.70 subtle, 13.05 note */
     --pd-muted: #a2a49d; /* 7.27 bg, 6.79 surface, 5.96 subtle, 6.13 note */
     --pd-ink: #ececea;
+    --pd-ink-hover: #ffffff;
     --pd-on-ink: #141513; /* 15.49 */
+    --pd-control-border: #3a3c37;
     --pd-focus: #78a6ff; /* 7.59 bg */
+    --pd-focus-halo: rgba(120, 166, 255, 0.24);
     --pd-danger: #f07c6c;
+    --pd-danger-bg: #2b1915;
+    --pd-danger-halo: rgba(240, 124, 108, 0.2);
     --pd-on-danger: #141513; /* 6.81 bg, 6.81 fill */
+    --pd-selection: #26354f;
+    --pd-header-bg: rgba(20, 21, 19, 0.86);
+    --pd-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 28px -8px rgba(0, 0, 0, 0.5);
     --pd-note-bg: #2a2413;
     --pd-note-text: #e6bb5c; /* 8.55 */
     --pd-note-bar: #a77d16; /* 4.11 */
@@ -207,7 +245,5 @@
     --pd-status-archived: #8f918a; /* 5.74 bg */
     --pd-yes: #d1e935;
     --pd-on-yes: #1b1c19; /* tick stays dark on lime: 12.57 */
-    --pico-primary-hover-background: #ffffff;
-    --pico-primary-hover-border: #ffffff;
   }
 }
