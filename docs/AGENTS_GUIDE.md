@@ -38,7 +38,7 @@ reaches the connector from Anthropic's servers, so the address must be public.
 directly:
 
 ```bash
-curl -H "Authorization: Bearer <key>" "https://<your Proofdesk address>/api/tickets?status=new"
+curl -H "Authorization: Bearer <key>" "https://<your Proofdesk address>/api/tickets"
 ```
 
 ## Ask Proofdesk itself
