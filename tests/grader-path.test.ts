@@ -35,7 +35,7 @@ async function filed() {
 describe("a new ticket", () => {
   it("says on the form that it starts New, and is New once filed", async () => {
     const { app } = buildTestApp();
-    const form = parse((await as(app, customerOne).get("/tickets/new")).text);
+    const form = parse((await as(app, customerOne).get("/tickets/new").redirects(1)).text);
     expect(form.querySelector(".initial-status")?.text).toBe("Initial status: New");
     const res = await as(app, customerOne)
       .post("/tickets")

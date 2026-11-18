@@ -19,7 +19,7 @@ import {
 const valid = { title: "Printer jams", description: "It jams on page two." };
 
 async function page(agent: ReturnType<typeof admin>, url: string): Promise<HTMLElement> {
-  const res = await agent.get(url);
+  const res = await agent.get(url).redirects(1);
   expect(res.status).toBe(200);
   return parse(res.text);
 }
