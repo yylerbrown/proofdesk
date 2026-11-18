@@ -1,15 +1,25 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import cookieParser from "cookie-parser";
+import { toNodeHandler } from "better-auth/node";
 import express, { type Express } from "express";
+import { ipKeyGenerator, rateLimit } from "express-rate-limit";
 import helmet from "helmet";
 import { actorMiddleware } from "./actor.js";
+import { createAuth } from "./auth.js";
 import type { Config } from "./config.js";
 import type { Db } from "./db.js";
-import { errorHandler, notFoundHandler, pageErrorHandler, pageNotFoundHandler } from "./errors.js";
+import {
+  errorHandler,
+  HttpError,
+  notFoundHandler,
+  pageErrorHandler,
+  pageNotFoundHandler,
+} from "./errors.js";
 import { healthRouter } from "./routes/health.js";
 import { pagesRouter } from "./routes/pages.js";
 import { signInRouter } from "./routes/sign-in.js";
+import { sameOriginOnly } from "./same-origin.js";
 import { ticketsRouter } from "./routes/tickets.js";
 import { createTicketService } from "./tickets/service.js";
 
@@ -19,6 +29,11 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../.
 // The largest request body the server reads, for JSON and for forms. A larger one is
 // refused with 413 before any of it is looked at. The biggest valid ticket is about 6 KB.
 const BODY_LIMIT = "100kb";
+
+// How many tickets one person may file in ten minutes, and how many sign-ins one address
+// may start in a minute.
+export const FILING_LIMIT = 20;
+export const SIGN_IN_LIMIT = 10;
 
 const picoCssFile = path.join(rootDir, "node_modules/@picocss/pico/css/pico.min.css");
 
@@ -36,9 +51,16 @@ export function createApp(config: Config, db: Db): Express {
   // and styles only from this server, so a script written into a page cannot run.
   app.use(
     helmet({
+      // Send the address of the page a request comes from only to this server itself.
+      // The library's default sends it nowhere, which also makes browsers blank out the
+      // Origin header on this site's own forms.
+      referrerPolicy: { policy: "same-origin" },
       contentSecurityPolicy: {
         directives: {
           "style-src": ["'self'"],
+          // Forms post only to this server. The GitHub sign-in form is answered with a
+          // redirect to GitHub, which browsers also count, so GitHub is allowed too.
+          "form-action": ["'self'", "https://github.com"],
           // Browsers are told to switch to HTTPS only in production. On a development
           // machine the server speaks plain HTTP and the switch would break the page.
           "upgrade-insecure-requests": config.nodeEnv === "production" ? [] : null,
@@ -47,11 +69,37 @@ export function createApp(config: Config, db: Db): Express {
     }),
   );
 
+  // GitHub sign-in, when its settings are present. The library answers everything under
+  // /api/auth itself: the return from GitHub, and its own session routes. It must be
+  // mounted before any body parser, because it reads the request body itself.
+  const auth = config.signIn === null ? null : createAuth(db, config.signIn);
+  if (auth !== null) {
+    app.all("/api/auth/*splat", toNodeHandler(auth));
+  }
+
   app.use(cookieParser());
-  app.use(actorMiddleware(config));
+  // Decides who is acting. It is used twice below, once for the API and once for the
+  // pages, so that a failure inside it is answered in the right format for each.
+  const actor = actorMiddleware(config, auth, db);
+
+  // Limits on how often one person, or one address when signed out, may file a ticket or
+  // start a sign-in. Over the limit the answer is 429 until the window has passed.
+  const tooMany: Parameters<typeof rateLimit>[0] = {
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    keyGenerator: (req) => req.actor?.id ?? ipKeyGenerator(req.ip ?? ""),
+    handler: (_req, _res, next) => {
+      next(new HttpError(429, "too_many_requests", "Too many requests. Try again in a while."));
+    },
+  };
+  const filingLimit = rateLimit({ ...tooMany, windowMs: 10 * 60 * 1000, limit: FILING_LIMIT });
+  const signInLimit = rateLimit({ ...tooMany, windowMs: 60 * 1000, limit: SIGN_IN_LIMIT });
 
   // The JSON API. Its own handlers at the end turn every error inside it into JSON.
   const api = express.Router();
+  api.use(actor);
+  api.use(sameOriginOnly(config));
+  api.post("/tickets", filingLimit);
   api.use(express.json({ limit: BODY_LIMIT }));
   api.use(healthRouter(config, db));
   api.use(ticketsRouter(tickets));
@@ -59,13 +107,18 @@ export function createApp(config: Config, db: Db): Express {
   api.use(errorHandler);
   app.use("/api", api);
 
-  // The pages: two stylesheets, the HTML form parser, the routes, then HTML error pages.
+  // The pages: two stylesheets, which need no sign-in and so come before the actor, then
+  // the HTML form parser, the routes and the HTML error pages.
   app.get("/assets/pico.min.css", (_req, res) => {
     res.sendFile(picoCssFile);
   });
   app.use("/assets", express.static(path.join(rootDir, "public")));
+  app.use(actor);
+  app.use(sameOriginOnly(config));
+  app.post("/tickets", filingLimit);
+  app.post("/sign-in/github", signInLimit);
   app.use(express.urlencoded({ extended: false, limit: BODY_LIMIT }));
-  app.use(signInRouter(config));
+  app.use(signInRouter(config, auth));
   app.use(pagesRouter(tickets));
   app.use(pageNotFoundHandler);
   app.use(pageErrorHandler);

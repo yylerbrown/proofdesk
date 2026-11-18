@@ -1,7 +1,14 @@
-import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { DEV_COOKIE } from "../src/server/actor.js";
-import { admin, as, buildTestApp, customerOne, customerTwo, teamActor } from "./helpers.js";
+import {
+  admin,
+  as,
+  buildTestApp,
+  visitor,
+  customerOne,
+  customerTwo,
+  teamActor,
+} from "./helpers.js";
 
 const valid = { title: "Printer is broken", description: "It jams on every page." };
 
@@ -29,7 +36,7 @@ describe("nobody signed in", () => {
     ["get", "/api/tickets/SUP-1/events"],
   ] as const)("the API answers %s %s with 401", async (method, address) => {
     const { app } = await twoCustomers();
-    const res = await request(app)[method](address).send(valid);
+    const res = await visitor(app)[method](address).send(valid);
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe("not_signed_in");
   });
@@ -46,23 +53,25 @@ describe("nobody signed in", () => {
     ["post", "/tickets/SUP-1/restore"],
   ] as const)("the page %s %s sends the browser to sign in", async (method, address) => {
     const { app } = await twoCustomers();
-    const res = await request(app)[method](address).type("form").send(valid);
+    const res = await visitor(app)[method](address).type("form").send(valid);
     expect(res.status).toBe(303);
-    expect(res.headers.location).toBe("/sign-in");
+    // Opening a page remembers its address. A form post does not.
+    const expected = method === "get" ? `/sign-in?next=${encodeURIComponent(address)}` : "/sign-in";
+    expect(res.headers.location).toBe(expected);
   });
 
   it("changes nothing", async () => {
     const { app } = await twoCustomers();
-    await request(app).post("/api/tickets").send(valid);
-    await request(app).post("/tickets").type("form").send(valid);
-    await request(app).post("/api/tickets/SUP-1/archive");
+    await visitor(app).post("/api/tickets").send(valid);
+    await visitor(app).post("/tickets").type("form").send(valid);
+    await visitor(app).post("/api/tickets/SUP-1/archive");
     const list = await admin(app).get("/api/tickets");
     expect(list.body.map((t: { key: string }) => t.key)).toEqual(["SUP-2", "SUP-1"]);
   });
 
   it("keeps the health address open", async () => {
     const { app } = buildTestApp();
-    expect((await request(app).get("/api/health")).status).toBe(200);
+    expect((await visitor(app).get("/api/health")).status).toBe(200);
   });
 });
 
@@ -88,13 +97,13 @@ describe("who is acting comes only from the sign-in cookie", () => {
 
   it("treats an unknown person in the cookie as nobody", async () => {
     const { app } = buildTestApp();
-    const res = await request(app).get("/api/tickets").set("Cookie", `${DEV_COOKIE}=dev-owner-1`);
+    const res = await visitor(app).get("/api/tickets").set("Cookie", `${DEV_COOKIE}=dev-owner-1`);
     expect(res.status).toBe(401);
   });
 
   it("ignores the cookie when the development entrance is off", async () => {
     const { app } = buildTestApp({ DEV_SIGN_IN: "off" });
-    const res = await request(app).get("/api/tickets").set("Cookie", `${DEV_COOKIE}=dev-admin-1`);
+    const res = await visitor(app).get("/api/tickets").set("Cookie", `${DEV_COOKIE}=dev-admin-1`);
     expect(res.status).toBe(401);
   });
 });
@@ -247,12 +256,12 @@ describe("an admin", () => {
 describe("the sign-in page and the development entrance", () => {
   it("offers the made-up people and signs one in with a cookie scripts cannot read", async () => {
     const { app } = buildTestApp();
-    const page = await request(app).get("/sign-in");
+    const page = await visitor(app).get("/sign-in");
     expect(page.status).toBe(200);
     expect(page.text).toContain("Development entrance");
     expect(page.text).toContain("Customer One (customer)");
 
-    const res = await request(app).post("/sign-in/dev").type("form").send({ id: customerOne.id });
+    const res = await visitor(app).post("/sign-in/dev").type("form").send({ id: customerOne.id });
     expect(res.status).toBe(303);
     expect(res.headers.location).toBe("/tickets");
     const cookie = String(res.headers["set-cookie"]);
@@ -263,7 +272,7 @@ describe("the sign-in page and the development entrance", () => {
 
   it("refuses a person who is not on the list", async () => {
     const { app } = buildTestApp();
-    const res = await request(app).post("/sign-in/dev").type("form").send({ id: "dev-owner-1" });
+    const res = await visitor(app).post("/sign-in/dev").type("form").send({ id: "dev-owner-1" });
     expect(res.status).toBe(400);
     expect(res.headers["set-cookie"]).toBeUndefined();
   });
@@ -279,10 +288,10 @@ describe("the sign-in page and the development entrance", () => {
 
   it("is closed when the setting is off: no people offered and no way to sign in", async () => {
     const { app } = buildTestApp({ DEV_SIGN_IN: "off" });
-    const page = await request(app).get("/sign-in");
+    const page = await visitor(app).get("/sign-in");
     expect(page.text).toContain("Sign-in is not set up on this server yet.");
     expect(page.text).not.toContain("Customer One");
-    const res = await request(app).post("/sign-in/dev").type("form").send({ id: customerOne.id });
+    const res = await visitor(app).post("/sign-in/dev").type("form").send({ id: customerOne.id });
     expect(res.status).toBe(404);
     expect(res.headers["set-cookie"]).toBeUndefined();
   });

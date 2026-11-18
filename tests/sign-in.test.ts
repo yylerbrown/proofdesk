@@ -1,0 +1,372 @@
+import { betterAuth } from "better-auth";
+import { getMigrations } from "better-auth/db/migration";
+import { testUtils } from "better-auth/plugins";
+import request from "supertest";
+import { describe, expect, it } from "vitest";
+import { FILING_LIMIT, SIGN_IN_LIMIT } from "../src/server/app.js";
+import { createAuth } from "../src/server/auth.js";
+import { DEV_COOKIE } from "../src/server/actor.js";
+import {
+  admin,
+  adminActor,
+  as,
+  buildTestApp,
+  customerOne,
+  customerTwo,
+  SIGN_IN_ENV,
+  visitor,
+} from "./helpers.js";
+
+type TestDb = ReturnType<typeof buildTestApp>["db"];
+
+const valid = { title: "Printer is broken", description: "It jams on every page." };
+const ROLES = { ADMIN_GITHUB_IDS: "1001", TEAM_GITHUB_IDS: "2002,2003" };
+
+/** An app with GitHub sign-in configured and the development entrance closed. */
+function buildSignInApp(env: NodeJS.ProcessEnv = {}) {
+  return buildTestApp({ ...SIGN_IN_ENV, ...ROLES, DEV_SIGN_IN: "off", ...env });
+}
+
+/**
+ * Puts a person, their GitHub account and a session into the database, the way a finished
+ * GitHub sign-in does, and returns the Cookie header of their browser. It uses the sign-in
+ * library's own test helpers on a second instance that shares the database and the secret,
+ * so the cookie is one the app's own instance accepts. Nothing here talks to GitHub.
+ */
+async function signedInBrowser(db: TestDb, githubId: string, name: string) {
+  const testAuth = betterAuth({
+    database: db,
+    secret: SIGN_IN_ENV.BETTER_AUTH_SECRET,
+    baseURL: SIGN_IN_ENV.BETTER_AUTH_URL,
+    plugins: [testUtils()],
+  });
+  const test = (await testAuth.$context).test;
+  const user = await test.saveUser(test.createUser({ name, email: `${githubId}@example.com` }));
+  const now = new Date().toISOString();
+  db.prepare(
+    `INSERT INTO "account" ("id", "accountId", "providerId", "userId", "createdAt", "updatedAt")
+     VALUES (?, ?, 'github', ?, ?, ?)`,
+  ).run(`account-${githubId}`, githubId, user.id, now, now);
+  const login = await test.login({ userId: user.id });
+  return { userId: user.id, cookie: login.headers.get("cookie") ?? "" };
+}
+
+describe("the sign-in library's tables", () => {
+  it("are all created by our own migration, with nothing left for the library to add", async () => {
+    const { db, config } = buildSignInApp();
+    const wanted = await getMigrations(createAuth(db, config.signIn!).options);
+    expect(wanted.toBeCreated).toEqual([]);
+    expect(wanted.toBeAdded).toEqual([]);
+  });
+});
+
+describe("a GitHub session", () => {
+  it("signs the person in, and records them as the creator", async () => {
+    const { app, db } = buildSignInApp();
+    const browser = await signedInBrowser(db, "5005", "Sam Customer");
+
+    const filed = await visitor(app).post("/api/tickets").set("Cookie", browser.cookie).send(valid);
+    expect(filed.status).toBe(201);
+    expect(filed.body.created_by).toBe(browser.userId);
+
+    const page = await request(app).get("/tickets").set("Cookie", browser.cookie);
+    expect(page.status).toBe(200);
+    expect(page.text).toContain("Signed in as Sam Customer (customer)");
+  });
+
+  it("gives the role that the configuration names for the GitHub user number", async () => {
+    const { app, db } = buildSignInApp();
+    const boss = await signedInBrowser(db, "1001", "Ada Admin");
+    const helper = await signedInBrowser(db, "2003", "Tom Team");
+    const guest = await signedInBrowser(db, "9009", "Vic Visitor");
+    await visitor(app).post("/api/tickets").set("Cookie", guest.cookie).send(valid);
+
+    const archivedList = (cookie: string) =>
+      request(app).get("/api/tickets?status=archived").set("Cookie", cookie);
+    const changeStatus = (cookie: string) =>
+      visitor(app).patch("/api/tickets/SUP-1").set("Cookie", cookie).send({ status: "resolved" });
+
+    expect((await archivedList(boss.cookie)).status).toBe(200); // admin only
+    expect((await archivedList(helper.cookie)).status).toBe(403);
+    expect((await changeStatus(guest.cookie)).status).toBe(403); // a customer cannot
+    expect((await changeStatus(helper.cookie)).status).toBe(200); // a team member can
+  });
+
+  it("keeps two customers apart", async () => {
+    const { app, db } = buildSignInApp();
+    const one = await signedInBrowser(db, "5005", "Sam");
+    const two = await signedInBrowser(db, "6006", "Kim");
+    await visitor(app).post("/api/tickets").set("Cookie", one.cookie).send(valid);
+    expect((await request(app).get("/api/tickets/SUP-1").set("Cookie", two.cookie)).status).toBe(
+      404,
+    );
+    expect((await request(app).get("/api/tickets").set("Cookie", two.cookie)).body).toEqual([]);
+  });
+
+  it("is refused when the cookie was changed, and when there is none", async () => {
+    const { app, db } = buildSignInApp();
+    const browser = await signedInBrowser(db, "1001", "Ada Admin");
+    // Change one character in the middle of the cookie value.
+    const middle = Math.floor(browser.cookie.length / 2);
+    const swapped = browser.cookie[middle] === "a" ? "b" : "a";
+    const forged = browser.cookie.slice(0, middle) + swapped + browser.cookie.slice(middle + 1);
+
+    expect((await request(app).get("/api/tickets").set("Cookie", forged)).status).toBe(401);
+    expect((await request(app).get("/api/tickets")).status).toBe(401);
+    expect((await request(app).get("/api/tickets").set("Cookie", browser.cookie)).status).toBe(200);
+  });
+
+  it("does not accept the development cookie when that entrance is closed", async () => {
+    const { app } = buildSignInApp();
+    expect((await admin(app).get("/api/tickets")).status).toBe(401);
+  });
+
+  it("ends at sign-out: the same cookie no longer works", async () => {
+    const { app, db } = buildSignInApp();
+    const browser = await signedInBrowser(db, "1001", "Ada Admin");
+    const out = await visitor(app).post("/sign-out").set("Cookie", browser.cookie);
+    expect(out.status).toBe(303);
+    expect(out.headers.location).toBe("/sign-in");
+    expect((await request(app).get("/api/tickets").set("Cookie", browser.cookie)).status).toBe(401);
+    expect(db.prepare(`SELECT COUNT(*) AS n FROM "session"`).get()).toEqual({ n: 0 });
+  });
+});
+
+describe("starting a GitHub sign-in", () => {
+  it("offers the button and sends the browser to GitHub with our callback address", async () => {
+    const { app } = buildSignInApp();
+    const page = await request(app).get("/sign-in");
+    expect(page.text).toContain('action="/sign-in/github"');
+    expect(page.text).not.toContain("Development entrance");
+
+    const res = await visitor(app).post("/sign-in/github");
+    expect(res.status).toBe(303);
+    const target = new URL(res.headers.location as string);
+    expect(target.origin + target.pathname).toBe("https://github.com/login/oauth/authorize");
+    expect(target.searchParams.get("client_id")).toBe("test-client-id");
+    expect(target.searchParams.get("redirect_uri")).toBe(
+      "http://desk.test/api/auth/callback/github",
+    );
+    expect(target.searchParams.get("scope")).toContain("user:email");
+    // The secret never goes to the browser.
+    expect(res.headers.location).not.toContain("test-client-secret");
+    expect(String(res.headers["set-cookie"])).toContain("HttpOnly");
+  });
+
+  it("lets the library answer under /api/auth", async () => {
+    const { app } = buildSignInApp();
+    const res = await request(app).get("/api/auth/ok");
+    expect(res.status).toBe(200);
+  });
+
+  it("is not there when GitHub sign-in is not configured", async () => {
+    const { app } = buildTestApp();
+    expect((await request(app).get("/sign-in")).text).not.toContain('action="/sign-in/github"');
+    expect((await visitor(app).post("/sign-in/github")).status).toBe(404);
+    const res = await request(app).get("/api/auth/ok");
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("not_found");
+  });
+
+  it("allows only a few starts a minute from one address", async () => {
+    const { app } = buildSignInApp();
+    for (let i = 0; i < SIGN_IN_LIMIT; i++) {
+      expect((await visitor(app).post("/sign-in/github")).status).toBe(303);
+    }
+    const res = await visitor(app).post("/sign-in/github");
+    expect(res.status).toBe(429);
+    expect(res.text).toContain("Too many requests.");
+  });
+});
+
+describe("requests forged from another site", () => {
+  // What a browser sends when a page on another site posts a form here.
+  const foreign = { Origin: "https://evil.example", "Sec-Fetch-Site": "cross-site" };
+  // The cookie of a signed-in admin, which a browser attaches no matter who made it ask.
+  const cookie = `${DEV_COOKIE}=${adminActor.id}`;
+
+  it.each([
+    ["post", "/api/tickets"],
+    ["put", "/api/tickets/SUP-1"],
+    ["patch", "/api/tickets/SUP-1"],
+    ["post", "/api/tickets/SUP-1/archive"],
+    ["post", "/tickets"],
+    ["post", "/tickets/SUP-1/edit"],
+    ["post", "/tickets/SUP-1/status"],
+    ["post", "/tickets/SUP-1/archive"],
+    ["post", "/sign-out"],
+    ["post", "/sign-in/dev"],
+  ] as const)("are refused: %s %s", async (method, address) => {
+    const { app } = buildTestApp();
+    await admin(app).post("/api/tickets").send(valid);
+    const before = await admin(app).get("/api/tickets/SUP-1");
+
+    const type = address.startsWith("/api") ? "json" : "form";
+    const body = { ...valid, title: "Forged", status: "resolved", id: customerOne.id };
+    const res = await request(app)
+      [method](address)
+      .set("Cookie", cookie)
+      .set(foreign)
+      .type(type)
+      .send(body);
+
+    expect(res.status).toBe(403);
+    if (type === "json") expect(res.body.error.code).toBe("cross_site_request");
+    else expect(res.text).toContain("This request did not come from this site.");
+    expect(res.headers["set-cookie"]).toBeUndefined();
+    expect((await admin(app).get("/api/tickets/SUP-1")).body).toEqual(before.body);
+    expect((await admin(app).get("/api/tickets")).body).toHaveLength(1);
+  });
+
+  it.each([
+    ["only a foreign Origin", { Origin: "https://evil.example" }],
+    ["an Origin of null", { Origin: "null" }],
+    ["only the cross-site marker", { "Sec-Fetch-Site": "cross-site" }],
+    ["a sibling site", { "Sec-Fetch-Site": "same-site" }],
+    [
+      "the cross-site marker and our own Origin",
+      { Host: "desk.test", Origin: "http://desk.test", "Sec-Fetch-Site": "cross-site" },
+    ],
+    [
+      "our host name inside a longer one",
+      { Host: "desk.test", Origin: "http://desk.test.evil.example" },
+    ],
+    ["nothing that says where it comes from", {}],
+  ])("are refused with %s", async (_name, headers) => {
+    const { app } = buildTestApp();
+    const res = await request(app)
+      .post("/api/tickets")
+      .set("Cookie", cookie)
+      .set(headers)
+      .send(valid);
+    expect(res.status).toBe(403);
+    expect((await admin(app).get("/api/tickets")).body).toEqual([]);
+  });
+
+  it.each([
+    [
+      "this site's own form",
+      { Host: "desk.test", Origin: "http://desk.test", "Sec-Fetch-Site": "same-origin" },
+    ],
+    // A browser blanks out Origin on a form when the page's referrer policy is strict.
+    [
+      "this site's own form with a blank Origin",
+      { Origin: "null", "Sec-Fetch-Site": "same-origin" },
+    ],
+    ["an older browser that sends only Origin", { Host: "desk.test", Origin: "http://desk.test" }],
+    ["an address typed by the person", { "Sec-Fetch-Site": "none" }],
+  ])("does not block %s", async (_name, headers) => {
+    const { app } = buildTestApp();
+    const res = await request(app)
+      .post("/api/tickets")
+      .set("Cookie", cookie)
+      .set(headers)
+      .send(valid);
+    expect(res.status).toBe(201);
+  });
+
+  it("compares Origin with the configured address, not with the Host header", async () => {
+    // SIGN_IN_ENV says this site is http://desk.test.
+    const { app } = buildTestApp({ ...SIGN_IN_ENV, DEV_SIGN_IN: "on" });
+    const post = (headers: Record<string, string>) =>
+      request(app).post("/api/tickets").set("Cookie", cookie).set(headers).send(valid);
+
+    expect((await post({ Origin: "http://desk.test" })).status).toBe(201);
+    // A Host header that agrees with a foreign Origin does not help.
+    expect((await post({ Host: "evil.example", Origin: "http://evil.example" })).status).toBe(403);
+    // The scheme counts too.
+    expect((await post({ Origin: "https://desk.test" })).status).toBe(403);
+  });
+
+  it("does not block reading from another site, which changes nothing", async () => {
+    const { app } = buildTestApp();
+    const res = await request(app).get("/api/tickets").set("Cookie", cookie).set(foreign);
+    expect(res.status).toBe(200);
+  });
+});
+
+describe("returning to the page that was asked for", () => {
+  it("carries the address through the sign-in page and back", async () => {
+    const { app } = buildTestApp();
+    const sent = await visitor(app).get("/tickets/SUP-7?x=1");
+    expect(sent.headers.location).toBe("/sign-in?next=%2Ftickets%2FSUP-7%3Fx%3D1");
+
+    const page = await visitor(app).get(sent.headers.location as string);
+    expect(page.text).toContain('name="next" value="/tickets/SUP-7?x=1"');
+
+    const res = await visitor(app)
+      .post("/sign-in/dev")
+      .type("form")
+      .send({ id: customerOne.id, next: "/tickets/SUP-7?x=1" });
+    expect(res.headers.location).toBe("/tickets/SUP-7?x=1");
+  });
+
+  it.each([
+    "https://evil.example/",
+    "//evil.example/",
+    "/\\evil.example/",
+    "/\t/evil.example/",
+    "/\n/evil.example/",
+    "/tickets\u00a0",
+    "evil.example",
+    "javascript:alert(1)",
+    "",
+  ])("goes to the ticket list instead of %j", async (next) => {
+    const { app } = buildTestApp();
+    const res = await visitor(app)
+      .post("/sign-in/dev")
+      .type("form")
+      .send({ id: customerOne.id, next });
+    expect(res.headers.location).toBe("/tickets");
+    const page = await visitor(app).get("/sign-in").query({ next });
+    expect(page.text).toContain('name="next" value="/tickets"');
+  });
+
+  it("tells GitHub sign-in where to come back to", async () => {
+    const { app, db } = buildSignInApp();
+    await visitor(app).post("/sign-in/github").type("form").send({ next: "/tickets/SUP-7" });
+    await visitor(app).post("/sign-in/github").type("form").send({ next: "https://evil.example/" });
+    // The library keeps the return address with the sign-in it started.
+    const kept = db.prepare(`SELECT "value" FROM "verification" ORDER BY "createdAt"`).all() as {
+      value: string;
+    }[];
+    expect(kept).toHaveLength(2);
+    expect(kept[0]!.value).toContain('"callbackURL":"/tickets/SUP-7"');
+    expect(kept[1]!.value).toContain('"callbackURL":"/tickets"');
+    expect(kept[1]!.value).not.toContain("evil.example");
+  });
+});
+
+describe("the limit on filing tickets", () => {
+  it("answers 429 after the limit, as JSON on the API, and stores nothing more", async () => {
+    const { app } = buildTestApp();
+    for (let i = 0; i < FILING_LIMIT; i++) {
+      expect((await as(app, customerOne).post("/api/tickets").send(valid)).status).toBe(201);
+    }
+    const res = await as(app, customerOne).post("/api/tickets").send(valid);
+    expect(res.status).toBe(429);
+    expect(res.body.error.code).toBe("too_many_requests");
+    expect((await as(app, customerOne).get("/api/tickets")).body).toHaveLength(FILING_LIMIT);
+  });
+
+  it("counts the form and the API together, and each person on their own", async () => {
+    const { app } = buildTestApp();
+    for (let i = 0; i < FILING_LIMIT; i++) {
+      await as(app, customerOne).post("/tickets").type("form").send(valid);
+    }
+    const form = await as(app, customerOne).post("/tickets").type("form").send(valid);
+    expect(form.status).toBe(429);
+    expect(form.headers["content-type"]).toMatch(/html/);
+    expect((await as(app, customerOne).post("/api/tickets").send(valid)).status).toBe(429);
+    // Someone else is not held back by it.
+    expect((await as(app, customerTwo).post("/api/tickets").send(valid)).status).toBe(201);
+  });
+
+  it("does not limit reading or editing", async () => {
+    const { app } = buildTestApp();
+    await admin(app).post("/api/tickets").send(valid);
+    for (let i = 0; i < FILING_LIMIT + 5; i++) {
+      expect((await admin(app).get("/api/tickets/SUP-1")).status).toBe(200);
+    }
+  });
+});

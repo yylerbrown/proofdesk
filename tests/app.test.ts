@@ -62,6 +62,7 @@ describe("error handling", () => {
     const { app } = build();
     const res = await request(app)
       .post("/api/health")
+      .set("Sec-Fetch-Site", "same-origin")
       .set("Content-Type", "application/json")
       .send("{bad");
     expect(res.status).toBe(400);

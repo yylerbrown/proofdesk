@@ -1,14 +1,28 @@
 <%- include("header") %>
 <h1>Sign in</h1>
 
-<% if (people.length === 0) { %>
+<% if (failed) { %>
+<p><mark>That sign-in did not work. Try again, or ask the support team if it keeps happening.</mark></p>
+<% } %>
+
+<% if (github) { %>
+<form method="post" action="/sign-in/github">
+  <input type="hidden" name="next" value="<%= next %>" />
+  <button type="submit">Sign in with GitHub</button>
+</form>
+<% } %>
+
+<% if (!github && people.length === 0) { %>
 <p>Sign-in is not set up on this server yet.</p>
-<% } else { %>
+<% } %>
+
+<% if (people.length > 0) { %>
 <article>
   <p><strong>Development entrance.</strong> These people are made up. Pick one to act as. This page is only offered when the server runs with DEV_SIGN_IN=on, which it refuses to do in production.</p>
   <% for (const person of people) { %>
   <form method="post" action="/sign-in/dev">
     <input type="hidden" name="id" value="<%= person.id %>" />
+    <input type="hidden" name="next" value="<%= next %>" />
     <button type="submit" class="secondary"><%= person.name %> (<%= person.role %>)</button>
   </form>
   <% } %>
