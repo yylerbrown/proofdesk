@@ -8,6 +8,7 @@
     "build:browser": "tsc -p tsconfig.browser.json",
     "start": "node dist/server/index.js",
     "test": "vitest run",
+    "test:browser": "playwright test -c tests/browser/playwright.config.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write ."
@@ -27,6 +28,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "1.64.1",
     "@types/better-sqlite3": "^9.6.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
