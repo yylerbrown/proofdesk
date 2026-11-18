@@ -28,6 +28,10 @@ export const changeStatusSchema = z.object({
   status: z.enum(TICKET_STATUSES),
 });
 
+// Which tickets a list shows: one status, every status, or the archived ones.
+export const TICKET_LIST_FILTERS = [...TICKET_STATUSES, "all", "archived"] as const;
+export type TicketListFilter = (typeof TICKET_LIST_FILTERS)[number];
+
 export const listQuerySchema = z.object({
-  status: z.enum([...TICKET_STATUSES, "all"]).optional(),
+  status: z.enum(TICKET_LIST_FILTERS).optional(),
 });

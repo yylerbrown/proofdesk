@@ -4,7 +4,12 @@ import { HttpError } from "../errors.js";
 import { parse } from "../validation.js";
 import { buildKey, parseKey } from "./keys.js";
 import * as repository from "./repository.js";
-import { changeStatusSchema, createTicketSchema, type TicketStatus } from "./schemas.js";
+import {
+  changeStatusSchema,
+  createTicketSchema,
+  type TicketListFilter,
+  type TicketStatus,
+} from "./schemas.js";
 
 // The rules for tickets live here: what a valid ticket is, key handling, "not found",
 // "same status is a no-op", and which writes must happen together in one transaction.
@@ -24,6 +29,7 @@ export type Ticket = {
   agent_id: string | null;
   created_at: string;
   updated_at: string;
+  archived_at: string | null;
 };
 
 export type TicketEvent = {
@@ -77,6 +83,7 @@ export function createTicketService(db: Db, prefix: string) {
       agent_id: row.agent_id,
       created_at: row.created_at,
       updated_at: row.updated_at,
+      archived_at: row.archived_at,
     };
   }
 
@@ -110,6 +117,15 @@ export function createTicketService(db: Db, prefix: string) {
     return row;
   }
 
+  /** Returns the ticket row, or throws 404 if it is missing and 409 if it is archived. */
+  function requireActiveRow(key: string): repository.TicketRow {
+    const row = requireRow(key);
+    if (row.archived_at !== null) {
+      throw new HttpError(409, "ticket_archived", `Ticket ${key} is archived. Restore it first.`);
+    }
+    return row;
+  }
+
   return {
     /** Checks the input, then saves the ticket and its "created" event together. */
     createTicket(input: unknown, actor: Actor): Ticket {
@@ -136,9 +152,11 @@ export function createTicketService(db: Db, prefix: string) {
       return toTicket(row);
     },
 
-    listTickets(status: TicketStatus | "all"): Ticket[] {
-      const filter = status === "all" ? undefined : status;
-      return repository.listTickets(db, filter).map(toTicket);
+    /** "archived" lists only archived tickets. Every other filter leaves them out. */
+    listTickets(filter: TicketListFilter): Ticket[] {
+      if (filter === "archived") return repository.listArchivedTickets(db).map(toTicket);
+      const status = filter === "all" ? undefined : filter;
+      return repository.listTickets(db, status).map(toTicket);
     },
 
     getTicket(key: string): Ticket {
@@ -149,7 +167,7 @@ export function createTicketService(db: Db, prefix: string) {
     changeStatus(key: string, input: unknown, actor: Actor): Ticket {
       const { status } = parse(changeStatusSchema, input);
       const row = db.transaction(() => {
-        const before = requireRow(key);
+        const before = requireActiveRow(key);
         if (before.status === status) return before; // nothing changes, so nothing is logged
         const now = new Date().toISOString();
         repository.updateTicketStatus(db, before.id, status, now);
@@ -162,6 +180,93 @@ export function createTicketService(db: Db, prefix: string) {
           now,
         });
         return { ...before, status, updated_at: now };
+      })();
+      return toTicket(row);
+    },
+
+    /**
+     * Replaces the text of a ticket: title, description, link and check. The input has the
+     * same shape and rules as a new ticket. The event records each field that changed, with
+     * its old and new value. If nothing changed, nothing is written.
+     */
+    editTicket(key: string, input: unknown, actor: Actor): Ticket {
+      const ticket = parse(createTicketSchema, input);
+      const after = {
+        title: ticket.title,
+        description: ticket.description,
+        where_url: ticket.where_url ?? null,
+        fix_check: ticket.fix_check || null,
+      };
+      const row = db.transaction(() => {
+        const before = requireActiveRow(key);
+        const changes: Record<string, { from: string | null; to: string | null }> = {};
+        for (const field of ["title", "description", "where_url", "fix_check"] as const) {
+          if (before[field] !== after[field]) {
+            changes[field] = { from: before[field], to: after[field] };
+          }
+        }
+        if (Object.keys(changes).length === 0) return before;
+        const now = new Date().toISOString();
+        repository.updateTicketText(
+          db,
+          before.id,
+          {
+            title: after.title,
+            description: after.description,
+            whereUrl: after.where_url,
+            fixCheck: after.fix_check,
+          },
+          now,
+        );
+        repository.insertEvent(db, {
+          ticketId: before.id,
+          actor: actor.id,
+          actorKind: actor.kind,
+          type: "edited",
+          data: { changes },
+          now,
+        });
+        return { ...before, ...after, updated_at: now };
+      })();
+      return toTicket(row);
+    },
+
+    /** Hides the ticket from the ordinary lists. Its row and its events are kept. */
+    archiveTicket(key: string, actor: Actor): Ticket {
+      const row = db.transaction(() => {
+        const before = requireRow(key);
+        if (before.archived_at !== null) return before; // already archived
+        const now = new Date().toISOString();
+        repository.updateTicketArchived(db, before.id, now, now);
+        repository.insertEvent(db, {
+          ticketId: before.id,
+          actor: actor.id,
+          actorKind: actor.kind,
+          type: "archived",
+          data: {},
+          now,
+        });
+        return { ...before, archived_at: now, updated_at: now };
+      })();
+      return toTicket(row);
+    },
+
+    /** Brings an archived ticket back into the ordinary lists. */
+    restoreTicket(key: string, actor: Actor): Ticket {
+      const row = db.transaction(() => {
+        const before = requireRow(key);
+        if (before.archived_at === null) return before; // not archived
+        const now = new Date().toISOString();
+        repository.updateTicketArchived(db, before.id, null, now);
+        repository.insertEvent(db, {
+          ticketId: before.id,
+          actor: actor.id,
+          actorKind: actor.kind,
+          type: "restored",
+          data: {},
+          now,
+        });
+        return { ...before, archived_at: null, updated_at: now };
       })();
       return toTicket(row);
     },

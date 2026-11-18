@@ -85,6 +85,7 @@ describe("create and get", () => {
       agent_id: null,
       created_at: expect.stringMatching(/^\d{4}-\d\d-\d\dT[\d:.]+Z$/),
       updated_at: expect.stringMatching(/^\d{4}-\d\d-\d\dT[\d:.]+Z$/),
+      archived_at: null,
     });
   });
 

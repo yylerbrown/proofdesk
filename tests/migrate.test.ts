@@ -31,6 +31,7 @@ const ALL = [
   "0002_tickets.sql",
   "0003_event_actor_kind.sql",
   "0004_events_append_only.sql",
+  "0005_ticket_archive.sql",
 ];
 
 describe("runMigrations", () => {

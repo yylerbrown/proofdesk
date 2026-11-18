@@ -13,6 +13,13 @@ const helpers = { statusLabels: STATUS_LABELS, statuses: TICKET_STATUSES, format
 
 const emptyForm = { title: "", description: "", where_url: "", fix_check: "" };
 
+// What differs between the two uses of the ticket form: its heading, where it posts, its button.
+const newForm = { title: "New ticket", action: "/tickets", submitLabel: "File ticket" };
+
+function editForm(key: string) {
+  return { title: `Edit ${key}`, action: `/tickets/${key}/edit`, submitLabel: "Save changes" };
+}
+
 function asText(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
@@ -47,7 +54,7 @@ export function pagesRouter(service: TicketService): Router {
 
   // Registered before "/tickets/:key" so that "new" is not read as a ticket key.
   router.get("/tickets/new", (_req, res) => {
-    res.render("ticket-new", { title: "New ticket", values: emptyForm, errors: {} });
+    res.render("ticket-form", { ...newForm, values: emptyForm, errors: {} });
   });
 
   router.post("/tickets", (req, res) => {
@@ -64,9 +71,7 @@ export function pagesRouter(service: TicketService): Router {
     } catch (err) {
       if (!(err instanceof ValidationError)) throw err;
       // Show the form again with what was typed and one message under each wrong box.
-      res
-        .status(400)
-        .render("ticket-new", { title: "New ticket", values, errors: err.fieldErrors });
+      res.status(400).render("ticket-form", { ...newForm, values, errors: err.fieldErrors });
     }
   });
 
@@ -78,6 +83,45 @@ export function pagesRouter(service: TicketService): Router {
       who: describeActor(event),
     }));
     res.render("ticket-show", { ...helpers, title: ticket.key, ticket, history });
+  });
+
+  // The edit form is the new ticket form, filled in with the ticket as it is now.
+  router.get("/tickets/:key/edit", (req, res) => {
+    const ticket = service.getTicket(req.params.key);
+    const values = {
+      title: ticket.title,
+      description: ticket.description,
+      where_url: ticket.where_url ?? "",
+      fix_check: ticket.fix_check ?? "",
+    };
+    res.render("ticket-form", { ...editForm(ticket.key), values, errors: {} });
+  });
+
+  router.post("/tickets/:key/edit", (req, res) => {
+    const values = readTicketForm(req.body);
+    try {
+      const ticket = service.editTicket(
+        req.params.key,
+        { ...values, where_url: values.where_url === "" ? undefined : values.where_url },
+        req.actor,
+      );
+      res.redirect(303, `/tickets/${ticket.key}`);
+    } catch (err) {
+      if (!(err instanceof ValidationError)) throw err;
+      // The key is checked before it is put in the form's address.
+      const key = service.getTicket(req.params.key).key;
+      res.status(400).render("ticket-form", { ...editForm(key), values, errors: err.fieldErrors });
+    }
+  });
+
+  router.post("/tickets/:key/archive", (req, res) => {
+    const ticket = service.archiveTicket(req.params.key, req.actor);
+    res.redirect(303, `/tickets/${ticket.key}`);
+  });
+
+  router.post("/tickets/:key/restore", (req, res) => {
+    const ticket = service.restoreTicket(req.params.key, req.actor);
+    res.redirect(303, `/tickets/${ticket.key}`);
   });
 
   router.post("/tickets/:key/status", (req, res) => {

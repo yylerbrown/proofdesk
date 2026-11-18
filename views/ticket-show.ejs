@@ -6,6 +6,15 @@
   <p><%= ticket.key %>, <%= statusLabels[ticket.status] %>, filed <%= formatTime(ticket.created_at) %></p>
 </hgroup>
 
+<% if (ticket.archived_at) { %>
+<article>
+  <p>This ticket was archived on <%= formatTime(ticket.archived_at) %>. It is hidden from the lists and cannot be changed until it is restored.</p>
+  <form method="post" action="/tickets/<%= ticket.key %>/restore">
+    <button type="submit">Restore ticket</button>
+  </form>
+</article>
+<% } %>
+
 <h2>Description</h2>
 <p class="user-text"><%= ticket.description %></p>
 
@@ -19,6 +28,7 @@
 <blockquote class="user-text"><%= ticket.fix_check %></blockquote>
 <% } %>
 
+<% if (!ticket.archived_at) { %>
 <h2>Status</h2>
 <form method="post" action="/tickets/<%= ticket.key %>/status">
   <fieldset role="group">
@@ -30,6 +40,15 @@
     <button type="submit">Change status</button>
   </fieldset>
 </form>
+
+<h2>Change this ticket</h2>
+<form method="post" action="/tickets/<%= ticket.key %>/archive">
+  <div role="group">
+    <a href="/tickets/<%= ticket.key %>/edit" role="button" class="secondary">Edit ticket</a>
+    <button type="submit" class="secondary">Archive ticket</button>
+  </div>
+</form>
+<% } %>
 
 <h2>History</h2>
 <div class="overflow-auto">

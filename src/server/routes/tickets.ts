@@ -25,6 +25,19 @@ export function ticketsRouter(service: TicketService): Router {
     res.json(service.changeStatus(req.params.key, req.body, req.actor));
   });
 
+  // PUT replaces the text of the ticket. PATCH above changes only the status.
+  router.put("/tickets/:key", (req, res) => {
+    res.json(service.editTicket(req.params.key, req.body, req.actor));
+  });
+
+  router.post("/tickets/:key/archive", (req, res) => {
+    res.json(service.archiveTicket(req.params.key, req.actor));
+  });
+
+  router.post("/tickets/:key/restore", (req, res) => {
+    res.json(service.restoreTicket(req.params.key, req.actor));
+  });
+
   router.get("/tickets/:key/events", (req, res) => {
     res.json(service.listEvents(req.params.key));
   });
