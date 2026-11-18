@@ -171,7 +171,7 @@
   <% if (allowed.delete) { %>
   <p><a href="/tickets/<%= ticket.key %>/delete" role="button" class="danger compact">Delete permanently</a></p>
   <% } %>
-  <small>Both ask first, on a page of their own.</small>
+  <small><% if (allowed.archive && allowed.delete) { %>Both ask first, each on a page of its own.<% } else { %>It asks first, on a page of its own.<% } %></small>
 </section>
 <% } %>
 </aside>

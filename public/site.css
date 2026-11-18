@@ -12,6 +12,19 @@ header nav .viewer {
 header nav .viewer strong {
   color: var(--pico-color);
 }
+header nav .viewer {
+  white-space: nowrap;
+}
+/* On a phone the header wraps onto two rows instead of squeezing every word. */
+@media (max-width: 600px) {
+  header nav,
+  header nav ul {
+    flex-wrap: wrap;
+  }
+  header nav li {
+    padding: 0.4rem 0.5rem;
+  }
+}
 .role-label {
   margin-left: 0.25rem;
   padding: 0.05rem 0.4rem;
@@ -75,9 +88,14 @@ header nav .viewer strong {
   margin: 0 0.75rem 0 0;
 }
 
-/* Long titles in the list wrap instead of widening the table. */
+/* In the list only the title wraps; the short columns stay on one line. */
+table.tickets th,
+table.tickets td {
+  white-space: nowrap;
+}
 table.tickets td.user-text {
   min-width: 12rem;
+  white-space: pre-wrap;
 }
 
 /* An internal note is set apart, so it is never mistaken for a reply the customer sees. */
@@ -85,12 +103,21 @@ table.tickets td.user-text {
   border-left: 4px solid var(--pico-del-color);
 }
 
-/* Buttons and links styled as buttons take the width of their words, not the whole column. */
-.compact,
-.ticket-panel select {
+/*
+ * Buttons and links styled as buttons take the width of their words, not the whole column.
+ * The element names are needed to outweigh the stylesheet's own full-width rule.
+ */
+button.compact,
+a.compact {
   width: auto;
 }
-.compact {
+.ticket-panel select {
+  display: block;
+  width: auto;
+  margin-top: 0.25rem;
+}
+button.compact,
+a.compact {
   padding: 0.35rem 0.8rem;
   font-size: 0.9rem;
 }
@@ -158,6 +185,9 @@ a.danger[role="button"] {
 .ticket-summary h2,
 .ticket-thread h2 {
   font-size: 1.25rem;
+}
+.ticket-summary h3 {
+  font-size: 1rem;
 }
 
 /* Long words and links anywhere in the page wrap instead of widening it. */

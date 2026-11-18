@@ -91,6 +91,11 @@ was saved. The message comes from a fixed list in `src/server/pages/saved.ts`, s
 form can make a page show text of its own. The JSON list (`GET /api/tickets`) uses the same
 order as the page.
 
+On a wide screen the ticket page has two columns: the description and the conversation on the
+left, and a panel on the right with the status, the owner, both checks, the fix and, last and
+set apart in red, archive and permanent delete. On a narrow screen it is one column, with the
+panel between the description and the conversation.
+
 ## API
 
 All routes are under `/api` and speak JSON. Errors look like
@@ -254,6 +259,9 @@ npm run format
 - `src/server/pages/format.ts` turns stored values into the words shown on a page.
 - `views/` holds the page templates (EJS: HTML with small pieces of JavaScript).
 - `public/site.css` holds the few style rules added on top of the Pico CSS stylesheet.
+- `src/browser/local-time.ts` is the only browser code: it rewrites each `<time>` into the
+  visitor's own time zone. `npm run build` (and `npm run dev`) compile it to `public/js/`,
+  which is not committed. Without scripts, the pages show times in UTC.
 - `src/server/actor.ts` decides who is acting on a request, from the sign-in cookie.
 - `src/server/permissions.ts` holds `can()`, the one function that says who may do what.
 - `src/server/routes/sign-in.ts` is the sign-in page, the GitHub start and the development entrance.
