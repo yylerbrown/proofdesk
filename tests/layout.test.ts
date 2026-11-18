@@ -28,14 +28,14 @@ describe("the ticket page layout", () => {
     expect(panel?.lastElementChild).toBe(more);
     expect(more?.querySelector("summary")?.text).toBe("More");
     expect(more?.querySelectorAll("button, a").map((el) => el.text.trim())).toEqual([
-      "Take this ticket",
       "Edit ticket",
       "Archive ticket",
       "Delete permanently",
     ]);
     // The next action sits under the status; the panel keeps the secondary ones.
     expect(html.querySelector(".next-action form[action$='/take-and-start']")).not.toBeNull();
-    expect(panel?.querySelector("form[action$='/take']")).not.toBeNull();
+    // Taking is part of In Progress in the status row, so the panel does not offer it again.
+    expect(panel?.querySelector("form[action$='/take']")).toBeNull();
     expect(html.querySelector(".ticket-summary h2")?.text).toBe("Description");
     expect(html.querySelector(".ticket-thread #conversation")).not.toBeNull();
     expect(html.querySelector(".ticket-thread form[action$='/entries']")).not.toBeNull();

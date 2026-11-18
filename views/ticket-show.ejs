@@ -28,13 +28,9 @@
 </div>
 <% } %>
 
-<% if (locals.recordedRun) { %>
-<%# The customer's view leaves out the assistant's work, so for them the note says where it is instead of promising it here. %>
-<% if (viewerRole === "customer") { %>
-<p class="recorded-run">A recorded assistant run. Its spec, evidence and review request are for the team only, so this view does not show them<% if (locals.demoNext && demoNext.switchTo) { %>: press <strong><%= demoNext.label %></strong> below, or <a href="/assistant-run">see its transcript and files</a>.<% } else { %>. <a href="/assistant-run">See its transcript and files</a>.<% } %></p>
-<% } else { %>
+<%# Another demo customer filed the recorded run, so only the team opens it. %>
+<% if (locals.recordedRun && viewerRole !== "customer") { %>
 <p class="recorded-run">A recorded example of a real assistant run: what it sent is shown here as it sent it. The run worked on the assistant sample, <%= locals.assistantSampleKey ?? "SUP-4" %>, in an earlier copy of this demo, so its own words name <%= locals.assistantSampleKey ?? "SUP-4" %>. <a href="/assistant-run">See its transcript and files</a></p>
-<% } %>
 <% } %>
 <%# On the demo: the next role to view this same ticket as, or where resolved tickets are listed. %>
 <% if (locals.demoNext) { %>
@@ -240,85 +236,72 @@
   <% } %>
 </section>
 
-<section>
+<section class="status-control">
   <h2>Status</h2>
-  <p><%- include("status-badge", { status: ticket.status }) %><% if (ticket.ready_at && ticket.status === "in_progress") { %>, waiting for <%= viewerRole === "customer" ? "you" : "the customer who filed this ticket" %><% } %></p>
+  <%# The three statuses in one row: the current one marked, each other one a single press, or
+      greyed with one short line saying why. Each comes from the allowed actions, so the page
+      offers exactly what the server would accept. %>
+  <div class="quick-answers status-row">
+    <% for (const choice of statusRow.choices) { %>
+    <% if (choice.kind === "current") { %>
+    <span aria-current="true"><%- include("status-badge", { status: choice.status }) %></span>
+    <% } else if (choice.kind === "press") { %>
+    <form method="post" action="<%= choice.action %>">
+      <% for (const [name, value] of Object.entries(choice.fields)) { %>
+      <input type="hidden" name="<%= name %>" value="<%= value %>" />
+      <% } %>
+      <button type="submit" class="secondary"><%= statusLabels[choice.status] %></button>
+    </form>
+    <% } else if (choice.kind === "resolve") { %>
+    <% const resolving = problem?.form === "resolve" ? (problem.values ?? {}) : {}; %>
+    <details class="resolve" <% if (problem?.form === "resolve") { %>open<% } %>>
+      <summary role="button" class="secondary outline"><%= statusLabels[choice.status] %></summary>
+      <form method="post" action="/tickets/<%= ticket.key %>/resolve">
+        <label>
+          Reason
+          <%# No reason is chosen until the person picks one, so a stray press records nothing. %>
+          <select name="reason" required <%= focusIf("resolve", "reason") %>>
+            <option value="" <% if (!resolving.reason) { %>selected<% } %>>Choose a reason</option>
+            <% for (const [value, label] of Object.entries(resolveReasons)) { %>
+            <%# While the customer's No or reopening is their standing word, "Fixed" would
+                contradict them. The same rule as the callout at the top and the service. %>
+            <% if (value === "fixed_no_reply" && notFixed) continue; %>
+            <option value="<%= value %>" <% if (resolving.reason === value) { %>selected<% } %>><%= label %></option>
+            <% } %>
+          </select>
+        </label>
+        <%# The stylesheet shows each of these only for the reasons that use it. %>
+        <label class="resolve-duplicate">
+          Duplicate of
+          <input type="text" name="duplicate_of" placeholder="SUP-3" maxlength="20" value="<%= resolving.duplicate_of ?? "" %>" <%= focusIf("resolve", "duplicate_of") %> />
+        </label>
+        <label class="resolve-note">
+          Note (needed for Other)
+          <textarea name="note" rows="2" maxlength="500" <%= focusIf("resolve", "note") %>><%= resolving.note ?? "" %></textarea>
+        </label>
+        <% if (problem?.form === "resolve") { %><p><small id="resolve-error" role="alert"><%= problem.message %></small></p><% } %>
+        <p><small>The customer sees your reason and can reopen it.</small></p>
+        <button type="submit" class="secondary compact" <% if (problem?.form === "resolve") { %>aria-describedby="resolve-error"<% } %>>Resolve</button>
+      </form>
+    </details>
+    <% } else if (choice.kind === "reopen") { %>
+    <details class="reopen" <% if (problem?.form === "reopen") { %>open<% } %>>
+      <summary role="button" class="secondary outline"><%= statusLabels[choice.status] %></summary>
+      <form method="post" action="/tickets/<%= ticket.key %>/reopen">
+        <label for="reopen-reason">Why reopen it?</label>
+        <textarea id="reopen-reason" name="reason" rows="2" required <% if (problem?.form === "reopen") { %>aria-invalid="true" aria-describedby="reopen-error"<% } %> <%= focusIf("reopen", "reason") %>><%= problem?.form === "reopen" ? problem.comment : "" %></textarea>
+        <% if (problem?.form === "reopen") { %><small id="reopen-error" role="alert"><%= problem.message %></small><% } %>
+        <button type="submit" class="secondary compact">Reopen</button>
+      </form>
+    </details>
+    <% } else { %>
+    <span><button type="button" class="secondary" disabled <% if (statusRow.why) { %>aria-describedby="status-why"<% } %>><%= statusLabels[choice.status] %></button></span>
+    <% } %>
+    <% } %>
+  </div>
+  <% if (statusRow.why) { %><p class="status-rule" id="status-why"><small><%= statusRow.why %></small></p><% } %>
+  <% if (ticket.ready_at && ticket.status === "in_progress") { %><p class="status-rule"><small>Waiting for the customer who filed this ticket.</small></p><% } %>
   <% if (ticket.resolution) { %><p class="resolution-label"><small><%= ticket.resolution.label %></small></p><% } %>
-  <%# The status changes this viewer can make now, each named for where it leads. Each one comes
-      from the allowed actions, so the page offers exactly what the server would accept. %>
-  <% if (allowed.takeAndStart || allowed.start) { %>
-  <form method="post" action="/tickets/<%= ticket.key %>/<%= allowed.takeAndStart ? "take-and-start" : "status" %>">
-    <% if (!allowed.takeAndStart) { %><input type="hidden" name="status" value="in_progress" /><% } %>
-    <button type="submit" class="secondary compact">Start work</button>
-  </form>
-  <% } %>
-  <% if (allowed.markReady) { %>
-  <form method="post" action="/tickets/<%= ticket.key %>/ready">
-    <button type="submit" class="secondary compact">Ask the customer to verify</button>
-  </form>
-  <% } %>
-  <% if (allowed.resolveWithReason) { %>
-  <% const resolving = problem?.form === "resolve" ? (problem.values ?? {}) : {}; %>
-  <details class="resolve" <% if (problem?.form === "resolve") { %>open<% } %>>
-    <summary role="button" class="secondary outline">Resolve</summary>
-    <form method="post" action="/tickets/<%= ticket.key %>/resolve">
-      <label>
-        Reason
-        <%# No reason is chosen until the person picks one, so a stray press records nothing. %>
-        <select name="reason" required <%= focusIf("resolve", "reason") %>>
-          <option value="" <% if (!resolving.reason) { %>selected<% } %>>Choose a reason</option>
-          <% for (const [value, label] of Object.entries(resolveReasons)) { %>
-          <%# While the customer's No or reopening is their standing word, "has not replied"
-              would not be true. The same rule as the callout at the top and the service. %>
-          <% if (value === "fixed_no_reply" && notFixed) continue; %>
-          <option value="<%= value %>" <% if (resolving.reason === value) { %>selected<% } %>><%= label %></option>
-          <% } %>
-        </select>
-      </label>
-      <%# The stylesheet shows each of these only for the reasons that use it. %>
-      <label class="resolve-duplicate">
-        Duplicate of
-        <input type="text" name="duplicate_of" placeholder="SUP-3" maxlength="20" value="<%= resolving.duplicate_of ?? "" %>" <%= focusIf("resolve", "duplicate_of") %> />
-      </label>
-      <label class="resolve-note">
-        Note (needed for Other)
-        <textarea name="note" rows="2" maxlength="500" <%= focusIf("resolve", "note") %>><%= resolving.note ?? "" %></textarea>
-      </label>
-      <% if (problem?.form === "resolve") { %><p><small id="resolve-error" role="alert"><%= problem.message %></small></p><% } %>
-      <p><small>The customer sees your reason and can reopen it.</small></p>
-      <button type="submit" class="secondary compact" <% if (problem?.form === "resolve") { %>aria-describedby="resolve-error"<% } %>>Resolve</button>
-    </form>
-  </details>
-  <% } %>
-  <% if (allowed.reopen) { %>
-  <details class="reopen" <% if (problem?.form === "reopen") { %>open<% } %>>
-    <summary role="button" class="secondary outline">Reopen</summary>
-    <form method="post" action="/tickets/<%= ticket.key %>/reopen">
-      <label for="reopen-reason">Why reopen it?</label>
-      <textarea id="reopen-reason" name="reason" rows="2" required <% if (problem?.form === "reopen") { %>aria-invalid="true" aria-describedby="reopen-error"<% } %> <%= focusIf("reopen", "reason") %>><%= problem?.form === "reopen" ? problem.comment : "" %></textarea>
-      <% if (problem?.form === "reopen") { %><small id="reopen-error" role="alert"><%= problem.message %></small><% } %>
-      <button type="submit" class="secondary compact">Reopen</button>
-    </form>
-  </details>
-  <% } %>
-  <%# One short line: the way on from here, or who can move the status when this viewer cannot. %>
-  <% if (!ticket.archived_at) { %>
-  <% if (ticket.status === "resolved") { %>
-  <% if (!allowed.reopen) { %><p class="status-rule"><small>The customer who filed it can reopen it.</small></p><% } %>
-  <% } else if (ticket.ready_at) { %>
-  <p class="status-rule"><small>The customer's Yes moves it to Resolved.</small></p>
-  <% } else if (allowed.markReady) { %>
-  <p class="status-rule"><small>The customer's Yes moves it to Resolved. To tell them what you tried, <a href="#ask">add details first</a>.</small></p>
-  <% } else if (ticket.owner_id && ticket.owner_id === viewerId) { %>
-  <p class="status-rule"><small>Start work, then ask the customer to verify.</small></p>
-  <% } else if (ticket.owner_id) { %>
-  <p class="status-rule"><small>Only <%= ticket.owner_name %> can ask the customer to verify.</small></p>
-  <% } else if (allowed.take || allowed.takeAndStart) { %>
-  <p class="status-rule"><small>Start work, then ask the customer to verify.</small></p>
-  <% } else { %>
-  <p class="status-rule"><small>The team takes the ticket and asks the customer to verify.</small></p>
-  <% } %>
-  <% } %>
 </section>
 <% } %>
 
@@ -434,7 +417,11 @@
   <% } %>
   <% if (allowed.markReady) { %>
   <% const asked = problem?.form === "ready" ? (problem.values ?? {}) : {}; %>
-  <form method="post" action="/tickets/<%= ticket.key %>/ready" class="ask" id="ask">
+  <%# The one press at the top asks with nothing more. The details are optional, so they wait
+      behind a disclosure of their own. %>
+  <details class="ask-details" id="ask" <% if (problem?.form === "ready") { %>open<% } %>>
+  <summary>Ask with details (optional)</summary>
+  <form method="post" action="/tickets/<%= ticket.key %>/ready" class="ask">
     <p><small>Every box is optional. The customer sees what you write.</small></p>
     <label>
       Page on the live site to try (optional)
@@ -465,21 +452,17 @@
     <% if (problem?.form === "ready") { %><p><small id="ready-error" role="alert"><%= problem.message %></small></p><% } %>
     <button type="submit" class="secondary compact" <% if (problem?.form === "ready") { %>aria-describedby="ready-error"<% } %>>Ask with these details</button>
   </form>
+  </details>
   <% } else if (askBlocked) { %>
   <p class="ask-blocked"><button type="button" class="compact" disabled aria-describedby="ask-blocked-why">Ask the customer to verify</button> <small id="ask-blocked-why"><%= askBlocked %></small></p>
   <% } %>
 </section>
 <% } %>
 
-<% if (allowed.take || allowed.release || allowed.edit || allowed.archive || allowed.delete) { %>
+<% if (allowed.release || allowed.edit || allowed.archive || allowed.delete) { %>
 <details class="more">
   <summary>More</summary>
   <div class="more-menu">
-    <% if (allowed.take) { %>
-    <form method="post" action="/tickets/<%= ticket.key %>/take">
-      <button type="submit" class="link">Take this ticket</button>
-    </form>
-    <% } %>
     <% if (allowed.release) { %>
     <form method="post" action="/tickets/<%= ticket.key %>/release">
       <button type="submit" class="link">Release it</button>

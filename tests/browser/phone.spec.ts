@@ -132,8 +132,7 @@ test("on a phone the small controls are 44-pixel tap targets", async ({ page }) 
     await expectTapTargets(page, 'fieldset:has(input[value="note"]) label');
   });
 
-  await test.step("small links among a form's controls: add details first, and Cancel", async () => {
-    await expectTapTargets(page, ".ticket-panel .status-rule a");
+  await test.step("small links among a form's controls: Cancel", async () => {
     await page.goto("/tickets/new");
     await expectTapTargets(page, ".form-actions > a");
   });

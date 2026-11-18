@@ -46,9 +46,9 @@ describe("the tick", () => {
       const main = parse((await who.get("/tickets/SUP-1")).text).querySelector("main")!;
       expect(ticks(main)).toHaveLength(0);
       expect(main.querySelector(".confirmed")).toBeNull();
-      // Nothing says it is resolved. The one line saying how it becomes Resolved is the
-      // exception, so it is left out of the check.
-      main.querySelector(".status-rule")?.remove();
+      // Nothing says it is resolved. The team's status row, which names all three statuses,
+      // is the exception, so it is left out of the check.
+      main.querySelector(".status-control")?.remove();
       expect(main.text).not.toMatch(/resolved/i);
     }
   });

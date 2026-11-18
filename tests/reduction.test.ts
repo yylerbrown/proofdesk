@@ -75,7 +75,8 @@ describe("the team's ticket page", () => {
     const more = panel.querySelector("details.more")!;
     expect(more.firstElementChild?.tagName).toBe("SUMMARY");
     expect(more.hasAttribute("open")).toBe(false);
-    expect(more.querySelector("form[action$='/take'] button")?.text).toBe("Take this ticket");
+    // Taking is part of In Progress in the status row, so More does not repeat it.
+    expect(more.querySelector("form[action$='/take']")).toBeNull();
     expect(more.querySelector("a[href$='/edit']")?.text).toBe("Edit ticket");
     expect(panel.querySelectorAll("section form[action$='/take']")).toHaveLength(0);
   });

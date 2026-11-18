@@ -136,7 +136,7 @@ export const ACTIONS: ApiAction[] = [
     method: "patch",
     path: "/tickets/:key",
     summary:
-      "Start work: move a New ticket you own to in_progress. Nothing else moves the status this way: the customer's Yes resolves (or the team resolves with a reason, resolve_with_reason), and a resolved ticket moves only by reopen.",
+      "Start work: move a New ticket you own to in_progress. Or send an in_progress ticket back to new, with no owner, as its owner or an admin: an open question to the customer is withdrawn and an assistant's work on it ends. Nothing else moves the status this way: the customer's Yes resolves (or the team resolves with a reason, resolve_with_reason), and a resolved ticket moves only by reopen. People only: an assistant connection never changes a status.",
     needs: "change_status",
     body: changeStatusSchema,
     run: ({ service, actor, key, body }) => service.changeStatus(key, body, actor),

@@ -408,6 +408,24 @@ export function customerSaysNotFixed(db: Db, ticketId: number): boolean {
   return data.fixed !== true;
 }
 
+/**
+ * Of these tickets, the ids of those whose customer's latest word is their reopening it: a
+ * reopening newer than any answer to "Did this fix it?".
+ */
+export function reopenedByCustomer(db: Db, ticketIds: number[]): number[] {
+  const rows = db
+    .prepare(
+      `SELECT e.ticket_id FROM ticket_events e
+       WHERE e.ticket_id IN (SELECT value FROM json_each(@ids))
+         AND e.type = 'reopened'
+         AND e.id = (SELECT MAX(x.id) FROM ticket_events x
+                     WHERE x.ticket_id = e.ticket_id
+                       AND x.type IN ('customer_answered', 'reopened'))`,
+    )
+    .all({ ids: JSON.stringify(ticketIds) }) as { ticket_id: number }[];
+  return rows.map((row) => row.ticket_id);
+}
+
 /** The agent connection a ticket is handed to right now, or undefined. */
 export function activeHandoff(
   db: Db,

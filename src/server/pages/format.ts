@@ -48,12 +48,16 @@ export function timeAgo(iso: string, now: Date = new Date()): string {
   return "just now";
 }
 
-/** Who has to act next on a ticket, in the words the viewer should read. */
-export function waitingOn(ticket: Ticket, viewer: Role): string {
+/**
+ * Who has to act next on a ticket, in the words the viewer should read. reopened is true when
+ * the customer's latest word is their reopening it.
+ */
+export function waitingOn(ticket: Ticket, viewer: Role, reopened = false): string {
   if (ticket.waiting_on === "nobody") return "Nobody";
   if (ticket.waiting_on === "customer") return viewer === "customer" ? "You" : "Customer";
   if (viewer === "customer") return "Support team";
-  // After a no, the team sees why the ticket is back with them.
+  // After a reopening or a no, the team sees why the ticket is back with them.
+  if (reopened) return "Team: customer reopened it";
   return ticket.customer_answer?.fixed === false ? "Team: customer says it still fails" : "Team";
 }
 
@@ -162,7 +166,11 @@ export function describeEvent(event: TicketEvent): string {
   if (event.type === "spec_discarded") return "Test spec discarded";
   if (event.type === "note_added") return "Internal note added";
   if (event.type === "review_requested") return "Review of the evidence requested";
-  if (event.type === "reopened") return "Reopened by the customer: still happening";
+  if (event.type === "reopened") {
+    const reopened = reopenedSchema.safeParse(event.data);
+    if (reopened.success) return `Reopened by the customer: ${reopened.data.reason}`;
+    return "Reopened by the customer";
+  }
   if (event.type === "reopened_by_team") {
     const reopened = z.object({ reason: z.string() }).safeParse(event.data);
     if (reopened.success) return `Reopened by the team: ${reopened.data.reason}`;

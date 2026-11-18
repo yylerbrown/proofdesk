@@ -68,7 +68,10 @@ export const CAPABILITIES: Record<Action, Capability> = {
   read: { people: "The team, or the customer who filed it.", agent: "read_tickets" },
   read_notes: { people: "The team.", agent: "read_notes" },
   edit: { people: "The team, or the customer who filed it.", agent: "people_only" },
-  change_status: { people: "The ticket's owner, to start work.", agent: "people_only" },
+  change_status: {
+    people: "The ticket's owner, to start work; its owner or an admin, to send it back to New.",
+    agent: "people_only",
+  },
   archive: { people: "The team, or the customer who filed it.", agent: "people_only" },
   restore: { people: "The team.", agent: "people_only" },
   delete: { people: "An admin.", agent: "people_only" },
