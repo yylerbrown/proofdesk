@@ -653,7 +653,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
      * time and who did it are kept. The input must repeat the ticket's key, so that it
      * cannot happen by a slip.
      */
-    deleteTicket(key: string, input: unknown, actor: Actor): void {
+    deleteTicket(key: string, input: unknown, actor: Actor): { filesCleaned: boolean } {
       const { confirm } = parse(deleteTicketSchema, input);
       db.transaction(() => {
         const row = requireRow(key, actor);
@@ -666,7 +666,9 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
         }
         repository.deleteTicketForever(db, row.id, actor.id, new Date().toISOString());
       })();
-      repository.flushDeletedContent(db);
+      // The ticket is gone from the database now. Whether its old text has also left the
+      // files on disk depends on the checkpoint, which reports it.
+      return { filesCleaned: repository.flushDeletedContent(db) };
     },
 
     /** What this actor may do to this ticket, for a page to decide which controls to show. */

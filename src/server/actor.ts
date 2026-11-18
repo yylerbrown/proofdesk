@@ -109,6 +109,9 @@ export function actorMiddleware(config: Config, auth: Auth | null, db: Db): Requ
       req.actor = entrancePeople(config).find((actor) => actor.id === id) ?? null;
     }
     res.locals.viewer = req.actor;
+    // What a signed-in person sees holds tickets and notes. Browsers must not keep it in
+    // their cache, where it would outlive signing out.
+    if (req.actor !== null) res.set("Cache-Control", "no-store");
     next();
   };
 }

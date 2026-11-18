@@ -207,8 +207,9 @@ export function pagesRouter(service: TicketService): Router {
   router.post("/tickets/:key/delete", (req, res) => {
     const actor = signedIn(req);
     try {
-      service.deleteTicket(req.params.key, req.body, actor);
-      res.redirect(303, "/tickets");
+      const key = service.getTicket(req.params.key, actor).key;
+      const { filesCleaned } = service.deleteTicket(req.params.key, req.body, actor);
+      res.render("ticket-deleted", { title: `${key} deleted`, key, filesCleaned });
     } catch (err) {
       if (!(err instanceof ValidationError)) throw err;
       const ticket = service.getTicket(req.params.key, actor);

@@ -67,10 +67,11 @@ export function ticketsRouter(service: TicketService): Router {
     res.json(service.restoreTicket(req.params.key, signedIn(req)));
   });
 
-  // Permanent deletion. The body must repeat the key: { "confirm": "SUP-42" }.
+  // Permanent deletion. The body must repeat the key: { "confirm": "SUP-42" }. The answer
+  // says whether the old text has also left the files on disk.
   router.delete("/tickets/:key", (req, res) => {
-    service.deleteTicket(req.params.key, req.body, signedIn(req));
-    res.status(204).end();
+    const { filesCleaned } = service.deleteTicket(req.params.key, req.body, signedIn(req));
+    res.json({ deleted: true, files_cleaned: filesCleaned });
   });
 
   router.get("/tickets/:key/entries", (req, res) => {

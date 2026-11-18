@@ -282,13 +282,23 @@ export function wasDeleted(db: Db, id: number): boolean {
 }
 
 /**
- * Makes deleted content leave the files on disk now. Changes first go to a log file next
- * to the database (the "-wal" file), and the old text stays there and in the main file
- * until a checkpoint. TRUNCATE copies the log into the main file, where secure_delete has
- * zeroed the deleted rows, and empties the log.
+ * Tries to make deleted content leave the files on disk now, and says whether it did.
+ * Changes first go to a log file next to the database (the "-wal" file), and the old text
+ * stays there until a checkpoint. TRUNCATE copies the log into the main file, where
+ * secure_delete has zeroed the deleted rows, and empties the log. It cannot finish while
+ * another connection is in the middle of reading; SQLite then reports busy.
  */
-export function flushDeletedContent(db: Db): void {
-  db.pragma("wal_checkpoint(TRUNCATE)");
+export function flushDeletedContent(db: Db): boolean {
+  // Try once without waiting. By default SQLite would wait up to five seconds for the
+  // reader, and this server does everything on one thread, so every request would wait.
+  const waitMs = db.pragma("busy_timeout", { simple: true }) as number;
+  db.pragma("busy_timeout = 0");
+  try {
+    const [result] = db.pragma("wal_checkpoint(TRUNCATE)") as { busy: number }[];
+    return result !== undefined && result.busy === 0;
+  } finally {
+    db.pragma(`busy_timeout = ${waitMs}`);
+  }
 }
 
 export type EntryRow = {

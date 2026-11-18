@@ -75,7 +75,12 @@ export function signInRouter(config: Config, auth: Auth | null): Router {
     }
     // httpOnly keeps the cookie away from scripts. sameSite stops another site from
     // sending it along with a form post.
-    res.cookie(DEV_COOKIE, person.id, { httpOnly: true, sameSite: "lax" });
+    // secure in production: the cookie then only travels over https.
+    res.cookie(DEV_COOKIE, person.id, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: config.nodeEnv === "production",
+    });
     res.redirect(303, safeNext(req.body?.next));
   });
 

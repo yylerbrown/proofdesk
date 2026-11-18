@@ -161,8 +161,10 @@ that belongs to it are removed, and `deleted_tickets` keeps the number, the time
 - Asking for a deleted key answers 410 "deleted" to the team and the usual 404 to a customer.
 - The event log stays append-only. Its trigger lets the events of a ticket be removed only
   once that ticket is listed in `deleted_tickets`, and that list can never be changed.
-- Deleted text leaves the files on disk at once: `secure_delete` zeroes it, and a checkpoint
-  empties the write-ahead log. A test searches the raw files for it.
+- Deleted text normally leaves the files on disk at once: `secure_delete` zeroes it, and a
+  checkpoint empties the write-ahead log. A test searches the raw files for it. If another
+  connection is reading at that moment, the checkpoint cannot finish; the answer then says
+  the ticket is deleted from the database but the files are not yet cleaned.
 - Every table whose rows belong to a ticket carries a `ticket_id` column and is listed in
   `TICKET_TABLES` in `src/server/tickets/repository.ts`. A test fails if a table with a
   `ticket_id` column is missing from that list.
@@ -183,6 +185,10 @@ unless another is named):
 - **Fields a caller must not control.** The service reads only the title, description, link and
   check (and the status, for a status change). Anything else in a request is dropped.
 - **Size.** A request body over 100 KB is refused with 413. Each field also has its own limit.
+- **No caching.** Every answer to a signed-in person is marked `Cache-Control: no-store`, so
+  tickets and notes do not stay in a browser's cache after signing out.
+- **The sign-in library's own routes** get the same forged-request check and a sign-in limit
+  as the app's routes.
 - **Errors.** An unexpected failure is logged on the server and answered with a fixed message.
 
 - **Permissions.** Roles are enforced in the service, with tests on the real routes in

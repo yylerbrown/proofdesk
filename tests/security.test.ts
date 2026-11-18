@@ -302,3 +302,17 @@ describe("script injection in pages", () => {
     expect(page.text).toContain('href="https://example.com/&#34;onmouseover=&#34;alert(1)"');
   });
 });
+
+describe("what a browser keeps", () => {
+  it("is nothing from a signed-in page or answer", async () => {
+    const { app } = buildTestApp();
+    await admin(app).post("/api/tickets").send({ title: "Printer jams", description: "x" });
+    for (const address of ["/tickets/SUP-1", "/api/tickets/SUP-1", "/api/tickets"]) {
+      const res = await admin(app).get(address);
+      expect(res.headers["cache-control"], address).toBe("no-store");
+    }
+    // The stylesheets are the same for everyone and may be kept.
+    const css = await visitor(app).get("/assets/site.css");
+    expect(css.headers["cache-control"]).not.toBe("no-store");
+  });
+});
