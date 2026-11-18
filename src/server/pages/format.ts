@@ -159,3 +159,22 @@ export function describeActor(event: TicketEvent, names: Map<string, string>): s
     (event.actor_kind === "agent" ? event.actor : "Unknown person");
   return event.actor_kind === "agent" ? `${name} (AI agent)` : name;
 }
+
+/**
+ * The top-level plain fields of a report in a format Proofdesk does not read, as sent: at most
+ * twelve, each value cut to 200 characters, and how many other fields were left out.
+ */
+export function reportFields(report: unknown): {
+  fields: { name: string; value: string }[];
+  more: number;
+} {
+  if (report === null || typeof report !== "object" || Array.isArray(report)) {
+    return { fields: [], more: 0 };
+  }
+  const entries = Object.entries(report as Record<string, unknown>);
+  const fields = entries
+    .filter(([, value]) => value === null || ["string", "number", "boolean"].includes(typeof value))
+    .slice(0, 12)
+    .map(([name, value]) => ({ name, value: String(value).slice(0, 200) }));
+  return { fields, more: entries.length - fields.length };
+}
