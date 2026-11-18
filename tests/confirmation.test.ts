@@ -200,7 +200,8 @@ describe("from merged to confirmed", () => {
     await team
       .put("/api/tickets/SUP-1/change-link")
       .send({ change_url: 'https://example.com/"x"' });
-    const page = await as(app, customerOne).get("/tickets/SUP-1");
+    // The change link is the team's working detail, shown on the team's page.
+    const page = await as(app, teamActor).get("/tickets/SUP-1");
     expect(page.text).toContain('href="https://example.com/&#34;x&#34;"');
   });
 });

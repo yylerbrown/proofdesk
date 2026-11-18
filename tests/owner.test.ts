@@ -1,3 +1,4 @@
+import { parse } from "node-html-parser";
 import { AGENT_SCOPES } from "../src/server/permissions.js";
 import { describe, expect, it } from "vitest";
 import { createTicketService } from "../src/server/tickets/service.js";
@@ -149,8 +150,9 @@ describe("the owner on the ticket page", () => {
     expect(adminPage).toContain("Hand off to…");
     expect(adminPage).not.toContain("Take this ticket");
 
+    // A customer has no team panel: the owner is in the line under the title.
     const customer = await as(app, customerOne).get("/tickets/SUP-1");
-    expect(customer.text).toContain("<p>Team Member</p>");
+    expect(parse(customer.text).querySelector("hgroup .meta")?.text).toContain("Owner Team Member");
     expect(customer.text).not.toContain("/take");
   });
 

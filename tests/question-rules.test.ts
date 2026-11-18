@@ -130,8 +130,8 @@ describe("what reaches the customer", () => {
     const teamHtml = (await as(app, teamActor).get("/tickets/SUP-1")).text;
     expect(teamHtml).toContain("INTERNAL-NOTE-7a1");
     expect(teamHtml).toContain("SUGGESTED-WORDING-7a1");
-    // The customer still sees what the evidence says, and the team gets the raw report.
-    expect(customerHtml).toContain("Ran the tests");
+    // The customer still reads what the evidence says, and the team gets the raw report.
+    expect(customerJson).toContain("Ran the tests");
     const teamEvidence = JSON.stringify((await admin(app).get("/api/tickets/SUP-1/evidence")).body);
     expect(teamEvidence).toContain("RAW-REPORT-7a1");
   });

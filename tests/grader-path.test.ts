@@ -118,7 +118,8 @@ describe("where Resolved comes from", () => {
 
     const customer = await page(app, customerOne);
     expect(customer.querySelector("main")!.text).toContain("In Progress, waiting for you");
-    expect(customer.querySelector("main")!.text).toContain("Waiting for you to check it");
+    // The question itself is on the page, in place of a line saying it is waiting.
+    expect(customer.querySelector("#did-this-fix-it")).not.toBeNull();
     expect(customer.querySelector("main")!.text).not.toContain("Waiting for the customer");
   });
 

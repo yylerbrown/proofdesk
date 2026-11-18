@@ -83,7 +83,8 @@ describe("the agreed check", () => {
     const customer = await as(app, customerOne).get("/tickets/SUP-1");
     expect(customer.text).toContain("Team's check");
     expect(customer.text).toContain(`${tighter} &lt;b&gt;now&lt;/b&gt;`);
-    expect(customer.text).toContain("In the customer's words");
+    // The customer reads their own words as theirs.
+    expect(customer.text).toContain("In your words");
     expect(customer.text).toContain(words);
     expect(customer.text).not.toContain('action="/tickets/SUP-1/agreed-check"');
 

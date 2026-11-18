@@ -27,7 +27,16 @@ describe("the ticket page layout", () => {
       "How will we know it's fixed?",
       "Evidence",
       "The fix",
-      "Remove",
+    ]);
+    // Everything secondary is in one small menu, last in the panel.
+    const more = panel?.querySelector("details.more");
+    expect(panel?.lastElementChild).toBe(more);
+    expect(more?.querySelector("summary")?.text).toBe("More");
+    expect(more?.querySelectorAll("button, a").map((el) => el.text.trim())).toEqual([
+      "Take this ticket",
+      "Edit ticket",
+      "Archive ticket",
+      "Delete permanently",
     ]);
     expect(panel?.querySelector("form[action$='/take-and-start']")).not.toBeNull();
     expect(panel?.querySelector("form[action$='/take']")).not.toBeNull();
@@ -45,8 +54,8 @@ describe("the ticket page layout", () => {
       "Archive ticket",
       "Delete permanently",
     ]);
-    // The last thing in the panel, and nothing ordinary inside it.
-    expect(html.querySelector("aside.ticket-panel")?.lastElementChild).toBe(danger);
+    // The last thing in the More menu, set apart, and nothing ordinary inside it.
+    expect(html.querySelector("details.more .more-menu")?.lastElementChild).toBe(danger);
     expect(danger?.querySelector("a[href$='/edit']")).toBeNull();
     expect(html.querySelector("a[href$='/edit']")?.classList.contains("danger")).toBe(false);
   });
@@ -56,11 +65,9 @@ describe("the ticket page layout", () => {
     await as(app, customerOne).post("/api/tickets").send(valid);
     const html = await ticketPage(as(app, customerOne));
     const panel = html.querySelector("aside.ticket-panel");
+    // The customer's panel holds their check and a small menu: nothing of the team's.
     expect(panel?.querySelectorAll("h2").map((h) => h.text)).toEqual([
-      "Owner",
-      "Status",
       "How will we know it's fixed?",
-      "Remove",
     ]);
     expect(panel?.querySelector("form")).toBeNull();
     expect(html.querySelectorAll(".danger-zone a").map((a) => a.text)).toEqual(["Archive ticket"]);

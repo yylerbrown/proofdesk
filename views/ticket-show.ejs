@@ -3,8 +3,9 @@
 
 <hgroup>
   <h1 class="user-text"><%= ticket.title %></h1>
-  <p><%= ticket.key %> <%- include("status-badge", { status: ticket.status }) %> filed <%- include("time", { iso: ticket.created_at }) %></p>
+  <p class="meta"><%= ticket.key %> <%- include("status-badge", { status: ticket.status }) %><% if (ticket.ready_at && ticket.status === "in_progress") { %>, waiting for <%= viewerRole === "customer" ? "you" : "the customer" %><% } %> · <% if (ticket.owner_name) { %>Owner <%= ticket.owner_name %><% } else { %>Unassigned<% } %> · filed <%- include("time", { iso: ticket.created_at }) %></p>
 </hgroup>
+<% const staff = viewerRole !== "customer"; %>
 
 <%# On the demo: the next role to view this same ticket as, or where resolved tickets are listed. %>
 <% if (locals.demoNext) { %>
@@ -95,6 +96,11 @@
   <% if (ticket.agreed_check) { %>
   <p>Team's check:</p>
   <blockquote class="user-text"><%= ticket.agreed_check %></blockquote>
+  <% if (allowed.adoptCheck) { %>
+  <form method="post" action="/tickets/<%= ticket.key %>/adopt-check">
+    <button type="submit" class="secondary compact">Use these words as my check</button>
+  </form>
+  <% } %>
   <% } %>
   <% if (ticket.fix_check) { %>
   <p>In your words:</p>
@@ -132,17 +138,13 @@
 </div>
 
 <aside class="ticket-panel" aria-label="Status, owner and the fix">
+<% if (staff) { %>
 <section>
   <h2>Owner</h2>
   <p><%= ticket.owner_name ?? "Unassigned" %></p>
   <% if (allowed.takeAndStart) { %>
   <form method="post" action="/tickets/<%= ticket.key %>/take-and-start">
     <button type="submit" class="compact">Take ticket and start work</button>
-  </form>
-  <% } %>
-  <% if (allowed.take) { %>
-  <form method="post" action="/tickets/<%= ticket.key %>/take">
-    <button type="submit" class="<% if (allowed.takeAndStart) { %>secondary outline <% } %>compact">Take this ticket</button>
   </form>
   <% } %>
   <% if (allowed.start) { %>
@@ -193,11 +195,6 @@
     </form>
   </details>
   <% } %>
-  <% if (allowed.release) { %>
-  <form method="post" action="/tickets/<%= ticket.key %>/release">
-    <button type="submit" class="link">Release it</button>
-  </form>
-  <% } %>
 </section>
 
 <section>
@@ -208,8 +205,9 @@
   <p class="status-rule"><small><% if (ticket.ready_at) { %>Their Yes moves it to Resolved.<% } else if (ticket.owner_id && ticket.owner_id === viewerId) { %>Resolved comes from the customer's Yes. When the fix is in, <a href="#ask">ask customer to confirm</a>.<% } else if (ticket.owner_id) { %>Resolved comes from the customer's Yes. Only <%= ticket.owner_name %> can ask the customer to confirm.<% } else { %>Resolved comes from the customer's Yes. Take the ticket, then ask the customer to confirm.<% } %></small></p>
   <% } %>
 </section>
+<% } %>
 
-<% if (ticket.fix_check || ticket.agreed_check || allowed.agreeCheck) { %>
+<% if ((ticket.fix_check || ticket.agreed_check || allowed.agreeCheck) && !allowed.answer) { %>
 <section>
   <h2>How will we know it's fixed?</h2>
   <% if (assistantBlocked) { %>
@@ -223,7 +221,7 @@
     <button type="submit" class="secondary compact">Use these words as my check</button>
   </form>
   <% } %>
-  <p><strong>In the customer's words</strong></p>
+  <p><strong><%= staff ? "In the customer's words" : "In your words" %></strong></p>
   <% } %>
   <% if (ticket.fix_check) { %>
   <blockquote class="user-text"><%= ticket.fix_check %></blockquote>
@@ -248,12 +246,15 @@
 
 <%- include("spec", { specPanel }) %>
 
-<% if (evidence.length > 0 || allowed.attachEvidence) { %>
+<% if (staff && (evidence.length > 0 || allowed.attachEvidence)) { %>
 <section>
   <h2>Evidence</h2>
   <% if (evidence.length > 0) { %>
-  <p class="evidence-note">As reported by whoever attached it. Not checked by Proofdesk.</p>
-  <%- include("evidence", { evidence }) %>
+  <details class="evidence-list">
+    <summary><%= evidence.length %> <%= evidence.length === 1 ? "piece" : "pieces" %>, as reported</summary>
+    <p class="evidence-note">As reported by whoever attached it. Not checked by Proofdesk.</p>
+    <%- include("evidence", { evidence }) %>
+  </details>
   <% } %>
   <% if (allowed.attachEvidence) { %>
   <details <% if (problem?.form === "evidence") { %>open<% } %>>
@@ -284,7 +285,7 @@
 </section>
 <% } %>
 
-<% if (ticket.change_url || ticket.ready_at || allowed.linkChange) { %>
+<% if (staff && (ticket.change_url || ticket.ready_at || allowed.linkChange)) { %>
 <section>
   <h2>The fix</h2>
   <% if (ticket.change_url) { %>
@@ -299,6 +300,7 @@
   <% } %>
   <% } %>
   <% if (allowed.linkChange) { %>
+  <% if (ticket.change_url) { %><details class="change-link" <% if (problem?.form === "changeLink") { %>open<% } %>><summary>Change the link</summary><% } %>
   <form method="post" action="/tickets/<%= ticket.key %>/change-link">
     <label>
       Link to the code change
@@ -307,6 +309,7 @@
     <% if (problem?.form === "changeLink") { %><small id="change-link-error"><%= problem.message %></small><% } %>
     <button type="submit" class="secondary compact">Save change link</button>
   </form>
+  <% if (ticket.change_url) { %></details><% } %>
   <% } %>
   <% if (allowed.markReady) { %>
   <% const asked = problem?.form === "ready" ? (problem.values ?? {}) : {}; %>
@@ -347,22 +350,35 @@
 </section>
 <% } %>
 
-<% if (allowed.edit) { %>
-<section>
-  <a href="/tickets/<%= ticket.key %>/edit" role="button" class="link">Edit ticket</a>
-</section>
-<% } %>
-
-<% if (allowed.archive || allowed.delete) { %>
-<section class="danger-zone" aria-labelledby="danger-heading">
-  <h2 id="danger-heading">Remove</h2>
-  <% if (allowed.archive) { %>
-  <p><a href="/tickets/<%= ticket.key %>/archive" role="button" class="danger compact">Archive ticket</a></p>
-  <% } %>
-  <% if (allowed.delete) { %>
-  <p><a href="/tickets/<%= ticket.key %>/delete" role="button" class="danger compact">Delete permanently</a></p>
-  <% } %>
-</section>
+<% if (allowed.take || allowed.release || allowed.edit || allowed.archive || allowed.delete) { %>
+<details class="more">
+  <summary>More</summary>
+  <div class="more-menu">
+    <% if (allowed.take) { %>
+    <form method="post" action="/tickets/<%= ticket.key %>/take">
+      <button type="submit" class="link">Take this ticket</button>
+    </form>
+    <% } %>
+    <% if (allowed.release) { %>
+    <form method="post" action="/tickets/<%= ticket.key %>/release">
+      <button type="submit" class="link">Release it</button>
+    </form>
+    <% } %>
+    <% if (allowed.edit) { %>
+    <a href="/tickets/<%= ticket.key %>/edit" role="button" class="link">Edit ticket</a>
+    <% } %>
+    <% if (allowed.archive || allowed.delete) { %>
+    <div class="danger-zone" role="group" aria-label="Remove">
+      <% if (allowed.archive) { %>
+      <a href="/tickets/<%= ticket.key %>/archive" role="button" class="danger">Archive ticket</a>
+      <% } %>
+      <% if (allowed.delete) { %>
+      <a href="/tickets/<%= ticket.key %>/delete" role="button" class="danger">Delete permanently</a>
+      <% } %>
+    </div>
+    <% } %>
+  </div>
+</details>
 <% } %>
 </aside>
 
