@@ -15,6 +15,9 @@
 .site-header strong {
   color: var(--pd-on-ink);
 }
+main.container {
+  padding-top: 2rem;
+}
 .site-header .brand {
   display: inline-flex;
   align-items: center;
