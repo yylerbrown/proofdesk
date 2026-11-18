@@ -55,13 +55,17 @@ describe("after the customer's Yes", () => {
         expect((await reread(app)).status, `${who} → ${status}`).toBe("resolved");
       }
     }
-    // Neither another customer nor the team can reopen it.
+    // No one but the customer who filed it can reopen it: not another customer, the team or
+    // an admin.
     expect(
       (await as(app, customerTwo).post("/api/tickets/SUP-1/reopen").send({ reason: "x" })).status,
     ).toBe(404);
     expect(
       (await as(app, teamActor).post("/api/tickets/SUP-1/reopen").send({ reason: "x" })).status,
     ).toBe(403);
+    expect((await admin(app).post("/api/tickets/SUP-1/reopen").send({ reason: "x" })).status).toBe(
+      403,
+    );
 
     const reopened = await as(app, customerOne)
       .post("/api/tickets/SUP-1/reopen")

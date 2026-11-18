@@ -246,6 +246,44 @@ describe("limits over MCP", () => {
     // Reading is not a write, and still works.
     expect((await call(client, "get_ticket", { key: "SUP-1" })).isError).toBe(false);
   });
+
+  it("refuses a batch of calls in one request, which the allowance would not count, and runs none", async () => {
+    const { app, db } = buildTestApp();
+    await admin(app).post("/api/tickets").send(valid);
+    const key = await issue(app, ["read_tickets", "write_notes"]);
+    await handToAgent(app, "SUP-1", key);
+    const server = await listenLocally(app);
+    servers.push(server);
+    const { port } = server.address() as AddressInfo;
+    // Two JSON-RPC arrays of 100 notes each: together more than the allowance. The SDK takes
+    // up to 100 messages in one array, so each would reach it.
+    const batch = Array.from({ length: 100 }, (_, i) => ({
+      jsonrpc: "2.0",
+      id: i + 1,
+      method: "tools/call",
+      params: { name: "add_note", arguments: { key: "SUP-1", body: `batch ${i}` } },
+    }));
+    expect(batch.length * 2).toBeGreaterThan(WRITE_LIMIT);
+    for (let round = 0; round < 2; round++) {
+      const res = await fetch(`http://127.0.0.1:${port}/mcp`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+        },
+        body: JSON.stringify(batch),
+      });
+      expect(res.status).toBe(400);
+      expect(await res.json()).toMatchObject({
+        jsonrpc: "2.0",
+        id: null,
+        error: { code: -32600, message: expect.stringContaining("one request") },
+      });
+    }
+    const notes = db.prepare("SELECT COUNT(*) AS n FROM ticket_entries").get() as { n: number };
+    expect(notes.n).toBe(0);
+  });
 });
 
 describe("the agents guide", () => {

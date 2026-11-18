@@ -51,6 +51,20 @@ describe("fly.toml agrees with the rest of the repository", () => {
     const config = loadConfig({ CLIENT_IP_HEADER: flySetting("CLIENT_IP_HEADER") });
     expect(config.clientIpHeader).toBe("fly-client-ip");
   });
+
+  it("gives the demo's own https address for the commands a visitor pastes", () => {
+    // Fly's proxy ends HTTPS and the demo has no sign-in address, so without this the
+    // commands would name plain http. It is the address the real site links to as the demo.
+    const realSite = fs.readFileSync("fly.proofdesk.toml", "utf8");
+    const demoUrl = /^\s*DEMO_URL = "([^"]+)"$/m.exec(realSite)?.[1];
+    const config = loadConfig({
+      NODE_ENV: "production",
+      DEMO: "on",
+      PUBLIC_URL: flySetting("PUBLIC_URL"),
+    });
+    expect(config.publicUrl).toBe(demoUrl);
+    expect(config.publicUrl).toMatch(/^https:\/\//);
+  });
 });
 
 describe("the deploy workflow", () => {
