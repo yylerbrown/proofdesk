@@ -118,7 +118,7 @@ describe("an agent's activity trail", () => {
 
   it("keeps only a connection's latest requests, and leaves another connection's alone", () => {
     const { db } = buildTestApp();
-    const connections = createConnectionService(db);
+    const connections = createConnectionService(db, () => true);
     const busy = agent(connections, "Busy");
     const quiet = agent(connections, "Quiet");
     connections.record(quiet, read("get_ticket"));
@@ -137,7 +137,7 @@ describe("an agent's activity trail", () => {
 
   it("finds rows over a month old by an index, not by reading the whole table", () => {
     const { db } = buildTestApp();
-    const connections = createConnectionService(db);
+    const connections = createConnectionService(db, () => true);
     const helper = agent(connections, "Helper");
     // The statement the prune runs, as recording a request prepares it.
     const prepare = vi.spyOn(db, "prepare");
@@ -170,7 +170,7 @@ describe("the demo's connections at its cap", () => {
 
   it("forget what an ended one did at the next one issued, so only live ones keep a trail", () => {
     const { db } = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
-    const connections = createConnectionService(db);
+    const connections = createConnectionService(db, () => true);
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-11-17T09:00:00.000Z"));
     const ended = connections.authenticate(connections.issueDemo().key)!;
@@ -192,7 +192,7 @@ describe("the demo's connections at its cap", () => {
 
   it("make room by ending the one issued first, however recently it was used", () => {
     const { db } = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
-    const connections = createConnectionService(db);
+    const connections = createConnectionService(db, () => true);
     vi.useFakeTimers({ toFake: ["Date"] });
     // This one has expired by the time the demo is full: it is neither counted nor ended.
     vi.setSystemTime(new Date("2026-11-17T09:00:00.000Z"));

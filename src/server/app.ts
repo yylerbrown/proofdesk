@@ -31,6 +31,7 @@ import { mcpEndpoint, mcpErrorHandler } from "./mcp.js";
 import { assistantRunRouter } from "./routes/assistant-run.js";
 import { peopleRoles, teamMembers } from "./team/service.js";
 import { createPeopleService } from "./people/service.js";
+import { roleNowOf } from "./people/role-now.js";
 import { peopleRouter } from "./routes/people.js";
 import { guide, openApiDocument } from "./api/describe.js";
 import { siteAddress } from "./routes/connections.js";
@@ -79,7 +80,11 @@ export function createApp(config: Config, db: Db, options: { log?: LogLine } = {
     teamMembers: teamMembers(config, db),
     peopleRoles: peopleRoles(config, db),
   });
-  const connections = createConnectionService(db);
+  // A connection's key works only while the person who issued it is still an admin.
+  const connections = createConnectionService(
+    db,
+    (personId) => roleNowOf(config, db, personId) === "admin",
+  );
 
   // First on every request: its id, its log line and compression of the answer.
   app.use(requestId());

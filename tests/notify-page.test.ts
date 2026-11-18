@@ -2,15 +2,16 @@ import { parse } from "node-html-parser";
 import request from "supertest";
 import type { Express } from "express";
 import { describe, expect, it } from "vitest";
-import { DEMO_ACTORS, DEV_COOKIE, type Actor } from "../src/server/actor.js";
+import { DEMO_ACTORS, DEV_ACTORS, DEV_COOKIE, type Actor } from "../src/server/actor.js";
 import type { Db } from "../src/server/db.js";
 import {
   collectNotices,
   madeUpPeopleOf,
+  NOT_SENT_REASONS,
   notifySettingsOf,
   type NotifySettings,
 } from "../src/server/notify/outbox.js";
-import { noticeCountFor } from "../src/server/notify/view.js";
+import { noticeCountFor, noticeStateWords } from "../src/server/notify/view.js";
 import {
   adminActor,
   as,
@@ -31,6 +32,8 @@ const WITH_MAIL: NotifySettings = {
   demo: false,
   mailConfigured: true,
   madeUpPeople: [],
+  // The tests get in through the development entrance, whose made-up people keep their roles.
+  roleNow: (_db, id) => DEV_ACTORS.find((person) => person.id === id)?.role,
 };
 
 /** The notices the page lists, each as its "To ..." line. */
@@ -198,5 +201,16 @@ describe("the state of each notice, in plain words", () => {
     expect(recipients(res.text)).toEqual(["To You"]);
     expect(states(res.text)).toEqual(["Not sent: this demo never sends email."]);
     expect(res.text).toContain("Looking at it.");
+  });
+});
+
+describe("the words for a notice kept and not sent", () => {
+  it("name the reason for every reason there is", () => {
+    for (const reason of Object.values(NOT_SENT_REASONS)) {
+      const notice = { state: "not_sent", not_sent_reason: reason, attempts: 0 } as Parameters<
+        typeof noticeStateWords
+      >[0];
+      expect(noticeStateWords(notice)).toMatch(/^Not sent: /);
+    }
   });
 });

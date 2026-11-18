@@ -85,7 +85,13 @@ function toConnection(row: repository.ConnectionRow): Connection {
   };
 }
 
-export function createConnectionService(db: Db) {
+/**
+ * Builds the connection service. issuerMayIssue answers whether the person who issued a
+ * connection may still issue connections now (only an admin may). A key works only while it
+ * does, so a connection never outlives the role that created it. It is required, so no caller
+ * can leave the check out by mistake.
+ */
+export function createConnectionService(db: Db, issuerMayIssue: (personId: string) => boolean) {
   function requireAdmin(actor: Actor): void {
     if (!can(actor, "manage_connections")) {
       throw new HttpError(403, "forbidden", "Only an admin manages connections.");
@@ -216,8 +222,9 @@ export function createConnectionService(db: Db) {
     },
 
     /**
-     * The agent a key belongs to, or null if the key is malformed, unknown, revoked or expired.
-     * Comparing hashes in constant time keeps the comparison from leaking how much matched.
+     * The agent a key belongs to, or null if the key is malformed, unknown, revoked or expired,
+     * or if the person who issued it may no longer issue connections. Comparing hashes in
+     * constant time keeps the comparison from leaking how much matched.
      */
     authenticate(key: string): Actor | null {
       const match = KEY_PATTERN.exec(key);
@@ -230,6 +237,8 @@ export function createConnectionService(db: Db) {
       const now = new Date().toISOString();
       if (row.revoked_at !== null) return null;
       if (row.expires_at !== null && row.expires_at <= now) return null;
+      // A demo connection is issued by the demo's welcome page, not by a person.
+      if (row.demo !== 1 && !issuerMayIssue(row.issued_by)) return null;
       repository.markUsed(db, row.id, now);
       const connection = toConnection(row);
       return {

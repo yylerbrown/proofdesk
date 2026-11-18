@@ -1,7 +1,9 @@
 import type { SendMailOptions, Transporter } from "nodemailer";
 import { z } from "zod";
 import type { Db } from "../db.js";
+import { emailMeOf } from "../people/repository.js";
 import { buildKey } from "../tickets/keys.js";
+import { NOT_SENT_REASONS } from "./outbox.js";
 import * as repository from "./repository.js";
 
 // Sending: the pending notices go out through a mail server, one after another. Each one is
@@ -89,7 +91,8 @@ export async function sendDueNotices(
 /**
  * Claims the oldest notice that is due, in one transaction that takes the write lock first. A
  * notice already tried the most times (its last try was cut off) is failed here rather than
- * sent. Returns the claimed notice with its try counted, or null when none is due.
+ * sent, and one whose recipient has since switched email off is kept as not sent. Returns the
+ * claimed notice with its try counted, or null when none is due.
  */
 function claimNext(db: Db, now: Date): repository.NoticeRow | null {
   const claim = db.transaction((): repository.NoticeRow | null => {
@@ -99,6 +102,12 @@ function claimNext(db: Db, now: Date): repository.NoticeRow | null {
       if (notice === undefined) return null;
       if (notice.attempts >= MOST_ATTEMPTS) {
         repository.markFailed(db, notice.id, at, "The last try was cut off, so it was not sent.");
+        continue;
+      }
+      // The "Email me about my tickets" switch is read again here, so switching it off also
+      // stops the notices already waiting.
+      if (!emailMeOf(db, notice.recipient_id)) {
+        repository.markNotSent(db, notice.id, at, NOT_SENT_REASONS.switchedOff);
         continue;
       }
       const leaseEnds = new Date(now.getTime() + CLAIM_LEASE_MS).toISOString();
