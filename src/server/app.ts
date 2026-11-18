@@ -136,7 +136,17 @@ export function createApp(config: Config, db: Db): Express {
   // their sessions) is never offered. The return is a GET, and the library reads no body then.
   const auth = config.signIn === null ? null : createAuth(db, config.signIn, config.clientIpHeader);
   if (auth !== null) {
-    app.get("/api/auth/callback/github", toNodeHandler(auth));
+    const githubReturn = "/api/auth/callback/github";
+    const library = toNodeHandler(auth);
+    app.get(githubReturn, (req, res, next) => {
+      // Express also matches HEAD, other letter cases and a trailing slash here. Only the
+      // return exactly as GitHub sends it goes on to the library.
+      if (req.method !== "GET" || req.path !== githubReturn) {
+        next();
+        return;
+      }
+      return library(req, res);
+    });
   }
   // Everything else under /api/auth answers 404 at once, before any body is read.
   app.use("/api/auth", notFoundHandler, errorHandler);

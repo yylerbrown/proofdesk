@@ -269,6 +269,21 @@ describe("the sign-in library's own routes", () => {
     },
   );
 
+  // Express would also send these to the route of GitHub's return: it ignores letter case and a
+  // trailing slash, and answers HEAD with a GET route. GitHub sends none of them.
+  it.each([
+    ["get", "/api/auth/callback/GitHub"],
+    ["get", "/api/auth/callback/github/"],
+    ["head", "/api/auth/callback/github"],
+  ] as const)("answer 404 to GitHub's return sent another way: %s %s", async (method, path) => {
+    const { app } = buildSignInApp();
+    const res = await visitor(app)[method](path).query({ code: "made-up-code", state: "unknown" });
+    // The app's own 404, which is JSON: the library was not asked.
+    expect(res.status).toBe(404);
+    expect(res.headers["content-type"]).toMatch(/^application\/json/);
+    expect(res.headers["set-cookie"]).toBeUndefined();
+  });
+
   it("refuse a body somewhat over the app's 100 KB limit, and keep none of it", async () => {
     const { app, db } = buildSignInApp();
     // The 404 can go out before the body has finished arriving. On a connection kept open,
