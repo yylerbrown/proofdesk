@@ -43,13 +43,10 @@ export function timeAgo(iso: string, now: Date = new Date()): string {
   return "just now";
 }
 
-/**
- * Who has to act next on a ticket, as the viewer should read it. Once the team has asked
- * "Did this fix it?" the customer does. A resolved ticket waits on nobody.
- */
+/** Who has to act next on a ticket, in the words the viewer should read. */
 export function waitingOn(ticket: Ticket, viewer: Role): string {
-  if (ticket.status === "resolved") return "Nobody";
-  if (ticket.ready_at !== null) return viewer === "customer" ? "You" : "Customer";
+  if (ticket.waiting_on === "nobody") return "Nobody";
+  if (ticket.waiting_on === "customer") return viewer === "customer" ? "You" : "Customer";
   return viewer === "customer" ? "Support team" : "Team";
 }
 

@@ -73,6 +73,12 @@ describe("create and get", () => {
     });
     expect(res.status).toBe(201);
     expect(res.body).toEqual({
+      done_when: {
+        agreed_check: null,
+        customer_check: "I can open my account page.",
+        guidance: expect.stringContaining("Only the customer can say this is fixed."),
+      },
+      waiting_on: "team",
       key: "SUP-1",
       title: "Cannot log in",
       description: "The page says my password is wrong.",

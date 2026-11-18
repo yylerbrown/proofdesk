@@ -150,15 +150,14 @@ describe("the ticket list", () => {
 });
 
 describe("who is waiting", () => {
-  const base = { status: "in_progress", ready_at: null } as unknown as Ticket;
+  const on = (waiting_on: string) => ({ waiting_on }) as unknown as Ticket;
 
-  it("is the team until the customer is asked, then the customer, then nobody", () => {
-    expect(waitingOn(base, "team")).toBe("Team");
-    expect(waitingOn(base, "customer")).toBe("Support team");
-    const asked = { ...base, ready_at: "2026-11-17T19:56:00.000Z" };
-    expect(waitingOn(asked, "team")).toBe("Customer");
-    expect(waitingOn(asked, "customer")).toBe("You");
-    expect(waitingOn({ ...base, status: "resolved" }, "team")).toBe("Nobody");
+  it("is said in the viewer's words", () => {
+    expect(waitingOn(on("team"), "team")).toBe("Team");
+    expect(waitingOn(on("team"), "customer")).toBe("Support team");
+    expect(waitingOn(on("customer"), "team")).toBe("Customer");
+    expect(waitingOn(on("customer"), "customer")).toBe("You");
+    expect(waitingOn(on("nobody"), "team")).toBe("Nobody");
   });
 });
 

@@ -171,6 +171,12 @@ customer, archiving, restoring, deleting and managing connections are for people
 agent action in the history records the connection, who issued it, its scopes at that moment
 and the ticket's owner. Each connection has its own write allowance.
 
+Every ticket the API returns starts with `done_when`: the agreed check, the customer's own words,
+and one line of guidance. Only the customer can say a ticket is fixed; the check guides the work
+but does not authorize running commands, disclosing anything, or continuing without end. With no
+check, the guidance says to ask the named owner instead of guessing. Next comes `waiting_on`:
+`team`, `customer` or `nobody`.
+
 ## From merged to confirmed
 
 Only the customer resolves a ticket. The status control offers New and In Progress; Resolved is
