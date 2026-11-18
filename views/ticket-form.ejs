@@ -32,7 +32,7 @@
 
   <label>
     How will we know it's fixed? (optional)
-    <small id="fix_check-hint" class="hint">One thing you can check yourself, like "I can sign in on my phone".</small>
+    <small id="fix_check-hint" class="hint">One thing you can check yourself, like "I can sign in on my phone". The team asks you to confirm the fix against it.</small>
     <% if (locals.checkLocked) { %>
     <textarea rows="3" readonly aria-describedby="fix_check-locked"><%= values.fix_check %></textarea>
     <small id="fix_check-locked">The customer's own words. Only they can change them; offer a clearer check on the ticket instead.</small>
@@ -48,6 +48,9 @@
     <% if (errors.where_url) { %><small id="where_url-error"><%= errors.where_url.join(" ") %></small><% } %>
   </label>
 
+  <% if (!editKey) { %>
+  <p class="initial-status">Initial status: <span class="badge status-new">New</span></p>
+  <% } %>
   <div class="form-actions">
     <button type="submit"><%= submitLabel %></button>
     <a href="<%= editKey ? `/tickets/${editKey}` : "/tickets" %>">Cancel</a>

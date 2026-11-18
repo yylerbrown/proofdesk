@@ -25,9 +25,9 @@ customer, except the GitHub accounts the owner has named as team members or admi
 1. **The customer says what "fixed" means.** As Demo Customer, choose **New ticket**. Describe
    the problem, and fill in **How will we know it's fixed?**, for example "A ten-page PDF prints
    without a jam". The ticket is New, with no owner, waiting on the team.
-2. **The team does the work and shows it.** As Demo Team Member, open the ticket. **Take this
-   ticket**, move it to **In Progress**, paste the **Link to the code change**, and under
-   **Evidence** choose **Attach evidence** to say what you checked. Then **Ask the customer**, with
+2. **The team does the work and shows it.** As Demo Team Member, open the ticket. **Take ticket
+   and start work**, paste the **Link to the code change**, and under
+   **Evidence** choose **Attach evidence** to say what you checked. Then **Ask customer to confirm**, with
    the page on the live site to try. Nothing the team does resolves the ticket.
 3. **The customer decides.** As Demo Customer, open the ticket. **Did this fix it?** shows their
    own check, the team's interpretation if any, what the owner tried and the evidence. **No** needs a few words: the ticket goes

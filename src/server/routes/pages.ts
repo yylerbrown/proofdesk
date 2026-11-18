@@ -41,9 +41,11 @@ function askBlockedReason(ticket: Ticket, actor: Actor): string | null {
   if (ticket.status === "resolved" || ticket.ready_at !== null) return null;
   if (ticket.owner_id === null) return "Take the ticket first.";
   if (ticket.owner_id !== actor.id)
-    return `Only ${ticket.owner_name}, who owns it, asks the customer.`;
+    return `Only ${ticket.owner_name} can ask the customer to confirm.`;
   if (ticket.status !== "in_progress") return "Start work first.";
-  if (ticket.change_url === null) return "Add the change link first.";
+  if (ticket.fix_check === null)
+    return "The customer has not said how they will know it is fixed. Ask them in a reply.";
+  if (ticket.change_url === null) return "Add the link to the code change first.";
   return null;
 }
 type TicketAction = (key: string, input: unknown, actor: Actor) => Ticket;
@@ -120,7 +122,7 @@ export function pagesRouter(service: TicketService): Router {
     const allowed = service.allowedActions(ticket, actor);
     const evidence = service.listEvidence(ticket.key, actor);
     // The test spec, and whether to offer the one line that suggests asking an assistant for
-    // one: to the team, who connect assistants, and to every demo visitor, who may.
+    // one: to the team only, who connect assistants. A customer is never pushed to use one.
     const specPanel = {
       key: ticket.key,
       spec: service.getSpec(ticket.key, actor),
@@ -128,9 +130,7 @@ export function pagesRouter(service: TicketService): Router {
       // Where to connect an assistant: an admin's connections, or the demo's own button.
       connectUrl: actor.demo === true ? "/sign-in" : "/connections",
       offerPrompt:
-        ticket.archived_at === null &&
-        ticket.status !== "resolved" &&
-        (can(actor, "list_all") || actor.demo === true),
+        ticket.archived_at === null && ticket.status !== "resolved" && can(actor, "list_all"),
     };
     res.status(status).render("ticket-show", {
       ...helpers,

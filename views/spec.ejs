@@ -35,5 +35,8 @@
   <% } %>
 </section>
 <% } else if (specPanel.offerPrompt) { %>
-<p class="spec-prompt"><small>Want better results? Ask your assistant to spec this ticket: <code>Using Proofdesk, write a test spec for <%= specPanel.key %></code>. <a href="<%= specPanel.connectUrl %>">Connect your assistant</a>.</small></p>
+<div class="spec-prompt">
+  <p><small>Want better results? Ask your assistant to spec this ticket. <a href="<%= specPanel.connectUrl %>">Connect your assistant</a></small></p>
+  <pre class="paste"><code>Using Proofdesk, write a test spec for <%= specPanel.key %></code></pre>
+</div>
 <% } %>

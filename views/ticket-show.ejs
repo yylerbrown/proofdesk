@@ -103,7 +103,7 @@
       <textarea name="comment" rows="3" required <% if (problem?.form === "answer") { %>aria-invalid="true" aria-describedby="answer-error"<% } %>><%= problem?.form === "answer" ? problem.comment : "" %></textarea>
     </label>
     <% if (problem?.form === "answer") { %><small id="answer-error"><%= problem.message %></small><% } %>
-    <button type="submit" class="secondary compact">No, send it back</button>
+    <button type="submit" class="secondary large">No, send it back</button>
   </form>
 </article>
 <% } %>
@@ -122,7 +122,7 @@
   <p><%= ticket.owner_name ?? "Unassigned" %></p>
   <% if (allowed.takeAndStart) { %>
   <form method="post" action="/tickets/<%= ticket.key %>/take-and-start">
-    <button type="submit" class="compact">Take and start work</button>
+    <button type="submit" class="compact">Take ticket and start work</button>
   </form>
   <% } %>
   <% if (allowed.take) { %>
@@ -187,7 +187,11 @@
 
 <section>
   <h2>Status</h2>
-  <p><%- include("status-badge", { status: ticket.status }) %></p>
+  <p><%- include("status-badge", { status: ticket.status }) %><% if (ticket.ready_at && ticket.status === "in_progress") { %>, waiting for <%= viewerRole === "customer" ? "you" : "the customer" %><% } %></p>
+  <%# Resolved is never a dead end: the team is told where it comes from and how to get there. %>
+  <% if (viewerRole !== "customer" && !ticket.archived_at && ticket.status !== "resolved") { %>
+  <p class="status-rule"><small><% if (ticket.ready_at) { %>Their Yes moves it to Resolved.<% } else if (ticket.owner_id && ticket.owner_id === viewerId) { %>Resolved comes from the customer's Yes. When the fix is in, <a href="#ask">ask customer to confirm</a>.<% } else if (ticket.owner_id) { %>Resolved comes from the customer's Yes. Only <%= ticket.owner_name %> can ask the customer to confirm.<% } else { %>Resolved comes from the customer's Yes. Take the ticket, then ask the customer to confirm.<% } %></small></p>
+  <% } %>
 </section>
 
 <% if (ticket.fix_check || ticket.agreed_check || allowed.agreeCheck) { %>
@@ -269,7 +273,7 @@
   <p>Change: <a href="<%= ticket.change_url %>" rel="noopener noreferrer nofollow" class="user-text"><%= ticket.change_url %></a></p>
   <% } %>
   <% if (ticket.ready_at) { %>
-  <p>Waiting for the customer to check it, since <%- include("time", { iso: ticket.ready_at }) %>.</p>
+  <p>Waiting for <%= viewerRole === "customer" ? "you" : "the customer" %> to check it, since <%- include("time", { iso: ticket.ready_at }) %>.</p>
   <% if (ticket.owner_id === viewerId) { %>
   <form method="post" action="/tickets/<%= ticket.key %>/withdraw-question">
     <button type="submit" class="secondary outline compact">Withdraw the question</button>
@@ -288,23 +292,23 @@
   <% } %>
   <% if (allowed.markReady) { %>
   <% const asked = problem?.form === "ready" ? (problem.values ?? {}) : {}; %>
-  <form method="post" action="/tickets/<%= ticket.key %>/ready" class="ask">
+  <form method="post" action="/tickets/<%= ticket.key %>/ready" class="ask" id="ask">
     <p><small>Try it yourself against the customer's check before you ask.</small></p>
     <label>
-      Page on the live site to try
-      <input type="url" name="try_url" required value="<%= asked.try_url ?? ticket.try_url ?? "" %>" />
+      Page on the live site to try (required)
+      <input type="url" name="try_url" required value="<%= asked.try_url ?? ticket.try_url ?? ticket.where_url ?? "" %>" />
     </label>
     <label>
-      What did you try?
+      What did you try? (required)
       <textarea name="tried" rows="2" required><%= asked.tried ?? "" %></textarea>
     </label>
     <label>
-      What happened?
+      What happened? (required)
       <textarea name="result" rows="2" required><%= asked.result ?? "" %></textarea>
     </label>
     <% if (ticket.customer_answer && !ticket.customer_answer.fixed) { %>
     <label>
-      What changed since the customer said it still fails?
+      What changed since the customer said it still fails? (required)
       <textarea name="response" rows="2" required><%= asked.response ?? "" %></textarea>
     </label>
     <% } %>
@@ -317,10 +321,10 @@
     </fieldset>
     <% } %>
     <% if (problem?.form === "ready") { %><p><small id="ready-error" role="alert"><%= problem.message %></small></p><% } %>
-    <button type="submit" class="compact">Ask the customer</button>
+    <button type="submit" class="compact">Ask customer to confirm</button>
   </form>
   <% } else if (askBlocked) { %>
-  <p class="ask-blocked"><button type="button" class="compact" disabled aria-describedby="ask-blocked-why">Ask the customer</button> <small id="ask-blocked-why"><%= askBlocked %></small></p>
+  <p class="ask-blocked" id="ask"><button type="button" class="compact" disabled aria-describedby="ask-blocked-why">Ask customer to confirm</button> <small id="ask-blocked-why"><%= askBlocked %></small></p>
   <% } %>
 </section>
 <% } %>
