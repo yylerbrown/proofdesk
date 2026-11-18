@@ -3,7 +3,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { buildTestApp, PRODUCTION_SIGN_IN_ENV, SIGN_IN_ENV, visitor } from "./helpers.js";
 
 type TestApp = ReturnType<typeof buildTestApp>["app"];
-type GithubUser = { id: number; login: string; name: string; email: string };
+/** A GitHub account as the stand-in shows it. Its email is verified unless it says false. */
+type GithubUser = { id: number; login: string; name: string; email: string; verified?: boolean };
 
 // These tests run the whole GitHub sign-in: our start route, the library's return route,
 // then a page. GitHub itself is replaced by a stand-in for the three addresses the library
@@ -19,9 +20,12 @@ beforeAll(() => {
     if (url.startsWith("https://github.com/login/oauth/access_token")) {
       return json({ access_token: "made-up-token", token_type: "bearer", scope: "user:email" });
     }
-    if (url === "https://api.github.com/user") return json({ ...githubUser, avatar_url: "" });
+    const { id, login, name, email, verified = true } = githubUser;
+    if (url === "https://api.github.com/user") {
+      return json({ id, login, name, email, avatar_url: "" });
+    }
     if (url === "https://api.github.com/user/emails") {
-      return json([{ email: githubUser.email, primary: true, verified: true }]);
+      return json([{ email, primary: true, verified }]);
     }
     return realFetch(input, init);
   });
@@ -88,6 +92,31 @@ describe("the whole GitHub sign-in", () => {
     expect(db.prepare(`SELECT "accountId" FROM "account"`).all()).toEqual([{ accountId: "1001" }]);
     const page = await request(app).get(result.location);
     expect(page.text).toContain("That sign-in did not work.");
+  });
+
+  it("refuses an email GitHub has not verified before anyone is created, so its owner still gets in", async () => {
+    const { app, db } = buildGithubApp();
+    // Another GitHub account showing Ada's address, which GitHub has not verified for it.
+    const pretender: GithubUser = {
+      id: 6666,
+      login: "pretender",
+      name: "Pretender",
+      email: ada.email,
+      verified: false,
+    };
+    const refused = await signInThroughGithub(app, pretender);
+
+    expect(refused.signedInAs).toBeNull();
+    const landed = new URL(refused.location, "http://desk.test");
+    expect(landed.pathname).toBe("/sign-in");
+    expect(landed.searchParams.get("error")).toBe("email_not_verified");
+    expect((await request(app).get(refused.location)).text).toContain("That sign-in did not work.");
+    for (const table of ["user", "account", "session"]) {
+      expect(db.prepare(`SELECT COUNT(*) AS n FROM "${table}"`).get(), table).toEqual({ n: 0 });
+    }
+
+    // The address's owner, whose email GitHub has verified, signs in as usual.
+    expect((await signInThroughGithub(app, ada)).signedInAs).toBe("Ada Admin (admin)");
   });
 
   it("returns to the page that was asked for, and never to another site", async () => {

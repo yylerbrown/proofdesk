@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
 import type { Role } from "./actor.js";
 import type { Config, SignInConfig } from "./config.js";
 import type { Db } from "./db.js";
@@ -33,6 +34,24 @@ export function createAuth(db: Db, signIn: SignInConfig, clientIpHeader: string 
     // A session ends seven days after sign-in, however much it is used. By default the
     // library would extend a session in use once a day, so one used every week never ended.
     session: { expiresIn: 7 * 24 * 60 * 60, disableSessionRefresh: true },
+    databaseHooks: {
+      user: {
+        create: {
+          // A person is created only with an email address GitHub has verified. Each address
+          // belongs to one person here, so an account showing someone else's address first
+          // would lock its real owner out. Thrown before the row is written, the refusal
+          // sends the browser to the sign-in page with error=email_not_verified.
+          before: async (user) => {
+            if (user.emailVerified !== true) {
+              throw new APIError("FORBIDDEN", {
+                code: "email_not_verified",
+                message: "Verify your email address on GitHub, then sign in again.",
+              });
+            }
+          },
+        },
+      },
+    },
     // The library's own rate limits count per visitor address. Behind a proxy it must read
     // that address from the header the proxy sets.
     advanced:
