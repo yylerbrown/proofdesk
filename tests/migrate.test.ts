@@ -52,6 +52,7 @@ const ALL = [
   "0023_note_purpose.sql",
   "0024_team_resolution.sql",
   "0025_agent_activity_created_index.sql",
+  "0026_email_outbox.sql",
 ];
 
 describe("runMigrations", () => {
