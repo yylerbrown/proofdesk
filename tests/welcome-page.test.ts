@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { parse } from "node-html-parser";
 import { describe, expect, it } from "vitest";
 import { seedDemo } from "../src/server/demo.js";
@@ -41,6 +42,39 @@ describe("the welcome page's buttons", () => {
         row.querySelector(".try")?.text.trim(),
       );
     }
+  });
+});
+
+describe("the welcome page's assistant setup", () => {
+  it("is one closed line at the end, after the roles, with everything about keys inside it", async () => {
+    const html = await page(demo().app);
+    const section = html.querySelector("section")!;
+    const folded = section.lastElementChild!;
+    expect(folded.tagName).toBe("DETAILS");
+    expect(folded.hasAttribute("open")).toBe(false);
+    expect(folded.querySelector("summary")?.text).toBe("Connect your own AI assistant");
+    expect(folded.previousElementSibling?.classNames).toBe("people");
+    // The key button, its explanation and the recorded run are all folded away.
+    expect(folded.querySelector("form[action='/demo/connection'] button")?.text).toBe(
+      "Get a demo connection",
+    );
+    expect(folded.text).toContain("A key is shown only once");
+    expect(folded.querySelector("a[href='/assistant-run']")).not.toBeNull();
+    const outside = section.childNodes.filter((node) => node !== folded);
+    expect(outside.map((node) => node.text).join(" ")).not.toMatch(/key|assistant/i);
+    // Its summary reads as a quiet link, like the other small disclosures, not a full-width row.
+    const css = fs.readFileSync("public/site.css", "utf8");
+    expect(css).toMatch(/\.welcome details\.connect > summary \{\s*display: inline-block;/);
+  });
+
+  it("opens by itself for links to #connect, which name a place inside it, with no script", async () => {
+    const html = await page(demo().app);
+    // A browser opens a closed details element when the address's #part names something in its
+    // content. The summary or the details element itself would not open it.
+    const target = html.getElementById("connect")!;
+    expect(target.parentNode?.tagName).toBe("DETAILS");
+    expect(target.tagName).not.toBe("SUMMARY");
+    expect(target.querySelector("form[action='/demo/connection']")).not.toBeNull();
   });
 });
 
