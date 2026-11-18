@@ -1,6 +1,6 @@
 # Support desk: specification
 
-This document was drafted in a design conversation with the owner on 17 November 2026, before any code was built. It was added to the repository in pull request #3, after the first slice of the ticket core (#2). Later cuts and changes are recorded at the end, not edited in silently.
+This document was drafted in a design conversation with the owner on 17 November 2026, before any code was built. It was opened as pull request #3, twenty minutes after the first slice of the ticket core (#2). Later cuts and changes are recorded at the end, not edited in silently.
 
 ## One line
 
