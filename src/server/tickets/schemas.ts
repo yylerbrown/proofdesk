@@ -44,6 +44,8 @@ export const addEntrySchema = z.object({
   based_on: z.coerce.number().int().positive().optional(),
   // An assistant's note that says it is blocked. Only an assistant's note is ever marked.
   blocked: z.boolean().optional(),
+  // An assistant's note that is wording it suggests the team send to the customer.
+  suggested_reply: z.boolean().optional(),
 });
 
 // An internal note on its own, for the notes route and tool.
@@ -56,6 +58,10 @@ export const noteSchema = z.object({
   blocked: z.boolean().optional().meta({
     description:
       "True when you are blocked: say what blocks you in the note's first line. The team sees it beside the check and in the list until you write an ordinary note again.",
+  }),
+  suggested_reply: z.boolean().optional().meta({
+    description:
+      "True when this note is wording you suggest the team send to the customer. A person reads it and decides whether to publish it as their own reply; only such a note is offered for publishing.",
   }),
 });
 

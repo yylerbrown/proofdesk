@@ -118,6 +118,10 @@ export const entryOutput = z
     based_on: z.number().int().nullable().meta({
       description: "For a reply published from an internal note: that note's id. Team only.",
     }),
+    purpose: z.enum(["note", "suggested_reply", "review_request"]).meta({
+      description:
+        "What a note is for: an ordinary note, wording suggested for the customer, or a request for the owner's review.",
+    }),
   })
   .meta({ id: "Entry" });
 

@@ -67,7 +67,8 @@ describe("publishing an agent's suggestion", () => {
       await request(app)
         .post("/api/tickets/SUP-1/notes")
         .set("Authorization", `Bearer ${key}`)
-        .send({ body: "Fixed, please try again." })
+        // Wording the assistant suggests for the customer: the only kind of note offered to publish.
+        .send({ body: "Fixed, please try again.", suggested_reply: true })
     ).body;
 
     const team = parse((await admin(app).get("/tickets/SUP-1")).text);

@@ -149,6 +149,13 @@ export function pagesRouter(service: TicketService): Router {
     }));
     const allowed = service.allowedActions(ticket, actor);
     const evidence = service.listEvidence(ticket.key, actor);
+    const agentHelp = service.agentHelp(ticket);
+    // Once an assistant is at work on the ticket, the team's message box starts as an internal
+    // note, so the assistant's working is never sent to the customer by default.
+    const assistantAtWork =
+      agentHelp.current !== null || entries.some((item) => item.author_kind === "agent");
+    const shownEntry =
+      entry === emptyEntry && assistantAtWork && allowed.note ? { ...entry, kind: "note" } : entry;
     // The test spec, and whether to offer the one line that suggests asking an assistant for
     // one: to the team only, who connect assistants. A customer is never pushed to use one.
     const specPanel = {
@@ -170,14 +177,14 @@ export function pagesRouter(service: TicketService): Router {
       assistantBlocked: service.assistantBlocked([ticket], actor).get(ticket.key) ?? null,
       demoNext: demoNext(ticket, actor),
       handOffTo: service.handOffCandidates(ticket),
-      agentHelp: service.agentHelp(ticket),
+      agentHelp,
       entries,
       history,
       confirmed: confirmedAt(ticket, events),
       evidence,
       specPanel,
       allowed,
-      entry,
+      entry: shownEntry,
       problem,
     });
   }

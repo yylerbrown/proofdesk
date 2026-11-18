@@ -409,7 +409,9 @@
   <% if (item.based_on) { const source = entries.find((e) => e.id === item.based_on); if (source) { %>
   <p><small>Published from a note by <%= source.author_name %><% if (source.author_kind === "agent") { %> (AI agent)<% } %>. Only the team sees this line.</small></p>
   <% } } %>
-  <% if (item.kind === "note" && item.author_kind === "agent" && allowed.reply && viewerRole !== "customer") { %>
+  <%# Only wording an assistant suggested for the customer is offered for publishing: never a
+      review request or its working notes, so nothing internal reaches the customer by one click. %>
+  <% if (item.kind === "note" && item.author_kind === "agent" && item.purpose === "suggested_reply" && allowed.reply && viewerRole !== "customer") { %>
   <details class="publish">
     <summary>Publish as my reply</summary>
     <form method="post" action="/tickets/<%= ticket.key %>/entries">
