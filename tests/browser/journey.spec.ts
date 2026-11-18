@@ -108,7 +108,7 @@ test("a customer files a ticket, the team works it, and only the customer resolv
     await team
       .getByRole("textbox", { name: "What happened?" })
       .fill("The file downloaded with every row.");
-    await team.getByRole("button", { name: "Ask customer to confirm" }).click();
+    await team.getByRole("button", { name: "Ask the customer to verify" }).click();
     await expect(savedMessage(team)).toContainText("asked to check the fix");
   });
 
@@ -163,7 +163,7 @@ test("a customer files a ticket, the team works it, and only the customer resolv
     await team
       .getByRole("textbox", { name: "What changed since the customer said it still fails?" })
       .fill("Empty exports are fixed too.");
-    await team.getByRole("button", { name: "Ask customer to confirm" }).click();
+    await team.getByRole("button", { name: "Ask the customer to verify" }).click();
     await expect(savedMessage(team)).toContainText("asked to check the fix");
 
     await customer.goto(`/tickets/${key}`);
@@ -171,7 +171,7 @@ test("a customer files a ticket, the team works it, and only the customer resolv
       .getByRole("article")
       .filter({ has: customer.getByRole("heading", { name: "Did this fix it?" }) });
     await expect(question.getByText(ticket.check)).toBeVisible();
-    await question.getByRole("button", { name: "Yes, it is fixed" }).click();
+    await question.getByRole("button", { name: "Yes, resolve ticket" }).click();
     await expect(savedMessage(customer)).toContainText("The ticket is resolved");
   });
 

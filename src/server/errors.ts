@@ -51,7 +51,7 @@ const HINTS: Record<string, string> = {
   ticket_archived: "Restore the ticket first, if your role may (POST .../restore).",
   needs_owner: "Take the ticket first (POST .../take), then change the status.",
   needs_customer:
-    "Only the customer's answer resolves a ticket. Its owner asks them with Ask customer to confirm on the ticket page, or POST /api/tickets/{key}/ready.",
+    "Only the customer's answer resolves a ticket. Its owner asks them with Ask the customer to verify on the ticket page, or POST /api/tickets/{key}/ready.",
   needs_change_link: "Link the change first (PUT .../change-link), then ask the customer.",
   not_in_progress: "Move the ticket to in_progress first.",
   not_waiting: "The team has not asked this question yet, or it was withdrawn.",

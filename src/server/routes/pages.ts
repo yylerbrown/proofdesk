@@ -76,7 +76,7 @@ function askBlockedReason(ticket: Ticket, actor: Actor): string | null {
   if (ticket.status === "resolved" || ticket.ready_at !== null) return null;
   if (ticket.owner_id === null) return "Take the ticket first.";
   if (ticket.owner_id !== actor.id)
-    return `Only ${ticket.owner_name} can ask the customer to confirm.`;
+    return `Only ${ticket.owner_name} can ask the customer to verify.`;
   if (ticket.status !== "in_progress") return "Start work first.";
   if (ticket.fix_check === null)
     return "The customer has not said how they will know it is fixed. Ask them in a reply.";
