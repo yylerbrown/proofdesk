@@ -1,5 +1,21 @@
 <%- include("header") %>
-<h1><%= title %></h1>
+<%
+  // The same form files a ticket and edits one. When editing, it posts to /tickets/KEY/edit.
+  const editKey = action.endsWith("/edit") ? action.split("/")[2] : null;
+  const fixCheckDescribedBy = errors.fix_check ? "fix_check-error fix_check-hint" : "fix_check-hint";
+%>
+<nav aria-label="breadcrumb">
+  <ul>
+    <li><a href="/tickets">Tickets</a></li>
+    <% if (editKey) { %>
+    <li><a href="/tickets/<%= editKey %>"><%= editKey %></a></li>
+    <li>Edit</li>
+    <% } else { %>
+    <li>New</li>
+    <% } %>
+  </ul>
+</nav>
+<h1><%= editKey ? "Edit ticket" : title %></h1>
 
 <form method="post" action="<%= action %>">
   <label>
@@ -15,17 +31,21 @@
   </label>
 
   <label>
-    Where did this happen? (optional, a link)
-    <input type="url" name="where_url" value="<%= values.where_url %>" placeholder="https://" <% if (errors.where_url) { %>aria-invalid="true" aria-describedby="where_url-error"<% } %> />
-    <% if (errors.where_url) { %><small id="where_url-error"><%= errors.where_url.join(" ") %></small><% } %>
-  </label>
-
-  <label>
     How will we know it's fixed? (optional)
-    <textarea name="fix_check" rows="3" <% if (errors.fix_check) { %>aria-invalid="true" aria-describedby="fix_check-error"<% } %>><%= values.fix_check %></textarea>
+    <small id="fix_check-hint" class="hint">One thing you can check yourself, like "I can sign in on my phone".</small>
+    <textarea name="fix_check" rows="3" aria-describedby="<%= fixCheckDescribedBy %>" <% if (errors.fix_check) { %>aria-invalid="true"<% } %>><%= values.fix_check %></textarea>
     <% if (errors.fix_check) { %><small id="fix_check-error"><%= errors.fix_check.join(" ") %></small><% } %>
   </label>
 
-  <button type="submit" class="compact"><%= submitLabel %></button>
+  <label>
+    Page where it happened (optional)
+    <input type="url" name="where_url" value="<%= values.where_url %>" <% if (errors.where_url) { %>aria-invalid="true" aria-describedby="where_url-error"<% } %> />
+    <% if (errors.where_url) { %><small id="where_url-error"><%= errors.where_url.join(" ") %></small><% } %>
+  </label>
+
+  <div class="form-actions">
+    <button type="submit"><%= submitLabel %></button>
+    <a href="<%= editKey ? `/tickets/${editKey}` : "/tickets" %>">Cancel</a>
+  </div>
 </form>
 <%- include("footer") %>

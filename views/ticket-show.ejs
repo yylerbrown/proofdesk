@@ -1,5 +1,5 @@
 <%- include("header") %>
-<p><a href="/tickets">Back to all tickets</a></p>
+<p class="back"><a href="/tickets">Back to all tickets</a></p>
 
 <hgroup>
   <h1 class="user-text"><%= ticket.title %></h1>
@@ -61,14 +61,14 @@
   <blockquote class="user-text"><%= ticket.fix_check %></blockquote>
   <% } %>
   <% if (evidence.length > 0) { %>
-  <p>What the team showed as proof. It is what they report; please check it yourself:</p>
+  <p>What the team showed as proof. They report it; Proofdesk has not checked it.</p>
   <%- include("evidence", { evidence }) %>
   <% } %>
   <%- include("spec-coverage", { specPanel }) %>
   <form method="post" action="/tickets/<%= ticket.key %>/answer">
     <input type="hidden" name="fixed" value="yes" />
     <input type="hidden" name="ready_token" value="<%= ticket.ready_token %>" />
-    <button type="submit" class="compact">Yes, it is fixed</button>
+    <button type="submit" class="large">Yes, it is fixed</button>
   </form>
   <form method="post" action="/tickets/<%= ticket.key %>/answer">
     <input type="hidden" name="fixed" value="no" />
@@ -87,8 +87,7 @@
 <p class="user-text"><%= ticket.description %></p>
 
 <% if (ticket.where_url) { %>
-<h3>Where did this happen?</h3>
-<p class="user-text"><a href="<%= ticket.where_url %>" rel="noopener noreferrer nofollow"><%= ticket.where_url %></a></p>
+<p class="page-link">Page: <a href="<%= ticket.where_url %>" rel="noopener noreferrer nofollow" class="user-text"><%= ticket.where_url %></a></p>
 <% } %>
 </div>
 
@@ -121,7 +120,7 @@
   <% } %>
   <% if (allowed.release) { %>
   <form method="post" action="/tickets/<%= ticket.key %>/release">
-    <button type="submit" class="secondary outline compact">Release it</button>
+    <button type="submit" class="link">Release it</button>
   </form>
   <% } %>
 </section>
@@ -160,7 +159,10 @@
 <% if (evidence.length > 0 || allowed.attachEvidence) { %>
 <section>
   <h2>Evidence</h2>
-  <% if (evidence.length > 0) { %><%- include("evidence", { evidence }) %><% } %>
+  <% if (evidence.length > 0) { %>
+  <p class="evidence-note">As reported by whoever attached it. Proofdesk checks none of it.</p>
+  <%- include("evidence", { evidence }) %>
+  <% } %>
   <% if (allowed.attachEvidence) { %>
   <details <% if (problem?.form === "evidence") { %>open<% } %>>
     <summary>Attach evidence</summary>
@@ -203,7 +205,7 @@
   <form method="post" action="/tickets/<%= ticket.key %>/change-link">
     <label>
       Link to the code change
-      <input type="url" name="change_url" placeholder="https://" required <% if (problem?.form === "changeLink") { %>aria-invalid="true" aria-describedby="change-link-error"<% } %> />
+      <input type="url" name="change_url" required <% if (problem?.form === "changeLink") { %>aria-invalid="true" aria-describedby="change-link-error"<% } %> />
       <% if (problem?.form === "changeLink") { %><small id="change-link-error"><%= problem.message %></small><% } %>
     </label>
     <button type="submit" class="secondary compact">Save change link</button>
@@ -213,7 +215,7 @@
   <form method="post" action="/tickets/<%= ticket.key %>/ready">
     <label>
       Page on the live site to try
-      <input type="url" name="try_url" placeholder="https://" required <% if (problem?.form === "ready") { %>aria-invalid="true" aria-describedby="ready-error"<% } %> />
+      <input type="url" name="try_url" required <% if (problem?.form === "ready") { %>aria-invalid="true" aria-describedby="ready-error"<% } %> />
       <% if (problem?.form === "ready") { %><small id="ready-error"><%= problem.message %></small><% } %>
     </label>
     <button type="submit" class="compact">Ask the customer</button>
@@ -224,7 +226,7 @@
 
 <% if (allowed.edit) { %>
 <section>
-  <a href="/tickets/<%= ticket.key %>/edit" role="button" class="secondary outline compact">Edit ticket</a>
+  <a href="/tickets/<%= ticket.key %>/edit" role="button" class="link">Edit ticket</a>
 </section>
 <% } %>
 
@@ -237,7 +239,6 @@
   <% if (allowed.delete) { %>
   <p><a href="/tickets/<%= ticket.key %>/delete" role="button" class="danger compact">Delete permanently</a></p>
   <% } %>
-  <small><% if (allowed.archive && allowed.delete) { %>Both ask first, each on a page of its own.<% } else { %>It asks first, on a page of its own.<% } %></small>
 </section>
 <% } %>
 </aside>
@@ -250,8 +251,8 @@
 <% for (const item of entries) { %>
 <article class="entry<% if (item.kind === "note") { %> note<% } %>">
   <header>
-    <strong><%= item.author_name %></strong>
-    <small>(<%= item.author_role %>)<% if (item.kind === "note") { %>, internal note, the customer does not see this<% } %>, <%- include("time", { iso: item.created_at }) %></small>
+    <strong><%= item.author_name %></strong><% if (item.author_kind === "agent") { %> <span class="tag">AI agent</span><% } %>
+    <small><% if (item.author_kind !== "agent") { %><%= item.author_role %> · <% } %><% if (item.kind === "note") { %><span class="note-label">internal note, the customer does not see this</span> · <% } %><%- include("time", { iso: item.created_at }) %></small>
   </header>
   <p class="user-text"><%= item.body %></p>
 </article>
@@ -277,7 +278,8 @@
 </form>
 <% } %>
 
-<h2>History</h2>
+<details class="history">
+<summary>History (<%= history.length %>)</summary>
 <div class="overflow-auto">
   <table>
     <thead>
@@ -298,6 +300,7 @@
     </tbody>
   </table>
 </div>
+</details>
 </div>
 </div>
 <%- include("footer") %>

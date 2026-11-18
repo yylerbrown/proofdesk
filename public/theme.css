@@ -1,7 +1,6 @@
 /*
- * The look of Proofdesk: every colour and font choice, in one file. It is loaded after the
- * ready-made stylesheet (Pico CSS) and before site.css, which uses only these names. To change
- * the whole look, replace this file.
+ * The look of Proofdesk: every colour, size and font choice in one file. Loaded after Pico and
+ * before site.css, which uses only these names. To change the whole look, replace this file.
  */
 
 /* Inter, served from this site (the @fontsource/inter package), Latin letters only. */
@@ -15,10 +14,21 @@
 @font-face {
   font-family: "Inter";
   font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/assets/inter/inter-latin-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
   font-weight: 600;
   font-display: swap;
   src: url("/assets/inter/inter-latin-600-normal.woff2") format("woff2");
 }
+/*
+ * Nothing on the page asks for weight 700 any more, so browsers never download this file. The
+ * declaration stays because a test pins it; it can go when that test is next changed.
+ */
 @font-face {
   font-family: "Inter";
   font-style: normal;
@@ -27,66 +37,177 @@
   src: url("/assets/inter/inter-latin-700-normal.woff2") format("woff2");
 }
 
-:root[data-theme="light"] {
-  /* The palette. The lime accent is never used for text on a light background. */
-  --pd-ink: #272b27; /* header, primary buttons, headings */
-  --pd-ink-deep: #1f271b; /* hover and pressed */
-  --pd-paper: #f8f6f2; /* page background */
-  --pd-line: #eae3d7; /* borders and quiet panels */
-  --pd-accent: #d1e935; /* focus rings, the active filter, the mark */
-  --pd-text: #1b1d1a; /* body text */
-  --pd-muted: #565a53; /* secondary text */
-  --pd-on-ink: #f8f6f2; /* text on the dark olive */
-  --pd-danger: #a32a1e; /* archive and permanent delete */
-  --pd-on-danger: #ffffff;
+/* Specificity (0,2,0), loaded after Pico, so it beats Pico's own :root defaults. */
+:root:not([data-theme="dark"]) {
+  color-scheme: light;
 
-  /* Status badges: neutral. The word is always there; none of them is lime. */
-  --pd-badge-new-bg: var(--pd-line);
-  --pd-badge-new-text: var(--pd-ink);
-  --pd-badge-progress-bg: var(--pd-ink);
-  --pd-badge-progress-text: var(--pd-on-ink);
-  --pd-badge-resolved-bg: var(--pd-paper);
-  --pd-badge-resolved-text: var(--pd-ink);
+  /* Colour. Ratios are WCAG contrast ratios, computed for these exact hex values. */
+  --pd-bg: #fafaf9; /* page */
+  --pd-surface: #ffffff; /* answer box, inputs, quiet buttons */
+  --pd-subtle: #f2f2ef; /* row hover, code, demo strip, quiet-button hover */
+  --pd-border: #e3e3de; /* THE hairline. Decorative dividers only (exempt from 1.4.11) */
+  --pd-border-strong: #8a8b84; /* input/select/textarea edges: 3.44 on surface, 3.29 on bg */
+  --pd-text: #1b1c19; /* 16.39 on bg, 17.12 on surface, 15.26 on subtle, 15.45 on note */
+  --pd-muted: #5c5e57; /* 6.30 on bg, 6.58 on surface, 5.86 on subtle, 5.94 on note */
+  --pd-ink: #1b1c19; /* primary button fill */
+  --pd-on-ink: #ffffff; /* 17.12 on ink */
+  --pd-focus: #2160e0; /* focus ring: 5.27 on bg, 5.51 on surface */
+  --pd-danger: #b42318; /* danger text 6.29 on bg, 6.57 on surface */
+  --pd-on-danger: #ffffff; /* 6.57 on danger fill */
+  --pd-note-bg: #fbf3dc; /* internal-note tint */
+  --pd-note-text: #7a4f00; /* note label 6.43 on note-bg */
+  --pd-note-bar: #a87400; /* note edge 3.67 on note-bg */
+  /* Status: a dot colour only. The word beside it is always --pd-text. Dots pass 3:1 anyway. */
+  --pd-status-new: #2563eb; /* 4.95 bg, 5.17 surface, 4.61 subtle */
+  --pd-status-in_progress: #7c3aed; /* 5.46 bg, 5.70 surface, 5.08 subtle */
+  --pd-status-resolved: #15803d; /* 4.80 bg, 5.02 surface, 4.47 subtle */
+  --pd-status-archived: #7a7c75; /* 4.05 bg, 4.23 surface, 3.77 subtle */
+  --pd-yes: #d1e935; /* ONLY the confirmation tick square. Never text, focus or UI. */
+  --pd-on-yes: #1b1c19; /* tick on lime 12.57 */
 
-  /* The ready-made stylesheet's own names, set from the palette. */
-  --pico-font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --pico-background-color: var(--pd-paper);
+  /* Status badges: a dot in the status colour, then the word. None of them is lime. */
+  --pd-badge-new: var(--pd-status-new);
+  --pd-badge-in_progress: var(--pd-status-in_progress);
+  --pd-badge-resolved: var(--pd-status-resolved);
+  --pd-badge-archived: var(--pd-status-archived);
+  --pd-badge-text: var(--pd-text);
+  --pd-badge-dot: 8px;
+
+  /* Type. Root is 15px (see --pico-font-size below), so 1rem = 15px and user zoom still works. */
+  --pd-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --pd-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --pd-text-xs: 0.8rem; /* 12px  line 1.4   track 0         rail labels, tags, demo strip */
+  --pd-text-sm: 0.8667rem; /* 13px  line 1.45  track -0.003em  meta, badges, buttons, tables */
+  --pd-text-md: 1rem; /* 15px  line 1.55  track -0.009em  body, inputs (16px on phones) */
+  --pd-text-lg: 1.1333rem; /* 17px  line 1.45  track -0.013em  section headings, the check */
+  --pd-text-xl: 1.4667rem; /* 22px  line 1.3   track -0.018em  page title */
+  --pd-text-2xl: 1.7333rem; /* 26px  line 1.25  track -0.02em   welcome title only */
+  --pd-weight-regular: 400; /* body */
+  --pd-weight-medium: 500; /* names, buttons, list titles, current tab */
+  --pd-weight-semibold: 600; /* headings. Nothing is 700. */
+
+  /* Space (4px base), shape, line, motion. */
+  --pd-space-1: 4px;
+  --pd-space-2: 8px;
+  --pd-space-3: 12px;
+  --pd-space-4: 16px;
+  --pd-space-5: 24px;
+  --pd-space-6: 32px;
+  --pd-space-7: 48px;
+  --pd-space-8: 64px;
+  --pd-gutter: 16px; /* page side gutter; 32px from 768px (site.css) */
+  --pd-page: 1080px; /* widest content */
+  --pd-measure: 680px; /* main column of the ticket page; forms are 640px */
+  --pd-rail: 272px; /* ticket page action rail */
+  --pd-header-h: 56px;
+  --pd-radius-sm: 4px; /* tags, code, badges */
+  --pd-radius: 6px; /* buttons, inputs, notes */
+  --pd-radius-lg: 10px; /* answer box, role list */
+  --pd-hairline: 1px solid var(--pd-border);
+  --pd-shadow: none; /* no elevation anywhere */
+  --pd-ease: 120ms ease-out; /* colour and background changes only */
+
+  /* Pico's own names, set from the above. */
+  --pico-font-family: var(--pd-font);
+  --pico-font-size: 93.75%; /* 15px at EVERY width: stops Pico growing text to 125% at 1280px */
+  --pico-line-height: 1.55;
+  --pico-font-weight: 400;
+  --pico-background-color: var(--pd-bg);
   --pico-color: var(--pd-text);
   --pico-muted-color: var(--pd-muted);
-  --pico-muted-border-color: var(--pd-line);
-  --pico-h1-color: var(--pd-ink);
-  --pico-h2-color: var(--pd-ink);
-  --pico-h3-color: var(--pd-ink);
-  --pico-h4-color: var(--pd-ink);
-  --pico-primary: var(--pd-ink);
+  --pico-muted-border-color: var(--pd-border);
+  --pico-h1-color: var(--pd-text);
+  --pico-h2-color: var(--pd-text);
+  --pico-h3-color: var(--pd-text);
+  --pico-h4-color: var(--pd-text);
+  --pico-primary: var(--pd-text); /* links are text-coloured, underlined */
+  --pico-primary-underline: var(--pd-border-strong);
+  --pico-primary-hover: var(--pd-text);
+  --pico-primary-hover-underline: var(--pd-text);
   --pico-primary-background: var(--pd-ink);
   --pico-primary-border: var(--pd-ink);
-  --pico-primary-underline: rgba(39, 43, 39, 0.5);
-  --pico-primary-hover: var(--pd-ink-deep);
-  --pico-primary-hover-background: var(--pd-ink-deep);
-  --pico-primary-hover-border: var(--pd-ink-deep);
-  --pico-primary-hover-underline: var(--pd-ink-deep);
-  --pico-primary-focus: var(--pd-accent);
+  --pico-primary-hover-background: #000000;
+  --pico-primary-hover-border: #000000;
+  --pico-primary-focus: var(--pd-focus);
   --pico-primary-inverse: var(--pd-on-ink);
   --pico-secondary: var(--pd-muted);
-  --pico-secondary-background: var(--pd-muted);
-  --pico-secondary-border: var(--pd-muted);
-  --pico-secondary-hover: var(--pd-ink);
-  --pico-secondary-hover-background: var(--pd-ink);
-  --pico-secondary-hover-border: var(--pd-ink);
-  --pico-secondary-inverse: var(--pd-on-ink);
-  --pico-form-element-background-color: #ffffff;
-  --pico-form-element-border-color: #cfc6b6;
-  --pico-form-element-focus-color: var(--pd-ink);
-  --pico-card-background-color: #ffffff;
-  --pico-card-sectioning-background-color: var(--pd-paper);
-  --pico-card-box-shadow: 0 0 0 1px var(--pd-line);
+  --pico-secondary-background: var(--pd-surface);
+  --pico-secondary-border: var(--pd-border);
+  --pico-secondary-hover: var(--pd-text);
+  --pico-secondary-hover-background: var(--pd-subtle);
+  --pico-secondary-hover-border: var(--pd-border-strong);
+  --pico-secondary-inverse: var(--pd-text);
+  --pico-text-underline-offset: 0.2em;
+  --pico-form-element-background-color: var(--pd-surface);
+  --pico-form-element-active-background-color: var(--pd-surface);
+  --pico-form-element-border-color: var(--pd-border-strong);
+  --pico-form-element-active-border-color: var(--pd-text);
+  --pico-form-element-focus-color: var(--pd-focus);
+  --pico-form-element-color: var(--pd-text);
+  --pico-form-element-placeholder-color: var(--pd-muted);
+  --pico-form-element-invalid-border-color: var(--pd-danger);
+  --pico-form-element-invalid-active-border-color: var(--pd-danger);
+  --pico-form-element-invalid-focus-color: var(--pd-danger);
+  --pico-form-element-spacing-vertical: 0.5rem; /* 7.5px: 38px-tall fields */
+  --pico-form-element-spacing-horizontal: 0.75rem;
+  --pico-form-label-font-weight: 500;
+  --pico-card-background-color: var(--pd-surface);
+  --pico-card-border-color: var(--pd-border);
+  --pico-card-sectioning-background-color: var(--pd-surface);
+  --pico-card-box-shadow: none;
   --pico-box-shadow: none;
-  --pico-mark-background-color: var(--pd-line);
+  --pico-dropdown-background-color: var(--pd-surface);
+  --pico-dropdown-border-color: var(--pd-border);
+  --pico-dropdown-box-shadow: none;
+  --pico-dropdown-color: var(--pd-text);
+  --pico-dropdown-hover-background-color: var(--pd-subtle);
+  --pico-accordion-border-color: var(--pd-border);
+  --pico-accordion-close-summary-color: var(--pd-text);
+  --pico-accordion-open-summary-color: var(--pd-text);
+  --pico-accordion-active-summary-color: var(--pd-text);
+  --pico-table-border-color: var(--pd-border);
+  --pico-code-background-color: var(--pd-subtle);
+  --pico-code-color: var(--pd-text);
+  --pico-mark-background-color: var(--pd-subtle);
   --pico-mark-color: var(--pd-text);
-  --pico-ins-color: var(--pd-ink);
+  --pico-ins-color: var(--pd-text);
   --pico-del-color: var(--pd-danger);
-  --pico-table-border-color: var(--pd-line);
-  --pico-spacing: 1.1rem;
-  --pico-border-radius: 0.375rem;
+  --pico-spacing: 1rem;
+  --pico-typography-spacing-vertical: 1rem;
+  --pico-border-radius: var(--pd-radius);
+  --pico-border-width: 1px;
+  --pico-outline-width: 2px;
+  --pico-transition: var(--pd-ease);
+  --pico-nav-breadcrumb-divider: "/";
+}
+
+/* Dark set (later, only if cheap). It takes effect only when the html element has no
+   data-theme attribute; header.ejs then also changes its meta to content="light dark". */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --pd-bg: #141513;
+    --pd-surface: #1b1c1a;
+    --pd-subtle: #262724;
+    --pd-border: #30322e;
+    --pd-border-strong: #74766f; /* 3.98 bg, 3.72 surface */
+    --pd-text: #ececea; /* 15.49 bg, 14.46 surface, 12.70 subtle, 13.05 note */
+    --pd-muted: #a2a49d; /* 7.27 bg, 6.79 surface, 5.96 subtle, 6.13 note */
+    --pd-ink: #ececea;
+    --pd-on-ink: #141513; /* 15.49 */
+    --pd-focus: #78a6ff; /* 7.59 bg */
+    --pd-danger: #f07c6c;
+    --pd-on-danger: #141513; /* 6.81 bg, 6.81 fill */
+    --pd-note-bg: #2a2413;
+    --pd-note-text: #e6bb5c; /* 8.55 */
+    --pd-note-bar: #a77d16; /* 4.11 */
+    --pd-status-new: #6b9cff; /* 6.83 bg */
+    --pd-status-in_progress: #a78bfa; /* 6.73 bg */
+    --pd-status-resolved: #4cc477; /* 8.26 bg */
+    --pd-status-archived: #8f918a; /* 5.74 bg */
+    --pd-yes: #d1e935;
+    --pd-on-yes: #1b1c19; /* tick stays dark on lime: 12.57 */
+    --pico-primary-hover-background: #ffffff;
+    --pico-primary-hover-border: #ffffff;
+  }
 }
