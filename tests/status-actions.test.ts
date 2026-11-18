@@ -100,19 +100,19 @@ describe("the Status section", () => {
     }
   });
 
-  it("on a team-resolved ticket offers the owner no status change the server would refuse", async () => {
+  it("on a team-resolved ticket offers the owner a Reopen the server accepts", async () => {
     const { app } = await filed();
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
     await as(app, teamActor)
       .post("/api/tickets/SUP-1/resolve")
       .send({ reason: "wont_fix" })
       .expect(200);
-    // Today only the customer reopens, so the team gets no Reopen button to be refused by.
-    const refused = await as(app, teamActor)
+    expect(actions((await statusSection(app, teamActor))!)).toEqual(["Reopen"]);
+    await as(app, teamActor)
       .post("/api/tickets/SUP-1/reopen")
-      .send({ reason: "Again." });
-    expect(refused.status).toBe(403);
-    expect(actions((await statusSection(app, teamActor))!)).toEqual([]);
+      .send({ reason: "Resolved by mistake." })
+      .expect(200);
+    expect(actions((await statusSection(app, teamActor))!)).toEqual(["Resolve"]);
   });
 });
 

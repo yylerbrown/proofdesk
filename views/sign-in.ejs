@@ -20,8 +20,9 @@
 <p class="signed-in">You are signed in as <strong><%= viewer.name %></strong>. <a href="/tickets">Go to the tickets</a>, or <%= viewer.demo ? "use Switch role at the top" : "sign out at the top to switch" %>.</p>
 <% } %>
 
-<% if (failed) { %>
-<p class="notice">That sign-in did not work. Try again, or ask the support team if it keeps happening.</p>
+<%# Fixed text from the server. A failed sign-in is an alert; signed out is a status. %>
+<% if (notice) { %>
+<p class="notice sign-in-notice" role="<%= notice.alert ? "alert" : "status" %>"><%= notice.text %></p>
 <% } %>
 
 <% if (github) { %>

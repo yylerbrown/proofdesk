@@ -84,7 +84,7 @@ export const reopenSchema = z.object({
   reason: z
     .string()
     .trim()
-    .min(1, "Say what is happening again.")
+    .min(1, "Give a reason for reopening it.")
     .max(2000, "Must be at most 2000 characters."),
 });
 

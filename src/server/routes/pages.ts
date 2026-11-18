@@ -478,6 +478,11 @@ export function pagesRouter(service: TicketService): Router {
   // Registered before "/tickets/:key" so that "new" is not read as a ticket key.
   router.get("/tickets/new", (req, res) => {
     const actor = signedIn(req);
+    // The demo's admin preview may not file a ticket: say so instead of offering a form.
+    if (actor.readOnly === true) {
+      res.render("ticket-form", { ...newForm, readOnly: true, values: emptyForm, errors: {} });
+      return;
+    }
     // Each new form gets its own one-time id in its address, so Back after filing opens the
     // same form again, and the page can say it was filed.
     const formId = readFormId(req.query.form);
