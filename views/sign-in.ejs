@@ -1,6 +1,6 @@
 <%- include("header") %>
 <%
-  // One thing to try as each kind of person, shown beside their button.
+  // One thing to try as each kind of person, shown under their name in the same row.
   const tries = {
     customer: "File a ticket, then follow it until the team asks whether it is fixed.",
     team: "Take a ticket, write an internal note, and ask the customer to check the fix.",
@@ -9,13 +9,14 @@
       : "See every ticket, restore archived ones, and delete one permanently.",
   };
 %>
+<div class="welcome">
 <hgroup>
   <h1>Proofdesk</h1>
   <p>Tell us what went wrong, follow it while the team works on it, and say when it is fixed.</p>
 </hgroup>
 
 <% if (failed) { %>
-<p><mark>That sign-in did not work. Try again, or ask the support team if it keeps happening.</mark></p>
+<p class="notice">That sign-in did not work. Try again, or ask the support team if it keeps happening.</p>
 <% } %>
 
 <% if (github) { %>
@@ -52,4 +53,5 @@
   </ul>
 </section>
 <% } %>
+</div>
 <%- include("footer") %>
