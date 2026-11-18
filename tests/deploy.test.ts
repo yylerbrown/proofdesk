@@ -50,6 +50,15 @@ describe("the deploy workflow", () => {
     expect(triggers.trim()).toBe("workflow_dispatch:");
   });
 
+  it("deploys only what has been merged into main", () => {
+    expect(deployWorkflow).toContain("if: github.ref == 'refs/heads/main'");
+  });
+
+  it("uses Fly's setup action pinned to one commit, not to a moving branch", () => {
+    const uses = /uses: superfly\/flyctl-actions\/setup-flyctl@(\S+)/.exec(deployWorkflow)?.[1];
+    expect(uses).toMatch(/^[0-9a-f]{40}$/);
+  });
+
   it("takes the deploy token from a repository secret, never from the file", () => {
     expect(deployWorkflow).toContain("FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}");
   });
@@ -94,5 +103,15 @@ describe("the visitor's address behind a proxy", () => {
   it("refuses a header name that is not a plain lower-case name", () => {
     expect(() => loadConfig({ CLIENT_IP_HEADER: "Fly-Client-IP" })).toThrow(/CLIENT_IP_HEADER/);
     expect(() => loadConfig({ CLIENT_IP_HEADER: "a b" })).toThrow(/CLIENT_IP_HEADER/);
+  });
+});
+
+describe("the image", () => {
+  it("starts through the entrypoint that hands the mounted disk to the node user", () => {
+    expect(dockerfile).toContain('ENTRYPOINT ["/app/docker-entrypoint.sh"]');
+    expect(dockerfile).not.toMatch(/^USER /m);
+    const entrypoint = fs.readFileSync("docker-entrypoint.sh", "utf8");
+    expect(entrypoint).toContain("chown node:node /data");
+    expect(entrypoint).toContain('exec setpriv --reuid=node --regid=node --init-groups "$@"');
   });
 });

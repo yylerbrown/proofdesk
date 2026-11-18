@@ -48,27 +48,37 @@ Actions tab. It never runs on its own.
 
 With one machine and one disk, each deploy has a few seconds of downtime.
 
+## After the first deploy: first, does it start?
+
+The image starts as root only to hand the mounted disk to the `node` user, then runs the
+server as `node` (`docker-entrypoint.sh`). This could not be tried on a real Fly disk before
+deploying. Look at `fly logs` straight after the first deploy: it must show `Listening on port
+3000`, not a permission error on `/data/app.db`, and the machine must not restart over and over.
+
 ## After the first deploy: five checks
 
 1. `curl https://support-desk-demo.fly.dev/api/health` answers `"status":"ok"` with the commit.
 2. Sign in with GitHub on the hosted copy and see "(admin)" at the top.
-3. **The visitor's address.** Not verified before deploying: `fly.toml` tells the server to read
-   the visitor's address from the `fly-client-ip` header, which Fly's proxy sets. Fly's
-   documentation does not say whether the proxy replaces a value a visitor sends in that header.
-   Check it with:
+3. **The visitor's address cannot be chosen by the visitor.** The server counts sign-in starts
+   per address, ten a minute, reading the address from the `fly-client-ip` header that Fly's
+   proxy sets. Fly's documentation does not say whether the proxy replaces a value a visitor
+   sends. Check it: send eleven sign-in starts, each claiming a different address.
 
    ```sh
-   curl -s -H "fly-client-ip: 1.2.3.4" https://support-desk-demo.fly.dev/api/health -D - -o /dev/null
+   for i in $(seq 1 11); do
+     curl -s -o /dev/null -w "%{http_code}\n" -X POST \
+       -H "Origin: https://support-desk-demo.fly.dev" -H "fly-client-ip: 10.0.0.$i" \
+       https://support-desk-demo.fly.dev/sign-in/github
+   done
    ```
 
-   then look in `fly logs` for the address the server saw on that request. If it is `1.2.3.4`,
-   a visitor can choose their own address and the per-address rate limit can be dodged; remove
-   `CLIENT_IP_HEADER` from `fly.toml` and use `X-Forwarded-For` with a trusted proxy count
-   instead.
+   The eleventh must answer `429`. If all eleven answer `303`, a visitor can choose their own
+   address: remove `CLIENT_IP_HEADER` from `fly.toml` and ask for a different setting. Then
+   run it again without the `fly-client-ip` line; the eleventh must answer `429` too.
 
-4. **A doubled header.** Repeat the check with the header sent twice
-   (`-H "fly-client-ip: 1.2.3.4" -H "fly-client-ip: 5.6.7.8"`). The address in the logs must
-   still be your own.
+4. **A doubled header.** Repeat check 3 with the header sent twice in each request
+   (`-H "fly-client-ip: 10.0.0.$i" -H "fly-client-ip: 10.0.1.$i"`). The eleventh must still
+   answer `429`.
 5. **No way around the proxy.** The server must only be reachable through Fly's proxy at
    `support-desk-demo.fly.dev`, never directly on the machine's own address and port 3000;
    otherwise anyone could send their own address header. Check `fly ips list` shows only the
@@ -87,12 +97,25 @@ Then check that tickets filed before the restart are still there.
 Do not copy `app.db` while the server runs: part of the data is in `app.db-wal`, and a plain copy
 can be broken. Use SQLite's own backup, which is safe while the app runs:
 
+Open a console on the machine, make the backup from `/app` (where the server's packages are),
+then fetch it and remove the copy from the live disk, or tickets deleted later would survive
+in it:
+
 ```sh
-fly ssh console --app support-desk-demo -C "node -e \"new (require('better-sqlite3'))('/data/app.db').backup('/data/backup.db')\""
-fly ssh sftp get /data/backup.db ./backup.db --app support-desk-demo
+fly ssh console --app support-desk-demo
+cd /app
+node -e "require('better-sqlite3')('/data/app.db').backup('/data/backup.db').then(() => console.log('done'))"
+exit
 ```
 
-A permanently deleted ticket stays in backups made before its deletion.
+```sh
+fly ssh sftp get /data/backup.db ./backup.db --app support-desk-demo
+fly ssh console --app support-desk-demo -C "rm /data/backup.db"
+```
+
+A permanently deleted ticket stays in backups made before its deletion, and in the host's
+automatic snapshots of the disk until they expire. `fly volumes snapshots list` shows which
+snapshots exist; how long they are kept is a host setting to check before going live.
 
 ## Rolling back
 
@@ -101,5 +124,7 @@ fly releases --app support-desk-demo
 fly deploy --app support-desk-demo --image <image of the release to go back to>
 ```
 
-A rollback does not undo database migrations. Every migration so far only adds, so older code
-runs on a newer database, but check `migrations/` before rolling back past one.
+A rollback does not undo database migrations. Most migrations only add columns and tables, so
+older code runs on a newer database. One does more: `0008` rebuilds the tickets table, and code
+from before it does not know the deletion record. Check `migrations/` before rolling back past
+one.
