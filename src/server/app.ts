@@ -167,7 +167,7 @@ export function createApp(config: Config, db: Db): Express {
   api.get("/openapi.json", (_req, res) => {
     res.json(openapi);
   });
-  api.use(ticketsRouter(tickets));
+  api.use(ticketsRouter(tickets, connections));
   api.use(notFoundHandler);
   api.use(errorHandler);
   app.use("/api", api);
