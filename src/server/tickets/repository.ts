@@ -33,6 +33,7 @@ export type EventRow = {
   type: string;
   data: string; // JSON text
   created_at: string;
+  actor_context: string | null; // JSON text, for an agent's action
 };
 
 export type ActorKind = "person" | "agent";
@@ -53,6 +54,8 @@ export type NewEvent = {
   type: string;
   data: object;
   now: string;
+  /** For an agent's action: its connection, issuer, scopes and the ticket's owner. */
+  context?: object | null;
 };
 
 /** Inserts a ticket with status "new" and returns its number. */
@@ -211,8 +214,8 @@ export function clearReady(db: Db, id: number): void {
 
 export function insertEvent(db: Db, event: NewEvent): void {
   db.prepare(
-    `INSERT INTO ticket_events (ticket_id, actor, actor_kind, type, data, created_at)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO ticket_events (ticket_id, actor, actor_kind, type, data, created_at, actor_context)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     event.ticketId,
     event.actor,
@@ -220,7 +223,15 @@ export function insertEvent(db: Db, event: NewEvent): void {
     event.type,
     JSON.stringify(event.data),
     event.now,
+    event.context ? JSON.stringify(event.context) : null,
   );
+}
+
+/** The named human owner of a ticket right now, or null. */
+export function ownerOf(db: Db, ticketId: number): string | null {
+  const row = db.prepare("SELECT owner_id FROM tickets WHERE id = ?").get(ticketId) as
+    { owner_id: string | null } | undefined;
+  return row?.owner_id ?? null;
 }
 
 /** The latest `limit` events of a ticket, oldest first. */

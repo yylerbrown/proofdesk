@@ -19,6 +19,7 @@
         <% if (viewer) { %>
         <ul>
           <li><a href="/tickets">Tickets</a></li>
+          <% if (viewer.role === "admin" && !viewer.readOnly) { %><li><a href="/connections">Connections</a></li><% } %>
           <li><a href="/tickets/new" role="button" class="outline">New ticket</a></li>
           <li class="viewer">Signed in as <strong><%= viewer.name %></strong> <small class="role-label"><%= viewer.role %></small></li>
           <li>

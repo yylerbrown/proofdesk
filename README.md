@@ -105,7 +105,10 @@ panel between the description and the conversation.
 ## API
 
 All routes are under `/api` and speak JSON. Errors look like
-`{ "error": { "code": "...", "message": "..." } }`. A ticket is addressed by its public key,
+`{ "error": { "code": "...", "message": "...", "hint": "...", "retry": false } }`: the hint says
+what to do next, `retry` says whether sending the same request again can work, and a validation
+error also lists `fields`. The routes are built from one table, `ACTIONS` in
+`src/server/api/actions.ts`. A ticket is addressed by its public key,
 for example `SUP-42`. The prefix comes from `TICKET_PREFIX` (2 to 6 capital letters, default `SUP`).
 The prefix is chosen when the database is first created and is stored in it. The server
 refuses to start if `TICKET_PREFIX` later differs, because that would rename every ticket.
@@ -149,6 +152,24 @@ accepts `where_url` (an http or https URL, at most 500 characters) and `fix_chec
 The ticket routes need a signed-in browser session, so they are not meant to be called with
 `curl`. A request that changes something must also say it comes from this site, which a
 browser does by itself (see Security).
+
+## Agent connections
+
+Proofdesk makes no AI calls of its own. An AI assistant works on tickets through the API with
+a **connection**: an admin issues one on the Connections page, gives it a name, chooses what it
+may do, and copies its key, which is shown once. If the key is lost or leaked, revoke the
+connection and issue a new one. Only a hash of the key is stored.
+
+An assistant sends the key on each request: `Authorization: Bearer pd_...`. Keys work on the
+JSON API only, never on the pages.
+
+What an agent may do is decided by the capability table, `CAPABILITIES` in
+`src/server/permissions.ts`, which the tests are generated from. The scopes are named by what
+they allow: read tickets, write internal notes, send replies, link changes, change the status
+(never to resolved). Answering "Did this fix it?", resolving, owning a ticket, asking the
+customer, archiving, restoring, deleting and managing connections are for people only. Each
+agent action in the history records the connection, who issued it, its scopes at that moment
+and the ticket's owner. Each connection has its own write allowance.
 
 ## From merged to confirmed
 

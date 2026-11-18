@@ -18,7 +18,8 @@ export type Action =
   | "agree_check"
   | "link_change"
   | "mark_ready"
-  | "answer";
+  | "answer"
+  | "manage_connections";
 
 /**
  * What an AI agent may be allowed to do, each named by the operation it permits. A connection
@@ -61,6 +62,7 @@ export const CAPABILITIES: Record<Action, Capability> = {
   link_change: { people: "The team.", agent: "link_changes" },
   mark_ready: { people: "The team.", agent: "people_only" },
   answer: { people: "Only the customer who filed it.", agent: "people_only" },
+  manage_connections: { people: "An admin.", agent: "people_only" },
 };
 
 /** The two facts about a ticket that permissions depend on. */
@@ -107,6 +109,7 @@ export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean
   if (action === "create") return true;
   if (action === "list_all") return isStaff;
   if (action === "list_archived") return isStaff;
+  if (action === "manage_connections") return actor.role === "admin" && actor.kind === "person";
 
   // Every other action is about one ticket.
   if (ticket === undefined) return false;

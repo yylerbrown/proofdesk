@@ -1,0 +1,51 @@
+<%- include("header") %>
+<h1>Agent connections</h1>
+<p>A connection lets one AI assistant work on tickets through the API, with only the permissions you choose. Its key is shown once. If a key is lost or leaked, revoke the connection and issue a new one.</p>
+
+<form method="post" action="/connections">
+  <label>
+    Name
+    <input type="text" name="name" value="<%= form.name %>" required maxlength="60" <% if (form.errors.name) { %>aria-invalid="true" aria-describedby="name-error"<% } %> />
+    <% if (form.errors.name) { %><small id="name-error"><%= form.errors.name.join(" ") %></small><% } %>
+  </label>
+  <fieldset <% if (form.errors.scopes) { %>aria-describedby="scopes-error"<% } %>>
+    <legend>What it may do</legend>
+    <% for (const scope of scopes) { %>
+    <label><input type="checkbox" name="scopes" value="<%= scope %>" <% if (form.scopes.includes(scope)) { %>checked<% } %> /> <%= scopeLabels[scope] %></label>
+    <% } %>
+    <% if (form.errors.scopes) { %><small id="scopes-error"><%= form.errors.scopes.join(" ") %></small><% } %>
+  </fieldset>
+  <p><small>Never, whatever you choose: answer "Did this fix it?", resolve a ticket, own one, ask the customer, archive, restore, delete, or manage connections.</small></p>
+  <button type="submit" class="compact">Issue connection</button>
+</form>
+
+<h2>Issued</h2>
+<% if (connections.length === 0) { %>
+<p class="empty">No connections yet.</p>
+<% } else { %>
+<div class="overflow-auto">
+  <table>
+    <thead>
+      <tr><th scope="col">Name</th><th scope="col">Key starts</th><th scope="col">May</th><th scope="col">Last used</th><th scope="col">State</th></tr>
+    </thead>
+    <tbody>
+      <% for (const c of connections) { %>
+      <tr>
+        <td class="user-text"><%= c.name %></td>
+        <td><code>pd_<%= c.key_prefix %></code></td>
+        <td><%= c.scopes.map((s) => scopeLabels[s]).join("; ") %></td>
+        <td><% if (c.last_used_at) { %><%- include("time", { iso: c.last_used_at }) %><% } else { %>Never<% } %></td>
+        <td>
+          <% if (c.revoked_at) { %>Revoked<% } else { %>
+          <form method="post" action="/connections/<%= c.id %>/revoke" class="inline">
+            <button type="submit" class="danger compact">Revoke</button>
+          </form>
+          <% } %>
+        </td>
+      </tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+<% } %>
+<%- include("footer") %>

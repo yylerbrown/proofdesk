@@ -265,3 +265,12 @@ nav[aria-label="Filter by status"] a[aria-current="page"] {
 .confirmed p {
   margin: 0;
 }
+
+/* A command to copy: it wraps instead of widening the page. */
+pre.paste {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+form.inline {
+  margin: 0;
+}

@@ -2,6 +2,7 @@ import { fromNodeHeaders } from "better-auth/node";
 import type { RequestHandler } from "express";
 import { githubIdOf, roleOf, type Auth } from "./auth.js";
 import type { Config } from "./config.js";
+import type { ConnectionService } from "./connections/service.js";
 import type { AgentScope } from "./permissions.js";
 import type { Db } from "./db.js";
 import { HttpError } from "./errors.js";
@@ -23,6 +24,8 @@ export type Actor = {
   demo?: boolean;
   /** For an AI agent: what its connection allows. Ignored for a person. */
   scopes?: AgentScope[];
+  /** For an AI agent: the connection it came through and who issued it. */
+  connection?: { id: number; name: string; issuedBy: string };
 };
 
 /**
@@ -84,10 +87,28 @@ declare global {
  *
  * The function is async because asking the library is: "await" waits for its answer.
  */
-export function actorMiddleware(config: Config, auth: Auth | null, db: Db): RequestHandler {
+export function actorMiddleware(
+  config: Config,
+  auth: Auth | null,
+  db: Db,
+  connections: ConnectionService | null = null,
+): RequestHandler {
   return async (req, res, next) => {
     req.actor = null;
     res.locals.viewer = null; // templates read this to show who is signed in
+    // An AI agent sends its connection's key as a bearer token. This is accepted only where
+    // the caller passes the connection service (the JSON API); pages ignore the header. A
+    // request with a key never falls back to a cookie, so it acts as the agent or not at all.
+    const bearer = /^Bearer (.+)$/.exec(req.get("authorization") ?? "")?.[1];
+    if (connections !== null && bearer !== undefined) {
+      req.actor = connections.authenticate(bearer.trim());
+      if (req.actor === null) {
+        throw new HttpError(401, "invalid_connection_key", "That connection key is not valid.");
+      }
+      res.set("Cache-Control", "no-store");
+      next();
+      return;
+    }
     if (auth !== null) {
       const found = await auth.api.getSession({
         headers: fromNodeHeaders(req.headers),
