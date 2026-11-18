@@ -201,13 +201,13 @@ const TABLE: Record<string, Row> = {
     ...outsiders,
   },
   // The same action sending an In Progress ticket back to New, with no owner: its owner or an
-  // admin. Asking for New when it is already New changes nothing, but a ticket someone owns is
-  // still theirs. A resolved ticket moves only by reopening it.
+  // admin. Asking for New when it is already New changes nothing, for anyone on the team. A
+  // resolved ticket moves only by reopening it.
   change_status_to_new: {
     filer: [NO, NO, NO, NO, NO, NO, HIDDEN],
     owner: [OK, OK, OK, OK, NOT_NOW, NOT_NOW, NOT_NOW],
-    teamNotOwner: [OK, NO, NO, NO, REFUSED, REFUSED, REFUSED],
-    demoTeam: [OK, NO, NO, NO, REFUSED, REFUSED, REFUSED],
+    teamNotOwner: [OK, OK, NO, NO, REFUSED, REFUSED, REFUSED],
+    demoTeam: [OK, OK, NO, NO, REFUSED, REFUSED, REFUSED],
     admin: [OK, OK, OK, OK, NOT_NOW, NOT_NOW, NOT_NOW],
     preview: all(NO),
     handedAgent: whileHanded(NO),

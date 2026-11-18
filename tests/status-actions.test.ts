@@ -138,6 +138,15 @@ describe("the status control", () => {
     }
   });
 
+  it("on a team-resolved ticket tells another team member who can reopen it, the customer too", async () => {
+    const { app } = await filed();
+    await admin(app).post("/api/tickets/SUP-1/take-and-start");
+    await admin(app).post("/api/tickets/SUP-1/resolve").send({ reason: "wont_fix" }).expect(200);
+    const section = (await statusSection(app, teamActor))!;
+    expect(row(section)).toEqual(["New: disabled", "In Progress: disabled", "Resolved: current"]);
+    expect(why(section)).toBe("Only Admin, who owns it, an admin or the customer can reopen it.");
+  });
+
   it("on a team-resolved ticket opens the owner's reopen from In Progress, and the server accepts it", async () => {
     const { app } = await filed();
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");

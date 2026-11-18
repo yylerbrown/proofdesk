@@ -74,6 +74,18 @@ describe("returning a ticket to New", () => {
     expect((await toNew(other, adminActor)).status).toBe(200);
   });
 
+  it("changes nothing on a ticket that is already New, whoever owns it", async () => {
+    const { app } = buildTestApp();
+    await as(app, customerOne).post("/api/tickets").send(valid);
+    await admin(app).post("/api/tickets/SUP-1/take").expect(200);
+    const before = (await admin(app).get("/api/tickets/SUP-1")).body;
+    const events = (await admin(app).get("/api/tickets/SUP-1/events")).body.length;
+    const res = await toNew(app, teamActor).expect(200);
+    expect(res.body).toMatchObject({ status: "new", owner_name: "Admin" });
+    expect((await admin(app).get("/api/tickets/SUP-1/events")).body).toHaveLength(events);
+    expect((await admin(app).get("/api/tickets/SUP-1")).body.updated_at).toBe(before.updated_at);
+  });
+
   it("withdraws an open question with its own history entry", async () => {
     const { app } = await started();
     await as(app, teamActor).post("/api/tickets/SUP-1/ready").send({}).expect(200);

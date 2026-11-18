@@ -22,7 +22,7 @@ describe("asking the customer from a stale tab", () => {
     );
   });
 
-  it("on a ticket sent back to New since, keeps asking for In Progress first", async () => {
+  it("on a New ticket, keeps asking for In Progress first", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
     await as(app, teamActor).post("/api/tickets/SUP-1/take").expect(200);

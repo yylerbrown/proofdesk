@@ -84,8 +84,8 @@ function whyDisabled(ticket: Ticket, allowed: Allowed, actor: Actor): string {
     if (ticket.resolution?.by === "customer") {
       return "Only the customer can reopen a ticket they confirmed.";
     }
-    if (ticket.owner_id === null) return "Only an admin can reopen it.";
-    return `Only ${owner} or an admin can reopen it.`;
+    if (ticket.owner_id === null) return "Only an admin or the customer can reopen it.";
+    return `Only ${owner} an admin or the customer can reopen it.`;
   }
   if (ticket.status === "in_progress") return `Only ${owner} or an admin can change its status.`;
   // New, owned by someone else: only they start work, and an admin may also resolve it.

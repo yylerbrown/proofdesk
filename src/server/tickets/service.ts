@@ -898,11 +898,8 @@ export function createTicketService(
         requireNotArchived(key, before);
         if (before.status === status) {
           // Work that has started is the owner's: anyone else asking to start it is refused,
-          // even though nothing would change. The same holds for a New ticket someone owns.
+          // even though nothing would change. Asking for New on a New ticket changes nothing.
           if (status === "in_progress") requireOwnerStarts(key, before, actor);
-          if (status === "new" && before.owner_id !== null) {
-            requireOwnerOrAdminReturns(key, before, actor);
-          }
           return before; // nothing changes, so nothing is logged
         }
         if (status === "resolved") throw needsCustomer(key);
