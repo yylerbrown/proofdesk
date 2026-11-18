@@ -204,6 +204,7 @@ const CUSTOMER_EVENT_TYPES = new Set([
   "reply_added",
   "change_linked",
   "ready_for_customer",
+  "question_withdrawn",
   "customer_answered",
   "reopened",
   "evidence_added",
@@ -829,8 +830,22 @@ export function createTicketService(
         if (before.change_url === null) {
           throw new HttpError(409, "needs_change_link", `Add the change link to ${key} first.`);
         }
-        // Already waiting for an answer: asking again changes nothing and writes nothing.
-        if (before.ready_at !== null) return before;
+        // Already waiting for an answer. The very same question again is a retry, and changes
+        // nothing. A different one would change what the customer is answering: withdraw first.
+        if (before.ready_at !== null) {
+          const same =
+            before.try_url === try_url &&
+            before.ready_tried === tried &&
+            before.ready_result === result &&
+            (before.ready_response ?? null) === (response || null) &&
+            (before.ready_evidence ?? "[]") === JSON.stringify(evidence_ids ?? []);
+          if (same) return before;
+          throw new HttpError(
+            409,
+            "question_open",
+            `The customer is already answering a question on ${key}. Withdraw it first to ask a different one.`,
+          );
+        }
         // After a No, the next question must say what changed since.
         const last = repository.latestAnswer(db, before.id);
         if (last !== undefined && !last.fixed && !response) {
@@ -872,6 +887,38 @@ export function createTicketService(
           ready_token: token,
           updated_at: now,
         };
+      })();
+      return toTicket(row, actor);
+    },
+
+    /**
+     * The owner takes back the question the customer has not answered yet, for example to
+     * change what it says. The customer's open answer form stops working.
+     */
+    withdrawQuestionAsked(key: string, actor: Actor): Ticket {
+      const row = db.transaction(() => {
+        const before = requireRow(key, actor);
+        requirePermission(actor, "mark_ready", before);
+        if (before.owner_id !== actor.id) {
+          throw new HttpError(
+            403,
+            "not_owner",
+            `Only the owner of ticket ${key} can withdraw its question.`,
+          );
+        }
+        if (before.ready_at === null) return before; // nothing is open
+        const now = new Date().toISOString();
+        repository.clearReady(db, before.id);
+        logEvent({
+          ticketId: before.id,
+          actor: actor.id,
+          actorKind: actor.kind,
+          context: agentContext(actor),
+          type: "question_withdrawn",
+          data: {},
+          now,
+        });
+        return { ...before, ready_at: null, ready_token: null, updated_at: now };
       })();
       return toTicket(row, actor);
     },
@@ -1382,7 +1429,12 @@ export function createTicketService(
     /** The evidence on a ticket, oldest first. Whoever may read the ticket may read it. */
     listEvidence(key: string, actor: Actor): TicketEvidence[] {
       const ticket = requireRow(key, actor);
-      const evidence = repository.listEvidence(db, ticket.id, THREAD_LIMIT).map(toEvidence);
+      // A raw report is for the team. The customer sees the summary, link and stages.
+      const forTeam = can(actor, "read_notes", ticket);
+      const evidence = repository
+        .listEvidence(db, ticket.id, THREAD_LIMIT)
+        .map(toEvidence)
+        .map((item) => (forTeam ? item : { ...item, report: null }));
       // No sample ticket comes with evidence, so a demo connection sees only its own.
       return isDemoAgent(actor) ? evidence.filter((e) => e.reported_by.id === actor.id) : evidence;
     },

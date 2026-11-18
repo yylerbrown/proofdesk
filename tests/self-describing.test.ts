@@ -160,11 +160,15 @@ describe("real answers", () => {
       .post(`${t}/ready`)
       .send({ try_url: "https://example.com/t", tried: "I printed ten pages.", result: "No jam." });
     expectShape("mark_ready", ready);
+    expectShape("withdraw_question", await admin(app).post(`${t}/withdraw-question`));
+    const askedAgain = await admin(app)
+      .post(`${t}/ready`)
+      .send({ try_url: "https://example.com/t", tried: "I printed ten pages.", result: "No jam." });
     expectShape(
       "answer",
       await as(app, customerOne)
         .post(`${t}/answer`)
-        .send({ fixed: "yes", ready_token: ready.body.ready_token }),
+        .send({ fixed: "yes", ready_token: askedAgain.body.ready_token }),
     );
     expectShape("list_events", await admin(app).get(`${t}/events`));
     // Release is for the owner of a New ticket: a third one, taken and let go.

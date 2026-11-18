@@ -198,6 +198,7 @@ describe("the capability table on the JSON door", () => {
         "restore_ticket",
         "take_and_start",
         "take_ticket",
+        "withdraw_question",
       ].sort(),
     );
   });

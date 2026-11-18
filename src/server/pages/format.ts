@@ -137,6 +137,7 @@ export function describeEvent(event: TicketEvent): string {
         : `${handoff.data.connection} (AI assistant) stopped working on it: ${handoff.data.reason ?? "ended"}`;
     }
   }
+  if (event.type === "question_withdrawn") return "Question to the customer withdrawn";
   if (event.type === "archived") return "Archived";
   if (event.type === "restored") return "Restored";
   return event.type;
