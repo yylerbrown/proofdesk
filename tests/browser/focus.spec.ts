@@ -151,6 +151,7 @@ test("the team's ticket page: Shift+Tab, Escape on Resolve and Reopen, and More"
     await page.keyboard.press("Escape");
     const resolve = page.locator("details.resolve");
     await resolve.locator("summary").click();
+    await resolve.locator('select[name="reason"]').selectOption("wont_fix");
     await resolve.locator('button[type="submit"]').click();
     await expect(page.locator('main > p[role="status"]')).toBeVisible();
     const reopen = page.locator("details.reopen");

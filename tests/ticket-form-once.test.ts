@@ -77,6 +77,25 @@ describe("sending the same form twice", () => {
     );
   });
 
+  it("opens the filed ticket when the same text with line breaks is sent again", async () => {
+    // A browser sends each line break in a text box as "\r\n", and filing stores "\n".
+    const { app } = buildTestApp();
+    const { formId } = await openForm(app);
+    const lines = {
+      ...typed,
+      description: "It jams on page two.\r\nThen it stops.",
+      fix_check: "Ten pages print\r\nNo jam light",
+      form: formId,
+    };
+    expect((await file(app, lines)).headers.location).toBe("/tickets/SUP-1");
+
+    const again = await file(app, lines);
+    expect(again.status).toBe(303);
+    expect(again.headers.location).toBe("/tickets/SUP-1");
+    expect(String(again.headers["set-cookie"])).toMatch(/(^|,)saved=alreadyFiled;/);
+    expect(await ticketKeys(app)).toEqual(["SUP-1"]);
+  });
+
   it("says on the form, when it is opened again after filing, which ticket it filed", async () => {
     const { app } = buildTestApp();
     const { to, formId, html } = await openForm(app);

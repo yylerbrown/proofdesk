@@ -57,6 +57,34 @@ export function waitingOn(ticket: Ticket, viewer: Role): string {
   return ticket.customer_answer?.fixed === false ? "Team: customer says it still fails" : "Team";
 }
 
+/** The customer's latest word that the ticket is not fixed: a No, or their reopening it. */
+export type NotFixed = { reopened: boolean; words: string | null; at: string };
+
+const reopenedSchema = z.object({ reason: z.string() });
+
+/**
+ * What the customer last said is still wrong, while the ticket is open and nobody has asked
+ * them again; otherwise null. Their reopening a ticket is newer than any answer before it, so
+ * then their reopen words are shown, not an older No.
+ */
+export function customerSaysNotFixed(ticket: Ticket, events: TicketEvent[]): NotFixed | null {
+  if (ticket.status === "resolved" || ticket.ready_at !== null) return null;
+  const latest = [...events]
+    .reverse()
+    .find((event) => event.type === "customer_answered" || event.type === "reopened");
+  if (latest?.type === "reopened") {
+    const parsed = reopenedSchema.safeParse(latest.data);
+    return {
+      reopened: true,
+      words: parsed.success ? parsed.data.reason : null,
+      at: latest.created_at,
+    };
+  }
+  const answer = ticket.customer_answer;
+  if (answer === null || answer.fixed) return null;
+  return { reopened: false, words: answer.comment, at: answer.at };
+}
+
 /**
  * When the customer confirmed the fix, or null. Only a resolved ticket whose latest answer to
  * "Did this fix it?" was yes counts: a proposed fix, a linked change or a ticket marked ready

@@ -2,7 +2,8 @@
 <div class="column-narrow">
 <h1><%= title %></h1>
 <p><%= message %></p>
-<% if (locals.status === 403 && locals.viewer && viewer.readOnly) { %>
+<%# A refusal from the ticket rules already says this; any other refusal gets it added. %>
+<% if (locals.status === 403 && locals.viewer && viewer.readOnly && !message.startsWith("The admin preview is read-only.")) { %>
 <p class="read-only-note">The admin preview is read-only. Use Switch role at the top of the page to act as the customer or the team.</p>
 <% } %>
 <p><a href="/tickets">Go to the ticket list</a></p>
