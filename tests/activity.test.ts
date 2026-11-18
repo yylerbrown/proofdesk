@@ -77,15 +77,13 @@ describe("the activity trail", () => {
       .send({ kind: "reply", body: "Hi" });
     const client = await connect(app, key);
     await client.callTool({ name: "get_ticket", arguments: { key: "SUP-1" } });
-    await client.callTool({
-      name: "add_evidence",
-      arguments: { key: "SUP-1", kind: "note", summary: "Seen" },
-    });
+    // A ticket this connection cannot see: refused, and recorded as refused.
+    await client.callTool({ name: "get_ticket", arguments: { key: "SUP-9" } });
 
     const rows = await activityRows(app);
     // Newest first: How, What, Ticket, Result, Idempotency key.
     expect(rows.map((r) => r.slice(1))).toEqual([
-      ["Tool", "add_evidence", "SUP-1", "Refused: forbidden", ""],
+      ["Tool", "get_ticket", "SUP-9", "Refused: ticket_not_found", ""],
       ["Tool", "get_ticket", "SUP-1", "Done", ""],
       ["API", "add_entry", "SUP-1", "Refused: forbidden", ""],
       ["API", "add_entry", "SUP-1", "Done", "note-1"],

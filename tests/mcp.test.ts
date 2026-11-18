@@ -81,14 +81,26 @@ describe("connecting", () => {
     expect(bare.status).toBe(401);
   });
 
-  it("offers exactly the actions an agent could ever take, and none that are for people only", async () => {
+  it("offers only the tools the connection's scopes allow, and none that are for people only", async () => {
     const { app } = buildTestApp();
+    // The tools a connection with these scopes may use, worked out from the capability table.
+    const toolsFor = (scopes: string[]) =>
+      ACTIONS.filter((row) =>
+        [row.needs].flat().every((needed) => {
+          const scope = CAPABILITIES[needed].agent;
+          return scope !== "people_only" && scopes.includes(scope);
+        }),
+      )
+        .map((row) => row.name)
+        .sort();
     const client = await connect(app, await issue(app, ["read_tickets"]));
     const names = (await client.listTools()).tools.map((tool) => tool.name).sort();
-    const agentRows = ACTIONS.filter((row) =>
-      [row.needs].flat().every((needed) => CAPABILITIES[needed].agent !== "people_only"),
-    );
-    expect(names).toEqual(agentRows.map((row) => row.name).sort());
+    expect(names).toEqual(toolsFor(["read_tickets"]));
+    expect(names).not.toContain("add_evidence");
+    const everything = await connect(app, await issue(app, [...AGENT_SCOPES]));
+    const all = (await everything.listTools()).tools.map((tool) => tool.name).sort();
+    expect(all).toEqual(toolsFor([...AGENT_SCOPES]));
+    expect(all.length).toBeGreaterThan(names.length);
     for (const peopleOnly of [
       "answer",
       "mark_ready",
@@ -130,7 +142,7 @@ describe("the one path: read, evidence, ask the owner", () => {
       link: "https://example.com/run/1",
     });
     expect(evidence.isError).toBe(false);
-    const asked = await call(client, "request_verification", {
+    const asked = await call(client, "ask_owner_to_review", {
       key: "SUP-1",
       message: "Evidence attached.",
     });
@@ -139,7 +151,7 @@ describe("the one path: read, evidence, ask the owner", () => {
     const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     expect(page.querySelector("main")?.text).toContain("Printed ten pages twice without a jam");
     expect(page.querySelector("main")?.text).toContain(
-      "Asks the owner to request the customer's check: Evidence attached.",
+      "Asks the owner to review the evidence: Evidence attached.",
     );
     const after = (await admin(app).get("/api/tickets/SUP-1")).body;
     expect(after).toMatchObject({
@@ -173,17 +185,17 @@ describe("the one path: read, evidence, ask the owner", () => {
     expect((await admin(app).get("/api/tickets/SUP-1")).body.status).toBe("in_progress");
   });
 
-  it("refuses what the connection's scopes do not name, as a result it can act on", async () => {
+  it("does not offer what the connection's scopes do not name, and refuses it if called anyway", async () => {
     const { app } = buildTestApp();
     await admin(app).post("/api/tickets").send(valid);
     const readOnly = await issue(app, ["read_tickets"]);
     await handToAgent(app, "SUP-1", readOnly);
     const client = await connect(app, readOnly);
-    const note = await call(client, "add_note", { key: "SUP-1", body: "x" });
-    expect(note).toMatchObject({
-      isError: true,
-      body: { error: { code: "forbidden", retry: false } },
-    });
+    expect((await client.listTools()).tools.map((tool) => tool.name)).not.toContain("add_note");
+    await expect(
+      client.callTool({ name: "add_note", arguments: { key: "SUP-1", body: "x" } }),
+    ).rejects.toThrow(/add_note not found/);
+    expect((await admin(app).get("/api/tickets/SUP-1/entries")).body).toHaveLength(0);
   });
 });
 
@@ -259,5 +271,46 @@ describe("retries over MCP", () => {
     const again = await call(client, "add_evidence", args);
     expect(again.body.result).toEqual(first.body.result);
     expect((await admin(app).get("/api/tickets/SUP-1/evidence")).body).toHaveLength(1);
+  });
+});
+
+describe("what an assistant is sent", () => {
+  /** An in-progress ticket handed to an assistant with these scopes. */
+  async function handed(scopes: string[]) {
+    const { app } = buildTestApp();
+    await as(app, customerOne).post("/api/tickets").send(valid);
+    await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
+    const key = await issue(app, scopes);
+    await handToAgent(app, "SUP-1", key);
+    return { app, key };
+  }
+
+  it("lists a short row per ticket, without the full guidance, on both doors", async () => {
+    const { app, key } = await handed(["read_tickets"]);
+    const row = {
+      key: "SUP-1",
+      title: "Printer jams",
+      status: "in_progress",
+      waiting_on: "team",
+      owner_name: "Team Member",
+      customer_check: "Ten pages print",
+    };
+    const api = await request(app).get("/api/tickets").set("Authorization", `Bearer ${key}`);
+    expect(Object.keys(api.body[0]).sort()).toEqual([...Object.keys(row), "updated_at"].sort());
+    expect(api.body[0]).toMatchObject(row);
+    const tool = await call(await connect(app, key), "list_tickets");
+    expect(tool.body.result.items[0]).toMatchObject(row);
+    expect(tool.body.result.items[0].done_when).toBeUndefined();
+    // A person still gets each ticket in full.
+    expect((await admin(app).get("/api/tickets")).body[0].done_when).toBeDefined();
+  });
+
+  it("names the owner-review tool for what it does: it never contacts the customer", async () => {
+    const { app } = buildTestApp();
+    const client = await connect(app, await issue(app, ["read_tickets", "write_notes"]));
+    const tool = (await client.listTools()).tools.find((t) => t.name === "ask_owner_to_review");
+    expect(tool?.description).toMatch(
+      /^Ask the ticket owner to review your evidence\. This does not contact the customer/,
+    );
   });
 });
