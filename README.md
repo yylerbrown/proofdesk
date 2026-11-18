@@ -177,6 +177,16 @@ but does not authorize running commands, disclosing anything, or continuing with
 check, the guidance says to ask the named owner instead of guessing. Next comes `waiting_on`:
 `team`, `customer` or `nobody`.
 
+**Evidence** sits beside the check: `POST /api/tickets/:key/evidence` with a kind (`test`,
+`check_run`, `change_link` or `note`), a one-line summary, and optionally a link, the revision
+tested, the command that ran, a short result and the original report. The report of `ops/prove`
+(`evidence.json`) can be attached as it is, and the ticket page reads its three stages into a
+small table: the new test before the fix, the existing tests before it, all tests after it. A
+stage counts only when the report states it plainly; anything missing is shown as unknown,
+never as passed. Every piece is labelled with who reported it and "Not checked by Proofdesk",
+because Proofdesk verifies none of it. Evidence never changes a ticket's status. The customer
+sees it in the "Did this fix it?" box, and only their answer resolves the ticket.
+
 ## From merged to confirmed
 
 Only the customer resolves a ticket. The status control offers New and In Progress; Resolved is

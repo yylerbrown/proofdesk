@@ -19,7 +19,8 @@ export type Action =
   | "link_change"
   | "mark_ready"
   | "answer"
-  | "manage_connections";
+  | "manage_connections"
+  | "attach_evidence";
 
 /**
  * What an AI agent may be allowed to do, each named by the operation it permits. A connection
@@ -29,6 +30,7 @@ export const AGENT_SCOPES = [
   "read_tickets",
   "write_notes",
   "send_replies",
+  "attach_evidence",
   "link_changes",
   "change_status",
 ] as const;
@@ -63,6 +65,7 @@ export const CAPABILITIES: Record<Action, Capability> = {
   mark_ready: { people: "The team.", agent: "people_only" },
   answer: { people: "Only the customer who filed it.", agent: "people_only" },
   manage_connections: { people: "An admin.", agent: "people_only" },
+  attach_evidence: { people: "The team.", agent: "attach_evidence" },
 };
 
 /** The two facts about a ticket that permissions depend on. */
@@ -130,6 +133,7 @@ export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean
   if (action === "release") return isStaff;
   if (action === "agree_check") return isStaff;
   if (action === "link_change") return isStaff;
+  if (action === "attach_evidence") return isStaff;
   if (action === "mark_ready") return isStaff;
   // Only the person who filed the ticket answers "Did this fix it?". Not the team for them.
   if (action === "answer") return isOwn;

@@ -41,6 +41,10 @@
   <p>In your words:</p>
   <blockquote class="user-text"><%= ticket.fix_check %></blockquote>
   <% } %>
+  <% if (evidence.length > 0) { %>
+  <p>What the team showed as proof. It is what they report; please check it yourself:</p>
+  <%- include("evidence", { evidence }) %>
+  <% } %>
   <form method="post" action="/tickets/<%= ticket.key %>/answer">
     <input type="hidden" name="fixed" value="yes" />
     <input type="hidden" name="ready_token" value="<%= ticket.ready_token %>" />
@@ -128,6 +132,13 @@
     </form>
   </details>
   <% } %>
+</section>
+<% } %>
+
+<% if (evidence.length > 0) { %>
+<section>
+  <h2>Evidence</h2>
+  <%- include("evidence", { evidence }) %>
 </section>
 <% } %>
 

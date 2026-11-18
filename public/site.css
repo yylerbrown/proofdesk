@@ -274,3 +274,20 @@ pre.paste {
 form.inline {
   margin: 0;
 }
+
+/* Evidence: plain text in a quiet list, never green and never ticked. */
+ul.evidence {
+  padding: 0;
+}
+ul.evidence li {
+  list-style: none;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--pico-muted-border-color);
+}
+ul.evidence p {
+  margin-bottom: 0.25rem;
+}
+table.stages {
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+}

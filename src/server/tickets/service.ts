@@ -4,6 +4,7 @@ import type { Db } from "../db.js";
 import { HttpError, ValidationError } from "../errors.js";
 import { can, type Action } from "../permissions.js";
 import { parse } from "../validation.js";
+import { addEvidenceSchema, readProveReport, type StageReading } from "./evidence.js";
 import { buildKey, parseKey } from "./keys.js";
 import * as repository from "./repository.js";
 import {
@@ -89,13 +90,47 @@ export type TicketEntry = {
   created_at: string;
 };
 
+/** One piece of evidence, as reported. Proofdesk verifies none of it. */
+export type TicketEvidence = {
+  id: number;
+  ticket_key: string;
+  kind: string;
+  summary: string;
+  link: string | null;
+  revision: string | null;
+  command: string | null;
+  result: string | null;
+  /** The original report, exactly as sent, or null. */
+  report: unknown;
+  /** For a test report Proofdesk can read: each stage as the report states it. */
+  stages: {
+    before_fix: StageReading;
+    existing_tests: StageReading;
+    after_fix: StageReading;
+  } | null;
+  reported_by: { id: string; kind: repository.ActorKind; name: string };
+  /** Always false today: nothing is verified by Proofdesk. */
+  verified_by_proofdesk: false;
+  created_at: string;
+};
+
 export type TicketService = ReturnType<typeof createTicketService>;
 
 /** Most rows the service will hold. Leave a field out for no limit. */
-export type Budget = { tickets?: number; entriesPerTicket?: number; eventsPerTicket?: number };
+export type Budget = {
+  tickets?: number;
+  entriesPerTicket?: number;
+  eventsPerTicket?: number;
+  evidencePerTicket?: number;
+};
 
 /** The demo's budget: enough to try everything, too little to fill the disk. */
-export const DEMO_BUDGET: Budget = { tickets: 200, entriesPerTicket: 50, eventsPerTicket: 100 };
+export const DEMO_BUDGET: Budget = {
+  tickets: 200,
+  entriesPerTicket: 50,
+  eventsPerTicket: 100,
+  evidencePerTicket: 20,
+};
 
 /** How many tickets a list page shows, and how many entries or events a ticket page shows. */
 export const LIST_PAGE_SIZE = 100;
@@ -113,6 +148,7 @@ const CUSTOMER_EVENT_TYPES = new Set([
   "change_linked",
   "ready_for_customer",
   "customer_answered",
+  "evidence_added",
   "archived",
   "restored",
 ]);
@@ -215,6 +251,25 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
       data: JSON.parse(row.data),
       created_at: row.created_at,
       context: row.actor_context === null ? null : JSON.parse(row.actor_context),
+    };
+  }
+
+  function toEvidence(row: repository.EvidenceRow): TicketEvidence {
+    const report = row.report === null ? null : (JSON.parse(row.report) as unknown);
+    return {
+      id: row.id,
+      ticket_key: buildKey(prefix, row.ticket_id),
+      kind: row.kind,
+      summary: row.summary,
+      link: row.link,
+      revision: row.revision,
+      command: row.command,
+      result: row.result,
+      report,
+      stages: row.kind === "test" && report !== null ? readProveReport(report) : null,
+      reported_by: { id: row.author, kind: row.author_kind, name: row.author_name },
+      verified_by_proofdesk: false,
+      created_at: row.created_at,
     };
   }
 
@@ -703,6 +758,57 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
       const events = repository.listEvents(db, row.id, THREAD_LIMIT).map(toEvent);
       if (can(actor, "read_notes", row)) return events;
       return events.filter((event) => CUSTOMER_EVENT_TYPES.has(event.type));
+    },
+
+    /**
+     * Attaches evidence that the check was met, and its history entry, together. It is stored
+     * as reported. It never changes the ticket's status: only the customer's answer resolves.
+     */
+    addEvidence(key: string, input: unknown, actor: Actor): TicketEvidence {
+      const evidence = parse(addEvidenceSchema, input);
+      const row = db.transaction(() => {
+        const ticket = requireRow(key, actor);
+        requirePermission(actor, "attach_evidence", ticket);
+        requireNotArchived(key, ticket);
+        requireRoom(
+          repository.countRows(db, "ticket_evidence", ticket.id),
+          budget.evidencePerTicket,
+          "evidence on this ticket",
+        );
+        const now = new Date().toISOString();
+        const saved = repository.insertEvidence(db, {
+          ticket_id: ticket.id,
+          kind: evidence.kind,
+          summary: evidence.summary,
+          link: evidence.link ?? null,
+          revision: evidence.revision ?? null,
+          command: evidence.command ?? null,
+          result: evidence.result ?? null,
+          report: evidence.report === undefined ? null : JSON.stringify(evidence.report),
+          author: actor.id,
+          author_kind: actor.kind,
+          author_name: actor.name,
+          connection_id: actor.connection?.id ?? null,
+          created_at: now,
+        });
+        logEvent({
+          ticketId: ticket.id,
+          actor: actor.id,
+          actorKind: actor.kind,
+          context: agentContext(actor),
+          type: "evidence_added",
+          data: { kind: evidence.kind, summary: evidence.summary },
+          now,
+        });
+        return saved;
+      })();
+      return toEvidence(row);
+    },
+
+    /** The evidence on a ticket, oldest first. Whoever may read the ticket may read it. */
+    listEvidence(key: string, actor: Actor): TicketEvidence[] {
+      const ticket = requireRow(key, actor);
+      return repository.listEvidence(db, ticket.id, THREAD_LIMIT).map(toEvidence);
     },
 
     /**

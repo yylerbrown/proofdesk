@@ -11,8 +11,8 @@ import * as repository from "./repository.js";
 // guarantee of one particular agent. An admin issues it with chosen scopes and sees the key
 // once. Losing the key means revoking the connection and issuing another.
 
-/** What a new connection may do unless the admin chooses otherwise: read, and write notes. */
-export const DEFAULT_SCOPES: AgentScope[] = ["read_tickets", "write_notes"];
+/** What a new connection may do unless the admin chooses otherwise: read, write notes, attach evidence. */
+export const DEFAULT_SCOPES: AgentScope[] = ["read_tickets", "write_notes", "attach_evidence"];
 
 // A form sends one checkbox as a text and several as a list; both are read as a list.
 const scopeList = z.preprocess(
