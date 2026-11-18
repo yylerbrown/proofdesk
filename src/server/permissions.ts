@@ -24,7 +24,8 @@ export type Action =
   | "read_activity"
   | "propose_spec"
   | "decide_spec"
-  | "reopen";
+  | "reopen"
+  | "hand_off";
 
 /**
  * What an AI agent may be allowed to do, each named by the operation it permits. A connection
@@ -62,8 +63,8 @@ export const CAPABILITIES: Record<Action, Capability> = {
   delete: { people: "An admin.", agent: "people_only" },
   reply: { people: "The team, or the customer who filed it.", agent: "send_replies" },
   note: { people: "The team.", agent: "write_notes" },
-  take: { people: "A team member.", agent: "people_only" },
-  release: { people: "The team.", agent: "people_only" },
+  take: { people: "A team member, for an unowned ticket.", agent: "people_only" },
+  release: { people: "The ticket's owner, before work starts.", agent: "people_only" },
   agree_check: { people: "The team.", agent: "people_only" },
   link_change: { people: "The team.", agent: "link_changes" },
   mark_ready: { people: "The team.", agent: "people_only" },
@@ -74,6 +75,7 @@ export const CAPABILITIES: Record<Action, Capability> = {
   propose_spec: { people: "The team.", agent: "propose_specs" },
   decide_spec: { people: "The team.", agent: "people_only" },
   reopen: { people: "Only the customer who filed it.", agent: "people_only" },
+  hand_off: { people: "The ticket's owner, or an admin.", agent: "people_only" },
 };
 
 /** The two facts about a ticket that permissions depend on. */
@@ -150,5 +152,6 @@ export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean
   // Only the person who filed the ticket answers "Did this fix it?". Not the team for them.
   if (action === "answer") return isOwn;
   if (action === "reopen") return isOwn;
+  if (action === "hand_off") return isStaff && actor.kind === "person";
   return false;
 }

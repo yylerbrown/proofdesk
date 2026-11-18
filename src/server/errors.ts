@@ -59,6 +59,8 @@ const HINTS: Record<string, string> = {
   already_owned: "Someone already owns this ticket. Ask them to hand it to you.",
   not_new: "This ticket has already started.",
   not_resolved: "The ticket is still open; there is nothing to reopen.",
+  owner_changed: "Reload the ticket: it has changed hands since you opened it.",
+  not_open: "The ticket is resolved. Only the customer who filed it can reopen it.",
   question_changed: "Get the ticket again and answer with its current ready_token.",
   idempotency_key_reused:
     "Use a new idempotency key for a new request. Reuse a key only to retry the very same request.",

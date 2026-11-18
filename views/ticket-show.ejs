@@ -127,7 +127,7 @@
   <% } %>
   <% if (allowed.take) { %>
   <form method="post" action="/tickets/<%= ticket.key %>/take">
-    <button type="submit" class="<% if (allowed.takeAndStart) { %>secondary outline <% } %>compact"><% if (ticket.owner_name) { %>Take over from <%= ticket.owner_name %><% } else { %>Take this ticket<% } %></button>
+    <button type="submit" class="<% if (allowed.takeAndStart) { %>secondary outline <% } %>compact">Take this ticket</button>
   </form>
   <% } %>
   <% if (allowed.start) { %>
@@ -135,6 +135,24 @@
     <input type="hidden" name="status" value="in_progress" />
     <button type="submit" class="compact">Start work</button>
   </form>
+  <% } %>
+  <% if (allowed.handOff && handOffTo.length > 0) { %>
+  <details <% if (problem?.form === "handOff") { %>open<% } %>>
+    <summary>Hand off to…</summary>
+    <form method="post" action="/tickets/<%= ticket.key %>/hand-off">
+      <input type="hidden" name="expected_owner" value="<%= ticket.owner_id ?? "" %>" />
+      <label>
+        Team member
+        <select name="to">
+          <% for (const member of handOffTo) { %>
+          <option value="<%= member.id %>"><%= member.name %></option>
+          <% } %>
+        </select>
+      </label>
+      <% if (problem?.form === "handOff") { %><small id="hand-off-error" role="alert"><%= problem.message %></small><% } %>
+      <button type="submit" class="secondary compact">Hand off</button>
+    </form>
+  </details>
   <% } %>
   <% if (allowed.release) { %>
   <form method="post" action="/tickets/<%= ticket.key %>/release">

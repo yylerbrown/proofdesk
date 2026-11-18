@@ -26,6 +26,7 @@ import { createTicketService, DEMO_BUDGET } from "./tickets/service.js";
 import { createConnectionService } from "./connections/service.js";
 import { connectionsRouter } from "./routes/connections.js";
 import { mcpEndpoint } from "./mcp.js";
+import { teamMembers } from "./team.js";
 import { guide, openApiDocument } from "./api/describe.js";
 import { siteAddress } from "./routes/connections.js";
 
@@ -56,7 +57,9 @@ export function createApp(config: Config, db: Db): Express {
   // One ticket service, shared by the JSON API and the pages, so the rules exist once.
   // The demo has a hard budget of rows, so rate limits are not the only thing that stops it
   // growing. Real tickets have none.
-  const tickets = createTicketService(db, config.ticketPrefix, config.demo ? DEMO_BUDGET : {});
+  const tickets = createTicketService(db, config.ticketPrefix, config.demo ? DEMO_BUDGET : {}, {
+    teamMembers: teamMembers(config, db),
+  });
   const connections = createConnectionService(db);
 
   // Security headers on every answer. The content security policy lets a page load scripts

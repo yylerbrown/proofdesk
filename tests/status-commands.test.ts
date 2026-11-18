@@ -93,10 +93,13 @@ describe("after the customer's Yes", () => {
   });
 
   it("returns a reopened ticket with no owner to the inbox", async () => {
-    const { app } = buildTestApp();
+    const { app, db } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
     await resolveTicket(app, "SUP-1", customerOne);
-    await admin(app).post("/api/tickets/SUP-1/release");
+    // A ticket resolved before owners were required has none. A resolved ticket cannot be
+    // released, so the row is set as an old one would be.
+    expect((await admin(app).post("/api/tickets/SUP-1/release")).status).toBe(409);
+    db.prepare("UPDATE tickets SET owner_id = NULL, owner_name = NULL").run();
     await as(app, customerOne).post("/api/tickets/SUP-1/reopen").send({ reason: "Again." });
     expect(await reread(app)).toMatchObject({ status: "new", owner_name: null });
   });

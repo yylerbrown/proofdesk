@@ -166,6 +166,7 @@ const BODIES: Record<string, object> = {
   delete_ticket: { confirm: "SUP-1" },
   change_status: { status: "in_progress" },
   reopen: { reason: "It happens again." },
+  hand_off: { to: "dev-team-1", expected_owner: "" },
   decide_spec: { decision: "accept" },
 };
 
@@ -185,6 +186,7 @@ describe("the capability table on the JSON door", () => {
         "decide_spec",
         "delete_ticket",
         "edit_ticket",
+        "hand_off",
         "mark_ready",
         "release_ticket",
         "reopen",

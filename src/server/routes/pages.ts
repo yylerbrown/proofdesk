@@ -28,7 +28,7 @@ type EntryForm = { kind: string; body: string; error?: string };
 
 // A refused form on the ticket page: which one, the message, and a comment to keep.
 type Problem = {
-  form: "answer" | "agreedCheck" | "changeLink" | "ready" | "evidence" | "reopen";
+  form: "answer" | "agreedCheck" | "changeLink" | "ready" | "evidence" | "reopen" | "handOff";
   message: string;
   comment: string;
   /** What was typed in the form, so it can be shown again. */
@@ -55,6 +55,7 @@ const FORM_SAVED: Record<Problem["form"], (input: unknown) => SavedKey> = {
   ready: () => "ready",
   evidence: () => "evidence",
   reopen: () => "reopened",
+  handOff: () => "handedOff",
   answer: (input) =>
     (input as Record<string, unknown> | undefined)?.fixed === "yes" ? "fixed" : "notFixed",
 };
@@ -134,6 +135,7 @@ export function pagesRouter(service: TicketService): Router {
       ticket,
       viewerRole: actor.role,
       askBlocked: askBlockedReason(ticket, actor),
+      handOffTo: service.handOffCandidates(ticket),
       entries,
       history,
       confirmed: confirmedAt(ticket, events),
@@ -340,6 +342,7 @@ export function pagesRouter(service: TicketService): Router {
   router.post("/tickets/:key/ready", ticketForm("ready", service.markReady));
   router.post("/tickets/:key/answer", ticketForm("answer", service.answer));
   router.post("/tickets/:key/reopen", ticketForm("reopen", service.reopen));
+  router.post("/tickets/:key/hand-off", ticketForm("handOff", service.handOff));
   router.post("/tickets/:key/take-and-start", (req, res) => {
     const ticket = service.takeAndStart(req.params.key, signedIn(req));
     rememberSaved(res, "started");

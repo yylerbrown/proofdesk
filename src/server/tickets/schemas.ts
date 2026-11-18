@@ -42,6 +42,13 @@ export const addEntrySchema = z.object({
     .max(5000, "Must be at most 5000 characters."),
 });
 
+// Handing a ticket to another team member. expected_owner is the owner the form was made for
+// (empty for none), so a hand-off from an old page is refused.
+export const handOffSchema = z.object({
+  to: z.string().min(1, "Choose a team member."),
+  expected_owner: z.string().default(""),
+});
+
 // The customer says a resolved ticket is still happening, and what recurred.
 export const reopenSchema = z.object({
   reason: z

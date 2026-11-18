@@ -113,6 +113,12 @@ describe("real answers", () => {
       await admin(app).put(`${t}/agreed-check`).send({ agreed_check: "A 10-page PDF prints" }),
     );
     expectShape("take_ticket", await admin(app).post(`${t}/take`));
+    expectShape(
+      "hand_off",
+      await admin(app)
+        .post(`${t}/hand-off`)
+        .send({ to: "dev-admin-1", expected_owner: "dev-admin-1" }),
+    );
     expectShape("change_status", await admin(app).patch(t).send({ status: "in_progress" }));
     expectShape(
       "add_entry",
@@ -160,13 +166,16 @@ describe("real answers", () => {
         .send({ fixed: "yes", ready_token: ready.body.ready_token }),
     );
     expectShape("list_events", await admin(app).get(`${t}/events`));
-    expectShape("release_ticket", await admin(app).post(`${t}/release`));
+    // Release is for the owner of a New ticket: a third one, taken and let go.
+    await as(app, customerOne).post("/api/tickets").send(valid);
+    await admin(app).post("/api/tickets/SUP-2/take");
+    expectShape("release_ticket", await admin(app).post("/api/tickets/SUP-2/release"));
     expectShape(
       "reopen",
       await as(app, customerOne).post(`${t}/reopen`).send({ reason: "It jams again." }),
     );
     await as(app, customerOne).post("/api/tickets").send(valid);
-    expectShape("take_and_start", await admin(app).post("/api/tickets/SUP-2/take-and-start"));
+    expectShape("take_and_start", await admin(app).post("/api/tickets/SUP-3/take-and-start"));
     expectShape("archive_ticket", await admin(app).post(`${t}/archive`));
     expectShape("restore_ticket", await admin(app).post(`${t}/restore`));
     expectShape("delete_ticket", await admin(app).delete(t).send({ confirm: "SUP-1" }));
