@@ -33,6 +33,15 @@ describe("fly.toml agrees with the rest of the repository", () => {
     expect(res.status).toBe(200);
   });
 
+  it("runs as the demo, in the region where its disk was made", () => {
+    expect(flySetting("DEMO")).toBe("on");
+    // The disk exists in sjc. The guide's command to make one must name the same region.
+    expect(flySetting("primary_region")).toBe("sjc");
+    expect(fs.readFileSync("docs/DEPLOY.md", "utf8")).toContain(
+      `--region ${flySetting("primary_region")}`,
+    );
+  });
+
   it("keeps exactly one machine running, because SQLite lives on its disk", () => {
     expect(flySetting("auto_stop_machines")).toBe("off");
     expect(flySetting("min_machines_running")).toBe("1");

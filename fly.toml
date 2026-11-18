@@ -1,9 +1,10 @@
-# Fly.io configuration for the hosted copy. Nothing in the repository runs it: the owner
+# Fly.io configuration for the hosted demo. Nothing in the repository runs it: the owner
 # deploys by hand (see docs/DEPLOY.md) or with the manual workflow in
 # .github/workflows/deploy.yml.
 
 app = "support-desk-demo"
-primary_region = "sea"
+# Where the disk and the machine are. Fly no longer offers "sea".
+primary_region = "sjc"
 
 [build]
   dockerfile = "Dockerfile"
@@ -15,6 +16,9 @@ primary_region = "sea"
   # Where Fly's proxy puts the visitor's address. Used for rate limits. See docs/DEPLOY.md:
   # this must be checked on the first deploy.
   CLIENT_IP_HEADER = "fly-client-ip"
+  # This app is the public demo: sample data and the three demo people, no GitHub sign-in.
+  # Without it the server would start in production with no sign-in settings and refuse.
+  DEMO = "on"
 
 # The disk that holds the database. Create it once with: fly volumes create support_desk_data
 [[mounts]]
