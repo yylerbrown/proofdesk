@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { parse } from "node-html-parser";
 import request from "supertest";
 import type { Express } from "express";
@@ -25,9 +26,10 @@ async function issue(app: Express, scopes: string[], name = "Sam's assistant") {
     `claude mcp add --transport http proofdesk ${command?.split(" ")[6]} --header "Authorization: Bearer ${key}"`,
   );
   expect(command?.split(" ")[6]).toMatch(/^http:\/\/127\.0\.0\.1(:\d+)?\/mcp$/);
-  // The example command quotes the address, so a shell does not read its "?" as a pattern.
+  // The example command lists every ticket handed to the connection, with no status filter:
+  // a handed ticket is in progress, so a filter for New would always come back empty.
   expect(parse(res.text).querySelectorAll("pre.paste").at(-1)?.text).toMatch(
-    /"http[^"]+\?status=new"/,
+    /"http[^"]+\/api\/tickets"/,
   );
   return key!;
 }
@@ -76,6 +78,26 @@ describe("issuing a connection", () => {
     const html = parse(res.text);
     expect(html.querySelector("input[name=name]")?.getAttribute("value")).toBe("Mine");
     expect(html.querySelector("#scopes-error")?.text).toContain("at least one");
+  });
+
+  it("shows an API example that lists the ticket handed to the connection", async () => {
+    const { app } = buildTestApp();
+    await admin(app).post("/api/tickets").send(valid);
+    const res = await admin(app)
+      .post("/connections")
+      .type("form")
+      .send({ name: "Sam's assistant", scopes: ["read_tickets"] });
+    const example = parse(res.text).querySelectorAll("pre.paste").at(-1)!.text;
+    const [, key, address] = /curl -H "Authorization: Bearer ([^"]+)" "([^"]+)"/.exec(example)!;
+    await handToAgent(app, "SUP-1", key!);
+    // The request the example makes, sent with its key: the handed ticket comes back.
+    const url = new URL(address!);
+    const list = await agent(app, key!).get(url.pathname + url.search);
+    expect(list.status).toBe(200);
+    expect(list.body.map((t: { key: string }) => t.key)).toEqual(["SUP-1"]);
+    // The agents guide gives the same request.
+    const guide = fs.readFileSync("docs/AGENTS_GUIDE.md", "utf8");
+    expect(guide).toContain(`"https://<your Proofdesk address>${url.pathname}${url.search}"`);
   });
 });
 

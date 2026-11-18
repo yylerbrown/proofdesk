@@ -140,8 +140,9 @@ function actorOf(authInfo: AuthInfo | undefined): Actor {
 
 /**
  * The middleware for POST /mcp, in order: refuse a browser page from another site, read the
- * JSON body, check the connection key with the SDK's bearer check, apply the write allowance
- * to tool calls that change something, then hand the request to the SDK's handler.
+ * JSON body, check the connection key with the SDK's bearer check, refuse a batch, apply the
+ * write allowance to tool calls that change something, then hand the request to the SDK's
+ * handler.
  */
 export function mcpEndpoint(
   service: TicketService,
@@ -179,6 +180,22 @@ export function mcpEndpoint(
     (req, res, next) => originValidation([req.hostname])(req, res, next),
     express.json({ limit: "100kb" }),
     requireBearerAuth({ verifier }),
+    (req, res, next) => {
+      // One JSON-RPC message a request. The SDK would run every call in an array, and the
+      // write allowance below counts one call a request. The SDK's own client never batches.
+      if (Array.isArray(req.body)) {
+        res.status(400).json({
+          jsonrpc: "2.0",
+          error: {
+            code: -32600,
+            message: "Batches are not accepted. Send one JSON-RPC message in one request.",
+          },
+          id: null,
+        });
+        return;
+      }
+      next();
+    },
     (req, res, next) => {
       const body = req.body as { method?: unknown; params?: { name?: unknown } } | undefined;
       const call = body?.method === "tools/call" ? body.params?.name : undefined;
