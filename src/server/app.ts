@@ -16,6 +16,7 @@ import {
   pageErrorHandler,
   pageNotFoundHandler,
 } from "./errors.js";
+import { compressAnswers, requestId, requestLog, type LogLine } from "./http-basics.js";
 import { healthRouter } from "./routes/health.js";
 import { pagesRouter } from "./routes/pages.js";
 import { signInRouter } from "./routes/sign-in.js";
@@ -44,8 +45,19 @@ const BODY_LIMIT = "100kb";
 
 const picoCssFile = path.join(rootDir, "node_modules/@picocss/pico/css/pico.min.css");
 
-/** Builds the Express app without listening, so tests can drive it directly. */
-export function createApp(config: Config, db: Db): Express {
+// How long a browser may reuse a stylesheet, script or image before it asks again. Their
+// addresses carry no version, so a deploy changes a file at the same address: the time is
+// short, and after it the browser checks with the file's ETag and usually gets a 304. The
+// font files come from a pinned package and change only when it is updated, so they keep a
+// day.
+const ASSET_MAX_AGE = "10m";
+const FONT_MAX_AGE = "1d";
+
+/**
+ * Builds the Express app without listening, so tests can drive it directly. With `log`, it
+ * writes one line per request; tests leave it out unless they read the lines.
+ */
+export function createApp(config: Config, db: Db, options: { log?: LogLine } = {}): Express {
   // Refuses a demo server on a real database, and the other way round, before anything else.
   checkDatabasePurpose(db, config.demo);
   const app = express();
@@ -65,6 +77,11 @@ export function createApp(config: Config, db: Db): Express {
     peopleRoles: peopleRoles(config, db),
   });
   const connections = createConnectionService(db);
+
+  // First on every request: its id, its log line and compression of the answer.
+  app.use(requestId());
+  if (options.log !== undefined) app.use(requestLog(options.log));
+  app.use(compressAnswers());
 
   // Security headers on every answer. The content security policy lets a page load scripts
   // and styles only from this server, so a script written into a page cannot run.
@@ -189,14 +206,16 @@ export function createApp(config: Config, db: Db): Express {
   // The pages: two stylesheets, which need no sign-in and so come before the actor, then
   // the HTML form parser, the routes and the HTML error pages.
   app.get("/assets/pico.min.css", (_req, res) => {
-    res.sendFile(picoCssFile);
+    res.sendFile(picoCssFile, { maxAge: ASSET_MAX_AGE });
   });
   // The Inter font files, from its package, so the page needs no font host.
   app.use(
     "/assets/inter",
-    express.static(path.join(rootDir, "node_modules/@fontsource/inter/files")),
+    express.static(path.join(rootDir, "node_modules/@fontsource/inter/files"), {
+      maxAge: FONT_MAX_AGE,
+    }),
   );
-  app.use("/assets", express.static(path.join(rootDir, "public")));
+  app.use("/assets", express.static(path.join(rootDir, "public"), { maxAge: ASSET_MAX_AGE }));
   app.use(actor);
   app.use(sameOriginOnly(config));
   app.use(writeLimit);

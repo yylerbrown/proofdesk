@@ -132,6 +132,17 @@ const errorResponse = {
   content: { "application/json": { schema: errorOutput } },
 };
 
+/** A 401 also names the scheme a program signs in with. */
+const notSignedInResponse = {
+  ...errorResponse,
+  headers: {
+    "WWW-Authenticate": {
+      description: 'Bearer, or Bearer error="invalid_token" when the key sent is not valid.',
+      schema: { type: "string" as const },
+    },
+  },
+};
+
 /** The OpenAPI document, generated from the action table with a standard library. */
 export function openApiDocument() {
   const paths: ZodOpenApiPathsObject = {};
@@ -166,7 +177,7 @@ export function openApiDocument() {
           content: { "application/json": { schema: row.output } },
         },
         "400": errorResponse,
-        "401": errorResponse,
+        "401": notSignedInResponse,
         "403": errorResponse,
         "404": errorResponse,
         "409": errorResponse,

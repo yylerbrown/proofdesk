@@ -1,16 +1,20 @@
 import { createApp } from "./app.js";
 import { loadConfig } from "./config.js";
 import { seedDemo } from "./demo.js";
+import { startServer } from "./serve.js";
 import { openAndMigrate } from "./start.js";
 import { createTicketService } from "./tickets/service.js";
+
+// Every line goes to standard output, where the host collects it.
+const log = (line: string) => console.log(line);
 
 const config = loadConfig();
 // A database labelled for the other purpose is refused before any migration touches it.
 const { db, applied } = openAndMigrate(config);
-if (applied.length > 0) console.log(`Applied migrations: ${applied.join(", ")}`);
+if (applied.length > 0) log(`Applied migrations: ${applied.join(", ")}`);
 // createApp checks the database's purpose first, so the demo is only seeded into a demo
-// database.
-const app = createApp(config, db);
+// database. It logs one line per request.
+const app = createApp(config, db, { log });
 if (config.demo) {
   const service = createTicketService(db, config.ticketPrefix);
   seedDemo(service);
@@ -24,15 +28,16 @@ if (config.demo) {
   }
 }
 
-const server = app.listen(config.port, () => {
-  console.log(`Listening on port ${config.port}`);
+const running = startServer({
+  handler: app,
+  port: config.port,
+  db,
+  log,
+  exit: (code) => process.exit(code),
 });
+void running.listening.then((port) => log(`Listening on port ${port}`));
 
-function shutdown(): void {
-  server.close(() => {
-    db.close();
-    process.exit(0);
-  });
-}
-process.on("SIGTERM", shutdown);
-process.on("SIGINT", shutdown);
+// The host sends SIGTERM (fly.toml sets it) before it replaces or stops the machine; Ctrl+C
+// sends SIGINT. A second signal while stopping changes nothing: the first stop has a deadline.
+process.on("SIGTERM", () => void running.shutdown("SIGTERM"));
+process.on("SIGINT", () => void running.shutdown("SIGINT"));
