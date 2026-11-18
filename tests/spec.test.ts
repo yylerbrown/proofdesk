@@ -9,7 +9,15 @@ import { afterEach, describe, expect, it } from "vitest";
 import { DEV_COOKIE } from "../src/server/actor.js";
 import { seedDemo } from "../src/server/demo.js";
 import { createTicketService } from "../src/server/tickets/service.js";
-import { admin, as, buildTestApp, customerOne, teamActor, visitor } from "./helpers.js";
+import {
+  admin,
+  as,
+  buildTestApp,
+  customerOne,
+  handToAgent,
+  teamActor,
+  visitor,
+} from "./helpers.js";
 
 // A test spec: an agent proposes one, a person on the team accepts or discards it, the
 // customer reads it. It is a suggestion until accepted and never changes the status.
@@ -51,7 +59,12 @@ async function issue(app: Express): Promise<string> {
     .post("/connections")
     .type("form")
     .send({ name: "Helper", scopes: ["read_tickets", "attach_evidence", "propose_specs"] });
-  return parse(res.text).querySelector("input.key")!.getAttribute("value")!;
+  const key = parse(res.text).querySelector("input.key")!.getAttribute("value")!;
+  // The owner hands SUP-1 to this connection, when there is one: agents see only those.
+  if ((await admin(app).get("/api/tickets/SUP-1")).status === 200) {
+    await handToAgent(app, "SUP-1", key);
+  }
+  return key;
 }
 
 async function connect(app: Express, given?: string): Promise<Client> {
@@ -152,6 +165,7 @@ describe("proposing a spec", () => {
       .type("form")
       .send({ name: "Reader", scopes: ["read_tickets"] });
     const key = parse(res.text).querySelector("input.key")!.getAttribute("value")!;
+    await handToAgent(app, "SUP-1", key);
     const refused = await request(app)
       .post("/api/tickets/SUP-1/spec")
       .set("Authorization", `Bearer ${key}`)

@@ -28,7 +28,7 @@ describe("the guide at GET /api", () => {
     expect(you).toMatchObject({ signed_in: false });
     expect(you.how).toMatch(/Authorization: Bearer/);
     expect(start_here.steps.map((s: { mcp?: string }) => s.mcp).filter(Boolean)).toEqual([
-      "list_tickets { status: 'new' }",
+      "list_tickets {}",
       "get_ticket { key: 'SUP-1' }",
       expect.stringMatching(/^add_evidence /),
       expect.stringMatching(/^request_verification /),
@@ -174,6 +174,10 @@ describe("real answers", () => {
       "reopen",
       await as(app, customerOne).post(`${t}/reopen`).send({ reason: "It jams again." }),
     );
+    // The owner hands the reopened ticket to an assistant, then stops it.
+    await issue(app, ["read_tickets"]);
+    expectShape("give_to_agent", await admin(app).post(`${t}/agent`).send({ connection_id: 1 }));
+    expectShape("end_agent_work", await admin(app).post(`${t}/agent/end`));
     await as(app, customerOne).post("/api/tickets").send(valid);
     expectShape("take_and_start", await admin(app).post("/api/tickets/SUP-3/take-and-start"));
     expectShape("archive_ticket", await admin(app).post(`${t}/archive`));

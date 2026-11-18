@@ -154,6 +154,30 @@
     </form>
   </details>
   <% } %>
+  <% if (agentHelp.current) { %>
+  <p class="agent-help"><strong><%= agentHelp.current.name %></strong> (AI assistant) is working on it, since <%- include("time", { iso: agentHelp.current.granted_at }) %>.</p>
+  <% if (allowed.endAgentWork) { %>
+  <form method="post" action="/tickets/<%= ticket.key %>/agent/end">
+    <button type="submit" class="secondary outline compact">Stop the assistant</button>
+  </form>
+  <% } %>
+  <% } else if (allowed.giveToAgent && agentHelp.candidates.length > 0) { %>
+  <details>
+    <summary>Hand to an AI assistant…</summary>
+    <form method="post" action="/tickets/<%= ticket.key %>/agent">
+      <label>
+        Connection
+        <select name="connection_id">
+          <% for (const c of agentHelp.candidates) { %>
+          <option value="<%= c.id %>"><%= c.name %></option>
+          <% } %>
+        </select>
+      </label>
+      <p><small>It can work on this ticket only, within what its connection allows, until you stop it, hand the ticket on or ask the customer.</small></p>
+      <button type="submit" class="secondary compact">Hand to assistant</button>
+    </form>
+  </details>
+  <% } %>
   <% if (allowed.release) { %>
   <form method="post" action="/tickets/<%= ticket.key %>/release">
     <button type="submit" class="link">Release it</button>

@@ -49,7 +49,9 @@ claude mcp add --transport http proofdesk https://support-desk-demo.fly.dev/mcp 
 Your assistant sees only the sample tickets and what it writes itself, never what other visitors
 write. It can read a ticket (which starts with the customer's check, as `done_when`), attach
 evidence, and ask the owner to request the customer's check; it can never answer for the
-customer or resolve. On the real site an admin issues connections on the **Connections** page.
+customer or resolve. On the real site an admin issues connections on the **Connections** page,
+and a ticket's owner hands the ticket to one with **Hand to an AI assistant**: an assistant sees
+only the tickets handed to it.
 [`docs/AGENTS_GUIDE.md`](docs/AGENTS_GUIDE.md) has the setup for Claude Code and Claude Desktop,
 the tools, the limits and a worked example.
 
@@ -212,6 +214,8 @@ agents, and `GET /api/openapi.json` the full description, generated from the sam
 | `POST /api/tickets/:key/reopen`               | The customer who filed a resolved ticket says it is still happening. It goes back to its owner.                                                                                                             | `{ "reason": "..." }`                                                |
 | `POST /api/tickets/:key/take`                 | Makes you the owner of an unowned ticket.                                                                                                                                                                   |                                                                      |
 | `POST /api/tickets/:key/hand-off`             | The owner, or an admin, hands the ticket to another team member.                                                                                                                                            | `{ "to": "<person id>", "expected_owner": "<current owner id>" }`    |
+| `POST /api/tickets/:key/agent`                | The owner hands an in-progress ticket to one agent connection, which can then work on that ticket only.                                                                                                     | `{ "connection_id": 1 }`                                             |
+| `POST /api/tickets/:key/agent/end`            | The owner, or an admin, ends the agent's work on the ticket.                                                                                                                                                |                                                                      |
 | `POST /api/tickets/:key/release`              | The owner lets go of a New ticket.                                                                                                                                                                          |                                                                      |
 | `POST /api/tickets/:key/archive`              | Hides it from the lists. Nothing is deleted.                                                                                                                                                                |                                                                      |
 | `POST /api/tickets/:key/restore`              | Brings an archived ticket back.                                                                                                                                                                             |                                                                      |

@@ -5,7 +5,7 @@ import type { Express } from "express";
 import { parse } from "node-html-parser";
 import request from "supertest";
 import { afterEach, describe, expect, it } from "vitest";
-import { admin, as, buildTestApp, customerOne, teamActor } from "./helpers.js";
+import { admin, as, buildTestApp, customerOne, handToAgent, teamActor } from "./helpers.js";
 
 // The activity trail: everything a connection asked for, done or refused, on both doors, and
 // the team's view of it. And the history names an agent by its connection.
@@ -20,7 +20,12 @@ afterEach(async () => {
 
 async function issue(app: Express, scopes: string[], name = "Night shift") {
   const res = await admin(app).post("/connections").type("form").send({ name, scopes });
-  return parse(res.text).querySelector("input.key")!.getAttribute("value")!;
+  const key = parse(res.text).querySelector("input.key")!.getAttribute("value")!;
+  // The owner hands SUP-1 to this connection, when there is one: agents see only those.
+  if ((await admin(app).get("/api/tickets/SUP-1")).status === 200) {
+    await handToAgent(app, "SUP-1", key);
+  }
+  return key;
 }
 
 async function connect(app: Express, key: string) {
