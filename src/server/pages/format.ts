@@ -68,6 +68,14 @@ export function describeEvent(event: TicketEvent): string {
       return check.data.to === null ? "Agreed check removed" : `Check agreed: ${check.data.to}`;
     }
   }
+  if (event.type === "change_linked") return "Change link added";
+  if (event.type === "ready_for_customer") return "Ready for the customer to check";
+  if (event.type === "customer_answered") {
+    const answer = z.object({ fixed: z.boolean() }).safeParse(event.data);
+    if (answer.success) {
+      return answer.data.fixed ? "Customer confirmed it is fixed" : "Customer says it is not fixed";
+    }
+  }
   if (event.type === "reply_added") return "Reply added";
   if (event.type === "note_added") return "Internal note added";
   if (event.type === "archived") return "Archived";

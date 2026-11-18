@@ -88,7 +88,7 @@ describe("a GitHub session", () => {
     expect(await signedInAs(guest.cookie)).toContain("Signed in as Vic Visitor (customer)");
 
     const changeStatus = (cookie: string) =>
-      visitor(app).patch("/api/tickets/SUP-1").set("Cookie", cookie).send({ status: "resolved" });
+      visitor(app).patch("/api/tickets/SUP-1").set("Cookie", cookie).send({ status: "new" });
     expect((await changeStatus(guest.cookie)).status).toBe(403); // a customer cannot
     expect((await changeStatus(helper.cookie)).status).toBe(200); // a team member can
   });

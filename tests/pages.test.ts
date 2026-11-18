@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { admin, buildTestApp } from "./helpers.js";
+import { admin, adminActor, buildTestApp, resolveTicket } from "./helpers.js";
 
 const valid = { title: "Printer is broken", description: "It jams on every page." };
 
@@ -38,7 +38,7 @@ describe("ticket list page", () => {
     const { app } = buildTestApp();
     await submitForm(app, { ...valid, title: "Still open" });
     await submitForm(app, { ...valid, title: "Already done" });
-    await admin(app).patch("/api/tickets/SUP-2").send({ status: "resolved" });
+    await resolveTicket(app, "SUP-2", adminActor);
 
     const resolved = await admin(app).get("/tickets?status=resolved");
     expect(resolved.text).toContain("Already done");
@@ -178,23 +178,24 @@ describe("status control", () => {
     const { app } = buildTestApp();
     await submitForm(app, valid);
 
+    await admin(app).post("/api/tickets/SUP-1/take");
     const res = await admin(app)
       .post("/tickets/SUP-1/status")
       .type("form")
-      .send({ status: "resolved" });
+      .send({ status: "in_progress" });
     expect(res.status).toBe(303);
     expect(res.headers.location).toBe("/tickets/SUP-1");
 
     const events = await admin(app).get("/api/tickets/SUP-1/events");
-    expect(events.body).toHaveLength(2);
-    expect(events.body[1]).toMatchObject({
+    expect(events.body).toHaveLength(3); // created, owner changed, status changed
+    expect(events.body[2]).toMatchObject({
       type: "status_changed",
-      data: { from: "new", to: "resolved" },
+      data: { from: "new", to: "in_progress" },
     });
 
     const page = await admin(app).get("/tickets/SUP-1");
-    expect(page.text).toContain("Status changed from New to Resolved");
-    expect(page.text).toContain('<option value="resolved" selected>Resolved</option>');
+    expect(page.text).toContain("Status changed from New to In Progress");
+    expect(page.text).toContain('<option value="in_progress" selected>In Progress</option>');
   });
 
   it("writes no history entry when the status stays the same", async () => {

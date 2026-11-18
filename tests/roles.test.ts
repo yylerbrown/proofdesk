@@ -222,8 +222,9 @@ describe("a team member", () => {
     const list = await team.get("/api/tickets");
     expect(list.body.map((t: { key: string }) => t.key)).toEqual(["SUP-2", "SUP-1"]);
     expect((await team.put("/api/tickets/SUP-1").send(valid)).status).toBe(200);
-    const changed = await team.patch("/api/tickets/SUP-2").send({ status: "resolved" });
-    expect(changed.body.status).toBe("resolved");
+    await team.post("/api/tickets/SUP-2/take");
+    const changed = await team.patch("/api/tickets/SUP-2").send({ status: "in_progress" });
+    expect(changed.body.status).toBe("in_progress");
 
     const events = await team.get("/api/tickets/SUP-2/events");
     expect(events.body.at(-1)).toMatchObject({ actor: teamActor.id, type: "status_changed" });

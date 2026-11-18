@@ -19,6 +19,9 @@ export type TicketRow = {
   archived_at: string | null;
   owner_name: string | null;
   agreed_check: string | null;
+  change_url: string | null;
+  try_url: string | null;
+  ready_at: string | null;
 };
 
 export type EventRow = {
@@ -155,8 +158,34 @@ export function updateTicketArchived(
   );
 }
 
+/**
+ * Changes the status. Any change of status also ends a wait for the customer's answer: the
+ * question "Did this fix it?" is only asked about the ticket as it was when it was asked.
+ */
 export function updateTicketStatus(db: Db, id: number, status: TicketStatus, now: string): void {
-  db.prepare("UPDATE tickets SET status = ?, updated_at = ? WHERE id = ?").run(status, now, id);
+  db.prepare("UPDATE tickets SET status = ?, ready_at = NULL, updated_at = ? WHERE id = ?").run(
+    status,
+    now,
+    id,
+  );
+}
+
+export function updateChangeUrl(db: Db, id: number, changeUrl: string, now: string): void {
+  db.prepare("UPDATE tickets SET change_url = ?, updated_at = ? WHERE id = ?").run(
+    changeUrl,
+    now,
+    id,
+  );
+}
+
+/** Starts the wait for the customer's answer, with the page they should try. */
+export function updateReady(db: Db, id: number, tryUrl: string, now: string): void {
+  db.prepare("UPDATE tickets SET try_url = ?, ready_at = ?, updated_at = ? WHERE id = ?").run(
+    tryUrl,
+    now,
+    now,
+    id,
+  );
 }
 
 export function insertEvent(db: Db, event: NewEvent): void {

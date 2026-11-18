@@ -46,6 +46,22 @@ export const agreeCheckSchema = z.object({
   agreed_check: z.string().trim().max(500, "Must be at most 500 characters."),
 });
 
+// A link that must be an http or https address, as for "Where did this happen?".
+const httpLink = z
+  .string()
+  .trim()
+  .max(500, "Must be at most 500 characters.")
+  .pipe(z.url({ protocol: /^https?$/, error: "Must be a link that starts with http or https." }));
+
+export const linkChangeSchema = z.object({ change_url: httpLink });
+export const markReadySchema = z.object({ try_url: httpLink });
+
+// The customer's answer. A "no" needs a comment, which the service checks.
+export const answerSchema = z.object({
+  fixed: z.enum(["yes", "no"]),
+  comment: z.string().trim().max(5000, "Must be at most 5000 characters.").optional(),
+});
+
 export const changeStatusSchema = z.object({
   status: z.enum(TICKET_STATUSES),
 });

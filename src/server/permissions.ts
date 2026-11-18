@@ -15,7 +15,10 @@ export type Action =
   | "read_notes"
   | "take"
   | "release"
-  | "agree_check";
+  | "agree_check"
+  | "link_change"
+  | "mark_ready"
+  | "answer";
 
 /** The two facts about a ticket that permissions depend on. */
 export type TicketFacts = {
@@ -66,5 +69,9 @@ export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean
   if (action === "take") return isStaff && actor.kind === "person";
   if (action === "release") return isStaff;
   if (action === "agree_check") return isStaff;
+  if (action === "link_change") return isStaff;
+  if (action === "mark_ready") return isStaff;
+  // Only the person who filed the ticket answers "Did this fix it?". Not the team for them.
+  if (action === "answer") return isOwn;
   return false;
 }

@@ -72,3 +72,18 @@ export function as(app: Express, who: Actor) {
 export function admin(app: Express) {
   return as(app, adminActor);
 }
+
+/**
+ * Takes a ticket all the way to Resolved, by the only road there is: the team takes it,
+ * moves it to In Progress, adds the change link and asks; the person who filed it says yes.
+ */
+export async function resolveTicket(app: Express, key: string, filedBy: Actor) {
+  await admin(app).post(`/api/tickets/${key}/take`);
+  await admin(app).patch(`/api/tickets/${key}`).send({ status: "in_progress" });
+  await admin(app)
+    .put(`/api/tickets/${key}/change-link`)
+    .send({ change_url: "https://example.com/change/1" });
+  await admin(app).post(`/api/tickets/${key}/ready`).send({ try_url: "https://example.com/try" });
+  const answered = await as(app, filedBy).post(`/api/tickets/${key}/answer`).send({ fixed: "yes" });
+  if (answered.status !== 200) throw new Error(`Could not resolve ${key}: ${answered.text}`);
+}

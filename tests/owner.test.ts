@@ -67,7 +67,7 @@ describe("a named human owner", () => {
     expect(refused.status).toBe(409);
     expect((await admin(app).get("/api/tickets/SUP-1")).body.owner_name).toBe("Admin");
 
-    await admin(app).patch("/api/tickets/SUP-1").send({ status: "resolved" });
+    await admin(app).patch("/api/tickets/SUP-1").send({ status: "new" });
     const released = await admin(app).post("/api/tickets/SUP-1/release");
     expect(released.body).toMatchObject({ owner_id: null, owner_name: null });
   });
