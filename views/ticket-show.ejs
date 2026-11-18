@@ -503,7 +503,7 @@
       <tr>
         <td><%- include("time", { iso: entry.when }) %></td>
         <td><%= entry.what %></td>
-        <td><%= entry.who %></td>
+        <td><%= entry.who %><% if (entry.role) { %> <small class="role-label"><%= entry.role %></small><% } %></td>
       </tr>
       <% } %>
     </tbody>
