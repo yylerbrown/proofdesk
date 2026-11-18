@@ -265,6 +265,11 @@
   <% } %>
   <% if (ticket.ready_at) { %>
   <p>Waiting for the customer to check it, since <%- include("time", { iso: ticket.ready_at }) %>.</p>
+  <% if (ticket.owner_id === viewerId) { %>
+  <form method="post" action="/tickets/<%= ticket.key %>/withdraw-question">
+    <button type="submit" class="secondary outline compact">Withdraw the question</button>
+  </form>
+  <% } %>
   <% } %>
   <% if (allowed.linkChange) { %>
   <form method="post" action="/tickets/<%= ticket.key %>/change-link">

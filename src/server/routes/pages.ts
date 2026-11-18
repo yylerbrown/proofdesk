@@ -137,6 +137,7 @@ export function pagesRouter(service: TicketService): Router {
       title: `${ticket.key}: ${ticket.title}`,
       ticket,
       viewerRole: actor.role,
+      viewerId: actor.id,
       askBlocked: askBlockedReason(ticket, actor),
       handOffTo: service.handOffCandidates(ticket),
       agentHelp: service.agentHelp(ticket),
@@ -352,6 +353,11 @@ export function pagesRouter(service: TicketService): Router {
   router.post("/tickets/:key/ready", ticketForm("ready", service.markReady));
   router.post("/tickets/:key/answer", ticketForm("answer", service.answer));
   router.post("/tickets/:key/reopen", ticketForm("reopen", service.reopen));
+  router.post("/tickets/:key/withdraw-question", (req, res) => {
+    const ticket = service.withdrawQuestionAsked(req.params.key, signedIn(req));
+    rememberSaved(res, "withdrawn");
+    res.redirect(303, `/tickets/${ticket.key}`);
+  });
   router.post("/tickets/:key/hand-off", ticketForm("handOff", service.handOff));
   router.post("/tickets/:key/agent", (req, res) => {
     const ticket = service.giveToAgent(req.params.key, req.body, signedIn(req));

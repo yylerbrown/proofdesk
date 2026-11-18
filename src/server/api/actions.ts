@@ -172,6 +172,16 @@ export const ACTIONS: ApiAction[] = [
     run: ({ service, actor, key, body }) => service.markReady(key, body, actor),
   },
   {
+    name: "withdraw_question",
+    output: ticketOutput,
+    method: "post",
+    path: "/tickets/:key/withdraw-question",
+    summary: "The owner takes back the question the customer has not answered yet.",
+    needs: "mark_ready",
+    page: "POST /tickets/:key/withdraw-question",
+    run: ({ service, actor, key }) => service.withdrawQuestionAsked(key, actor),
+  },
+  {
     name: "answer",
     output: ticketOutput,
     method: "post",
