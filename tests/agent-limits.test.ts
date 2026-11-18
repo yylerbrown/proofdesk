@@ -6,8 +6,10 @@ import { parse } from "node-html-parser";
 import request from "supertest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  ACTIVITY_KEPT,
   createConnectionService,
   DEMO_CONNECTION_LIMIT,
+  type ConnectionService,
 } from "../src/server/connections/service.js";
 import { seedDemo } from "../src/server/demo.js";
 import { WRITE_LIMIT } from "../src/server/limits.js";
@@ -45,8 +47,14 @@ const trails = (db: Db) =>
       "SELECT connection_id, COUNT(*) AS n FROM agent_activity GROUP BY connection_id ORDER BY connection_id",
     )
     .all();
-// A connection's activity trail keeps its latest 1,000 requests.
-const KEPT = 1000;
+
+/** A connection an admin issued, as the agent that holds its key. */
+function agent(connections: ConnectionService, name: string) {
+  return connections.authenticate(
+    connections.create({ name, scopes: ["read_tickets"] }, adminActor).key,
+  )!;
+}
+
 const servers: Server[] = [];
 const clients: Client[] = [];
 afterEach(async () => {
@@ -75,65 +83,73 @@ async function connect(app: Express, key: string) {
 }
 
 describe("an agent's activity trail", () => {
-  it("stores no long ticket key or idempotency key, on either door", async () => {
+  it("stores a ticket key only in a key's form, and an idempotency key of at most 100 characters", async () => {
     const { app, db } = buildTestApp();
     await admin(app).post("/api/tickets").send(valid);
     const key = await issue(app, ["read_tickets"]);
     await handToAgent(app, "SUP-1", key);
+    const get = (path: string, idempotencyKey: string) =>
+      request(app)
+        .get(path)
+        .set("Authorization", `Bearer ${key}`)
+        .set("Idempotency-Key", idempotencyKey);
+    // A key with one digit more than its form allows, then an idempotency key one character
+    // over the limit, then one at it.
+    await get("/api/tickets/SUP-" + "9".repeat(17), "k");
+    await get("/api/tickets/SUP-1", "k".repeat(101));
+    await get("/api/tickets/SUP-1", "k".repeat(100));
+    // Over MCP, a ticket key over 30 characters is refused before the tool runs, and nothing
+    // is recorded.
     const client = await connect(app, key);
-    await client
-      .callTool({ name: "get_ticket", arguments: { key: "SUP-" + "x".repeat(90_000) } })
-      .catch(() => {});
-    await request(app)
-      .get("/api/tickets/SUP-" + "9".repeat(5_000))
-      .set("Authorization", `Bearer ${key}`);
-    await request(app)
-      .get("/api/tickets/SUP-1")
-      .set("Authorization", `Bearer ${key}`)
-      .set("Idempotency-Key", "k".repeat(10_000));
-    const widest = db
-      .prepare(
-        "SELECT MAX(LENGTH(COALESCE(ticket_key, '')) + LENGTH(COALESCE(idempotency_key, ''))) AS n FROM agent_activity",
-      )
-      .get() as { n: number };
-    expect(widest.n).toBeLessThanOrEqual(130);
-  });
-
-  it("keeps only a connection's latest requests, and leaves another connection's alone", async () => {
-    const { app, db } = buildTestApp();
-    await admin(app).post("/api/tickets").send(valid);
-    const busy = await issue(app, ["read_tickets"], "Busy");
-    const quiet = await issue(app, ["read_tickets"], "Quiet");
-    await handToAgent(app, "SUP-1", busy);
-    const server = await listenLocally(app);
-    servers.push(server);
-    const { port } = server.address() as AddressInfo;
-    const read = (key: string, path: string) =>
-      fetch(`http://127.0.0.1:${port}${path}`, { headers: { Authorization: `Bearer ${key}` } });
-    expect((await read(quiet, "/api/tickets")).status).toBe(200);
-    for (let i = 0; i < KEPT + 100; i++) await read(busy, "/api/tickets/SUP-1");
-    expect((await read(busy, "/api/tickets")).status).toBe(200);
+    const refused = await client.callTool({
+      name: "get_ticket",
+      arguments: { key: "SUP-" + "9".repeat(90_000) },
+    });
+    expect(refused.isError).toBe(true);
     const rows = db
-      .prepare(
-        "SELECT c.name, COUNT(*) AS n FROM agent_activity a JOIN agent_connections c ON c.id = a.connection_id GROUP BY c.name ORDER BY c.name",
-      )
+      .prepare("SELECT ticket_key, LENGTH(idempotency_key) AS idem FROM agent_activity ORDER BY id")
       .all();
     expect(rows).toEqual([
-      { name: "Busy", n: KEPT },
-      { name: "Quiet", n: 1 },
+      { ticket_key: null, idem: 1 },
+      { ticket_key: "SUP-1", idem: null },
+      { ticket_key: "SUP-1", idem: 100 },
+    ]);
+  });
+
+  it("keeps only a connection's latest requests, and leaves another connection's alone", () => {
+    const { db } = buildTestApp();
+    const connections = createConnectionService(db);
+    const busy = agent(connections, "Busy");
+    const quiet = agent(connections, "Quiet");
+    connections.record(quiet, read("get_ticket"));
+    for (let i = 0; i < ACTIVITY_KEPT + 100; i++) connections.record(busy, read("get_ticket"));
+    connections.record(busy, read("list_tickets"));
+    expect(trails(db)).toEqual([
+      { connection_id: busy.connection!.id, n: ACTIVITY_KEPT },
+      { connection_id: quiet.connection!.id, n: 1 },
     ]);
     // The newest row is the busy connection's last request: the oldest rows went, not the new.
     const last = db
-      .prepare("SELECT action, ticket_key FROM agent_activity ORDER BY id DESC LIMIT 1")
+      .prepare("SELECT connection_id, action FROM agent_activity ORDER BY id DESC LIMIT 1")
       .get();
-    expect(last).toEqual({ action: "list_tickets", ticket_key: null });
+    expect(last).toEqual({ connection_id: busy.connection!.id, action: "list_tickets" });
   });
 
   it("finds rows over a month old by an index, not by reading the whole table", () => {
     const { db } = buildTestApp();
-    const plan = db
-      .prepare("EXPLAIN QUERY PLAN DELETE FROM agent_activity WHERE created_at < ?")
-      .all("2026-01-01T00:00:00.000Z") as { detail: string }[];
+    const connections = createConnectionService(db);
+    const helper = agent(connections, "Helper");
+    // The statement the prune runs, as recording a request prepares it.
+    const prepare = vi.spyOn(db, "prepare");
+    connections.record(helper, read("get_ticket"));
+    const prune = prepare.mock.calls
+      .map(([sql]) => sql)
+      .find((sql) => sql.startsWith("DELETE") && sql.includes("created_at"));
+    prepare.mockRestore();
+    expect(prune).toBeDefined();
+    const plan = db.prepare(`EXPLAIN QUERY PLAN ${prune!}`).all("2026-01-01T00:00:00.000Z") as {
+      detail: string;
+    }[];
     expect(plan.map((step) => step.detail).join(" ")).toMatch(
       /^SEARCH agent_activity USING (COVERING )?INDEX \w+ \(created_at<\?\)$/,
     );
@@ -158,13 +174,12 @@ describe("the demo's connections at its cap", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-11-17T09:00:00.000Z"));
     const ended = connections.authenticate(connections.issueDemo().key)!;
-    const issued = connections.create({ name: "Helper", scopes: ["read_tickets"] }, adminActor);
-    const revoked = connections.authenticate(issued.key)!;
+    const revoked = agent(connections, "Helper");
     vi.setSystemTime(new Date("2026-11-18T08:00:00.000Z"));
     const live = connections.authenticate(connections.issueDemo().key)!;
     for (const actor of [ended, revoked, live]) connections.record(actor, read("get_ticket"));
     // An admin's connection keeps its trail after it is revoked, as before.
-    connections.revoke(issued.connection.id, adminActor);
+    connections.revoke(revoked.connection!.id, adminActor);
 
     // The first demo connection expires at 09:00. The next one issued forgets its trail.
     vi.setSystemTime(new Date("2026-11-18T10:00:00.000Z"));
