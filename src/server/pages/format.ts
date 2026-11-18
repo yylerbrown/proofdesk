@@ -109,9 +109,7 @@ export function describeEvent(event: TicketEvent): string {
   if (event.type === "check_agreed") {
     const check = ownerChangeSchema.safeParse(event.data);
     if (check.success) {
-      return check.data.to === null
-        ? "Team's check removed"
-        : `Team's check: ${check.data.to}`;
+      return check.data.to === null ? "Team's check removed" : `Team's check: ${check.data.to}`;
     }
   }
   if (event.type === "change_linked") return "Change link added";
