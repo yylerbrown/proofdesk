@@ -6,6 +6,7 @@ import { can, type Action } from "../permissions.js";
 import { parse } from "../validation.js";
 import { addEvidenceSchema, readProveReport, type StageReading } from "./evidence.js";
 import { buildKey, parseKey } from "./keys.js";
+import { decideSpecSchema, proposeSpecSchema, type Scenario } from "./spec.js";
 import * as repository from "./repository.js";
 import {
   addEntrySchema,
@@ -92,6 +93,8 @@ export type TicketEntry = {
 
 /** One piece of evidence, as reported. Proofdesk verifies none of it. */
 export type TicketEvidence = {
+  /** The number of the test spec's scenario this evidence says it proves, if any. */
+  scenario: number | null;
   id: number;
   ticket_key: string;
   kind: string;
@@ -125,6 +128,25 @@ export type DemoSeed = {
   text: Record<string, Partial<repository.TicketRow>>;
 };
 
+/**
+ * A test spec, as a person or an agent reads it: a suggestion until a person on the team
+ * accepts it. Each scenario says whether any evidence names it. Proofdesk verifies none of it.
+ */
+export type TicketSpec = {
+  id: number;
+  ticket_key: string;
+  state: repository.SpecState;
+  summary: string;
+  scenarios: (Scenario & { number: number; has_evidence: boolean })[];
+  /** How many scenarios there are, and how many have evidence naming them. */
+  coverage: { scenarios: number; with_evidence: number };
+  proposed_by: { id: string; kind: repository.ActorKind; name: string };
+  created_at: string;
+  decided_by_name: string | null;
+  decided_at: string | null;
+  verified_by_proofdesk: false;
+};
+
 export type TicketService = ReturnType<typeof createTicketService>;
 
 /** Most rows the service will hold. Leave a field out for no limit. */
@@ -133,6 +155,7 @@ export type Budget = {
   entriesPerTicket?: number;
   eventsPerTicket?: number;
   evidencePerTicket?: number;
+  specsPerTicket?: number;
 };
 
 /** The demo's budget: enough to try everything, too little to fill the disk. */
@@ -141,6 +164,7 @@ export const DEMO_BUDGET: Budget = {
   entriesPerTicket: 50,
   eventsPerTicket: 100,
   evidencePerTicket: 20,
+  specsPerTicket: 20,
 };
 
 /** How many tickets a list page shows, and how many entries or events a ticket page shows. */
@@ -160,6 +184,9 @@ const CUSTOMER_EVENT_TYPES = new Set([
   "ready_for_customer",
   "customer_answered",
   "evidence_added",
+  "spec_proposed",
+  "spec_accepted",
+  "spec_discarded",
   "archived",
   "restored",
 ]);
@@ -322,8 +349,48 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
       stages: row.kind === "test" && report !== null ? readProveReport(report) : null,
       reported_by: { id: row.author, kind: row.author_kind, name: row.author_name },
       verified_by_proofdesk: false,
+      scenario: row.scenario,
       created_at: row.created_at,
     };
+  }
+
+  /** A spec as callers see it. A demo agent's count of covered scenarios is its own. */
+  function toSpec(row: repository.SpecRow, actor: Actor): TicketSpec {
+    const covered = repository.scenariosWithEvidence(
+      db,
+      row.id,
+      isDemoAgent(actor) ? actor.id : null,
+    );
+    const scenarios = (JSON.parse(row.scenarios) as Scenario[]).map((scenario, index) => ({
+      number: index + 1,
+      ...scenario,
+      has_evidence: covered.includes(index + 1),
+    }));
+    return {
+      id: row.id,
+      ticket_key: buildKey(prefix, row.ticket_id),
+      state: row.state,
+      summary: row.summary,
+      scenarios,
+      coverage: {
+        scenarios: scenarios.length,
+        with_evidence: scenarios.filter((scenario) => scenario.has_evidence).length,
+      },
+      proposed_by: { id: row.author, kind: row.author_kind, name: row.author_name },
+      created_at: row.created_at,
+      decided_by_name: row.decided_by_name,
+      decided_at: row.decided_at,
+      verified_by_proofdesk: false,
+    };
+  }
+
+  /**
+   * The spec this actor sees on a ticket: the one in force, or for a demo agent the latest it
+   * proposed itself, so one visitor's assistant never reads another's.
+   */
+  function specFor(ticketId: number, actor: Actor): repository.SpecRow | undefined {
+    if (isDemoAgent(actor)) return repository.findLatestSpecBy(db, ticketId, actor.id);
+    return repository.findActiveSpec(db, ticketId);
   }
 
   function toEntry(row: repository.EntryRow): TicketEntry {
@@ -889,6 +956,20 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
           budget.evidencePerTicket,
           "evidence on this ticket",
         );
+        // Evidence may name the scenario of the ticket's test spec that it proves.
+        const spec = evidence.scenario === undefined ? undefined : specFor(ticket.id, actor);
+        if (evidence.scenario !== undefined && spec === undefined) {
+          throw new HttpError(
+            409,
+            "no_spec",
+            `Ticket ${key} has no test spec, so evidence cannot name a scenario. Leave scenario out, or propose a spec first.`,
+          );
+        }
+        if (spec !== undefined && evidence.scenario! > JSON.parse(spec.scenarios).length) {
+          throw new ValidationError(`The spec has no scenario ${evidence.scenario}.`, {
+            scenario: [`The spec has no scenario ${evidence.scenario}.`],
+          });
+        }
         const now = new Date().toISOString();
         const saved = repository.insertEvidence(db, {
           ticket_id: ticket.id,
@@ -903,6 +984,8 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
           author_kind: actor.kind,
           author_name: actor.name,
           connection_id: actor.connection?.id ?? null,
+          spec_id: spec?.id ?? null,
+          scenario: evidence.scenario ?? null,
           created_at: now,
         });
         logEvent({
@@ -1033,6 +1116,85 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
       return { filesCleaned: repository.flushDeletedContent(db) };
     },
 
+    /**
+     * The ticket's test spec, or null when it has none yet. A demo agent sees only the spec it
+     * proposed itself.
+     */
+    getSpec(key: string, actor: Actor): TicketSpec | null {
+      const row = requireRow(key, actor);
+      const spec = specFor(row.id, actor);
+      return spec === undefined ? null : toSpec(spec, actor);
+    },
+
+    /**
+     * Proposes a test spec, which replaces the one in force; the old one is kept as
+     * "replaced". It is a suggestion until a person accepts it, and never changes the status.
+     */
+    proposeSpec(key: string, input: unknown, actor: Actor): TicketSpec {
+      const spec = parse(proposeSpecSchema, input);
+      const row = db.transaction(() => {
+        const ticket = requireRow(key, actor);
+        requirePermission(actor, "propose_spec", ticket);
+        requireNotArchived(key, ticket);
+        requireRoom(
+          repository.countSpecs(db, ticket.id),
+          budget.specsPerTicket,
+          "specs on this ticket",
+        );
+        const now = new Date().toISOString();
+        const saved = repository.insertSpec(db, {
+          ticket_id: ticket.id,
+          summary: spec.summary,
+          scenarios: JSON.stringify(spec.scenarios),
+          author: actor.id,
+          author_kind: actor.kind,
+          author_name: actor.name,
+          connection_id: actor.connection?.id ?? null,
+          created_at: now,
+        });
+        logEvent({
+          ticketId: ticket.id,
+          actor: actor.id,
+          actorKind: actor.kind,
+          context: agentContext(actor),
+          type: "spec_proposed",
+          data: { scenarios: spec.scenarios.length },
+          now,
+        });
+        return saved;
+      })();
+      return toSpec(row, actor);
+    },
+
+    /** A person on the team accepts the proposed spec as the agreed way to test, or discards it. */
+    decideSpec(key: string, input: unknown, actor: Actor): TicketSpec {
+      const { decision } = parse(decideSpecSchema, input);
+      const row = db.transaction(() => {
+        const ticket = requireRow(key, actor);
+        requirePermission(actor, "decide_spec", ticket);
+        requireNotArchived(key, ticket);
+        const spec = repository.findActiveSpec(db, ticket.id);
+        if (spec === undefined) {
+          throw new HttpError(409, "no_spec", `Ticket ${key} has no test spec to decide on.`);
+        }
+        if (decision === "accept" && spec.state === "accepted") return spec; // already
+        const state = decision === "accept" ? "accepted" : "discarded";
+        const now = new Date().toISOString();
+        repository.decideSpec(db, spec.id, state, actor, now);
+        logEvent({
+          ticketId: ticket.id,
+          actor: actor.id,
+          actorKind: actor.kind,
+          context: agentContext(actor),
+          type: decision === "accept" ? "spec_accepted" : "spec_discarded",
+          data: {},
+          now,
+        });
+        return repository.findSpec(db, spec.id)!;
+      })();
+      return toSpec(row, actor);
+    },
+
     /** True when there are no tickets at all, archived ones included. */
     hasNoTickets(): boolean {
       return repository.countTickets(db) === 0;
@@ -1064,6 +1226,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
         answer: !archived && can(actor, "answer", ticket) && ticket.ready_at !== null,
         reply: !archived && can(actor, "reply", ticket),
         note: !archived && can(actor, "note", ticket),
+        decideSpec: !archived && can(actor, "decide_spec", ticket),
       };
     },
   };

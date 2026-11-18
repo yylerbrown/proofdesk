@@ -19,6 +19,8 @@ export const SAVED_MESSAGES = {
   ready: "The customer has been asked to check the fix.",
   fixed: "Thank you. The ticket is resolved.",
   notFixed: "Thank you. The ticket is back with the team.",
+  specAccepted: "Test spec accepted as the way to test.",
+  specDiscarded: "Test spec discarded.",
 } as const;
 
 export type SavedKey = keyof typeof SAVED_MESSAGES;

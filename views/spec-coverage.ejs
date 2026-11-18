@@ -1,0 +1,4 @@
+<%# How many of the spec's scenarios have evidence naming them. A count of what was reported, never a pass. %>
+<% if (specPanel.spec) { %>
+<p><small><%= specPanel.spec.coverage.with_evidence %> of <%= specPanel.spec.coverage.scenarios %> scenarios in the <%= specPanel.spec.state === "accepted" ? "agreed" : "suggested" %> test spec have evidence naming them, as reported.</small></p>
+<% } %>
