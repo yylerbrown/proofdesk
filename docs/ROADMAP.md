@@ -27,7 +27,7 @@ desk and the product apart: the repository owns its tests, and the desk keeps wh
 | 7   | A budget                         | A number the agent is asked to respect ("Aim for $10, then ask"), with the spend recorded as the agent reported it, or shown as unknown. The assistant runs outside Proofdesk, so the desk cannot enforce a limit.                                        |
 | 8   | The top bar                      | Crowding alone does not justify a navigation change. Every control in it was checked usable at 375 and 320 pixels wide.                                                                                                                                   |
 | 9   | Personal assistant connections   | Each team member connects their own assistant. It can do no more than that person can, and the history labels it with their name and marks it as an assistant. Admins can see and revoke every connection. This is the pattern of personal access tokens. |
-| 10  | Customers' own assistants        | A customer can get a key that reaches only their own tickets, so their assistant can file a ticket and follow it. Like every assistant, it cannot answer for the customer or resolve: only the customer's own Yes does.                                   |
+| 10  | Customers' own assistants        | A customer can get a key that reaches only their own tickets, so their assistant can file a ticket and follow it. Like every assistant, it cannot answer for the customer or resolve a ticket.                                                            |
 
 ## Dropped
 

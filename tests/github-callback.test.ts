@@ -1,3 +1,4 @@
+import { parse } from "node-html-parser";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { buildTestApp, PRODUCTION_SIGN_IN_ENV, SIGN_IN_ENV, visitor } from "./helpers.js";
@@ -196,6 +197,16 @@ describe("the whole GitHub sign-in", () => {
       const sent = await signInThroughGithub(app, ada, next);
       expect(sent.location).toBe("/tickets");
     }
+  });
+
+  it("offers no second GitHub sign-in to someone already signed in", async () => {
+    const { app } = buildGithubApp();
+    const { cookie } = await signInThroughGithub(app, ada);
+    const page = parse((await request(app).get("/sign-in").set("Cookie", cookie)).text);
+    expect(page.querySelector(".signed-in")?.text).toContain("You are signed in as Ada Admin.");
+    expect(page.querySelector("form[action='/sign-in/github']")).toBeNull();
+    expect(page.querySelector(".github-reads")).toBeNull();
+    expect(page.querySelector("h1")?.text).toBe("Proofdesk");
   });
 
   it("ends a session seven days after sign-in, however recently it was used", async () => {
