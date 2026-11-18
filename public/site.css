@@ -1932,6 +1932,24 @@ button.copy {
   padding: 2px 10px;
   font-size: var(--pd-text-xs);
 }
+/*
+ * On a phone the small text controls are 44-pixel tap targets, like More: History, the panel's
+ * disclosures such as Attach evidence, and the Copy buttons. A wider screen keeps them small.
+ */
+@media (max-width: 639px) {
+  details.history > summary,
+  details#reopen > summary,
+  .ticket-panel details:not(.more) > summary,
+  .ticket-thread details.publish > summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  button.copy {
+    min-height: 44px;
+    padding-inline: 16px;
+  }
+}
 .spec-prompt pre {
   margin-bottom: var(--pd-space-3);
 }
