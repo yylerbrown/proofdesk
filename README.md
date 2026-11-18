@@ -77,13 +77,19 @@ ticket service as the JSON API. Open `http://localhost:3000/` in a browser.
 
 | Address                     | What it shows or does                                         |
 | --------------------------- | ------------------------------------------------------------- |
-| `GET /tickets?status=`      | The ticket list, newest first, with the status filter.        |
+| `GET /tickets?status=`      | The ticket list, open ones newest first, then resolved ones.  |
 | `GET /tickets/new`          | The form to file a ticket.                                    |
 | `POST /tickets`             | Files the ticket from the form, then shows its page.          |
 | `GET /tickets/:key`         | One ticket with its status control and its history.           |
 | `POST /tickets/:key/status` | Changes the status from the ticket page, then shows it again. |
 
 The ticket page also has an edit form (`/tickets/:key/edit`) and buttons to archive and restore.
+
+A signed-out visitor sees a short welcome on the sign-in page. The list shows each ticket's
+owner, who it is waiting on and its age. After a form saves something, the next page says what
+was saved. The message comes from a fixed list in `src/server/pages/saved.ts`, so no link or
+form can make a page show text of its own. The JSON list (`GET /api/tickets`) uses the same
+order as the page.
 
 ## API
 
