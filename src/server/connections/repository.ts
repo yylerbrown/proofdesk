@@ -121,6 +121,15 @@ export function insertActivity(db: Db, row: Omit<ActivityRow, "id">, keep: numbe
   ).run(row.connection_id, row.connection_id, keep);
 }
 
+/** Deletes the activity of every demo connection that has ended, revoked or expired. */
+export function forgetEndedDemoActivity(db: Db, now: string): void {
+  db.prepare(
+    `DELETE FROM agent_activity
+     WHERE connection_id IN (SELECT id FROM agent_connections
+                             WHERE demo = 1 AND (revoked_at IS NOT NULL OR expires_at <= ?))`,
+  ).run(now);
+}
+
 /** A connection's latest activity, newest first. */
 export function listActivity(db: Db, connectionId: number, limit: number): ActivityRow[] {
   return db

@@ -140,6 +140,9 @@ export function createConnectionService(db: Db) {
           live - DEMO_CONNECTION_LIMIT + 1,
         );
       }
+      // What ended connections did is forgotten, so however many visitors come and go, the
+      // demo keeps the trails of at most its live connections.
+      repository.forgetEndedDemoActivity(db, now.toISOString());
       const expiresAt = new Date(now.getTime() + DEMO_CONNECTION_HOURS * 3600 * 1000);
       const issued = issue("Demo visitor", DEMO_SCOPES, "demo-welcome-page", {
         demo: true,

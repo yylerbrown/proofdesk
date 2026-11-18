@@ -12,8 +12,10 @@ import {
 import { seedDemo } from "../src/server/demo.js";
 import { WRITE_LIMIT } from "../src/server/limits.js";
 import { createTicketService } from "../src/server/tickets/service.js";
+import type { Db } from "../src/server/db.js";
 import {
   admin,
+  adminActor,
   buildTestApp,
   closeServers,
   handToAgent,
@@ -25,6 +27,24 @@ import {
 // many demo connections a few visitors can hold.
 
 const valid = { title: "Printer jams", description: "It jams on page two.", fix_check: "Prints" };
+
+/** A read an agent made on SUP-1 through the API, as the routes record it. */
+const read = (action: string) => ({
+  door: "api" as const,
+  action,
+  ticketKey: "SUP-1",
+  idempotencyKey: undefined,
+  outcome: "done" as const,
+  code: null,
+});
+
+/** How many activity rows each connection has, by connection id. */
+const trails = (db: Db) =>
+  db
+    .prepare(
+      "SELECT connection_id, COUNT(*) AS n FROM agent_activity GROUP BY connection_id ORDER BY connection_id",
+    )
+    .all();
 // A connection's activity trail keeps its latest 1,000 requests.
 const KEPT = 1000;
 const servers: Server[] = [];
@@ -130,6 +150,29 @@ describe("an agent's activity trail", () => {
 describe("the demo's connections at its cap", () => {
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it("forget what an ended one did at the next one issued, so only live ones keep a trail", () => {
+    const { db } = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
+    const connections = createConnectionService(db);
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-17T09:00:00.000Z"));
+    const ended = connections.authenticate(connections.issueDemo().key)!;
+    const issued = connections.create({ name: "Helper", scopes: ["read_tickets"] }, adminActor);
+    const revoked = connections.authenticate(issued.key)!;
+    vi.setSystemTime(new Date("2026-11-18T08:00:00.000Z"));
+    const live = connections.authenticate(connections.issueDemo().key)!;
+    for (const actor of [ended, revoked, live]) connections.record(actor, read("get_ticket"));
+    // An admin's connection keeps its trail after it is revoked, as before.
+    connections.revoke(issued.connection.id, adminActor);
+
+    // The first demo connection expires at 09:00. The next one issued forgets its trail.
+    vi.setSystemTime(new Date("2026-11-18T10:00:00.000Z"));
+    connections.issueDemo();
+    expect(trails(db)).toEqual([
+      { connection_id: revoked.connection!.id, n: 1 },
+      { connection_id: live.connection!.id, n: 1 },
+    ]);
   });
 
   it("make room by ending the one used longest ago, so a new visitor is never turned away", () => {
