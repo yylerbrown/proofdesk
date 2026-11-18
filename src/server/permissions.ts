@@ -50,8 +50,11 @@ export type Capability = { people: string; agent: AgentScope | "people_only" };
 
 /**
  * The capability table: every action, who among people may take it, and the scope an agent
- * needs, or "people_only". can() below enforces it, the API's documentation shows it, and the
- * tests are generated from it. Answering "Did this fix it?", owning a ticket, asking the
+ * needs, or "people_only". can() below enforces the agent column, and the people column's rules
+ * on role and on who filed the ticket; the ticket service adds the owner and state rules. The
+ * API's documentation
+ * shows the table. Only the agent column's tests are generated from it; the people column's
+ * tests are written by hand. Answering "Did this fix it?", owning a ticket, asking the
  * customer, archiving, restoring and deleting stay with people, whatever an agent holds.
  */
 export const CAPABILITIES: Record<Action, Capability> = {
@@ -71,7 +74,7 @@ export const CAPABILITIES: Record<Action, Capability> = {
   release: { people: "The ticket's owner, before work starts.", agent: "people_only" },
   agree_check: { people: "The team: its interpretation of the check.", agent: "people_only" },
   link_change: { people: "The team.", agent: "link_changes" },
-  mark_ready: { people: "The team.", agent: "people_only" },
+  mark_ready: { people: "The ticket's owner.", agent: "people_only" },
   answer: { people: "Only the customer who filed it.", agent: "people_only" },
   manage_connections: { people: "An admin.", agent: "people_only" },
   attach_evidence: { people: "The team.", agent: "attach_evidence" },
@@ -90,6 +93,9 @@ export type TicketFacts = {
   archived_at: string | null;
 };
 
+// What a read-only person, the demo admin, may still do: look.
+const READ_ONLY_ACTIONS: Action[] = ["list_all", "list_archived", "read", "read_notes"];
+
 /**
  * The one function that answers every permission question: may this actor do this action,
  * on this ticket? Actions that are not about one ticket ("create", "list_all",
@@ -104,9 +110,6 @@ export type TicketFacts = {
  * - A customer replies on their own tickets. Internal notes are for the team only, and a
  *   customer never sees them.
  */
-// What a read-only person, the demo admin, may still do: look.
-const READ_ONLY_ACTIONS: Action[] = ["list_all", "list_archived", "read", "read_notes"];
-
 export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean {
   if (actor.readOnly === true && !READ_ONLY_ACTIONS.includes(action)) return false;
   // An agent may do only what its connection's scopes name, and never a people-only action.

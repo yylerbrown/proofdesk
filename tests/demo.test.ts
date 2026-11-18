@@ -139,6 +139,9 @@ describe("the demo admin sees everything and changes nothing", () => {
   it("is shown no controls that would change anything", async () => {
     const { app } = buildDemo();
     const page = await asDemo(app, demoAdmin.id).get("/tickets/SUP-1");
+    // The ticket itself is shown, so the missing controls are not an error page's.
+    expect(page.status).toBe(200);
+    expect(page.text).toContain("Cannot sign in on my phone");
     for (const action of ["/edit", "/archive", "/delete", "/take", "/entries", "/status"]) {
       expect(page.text, action).not.toContain(`/tickets/SUP-1${action}`);
     }

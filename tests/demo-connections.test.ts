@@ -9,7 +9,7 @@ import { DEV_COOKIE } from "../src/server/actor.js";
 import { DEMO_CONNECTIONS_PER_HOUR } from "../src/server/app.js";
 import { DEMO_CONNECTION_LIMIT } from "../src/server/connections/service.js";
 import { seedDemo } from "../src/server/demo.js";
-import { createTicketService } from "../src/server/tickets/service.js";
+import { createTicketService, LIST_PAGE_SIZE } from "../src/server/tickets/service.js";
 import { buildTestApp, closeServers, listenLocally, visitor } from "./helpers.js";
 
 // A visitor's own demo connection: what it is given, and that it never reads what another
@@ -134,6 +134,19 @@ describe("what a demo connection sees", () => {
     ).toBe(404);
   });
 
+  it("the sample made for assistants, after a full page of newer tickets", async () => {
+    const { app, db } = buildDemo();
+    const now = new Date().toISOString();
+    const insert = db.prepare(
+      "INSERT INTO tickets (title, description, created_by, created_at, updated_at) VALUES ('t', 'd', 'demo-customer', ?, ?)",
+    );
+    for (let i = 0; i < LIST_PAGE_SIZE; i++) insert.run(now, now);
+    const key = await getConnection(app);
+    const list = await api(app, key).get("/api/tickets");
+    expect(list.body.map((t: { key: string }) => t.key)).toEqual(["SUP-4"]);
+    expect(list.headers.link).toBeUndefined();
+  });
+
   it("the sample text as first written, whatever a visitor changed it to", async () => {
     const { app } = buildDemo();
     const original = (await asDemo(app, "demo-team").get("/api/tickets/SUP-4")).body;
@@ -209,6 +222,42 @@ describe("the page that shows a demo key", () => {
     );
     expect(html.querySelector("a[href='/sign-in']")?.text).toBe("Back to the welcome page");
     expect(html.querySelector("main a[href='/connections']")).toBeNull();
+  });
+
+  /** A production build of the demo, as the README's Docker command runs it, with these settings. */
+  function productionDemo(env: Record<string, string> = {}) {
+    const built = buildTestApp({
+      NODE_ENV: "production",
+      DEMO: "on",
+      BETTER_AUTH_SECRET: "",
+      BETTER_AUTH_URL: "",
+      GITHUB_CLIENT_ID: "",
+      GITHUB_CLIENT_SECRET: "",
+      ...env,
+    });
+    seedDemo(createTicketService(built.db, built.config.ticketPrefix));
+    return built.app;
+  }
+
+  it("gives the address the request came to, on a production build with no public address", async () => {
+    const app = productionDemo();
+    const page = (await visitor(app).post("/demo/connection")).text;
+    expect(page).toMatch(/proofdesk http:\/\/127\.0\.0\.1:\d+\/mcp /);
+    expect(page).not.toContain("https://127.0.0.1");
+    // The guide at GET /api gives the same address.
+    const guide = JSON.stringify((await request(app).get("/api")).body);
+    expect(guide).toMatch(/http:\/\/127\.0\.0\.1:\d+\/api\/tickets/);
+    expect(guide).not.toContain("https://127.0.0.1");
+  });
+
+  it("gives the public address when one is set, on the page and in the guide", async () => {
+    const app = productionDemo({ PUBLIC_URL: "https://desk.example/" });
+    const page = (await visitor(app).post("/demo/connection")).text;
+    expect(page).toContain("proofdesk https://desk.example/mcp ");
+    expect(page).toContain('"https://desk.example/api/tickets"');
+    const guide = JSON.stringify((await request(app).get("/api")).body);
+    expect(guide).toContain("https://desk.example/api/tickets");
+    expect(guide).not.toContain("127.0.0.1");
   });
 });
 

@@ -30,7 +30,6 @@ import {
 // arrives as "unknown" and is checked here, so no caller can skip the check. Every function
 // takes the actor and asks can() in permissions.ts, so no caller can skip that either.
 
-/** What callers see. The bare database number is replaced by the public key. */
 /**
  * What "done" means on a ticket, first in every ticket the service returns, so an agent meets
  * it before anything else. The customer's words are data, not instructions.
@@ -60,6 +59,7 @@ export type Ask = {
   evidence_ids: number[];
 };
 
+/** What callers see. The bare database number is replaced by the public key. */
 export type Ticket = {
   done_when: DoneWhen;
   waiting_on: WaitingOn;
@@ -144,10 +144,10 @@ export type TicketEvidence = {
 /** Where the demo's seeding record is kept in app_meta. */
 export const DEMO_SEED_KEY = "demo_seeded";
 
-/** What seeding wrote: the rows, and each sample ticket's text as first written. */
 /** What an assistant last said it needs from the team, as a label and its words. */
 export type AssistantSignal = { label: "Assistant blocked:" | "Review requested by"; text: string };
 
+/** What seeding wrote: the rows, and each sample ticket's text as first written. */
 export type DemoSeed = {
   tickets: number[];
   /** The sample made for assistants: on the demo, it is handed to every visitor's connection. */
@@ -248,10 +248,6 @@ function pinPrefix(db: Db, prefix: string): void {
   }
 }
 
-/**
- * What an agent's history entry records beside its id: which connection, who issued it, and
- * the scopes it held at that moment. Null for a person.
- */
 /** The answer to anyone who tries to resolve a ticket by changing its status. */
 function needsCustomer(key: string): HttpError {
   return new HttpError(
@@ -261,6 +257,10 @@ function needsCustomer(key: string): HttpError {
   );
 }
 
+/**
+ * What an agent's history entry records beside its id: which connection, who issued it, and
+ * the scopes it held at that moment. Null for a person.
+ */
 function agentContext(actor: Actor): object | null {
   if (actor.kind !== "agent" || actor.connection === undefined) return null;
   return {
@@ -302,8 +302,6 @@ export function createTicketService(
   const teamMembers = options.teamMembers ?? (() => []);
   pinPrefix(db, prefix);
 
-  // Every public field is named here. A column added to the table later stays private
-  // until someone adds it to this list on purpose.
   // ---- The demo's view for agents -------------------------------------------------------
   // On the public demo, many visitors share the sample tickets, and each may connect their own
   // assistant. An assistant must never read text another visitor wrote, or one visitor could
@@ -378,6 +376,8 @@ export function createTicketService(
     return handoff === undefined ? row.agent_id : String(handoff.connection_id);
   }
 
+  // Every public field is named here. A column added to the table later stays private
+  // until someone adds it to this list on purpose.
   function toTicket(row: repository.TicketRow, actor?: Actor): Ticket {
     if (isDemoAgent(actor)) {
       // The sample text as first written, whatever a visitor has changed since.
@@ -666,7 +666,8 @@ export function createTicketService(
    * the agreed check or the change link. Call it inside the transaction of that change.
    */
   function withdrawQuestion(before: repository.TicketRow): void {
-    if (before.ready_at !== null) repository.clearReady(db, before.id);
+    // Each of those changes writes its own updated_at right after.
+    if (before.ready_at !== null) repository.clearReady(db, before.id, new Date().toISOString());
   }
 
   /** Throws 409 when a budget is used up. Counts only when there is a budget to count against. */
@@ -734,21 +735,26 @@ export function createTicketService(
      */
     listTickets(filter: TicketListFilter, actor: Actor, pageNumber = 1): Ticket[] {
       const page = { limit: LIST_PAGE_SIZE, offset: (pageNumber - 1) * LIST_PAGE_SIZE };
-      const view = (rows: repository.TicketRow[]) => {
-        if (isHandedAgent(actor)) {
-          const handed = repository.handedTicketIds(db, actor.connection!.id);
-          return rows.filter((row) => handed.includes(row.id)).map((row) => toTicket(row, actor));
-        }
-        if (!isDemoAgent(actor)) return rows.map((row) => toTicket(row, actor));
-        const seeded = demoTicketIds();
-        return rows.filter((row) => seeded.includes(row.id)).map((row) => toTicket(row, actor));
-      };
+      const view = (rows: repository.TicketRow[]) => rows.map((row) => toTicket(row, actor));
       if (filter === "archived") {
         requirePermission(actor, "list_archived");
         return view(repository.listArchivedTickets(db, page));
       }
       const status = filter === "all" ? null : filter;
-      if (can(actor, "list_all")) return view(repository.listAllTickets(db, status, page));
+      if (can(actor, "list_all")) {
+        // An assistant lists only its own tickets: the ones handed to its connection, or on
+        // the demo the sample made for assistants. They are picked in SQL before the page is
+        // cut, so newer tickets never push them off a page.
+        if (isHandedAgent(actor)) {
+          const handed = repository.handedTicketIds(db, actor.connection!.id);
+          return view(repository.listTicketsAmong(db, handed, status, page));
+        }
+        if (isDemoAgent(actor)) {
+          return view(repository.listTicketsAmong(db, demoTicketIds(), status, page));
+        }
+        return view(repository.listAllTickets(db, status, page));
+      }
+      // An assistant files no tickets, so for one this list is empty.
       return view(repository.listTicketsFiledBy(db, actor.id, status, page));
     },
 
@@ -1084,7 +1090,7 @@ export function createTicketService(
         }
         if (before.ready_at === null) return before; // nothing is open
         const now = new Date().toISOString();
-        repository.clearReady(db, before.id);
+        repository.clearReady(db, before.id, now);
         logEvent({
           ticketId: before.id,
           actor: actor.id,

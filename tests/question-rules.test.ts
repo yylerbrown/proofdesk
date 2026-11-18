@@ -67,6 +67,17 @@ describe("asking again", () => {
     expect(history).toContain("Question to the customer withdrawn");
   });
 
+  it("withdrawing answers with the ticket as it was saved, its new time included", async () => {
+    const { app } = buildTestApp();
+    const first = await asked(app);
+    const res = await as(app, teamActor).post("/api/tickets/SUP-1/withdraw-question");
+    const saved = (await as(app, teamActor).get("/api/tickets/SUP-1")).body;
+    expect(res.body.ready_at).toBeNull();
+    expect(res.body.updated_at).toBe(saved.updated_at);
+    // Not earlier than the ask (the two can fall in the same millisecond).
+    expect(saved.updated_at >= first.updated_at).toBe(true);
+  });
+
   it("offers the owner Withdraw the question on the page, and nobody else", async () => {
     const { app } = buildTestApp();
     await asked(app);

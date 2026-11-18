@@ -1,8 +1,9 @@
 import type { Db } from "../db.js";
 import type { EntryKind, TicketStatus } from "./schemas.js";
 
-// All SQL for tickets lives in this file. Every statement is a fixed string with ?
-// placeholders, so no user input is ever joined into SQL text.
+// The SQL for tickets lives in this file, except one query in the ticket service that records
+// what demo seeding wrote. Every statement here is a fixed string with ? placeholders, so no
+// user input is ever joined into SQL text.
 
 export type TicketRow = {
   id: number;
@@ -101,6 +102,27 @@ export function listAllTickets(db: Db, status: TicketStatus | null, page: Page):
        ORDER BY status = 'resolved', id DESC LIMIT @limit OFFSET @offset`,
     )
     .all({ status, ...page }) as TicketRow[];
+}
+
+/**
+ * The tickets among these ids that are not archived, in the same order as above: what an
+ * assistant may list. The ids are applied before the page is cut, so a page holds as many of
+ * them as fit, however many other tickets are newer.
+ */
+export function listTicketsAmong(
+  db: Db,
+  ids: number[],
+  status: TicketStatus | null,
+  page: Page,
+): TicketRow[] {
+  return db
+    .prepare(
+      `SELECT * FROM tickets
+       WHERE id IN (SELECT value FROM json_each(@ids)) AND archived_at IS NULL
+         AND (@status IS NULL OR status = @status)
+       ORDER BY status = 'resolved', id DESC LIMIT @limit OFFSET @offset`,
+    )
+    .all({ ids: JSON.stringify(ids), status, ...page }) as TicketRow[];
 }
 
 /**
@@ -204,7 +226,6 @@ export function updateChangeUrl(db: Db, id: number, changeUrl: string, now: stri
   );
 }
 
-/** Starts the wait for the customer's answer, with the page to try and a fresh token. */
 /** What the owner records when asking the customer. */
 export type AskRecord = {
   tryUrl: string;
@@ -214,6 +235,7 @@ export type AskRecord = {
   evidenceIds: number[];
 };
 
+/** Starts the wait for the customer's answer, with the page to try and a fresh token. */
 export function updateReady(db: Db, id: number, ask: AskRecord, token: string, now: string): void {
   db.prepare(
     `UPDATE tickets SET try_url = ?, ready_tried = ?, ready_result = ?, ready_response = ?,
@@ -232,8 +254,10 @@ export function updateReady(db: Db, id: number, ask: AskRecord, token: string, n
 }
 
 /** Withdraws the question "Did this fix it?", because what it was about has changed. */
-export function clearReady(db: Db, id: number): void {
-  db.prepare("UPDATE tickets SET ready_at = NULL, ready_token = NULL WHERE id = ?").run(id);
+export function clearReady(db: Db, id: number, now: string): void {
+  db.prepare(
+    "UPDATE tickets SET ready_at = NULL, ready_token = NULL, updated_at = ? WHERE id = ?",
+  ).run(now, id);
 }
 
 export function insertEvent(db: Db, event: NewEvent): void {
