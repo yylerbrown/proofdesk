@@ -48,7 +48,12 @@ export function seedDemo(service: TicketService): void {
   );
 
   service.createTicket(
-    { title: "Test ticket, please ignore", description: "Filed by mistake." },
+    {
+      title: "Password reset email never arrives",
+      description:
+        "I asked for a password reset three times this morning. Nothing in my inbox or in spam.",
+      fix_check: "A reset email arrives within a minute of asking",
+    },
     customer,
   );
 

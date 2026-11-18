@@ -95,3 +95,40 @@ describe("the purpose of a database", () => {
     });
   });
 });
+
+describe("the purpose is checked before migrating", () => {
+  it("refuses a real database to a demo server without applying any pending migration", async () => {
+    const { openAndMigrate } = await import("../src/server/start.js");
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "support-desk-order-"));
+    dirs.push(dir);
+    const file = path.join(dir, "app.db");
+    const realConfig = loadConfig({ DEV_SIGN_IN: "on", DATABASE_PATH: file });
+    const first = openAndMigrate(realConfig);
+    checkDatabasePurpose(first.db, false);
+    // Pretend the newest migration is still pending on this real database.
+    const names = first.db.prepare("SELECT name FROM schema_migrations ORDER BY name").all() as {
+      name: string;
+    }[];
+    const newest = names.at(-1)!.name;
+    first.db.prepare("DELETE FROM schema_migrations WHERE name = ?").run(newest);
+    first.db.close();
+
+    const demoConfig = loadConfig({ DEMO: "on", DATABASE_PATH: file });
+    expect(() => openAndMigrate(demoConfig)).toThrow(/This database is for the real tickets/);
+    const after = openDatabase(file);
+    dbs.push(after);
+    const pending = after.prepare("SELECT 1 FROM schema_migrations WHERE name = ?").get(newest);
+    expect(pending).toBeUndefined();
+  });
+
+  it("lets a new file through, to be labelled after its migrations", async () => {
+    const { openAndMigrate } = await import("../src/server/start.js");
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "support-desk-order-"));
+    dirs.push(dir);
+    const { db, applied } = openAndMigrate(
+      loadConfig({ DEMO: "on", DATABASE_PATH: path.join(dir, "new.db") }),
+    );
+    dbs.push(db);
+    expect(applied.length).toBeGreaterThan(0);
+  });
+});

@@ -1196,6 +1196,23 @@ textarea:focus {
   }
 }
 
+/*
+ * The ticket list on a narrow window: drop the less important columns rather than cut the last
+ * one off. The owner and who it waits on are on each ticket's own page.
+ */
+@media (max-width: 860px) {
+  table.tickets th:nth-child(4),
+  table.tickets td:nth-child(4) {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  table.tickets th:nth-child(5),
+  table.tickets td:nth-child(5) {
+    display: none;
+  }
+}
+
 /* The test spec: collapsed by default, its scenarios numbered and plain. */
 .spec summary small {
   font-weight: normal;
