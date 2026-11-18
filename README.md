@@ -251,7 +251,7 @@ entry in the same transaction, and database triggers refuse to change it.
 
 | Command                | What it runs                                                                                                                                                                                                                                  |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm test`             | Every unit and route test with vitest: about 940, against a real SQLite file and the real app.                                                                                                                                                |
+| `npm test`             | Every unit and route test with vitest, over 1,000 of them, against a real SQLite file and the real app.                                                                                                                                       |
 | `npm run test:browser` | Real-browser tests with Playwright: one journey where a customer files, the team works it, No then Yes, and a second customer is refused; then the keyboard, menus and phone layout. Run `npx playwright install chromium webkit` once first. |
 | `npm run typecheck`    | TypeScript, strict.                                                                                                                                                                                                                           |
 | `npm run lint`         | ESLint.                                                                                                                                                                                                                                       |
@@ -295,7 +295,7 @@ code. The specification ([`docs/SPEC.md`](docs/SPEC.md)), the history of every s
   decisions recorded against each piece of evidence, an immutable record of each question asked
   beyond its history entry, documentation generated from conditional rules, and upgrading
   tickets resolved before the customer's Yes was required.
-- **Design debt** in the code, such as the 1,900-line ticket service, is listed with the plan for
+- **Design debt** in the code, such as a ticket service of over 2,000 lines, is listed with the plan for
   each item in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#design-debt).
 
 ## More

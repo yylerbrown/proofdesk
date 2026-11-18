@@ -51,7 +51,7 @@ once work has started and the change is linked.
 
 Shortcuts in the code that were kept for now, each with the plan for it.
 
-- **One large ticket service.** `src/server/tickets/service.ts` is about 1,900 lines doing about
+- **One large ticket service.** `src/server/tickets/service.ts` is over 2,000 lines doing about
   eight jobs: workflow, conversation, evidence, specs, retries, demo seeding, demo visibility and
   page helpers. It will be split behind the same exports, with the test suite as the safety net.
 - **Visibility is decided inline.** Who sees which rows (the customer, a handed agent, a demo
