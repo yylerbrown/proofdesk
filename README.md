@@ -1,9 +1,12 @@
-# Support Desk
+# Proofdesk
 
-Support Desk will be a customer support ticketing system. This repository holds only the
-project skeleton plus the tickets core: an Express server written in TypeScript, a SQLite
-database with a small migration runner, a JSON API and pages to submit tickets, list them
-and change their status, tests, a Dockerfile and a CI workflow. There is no sign-in yet.
+Proofdesk is a customer support ticketing system. A customer files a ticket and says how they
+will know it is fixed; the team works on it in the open, with internal notes beside the replies;
+and only the customer marks it resolved, by answering "Did this fix it?". It is an Express
+server in TypeScript with a SQLite database, server-rendered pages, GitHub sign-in, a JSON API,
+tests, a Dockerfile and a CI workflow.
+
+The whole look (colours and fonts) is in one file, `public/theme.css`; replace it to change it.
 
 ## Run with Docker
 

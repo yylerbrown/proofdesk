@@ -1,0 +1,92 @@
+/*
+ * The look of Proofdesk: every colour and font choice, in one file. It is loaded after the
+ * ready-made stylesheet (Pico CSS) and before site.css, which uses only these names. To change
+ * the whole look, replace this file.
+ */
+
+/* Inter, served from this site (the @fontsource/inter package), Latin letters only. */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/assets/inter/inter-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/assets/inter/inter-latin-600-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/assets/inter/inter-latin-700-normal.woff2") format("woff2");
+}
+
+:root[data-theme="light"] {
+  /* The palette. The lime accent is never used for text on a light background. */
+  --pd-ink: #272b27; /* header, primary buttons, headings */
+  --pd-ink-deep: #1f271b; /* hover and pressed */
+  --pd-paper: #f8f6f2; /* page background */
+  --pd-line: #eae3d7; /* borders and quiet panels */
+  --pd-accent: #d1e935; /* focus rings, the active filter, the mark */
+  --pd-text: #1b1d1a; /* body text */
+  --pd-muted: #565a53; /* secondary text */
+  --pd-on-ink: #f8f6f2; /* text on the dark olive */
+  --pd-danger: #a32a1e; /* archive and permanent delete */
+  --pd-on-danger: #ffffff;
+
+  /* Status badges: neutral. The word is always there; none of them is lime. */
+  --pd-badge-new-bg: var(--pd-line);
+  --pd-badge-new-text: var(--pd-ink);
+  --pd-badge-progress-bg: var(--pd-ink);
+  --pd-badge-progress-text: var(--pd-on-ink);
+  --pd-badge-resolved-bg: var(--pd-paper);
+  --pd-badge-resolved-text: var(--pd-ink);
+
+  /* The ready-made stylesheet's own names, set from the palette. */
+  --pico-font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --pico-background-color: var(--pd-paper);
+  --pico-color: var(--pd-text);
+  --pico-muted-color: var(--pd-muted);
+  --pico-muted-border-color: var(--pd-line);
+  --pico-h1-color: var(--pd-ink);
+  --pico-h2-color: var(--pd-ink);
+  --pico-h3-color: var(--pd-ink);
+  --pico-h4-color: var(--pd-ink);
+  --pico-primary: var(--pd-ink);
+  --pico-primary-background: var(--pd-ink);
+  --pico-primary-border: var(--pd-ink);
+  --pico-primary-underline: rgba(39, 43, 39, 0.5);
+  --pico-primary-hover: var(--pd-ink-deep);
+  --pico-primary-hover-background: var(--pd-ink-deep);
+  --pico-primary-hover-border: var(--pd-ink-deep);
+  --pico-primary-hover-underline: var(--pd-ink-deep);
+  --pico-primary-focus: var(--pd-accent);
+  --pico-primary-inverse: var(--pd-on-ink);
+  --pico-secondary: var(--pd-muted);
+  --pico-secondary-background: var(--pd-muted);
+  --pico-secondary-border: var(--pd-muted);
+  --pico-secondary-hover: var(--pd-ink);
+  --pico-secondary-hover-background: var(--pd-ink);
+  --pico-secondary-hover-border: var(--pd-ink);
+  --pico-secondary-inverse: var(--pd-on-ink);
+  --pico-form-element-background-color: #ffffff;
+  --pico-form-element-border-color: #cfc6b6;
+  --pico-form-element-focus-color: var(--pd-ink);
+  --pico-card-background-color: #ffffff;
+  --pico-card-sectioning-background-color: var(--pd-paper);
+  --pico-card-box-shadow: 0 0 0 1px var(--pd-line);
+  --pico-box-shadow: none;
+  --pico-mark-background-color: var(--pd-line);
+  --pico-mark-color: var(--pd-text);
+  --pico-ins-color: var(--pd-ink);
+  --pico-del-color: var(--pd-danger);
+  --pico-table-border-color: var(--pd-line);
+  --pico-spacing: 1.1rem;
+  --pico-border-radius: 0.375rem;
+}
