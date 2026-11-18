@@ -126,15 +126,18 @@ export function createConnectionService(db: Db) {
     /**
      * A visitor's own short-lived connection to the public demo. No admin issues it: anyone
      * on the demo's welcome page may ask. It sees only the sample tickets and what it writes
-     * itself, it expires within a day, and only so many may be live at once.
+     * itself, it expires within a day, and only so many may be live at once. At that cap the
+     * live one used longest ago is ended to make room, so a few addresses holding every
+     * connection cannot turn the next visitor away.
      */
     issueDemo() {
       const now = new Date();
-      if (repository.countLiveDemo(db, now.toISOString()) >= DEMO_CONNECTION_LIMIT) {
-        throw new HttpError(
-          409,
-          "budget_full",
-          "The demo has as many assistant connections as it can hold. Try again later.",
+      const live = repository.countLiveDemo(db, now.toISOString());
+      if (live >= DEMO_CONNECTION_LIMIT) {
+        repository.revokeLeastRecentlyUsedDemo(
+          db,
+          now.toISOString(),
+          live - DEMO_CONNECTION_LIMIT + 1,
         );
       }
       const expiresAt = new Date(now.getTime() + DEMO_CONNECTION_HOURS * 3600 * 1000);

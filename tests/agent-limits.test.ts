@@ -4,10 +4,15 @@ import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/cli
 import type { Express } from "express";
 import { parse } from "node-html-parser";
 import request from "supertest";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  createConnectionService,
+  DEMO_CONNECTION_LIMIT,
+} from "../src/server/connections/service.js";
 import { admin, buildTestApp, closeServers, handToAgent, listenLocally } from "./helpers.js";
 
-// What an agent's key can make the server store, whatever it sends, on both doors.
+// What an agent's key can make the server store, whatever it sends, on both doors, and how
+// many demo connections a few visitors can hold.
 
 const valid = { title: "Printer jams", description: "It jams on page two.", fix_check: "Prints" };
 // A connection's activity trail keeps its latest 1,000 requests.
@@ -109,5 +114,35 @@ describe("an agent's activity trail", () => {
     const client = await connect(app, await issue(app, ["read_tickets"]));
     const tool = (await client.listTools()).tools.find((t) => t.name === "get_ticket")!;
     expect(tool.inputSchema.properties?.key).toMatchObject({ type: "string", maxLength: 30 });
+  });
+});
+
+describe("the demo's connections at its cap", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("make room by ending the one used longest ago, so a new visitor is never turned away", () => {
+    const { db } = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
+    const connections = createConnectionService(db);
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-18T10:00:00.000Z"));
+    const keys = Array.from({ length: DEMO_CONNECTION_LIMIT }, () => connections.issueDemo().key);
+    // Every connection is used later except the second, so the first, though issued first,
+    // is not the one used longest ago.
+    vi.setSystemTime(new Date("2026-11-18T11:00:00.000Z"));
+    keys.filter((_, i) => i !== 1).forEach((key) => connections.authenticate(key));
+
+    vi.setSystemTime(new Date("2026-11-18T12:00:00.000Z"));
+    const newest = connections.issueDemo().key;
+    expect(connections.authenticate(newest)).not.toBeNull();
+    expect(connections.authenticate(keys[1]!)).toBeNull();
+    expect(connections.authenticate(keys[0]!)).not.toBeNull();
+    const live = db
+      .prepare(
+        "SELECT COUNT(*) AS n FROM agent_connections WHERE demo = 1 AND revoked_at IS NULL AND expires_at > ?",
+      )
+      .get(new Date().toISOString()) as { n: number };
+    expect(live.n).toBe(DEMO_CONNECTION_LIMIT);
   });
 });
