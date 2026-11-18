@@ -291,3 +291,11 @@ table.stages {
   margin-bottom: 0.25rem;
   font-size: 0.875rem;
 }
+
+/* The test spec: collapsed by default, its scenarios numbered and plain. */
+.spec summary small {
+  font-weight: normal;
+}
+.scenarios li p {
+  margin-bottom: 0.25rem;
+}

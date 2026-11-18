@@ -14,6 +14,7 @@ export const SCOPE_LABELS: Record<(typeof AGENT_SCOPES)[number], string> = {
   write_notes: "Write internal notes for the team",
   send_replies: "Send replies the customer sees",
   attach_evidence: "Attach evidence that the check was met",
+  propose_specs: "Propose a test spec, which a person accepts or discards",
   link_changes: "Link a code change to a ticket",
   change_status: "Change the status, never to resolved",
 };

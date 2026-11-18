@@ -157,6 +157,7 @@ const BODIES: Record<string, object> = {
   mark_ready: { try_url: "https://example.com/try" },
   answer: { fixed: "yes", ready_token: "x" },
   delete_ticket: { confirm: "SUP-1" },
+  decide_spec: { decision: "accept" },
 };
 
 describe("the capability table on the JSON door", () => {
@@ -171,6 +172,7 @@ describe("the capability table on the JSON door", () => {
         "answer",
         "archive_ticket",
         "create_ticket",
+        "decide_spec",
         "delete_ticket",
         "edit_ticket",
         "mark_ready",

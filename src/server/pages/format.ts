@@ -120,6 +120,9 @@ export function describeEvent(event: TicketEvent): string {
   }
   if (event.type === "reply_added") return "Reply added";
   if (event.type === "evidence_added") return "Evidence attached";
+  if (event.type === "spec_proposed") return "Test spec proposed";
+  if (event.type === "spec_accepted") return "Test spec accepted";
+  if (event.type === "spec_discarded") return "Test spec discarded";
   if (event.type === "note_added") return "Internal note added";
   if (event.type === "archived") return "Archived";
   if (event.type === "restored") return "Restored";

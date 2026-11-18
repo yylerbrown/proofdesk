@@ -43,6 +43,7 @@ const ALL = [
   "0014_agent_connections.sql",
   "0015_ticket_evidence.sql",
   "0016_idempotency_keys.sql",
+  "0017_ticket_specs.sql",
 ];
 
 describe("runMigrations", () => {

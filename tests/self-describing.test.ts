@@ -124,6 +124,23 @@ describe("real answers", () => {
       await admin(app).post(`${t}/evidence`).send({ kind: "note", summary: "Seen" }),
     );
     expectShape("list_evidence", await admin(app).get(`${t}/evidence`));
+    const spec = {
+      summary: "Printing works.",
+      scenarios: [
+        { title: "Ten pages", given: "paper", when: "ten pages print", then: "none jam" },
+      ],
+    };
+    expectShape("propose_spec", await admin(app).post(`${t}/spec`).send(spec));
+    // A ticket read with a spec in it, and evidence naming its scenario.
+    expectShape("get_ticket", await admin(app).get(t));
+    expectShape(
+      "add_evidence",
+      await admin(app).post(`${t}/evidence`).send({ kind: "test", summary: "Ran", scenario: 1 }),
+    );
+    expectShape(
+      "decide_spec",
+      await admin(app).post(`${t}/spec/decision`).send({ decision: "accept" }),
+    );
     expectShape(
       "request_verification",
       await admin(app).post(`${t}/verification-request`).send({ message: "Ready" }),
