@@ -27,6 +27,19 @@ export class ValidationError extends HttpError {
   }
 }
 
+/** What the demo's read-only admin preview is told when it tries to change something. */
+export const READ_ONLY_REFUSAL =
+  "The admin preview is read-only. Use Switch role at the top of the page to act as the customer or the team.";
+
+/**
+ * The 403 for an action this person may not do. The demo's read-only admin preview is told
+ * why, and how to try the action, instead of a bare refusal.
+ */
+export function forbidden(actor: { readOnly?: boolean }): HttpError {
+  const message = actor.readOnly === true ? READ_ONLY_REFUSAL : "You are not allowed to do that.";
+  return new HttpError(403, "forbidden", message);
+}
+
 /** The demo was not seeded with its assistant sample, so assistant connections are off. */
 export function demoNotReady(): HttpError {
   return new HttpError(
@@ -71,6 +84,8 @@ const HINTS: Record<string, string> = {
     "The customer confirmed this fix with their Yes, so only they can reopen it. Reply on the ticket if it needs more work.",
   cannot_return_to_new: "Started work stays in progress. Hand the ticket to someone else instead.",
   not_owner: "Only the ticket's owner can do this. Ask them, or have it handed to you.",
+  no_owner:
+    "Nobody owns this ticket, so there is nothing to release. Take it (POST .../take) to work on it.",
   already_owned: "Someone already owns this ticket. Ask them to hand it to you.",
   not_new: "This ticket has already started.",
   not_resolved: "The ticket is still open; there is nothing to reopen.",

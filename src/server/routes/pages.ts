@@ -1,10 +1,11 @@
 import { Router, type Request, type RequestHandler, type Response } from "express";
 import type { Actor } from "../actor.js";
 import { DEMO_ACTORS, signedIn } from "../actor.js";
-import { HttpError, ValidationError } from "../errors.js";
+import { forbidden, ValidationError } from "../errors.js";
 import { can } from "../permissions.js";
 import {
   confirmedAt,
+  customerSaysNotFixed,
   describeActor,
   describeEvent,
   formatTime,
@@ -13,7 +14,13 @@ import {
   reportFields,
   waitingOn,
 } from "../pages/format.js";
-import { fileOnce, newFormId, readFormId, sameText, ticketFiledWith } from "../pages/form-id.js";
+import {
+  fileOnce,
+  newFormId,
+  readFormId,
+  formMatchesTicket,
+  ticketFiledWith,
+} from "../pages/form-id.js";
 import { readListPageQuery } from "../pages/list-query.js";
 import { rememberSaved, takeProblem, takeSaved, type SavedKey } from "../pages/saved.js";
 import { RESOLVE_REASON_LABELS, TICKET_STATUSES } from "../tickets/schemas.js";
@@ -303,6 +310,7 @@ export function pagesRouter(service: TicketService): Router {
       entries,
       history,
       confirmed: confirmedAt(ticket, events),
+      notFixed: customerSaysNotFixed(ticket, events),
       evidence,
       specPanel,
       specPrompt,
@@ -464,7 +472,7 @@ export function pagesRouter(service: TicketService): Router {
         // 303 makes the browser fetch the ticket page with GET, so a refresh cannot file it twice.
         rememberSaved(res, "filed");
         res.redirect(303, `/tickets/${ticket.key}`);
-      } else if (sameText(ticket, values)) {
+      } else if (formMatchesTicket(ticket, values)) {
         // The same form sent twice, for example after Back: open the ticket it filed.
         rememberSaved(res, "alreadyFiled");
         res.redirect(303, `/tickets/${ticket.key}`);
@@ -567,7 +575,7 @@ export function pagesRouter(service: TicketService): Router {
       return;
     }
     if (!service.allowedActions(ticket, actor).archive) {
-      throw new HttpError(403, "forbidden", "You are not allowed to do that.");
+      throw forbidden(actor);
     }
     res.render("ticket-archive", {
       title: `Archive ${ticket.key}`,
@@ -589,7 +597,7 @@ export function pagesRouter(service: TicketService): Router {
     const actor = signedIn(req);
     const ticket = service.getTicket(req.params.key, actor);
     if (!service.allowedActions(ticket, actor).delete) {
-      throw new HttpError(403, "forbidden", "You are not allowed to do that.");
+      throw forbidden(actor);
     }
     res.render("ticket-delete", { title: `Delete ${ticket.key}`, ticket, error: null });
   });

@@ -67,18 +67,19 @@
     with the panel between the description and the conversation. %>
 <div class="ticket-layout">
 <div class="ticket-summary">
-<%# The customer said it is not fixed: shown first, until the team asks them again. %>
-<% if (ticket.customer_answer && !ticket.customer_answer.fixed && ticket.ready_at === null && ticket.status !== "resolved") { %>
+<%# The customer said it is not fixed, with a No or by reopening it: shown first, until the team
+    asks them again. Their latest word is the one shown. %>
+<% if (notFixed) { %>
 <article class="customer-said-no" id="customer-said-no">
   <% if (viewerRole === "customer") { %>
-  <h2>You said it is not fixed</h2>
+  <h2><%= notFixed.reopened ? "You reopened it" : "You said it is not fixed" %></h2>
   <% } else { %>
-  <h2>The customer says it is not fixed</h2>
+  <h2><%= notFixed.reopened ? "The customer reopened it" : "The customer says it is not fixed" %></h2>
   <% } %>
-  <% if (ticket.customer_answer.comment) { %>
-  <blockquote class="user-text"><%= ticket.customer_answer.comment %></blockquote>
+  <% if (notFixed.words) { %>
+  <blockquote class="user-text"><%= notFixed.words %></blockquote>
   <% } %>
-  <p><small>Answered <%- include("time", { iso: ticket.customer_answer.at }) %>.</small></p>
+  <p><small><%= notFixed.reopened ? "Reopened" : "Answered" %> <%- include("time", { iso: notFixed.at }) %>.</small></p>
   <% if (viewerRole === "customer") { %>
   <p>The team has your words. You will be asked again when they think it is fixed.</p>
   <% } else { %>
@@ -263,19 +264,25 @@
     <form method="post" action="/tickets/<%= ticket.key %>/resolve">
       <label>
         Reason
+        <%# No reason is chosen until the person picks one, so a stray press records nothing. %>
         <select name="reason" required <%= focusIf("resolve", "reason") %>>
+          <option value="" <% if (!resolving.reason) { %>selected<% } %>>Choose a reason</option>
           <% for (const [value, label] of Object.entries(resolveReasons)) { %>
+          <%# While the customer's No or reopening is their standing word, "has not replied"
+              would not be true. The same rule as the callout at the top and the service. %>
+          <% if (value === "fixed_no_reply" && notFixed) continue; %>
           <option value="<%= value %>" <% if (resolving.reason === value) { %>selected<% } %>><%= label %></option>
           <% } %>
         </select>
       </label>
-      <label>
-        Duplicate of (for a duplicate)
-        <input type="text" name="duplicate_of" placeholder="SUP-3" value="<%= resolving.duplicate_of ?? "" %>" <%= focusIf("resolve", "duplicate_of") %> />
+      <%# The stylesheet shows each of these only for the reasons that use it. %>
+      <label class="resolve-duplicate">
+        Duplicate of
+        <input type="text" name="duplicate_of" placeholder="SUP-3" maxlength="20" value="<%= resolving.duplicate_of ?? "" %>" <%= focusIf("resolve", "duplicate_of") %> />
       </label>
-      <label>
+      <label class="resolve-note">
         Note (needed for Other)
-        <textarea name="note" rows="2" <%= focusIf("resolve", "note") %>><%= resolving.note ?? "" %></textarea>
+        <textarea name="note" rows="2" maxlength="500" <%= focusIf("resolve", "note") %>><%= resolving.note ?? "" %></textarea>
       </label>
       <% if (problem?.form === "resolve") { %><p><small id="resolve-error" role="alert"><%= problem.message %></small></p><% } %>
       <p><small>The customer sees your reason and can reopen it.</small></p>
@@ -550,8 +557,9 @@
   <% if (entry.error) { %><small id="body-error"><%= entry.error %></small><% } %>
   <button type="submit" class="compact">Send</button>
 </form>
-<%# A few common replies for the team, as plain words: they fill the box, or send as they are. %>
-<% if (allowed.note) { %>
+<%# A few common replies for the team, as plain words: they fill the box, or send as they are.
+    They suit an open ticket, so a resolved one does not offer them. %>
+<% if (allowed.note && ticket.status !== "resolved") { %>
 <div class="quick-answers" role="group" aria-label="Quick replies">
   <% for (const words of ["Thanks, we can reproduce this.", "Can you send a screenshot?", "Which browser and device are you using?"]) { %>
   <form method="post" action="/tickets/<%= ticket.key %>/entries">
