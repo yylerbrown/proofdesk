@@ -227,6 +227,32 @@ export function insertEvent(db: Db, event: NewEvent): void {
   );
 }
 
+export type IdempotencyRow = {
+  actor: string;
+  key: string;
+  action: string;
+  request_hash: string;
+  response: string;
+  ticket_id: number | null;
+  created_at: string;
+};
+
+export function findIdempotency(db: Db, actor: string, key: string): IdempotencyRow | undefined {
+  return db
+    .prepare("SELECT * FROM idempotency_keys WHERE actor = ? AND key = ?")
+    .get(actor, key) as IdempotencyRow | undefined;
+}
+
+/** Remembers a write's answer, and forgets answers older than a day. */
+export function saveIdempotency(db: Db, row: IdempotencyRow): void {
+  const dayAgo = new Date(Date.parse(row.created_at) - 24 * 3600 * 1000).toISOString();
+  db.prepare("DELETE FROM idempotency_keys WHERE created_at < ?").run(dayAgo);
+  db.prepare(
+    `INSERT INTO idempotency_keys (actor, key, action, request_hash, response, ticket_id, created_at)
+     VALUES (@actor, @key, @action, @request_hash, @response, @ticket_id, @created_at)`,
+  ).run(row);
+}
+
 /** The named human owner of a ticket right now, or null. */
 export function ownerOf(db: Db, ticketId: number): string | null {
   const row = db.prepare("SELECT owner_id FROM tickets WHERE id = ?").get(ticketId) as
@@ -276,7 +302,12 @@ export function insertMeta(db: Db, key: string, value: string): void {
  * column. Permanent deletion removes their rows. A test fails if a table with a ticket_id
  * column is missing here, so a new table cannot be forgotten.
  */
-export const TICKET_TABLES = ["ticket_events", "ticket_entries", "ticket_evidence"];
+export const TICKET_TABLES = [
+  "ticket_events",
+  "ticket_entries",
+  "ticket_evidence",
+  "idempotency_keys",
+];
 
 /**
  * Removes a ticket and every row that belongs to it, and records that it was deleted.

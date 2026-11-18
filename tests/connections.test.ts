@@ -18,8 +18,17 @@ async function issue(app: Express, scopes: string[], name = "Sam's assistant") {
   expect(res.status).toBe(200);
   const key = parse(res.text).querySelector("input.key")?.getAttribute("value");
   expect(key).toMatch(/^pd_[0-9a-f]{8}_/);
+  // One paste connects Claude Code, in the form its documentation gives.
+  // The parser keeps a <pre> as raw text, so the command is read from the HTML.
+  const command = /id="claude-code"><code>([^<]*)<\/code>/.exec(res.text)?.[1];
+  expect(command).toBe(
+    `claude mcp add --transport http proofdesk ${command?.split(" ")[6]} --header "Authorization: Bearer ${key}"`,
+  );
+  expect(command?.split(" ")[6]).toMatch(/^http:\/\/127\.0\.0\.1(:\d+)?\/mcp$/);
   // The example command quotes the address, so a shell does not read its "?" as a pattern.
-  expect(parse(res.text).querySelector("pre.paste")?.text).toMatch(/"http[^"]+\?status=new"/);
+  expect(parse(res.text).querySelectorAll("pre.paste").at(-1)?.text).toMatch(
+    /"http[^"]+\?status=new"/,
+  );
   return key!;
 }
 
@@ -92,7 +101,9 @@ describe("a connection key on the API", () => {
     const { app } = buildTestApp();
     const key = await issue(app, ["read_tickets"]);
     const unknown = `pd_00000000_${"a".repeat(32)}`;
-    for (const bad of ["nonsense", unknown, `${key.slice(0, -1)}x`]) {
+    // One character changed. Not always to "x": the key may already end in "x".
+    const changed = key.slice(0, -1) + (key.endsWith("x") ? "y" : "x");
+    for (const bad of ["nonsense", unknown, changed]) {
       const res = await agent(app, bad).get("/api/tickets");
       expect(res.status, bad).toBe(401);
       expect(res.body.error.code).toBe("invalid_connection_key");
@@ -199,5 +210,16 @@ describe("limits for a connection", () => {
     expect(refused.body.error).toMatchObject({ code: "too_many_requests", retry: true });
     const other = await agent(app, second).send("post", "/api/tickets/SUP-1/entries", note);
     expect(other.status).toBe(201);
+  });
+});
+
+describe("the connections page after a key is used", () => {
+  it("shows when each connection last acted", async () => {
+    const { app } = buildTestApp();
+    const key = await issue(app, ["read_tickets"]);
+    await agent(app, key).get("/api/tickets");
+    const res = await admin(app).get("/connections");
+    expect(res.status).toBe(200);
+    expect(parse(res.text).querySelector("tbody time")?.getAttribute("datetime")).toMatch(/Z$/);
   });
 });

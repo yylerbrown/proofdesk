@@ -38,6 +38,14 @@
   <h2 id="entrance">Development entrance</h2>
   <p>These people are made up. Pick one to act as. This is only offered when the server runs with DEV_SIGN_IN=on, which it refuses to do in production.</p>
   <% } %>
+  <% if (locals.demoAgents) { %>
+  <h3>Connect your own AI assistant</h3>
+  <p>Get a key for your own assistant, for example Claude Code, to work on the sample tickets: read a ticket, check it, attach evidence. It lasts a day and sees only the samples and what it writes itself. Proofdesk makes no AI calls of its own.</p>
+  <form method="post" action="/demo/connection">
+    <button type="submit" class="compact">Get a demo connection</button>
+  </form>
+  <h3>Or look around as</h3>
+  <% } %>
   <ul class="people">
     <% for (const person of people) { %>
     <li>

@@ -2,7 +2,8 @@ import { Router, type Request } from "express";
 import { signedIn } from "../actor.js";
 import type { Config } from "../config.js";
 import { DEFAULT_SCOPES, type ConnectionService } from "../connections/service.js";
-import { ValidationError } from "../errors.js";
+import { HttpError, ValidationError } from "../errors.js";
+import { formatTime } from "../pages/format.js";
 import { AGENT_SCOPES, CAPABILITIES } from "../permissions.js";
 
 // The admin's page for agent connections: issue one, see its key once, revoke it.
@@ -25,13 +26,17 @@ export function siteAddress(config: Config, req: Request): string {
   return `${protocol}://${req.get("host")}`;
 }
 
-export function connectionsRouter(connections: ConnectionService, config: Config): Router {
+export function connectionsRouter(
+  connections: ConnectionService,
+  config: Config,
+  demoReady: () => boolean,
+): Router {
   const router = Router();
   // What is never allowed to an agent, read from the capability table.
   const peopleOnly = Object.entries(CAPABILITIES)
     .filter(([, capability]) => capability.agent === "people_only")
     .map(([action]) => action);
-  const shared = { scopeLabels: SCOPE_LABELS, scopes: AGENT_SCOPES, peopleOnly };
+  const shared = { scopeLabels: SCOPE_LABELS, scopes: AGENT_SCOPES, peopleOnly, formatTime };
 
   function showList(req: Request, res: import("express").Response, status = 200, form = {}) {
     const actor = signedIn(req);
@@ -57,12 +62,35 @@ export function connectionsRouter(connections: ConnectionService, config: Config
         key,
         address: siteAddress(config, req),
         scopeLabels: SCOPE_LABELS,
+        formatTime,
       });
     } catch (err) {
       if (!(err instanceof ValidationError)) throw err;
       const scopes = [req.body?.scopes ?? []].flat();
       showList(req, res, 400, { name: req.body?.name ?? "", scopes, errors: err.fieldErrors });
     }
+  });
+
+  // On the public demo, any visitor may get their own short-lived connection, from the
+  // welcome page, without signing in.
+  router.post("/demo/connection", (req, res) => {
+    if (!config.demo) throw new HttpError(404, "not_found", "There is no page at this address.");
+    if (!demoReady()) {
+      throw new HttpError(
+        503,
+        "demo_not_ready",
+        "Assistant connections are not ready on this demo yet. Please try again later.",
+      );
+    }
+    const { connection, key } = connections.issueDemo();
+    res.render("connection-created", {
+      title: "Your demo connection",
+      connection,
+      key,
+      address: siteAddress(config, req),
+      scopeLabels: SCOPE_LABELS,
+      formatTime,
+    });
   });
 
   router.post("/connections/:id/revoke", (req, res) => {

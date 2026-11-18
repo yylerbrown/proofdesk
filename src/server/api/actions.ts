@@ -1,4 +1,4 @@
-import type { z } from "zod";
+import { z } from "zod";
 import type { Actor } from "../actor.js";
 import type { Action } from "../permissions.js";
 import {
@@ -7,13 +7,23 @@ import {
   answerSchema,
   changeStatusSchema,
   createTicketSchema,
+  cursorFor,
   deleteTicketSchema,
   linkChangeSchema,
   listQuerySchema,
   markReadySchema,
+  pageOf,
+  verificationRequestSchema,
 } from "../tickets/schemas.js";
 import { addEvidenceSchema } from "../tickets/evidence.js";
-import type { TicketService } from "../tickets/service.js";
+import { LIST_PAGE_SIZE, type TicketService } from "../tickets/service.js";
+import {
+  deletedOutput,
+  entryOutput,
+  eventOutput,
+  evidenceOutput,
+  ticketOutput,
+} from "./schemas.js";
 import { parse } from "../validation.js";
 
 // Every action anyone can take on a ticket, in one table. The JSON API's routes are built from
@@ -49,25 +59,32 @@ export type ApiAction = {
   status?: number;
   /** The page form that does the same thing, if there is one. */
   page?: string;
+  /** What a successful answer looks like. A test checks real answers against it. */
+  output: z.ZodType;
+  /** True for a list that comes in pages; its doors add how to get the next page. */
+  paged?: boolean;
   run: (call: Call) => unknown;
 };
 
 export const ACTIONS: ApiAction[] = [
   {
     name: "list_tickets",
+    output: z.array(ticketOutput),
     method: "get",
     path: "/tickets",
     summary:
       "List tickets: open ones newest first, then resolved ones. A customer sees only their own.",
     needs: "read",
     query: listQuerySchema,
+    paged: true,
     run: ({ service, actor, query }) => {
-      const { status, page } = parse(listQuerySchema, query);
-      return service.listTickets(status ?? "all", actor, page ?? 1);
+      const { status, page, cursor } = parse(listQuerySchema, query);
+      return service.listTickets(status ?? "all", actor, cursor ? pageOf(cursor) : (page ?? 1));
     },
   },
   {
     name: "create_ticket",
+    output: ticketOutput,
     method: "post",
     path: "/tickets",
     summary: "File a ticket. fix_check says how the customer will know it is fixed.",
@@ -79,14 +96,16 @@ export const ACTIONS: ApiAction[] = [
   },
   {
     name: "get_ticket",
+    output: ticketOutput,
     method: "get",
     path: "/tickets/:key",
-    summary: "One ticket.",
+    summary: "One ticket, led by done_when: what the customer will accept as fixed.",
     needs: "read",
     run: ({ service, actor, key }) => service.getTicket(key, actor),
   },
   {
     name: "change_status",
+    output: ticketOutput,
     method: "patch",
     path: "/tickets/:key",
     summary:
@@ -98,6 +117,7 @@ export const ACTIONS: ApiAction[] = [
   },
   {
     name: "edit_ticket",
+    output: ticketOutput,
     method: "put",
     path: "/tickets/:key",
     summary: "Replace the text of a ticket.",
@@ -108,6 +128,7 @@ export const ACTIONS: ApiAction[] = [
   },
   {
     name: "agree_check",
+    output: ticketOutput,
     method: "put",
     path: "/tickets/:key/agreed-check",
     summary: "Set the agreed version of the customer's check. Empty removes it.",
@@ -118,6 +139,7 @@ export const ACTIONS: ApiAction[] = [
   },
   {
     name: "link_change",
+    output: ticketOutput,
     method: "put",
     path: "/tickets/:key/change-link",
     summary: "Link the code change that should fix the ticket.",
@@ -128,6 +150,7 @@ export const ACTIONS: ApiAction[] = [
   },
   {
     name: "mark_ready",
+    output: ticketOutput,
     method: "post",
     path: "/tickets/:key/ready",
     summary: 'Ask the customer "Did this fix it?", with a page on the live site to try.',
@@ -138,6 +161,7 @@ export const ACTIONS: ApiAction[] = [
   },
   {
     name: "answer",
+    output: ticketOutput,
     method: "post",
     path: "/tickets/:key/answer",
     summary:
@@ -149,6 +173,7 @@ export const ACTIONS: ApiAction[] = [
   },
   {
     name: "take_ticket",
+    output: ticketOutput,
     method: "post",
     path: "/tickets/:key/take",
     summary: "Become the ticket's named owner.",
@@ -158,6 +183,7 @@ export const ACTIONS: ApiAction[] = [
   },
   {
     name: "release_ticket",
+    output: ticketOutput,
     method: "post",
     path: "/tickets/:key/release",
     summary: "Leave the ticket without an owner. Not while it is in progress.",
@@ -167,6 +193,7 @@ export const ACTIONS: ApiAction[] = [
   },
   {
     name: "archive_ticket",
+    output: ticketOutput,
     method: "post",
     path: "/tickets/:key/archive",
     summary: "Hide the ticket from the lists. Nothing is deleted.",
@@ -176,6 +203,7 @@ export const ACTIONS: ApiAction[] = [
   },
   {
     name: "restore_ticket",
+    output: ticketOutput,
     method: "post",
     path: "/tickets/:key/restore",
     summary: "Bring an archived ticket back.",
@@ -185,6 +213,7 @@ export const ACTIONS: ApiAction[] = [
   },
   {
     name: "delete_ticket",
+    output: deletedOutput,
     method: "delete",
     path: "/tickets/:key",
     summary: "Delete the ticket permanently. The body must repeat the key.",
@@ -198,6 +227,7 @@ export const ACTIONS: ApiAction[] = [
   },
   {
     name: "list_entries",
+    output: z.array(entryOutput),
     method: "get",
     path: "/tickets/:key/entries",
     summary: "The conversation. A customer never sees internal notes.",
@@ -206,6 +236,7 @@ export const ACTIONS: ApiAction[] = [
   },
   {
     name: "add_entry",
+    output: entryOutput,
     method: "post",
     path: "/tickets/:key/entries",
     summary: "Add a reply the customer sees, or an internal note for the team.",
@@ -217,6 +248,7 @@ export const ACTIONS: ApiAction[] = [
   },
   {
     name: "list_evidence",
+    output: z.array(evidenceOutput),
     method: "get",
     path: "/tickets/:key/evidence",
     summary: "The evidence attached to a ticket, as reported. Proofdesk verifies none of it.",
@@ -225,6 +257,7 @@ export const ACTIONS: ApiAction[] = [
   },
   {
     name: "add_evidence",
+    output: evidenceOutput,
     method: "post",
     path: "/tickets/:key/evidence",
     summary: "Attach evidence that the check was met. It never resolves the ticket.",
@@ -234,7 +267,27 @@ export const ACTIONS: ApiAction[] = [
     run: ({ service, actor, key, body }) => service.addEvidence(key, body, actor),
   },
   {
+    name: "request_verification",
+    output: entryOutput,
+    method: "post",
+    path: "/tickets/:key/verification-request",
+    summary:
+      "Ask the ticket's named owner to request the customer's check, once evidence is attached. Written as an internal note; only the owner asks the customer, and only the customer answers.",
+    needs: "note",
+    body: verificationRequestSchema,
+    status: 201,
+    run: ({ service, actor, key, body }) => {
+      const { message } = parse(verificationRequestSchema, body);
+      return service.addEntry(
+        key,
+        { kind: "note", body: `Asks the owner to request the customer's check: ${message}` },
+        actor,
+      );
+    },
+  },
+  {
     name: "list_events",
+    output: z.array(eventOutput),
     method: "get",
     path: "/tickets/:key/events",
     summary: "The ticket's history: who did what, and whether they are a person or an agent.",
@@ -242,6 +295,16 @@ export const ACTIONS: ApiAction[] = [
     run: ({ service, actor, key }) => service.listEvents(key, actor),
   },
 ];
+
+/**
+ * The cursor for the page after this one, or null when this page is the last. A full page
+ * means there may be more.
+ */
+export function nextCursor(query: unknown, items: unknown[]): string | null {
+  if (items.length < LIST_PAGE_SIZE) return null;
+  const { page, cursor } = parse(listQuerySchema, query);
+  return cursorFor((cursor ? pageOf(cursor) : (page ?? 1)) + 1);
+}
 
 /** "/tickets/:key" in the form the documentation uses: "/tickets/{key}". */
 export function documentedPath(path: string): string {
