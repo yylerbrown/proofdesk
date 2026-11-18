@@ -27,7 +27,8 @@ once work has started and the change is linked.
 - **Three statuses**: New, In Progress and Resolved.
 - The customer's Yes to "Did this fix it?" resolves a ticket as "Customer confirmed". Its owner or
   an admin can also resolve it with a required reason, shown everywhere as "Resolved by the team:
-  <reason>". The customer can reopen either. An agent never resolves.
+  <reason>". The customer can reopen either; the owner or an admin can reopen only the team's own
+  resolution. An agent never resolves or reopens.
 - Every ticket in progress has a named person who owns it, never an agent.
 - **History is add-only.** Every change writes a history entry in the same transaction, saying
   who did it and whether they were a person or an agent. Database triggers refuse to change it.

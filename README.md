@@ -6,7 +6,8 @@ list. The twist: the customer writes how they will know it is fixed, and the tic
 "Did this fix it?" before it counts as confirmed.
 
 - **The demo, no account needed: <https://support-desk-demo.fly.dev>.** Sample data, shared with
-  everyone who visits, so do not type anything private.
+  everyone who visits, so do not type anything private. It returns to its samples by itself about
+  once a day.
 - **The production site, with GitHub sign-in: <https://proofdesk.fly.dev>.**
 - **The source: <https://github.com/yylerbrown/proofdesk>.**
 
@@ -54,7 +55,7 @@ Each one takes under a minute on the demo, starting from its welcome page.
 
 - Start as: Demo Team Member, owning the ticket
 - Press: **Use sample fix** (or type any link and press **Save change link**), then **Ask the customer to verify**, then **View this ticket as the customer who filed it** and **Yes, resolve ticket**
-- You should see: **Resolved**, and "Customer confirmed it is fixed." The owner can also resolve without the customer: open "Resolve with a reason" under Status, and the ticket then shows "Resolved by the team: <reason>" to everyone.
+- You should see: **Resolved**, and "Customer confirmed it is fixed." The owner can also resolve without the customer: press "Resolve" under Status and choose a reason, and the ticket then shows "Resolved by the team: <reason>" to everyone.
 
 **A working product**
 
@@ -101,11 +102,11 @@ The production site signs people in with GitHub. Proofdesk reads your name, pict
 address, never your code: it asks GitHub only for permission to read your email address, and
 keeps no GitHub token after sign-in. Everyone starts as a customer.
 
-| Role        | How you get it                                                                    | What you can do                                                                                                                                                                                                    |
-| ----------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Customer    | Sign in.                                                                          | File tickets. Read, edit and reply on your own tickets, answer "Did this fix it?", and reopen a resolved ticket that is still broken. You never see the team's internal notes.                                     |
-| Team member | The site's owner lists your GitHub user ID in `TEAM_GITHUB_IDS` in the settings.  | See every ticket. Take one and start work, reply, write internal notes, link the change, attach evidence, ask the customer to verify, archive and restore, hand on a ticket you own, and resolve it with a reason. |
-| Admin       | The site's owner lists your GitHub user ID in `ADMIN_GITHUB_IDS` in the settings. | Everything a team member can, and resolve any open ticket with a reason, issue AI assistant connections on **Connections** and delete a ticket permanently.                                                        |
+| Role        | How you get it                                                                    | What you can do                                                                                                                                                                                                                                       |
+| ----------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Customer    | Sign in.                                                                          | File tickets. Read, edit and reply on your own tickets, answer "Did this fix it?", and reopen a resolved ticket that is still broken. You never see the team's internal notes.                                                                        |
+| Team member | The site's owner lists your GitHub user ID in `TEAM_GITHUB_IDS` in the settings.  | See every ticket. Take one and start work, reply, write internal notes, link the change, attach evidence, ask the customer to verify, archive and restore, hand on a ticket you own, resolve it with a reason, and reopen it if the team resolved it. |
+| Admin       | The site's owner lists your GitHub user ID in `ADMIN_GITHUB_IDS` in the settings. | Everything a team member can, and resolve any open ticket with a reason, reopen any ticket the team resolved, issue AI assistant connections on **Connections** and delete a ticket permanently.                                                      |
 
 On the demo there is no sign-in. Pick Demo Customer, Demo Team Member or Admin preview
 (read-only) on the welcome page, and use **Switch role** beside "Signed in as" in the header to
@@ -278,7 +279,7 @@ code. The specification ([`docs/SPEC.md`](docs/SPEC.md)), the history of every s
 
 - **Last writer wins** for edits to a ticket and to the team's check. Only the customer's answer
   carries a version check, so an old page cannot answer a newer question.
-- **No email.** Nobody is told when something changes; people look at the ticket.
+- **No email is sent yet.** Nobody is told when something changes; people look at the ticket.
 - **Evidence is reported, not verified.** Proofdesk shows who reported it and checks none of it.
 - **One machine.** SQLite on one disk; rate-limit counts are in memory and reset on a restart.
   Several machines would need Postgres and a shared store for the rate limits.
@@ -295,8 +296,8 @@ code. The specification ([`docs/SPEC.md`](docs/SPEC.md)), the history of every s
   decisions recorded against each piece of evidence, an immutable record of each question asked
   beyond its history entry, documentation generated from conditional rules, and upgrading
   tickets resolved before the customer's Yes was required.
-- **Design debt** in the code, such as a ticket service of over 2,000 lines, is listed with the plan for
-  each item in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#design-debt).
+- **Design debt** in the code, such as a ticket service of over 2,000 lines, is listed with the
+  plan for each item in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#design-debt).
 
 ## More
 
