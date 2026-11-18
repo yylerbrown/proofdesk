@@ -6,6 +6,10 @@
   <p class="meta"><%= ticket.key %> <%- include("status-badge", { status: ticket.status }) %><% if (ticket.ready_at && ticket.status === "in_progress") { %>, waiting for <%= viewerRole === "customer" ? "you" : "the customer who filed this ticket" %><% } %> · <% if (ticket.owner_name) { %>Owner <%= ticket.owner_name %><% } else { %>Unassigned<% } %> · filed <%- include("time", { iso: ticket.created_at }) %></p>
 </hgroup>
 <% const staff = viewerRole !== "customer"; %>
+<%
+  // After a refused form, its box with the message gets focus, so the visitor lands on it.
+  const focusIf = (form, name) => (problem?.form === form && problem.focus === name ? "autofocus" : "");
+%>
 
 <%# The viewer's one next action, right under the status: the step that is possible now. %>
 <% if (locals.nextStep) { %>
@@ -103,7 +107,7 @@
   <summary>Still happening?</summary>
   <form method="post" action="/tickets/<%= ticket.key %>/reopen">
     <label for="reopen-reason">What is happening again?</label>
-    <textarea id="reopen-reason" name="reason" rows="3" required <% if (problem?.form === "reopen") { %>aria-invalid="true" aria-describedby="reopen-error"<% } %>><%= problem?.form === "reopen" ? problem.comment : "" %></textarea>
+    <textarea id="reopen-reason" name="reason" rows="3" required <% if (problem?.form === "reopen") { %>aria-invalid="true" aria-describedby="reopen-error"<% } %> <%= focusIf("reopen", "reason") %>><%= problem?.form === "reopen" ? problem.comment : "" %></textarea>
     <% if (problem?.form === "reopen") { %><small id="reopen-error"><%= problem.message %></small><% } %>
     <button type="submit" class="secondary compact">Still happening, reopen</button>
   </form>
@@ -155,7 +159,7 @@
     <input type="hidden" name="ready_token" value="<%= ticket.ready_token %>" />
     <label>
       No, it is not fixed. What is still wrong?
-      <textarea id="answer-comment" name="comment" rows="3" required <% if (problem?.form === "answer") { %>aria-invalid="true" aria-describedby="answer-error"<% } %>><%= problem?.form === "answer" ? problem.comment : "" %></textarea>
+      <textarea id="answer-comment" name="comment" rows="3" required <% if (problem?.form === "answer") { %>aria-invalid="true" aria-describedby="answer-error"<% } %> <%= focusIf("answer", "comment") %>><%= problem?.form === "answer" ? problem.comment : "" %></textarea>
     </label>
     <% if (problem?.form === "answer") { %><small id="answer-error"><%= problem.message %></small><% } %>
     <button type="submit" class="secondary large">No, send it back</button>
@@ -195,7 +199,7 @@
       <input type="hidden" name="expected_owner" value="<%= ticket.owner_id ?? "" %>" />
       <label>
         Team member
-        <select name="to" <% if (problem?.form === "handOff") { %>aria-describedby="hand-off-error"<% } %>>
+        <select name="to" <% if (problem?.form === "handOff") { %>aria-describedby="hand-off-error"<% } %> <%= focusIf("handOff", "to") %>>
           <% for (const member of handOffTo) { %>
           <option value="<%= member.id %>"><%= member.name %></option>
           <% } %>
@@ -254,7 +258,7 @@
     <form method="post" action="/tickets/<%= ticket.key %>/resolve">
       <label>
         Reason
-        <select name="reason" required>
+        <select name="reason" required <%= focusIf("resolve", "reason") %>>
           <% for (const [value, label] of Object.entries(resolveReasons)) { %>
           <option value="<%= value %>" <% if (resolving.reason === value) { %>selected<% } %>><%= label %></option>
           <% } %>
@@ -262,11 +266,11 @@
       </label>
       <label>
         Duplicate of (for a duplicate)
-        <input type="text" name="duplicate_of" placeholder="SUP-3" value="<%= resolving.duplicate_of ?? "" %>" />
+        <input type="text" name="duplicate_of" placeholder="SUP-3" value="<%= resolving.duplicate_of ?? "" %>" <%= focusIf("resolve", "duplicate_of") %> />
       </label>
       <label>
         Note (needed for Other)
-        <textarea name="note" rows="2"><%= resolving.note ?? "" %></textarea>
+        <textarea name="note" rows="2" <%= focusIf("resolve", "note") %>><%= resolving.note ?? "" %></textarea>
       </label>
       <% if (problem?.form === "resolve") { %><p><small id="resolve-error" role="alert"><%= problem.message %></small></p><% } %>
       <p><small>The customer sees your reason and can reopen it.</small></p>
@@ -279,7 +283,7 @@
     <summary role="button" class="secondary outline">Reopen</summary>
     <form method="post" action="/tickets/<%= ticket.key %>/reopen">
       <label for="reopen-reason">Why reopen it?</label>
-      <textarea id="reopen-reason" name="reason" rows="2" required <% if (problem?.form === "reopen") { %>aria-invalid="true" aria-describedby="reopen-error"<% } %>><%= problem?.form === "reopen" ? problem.comment : "" %></textarea>
+      <textarea id="reopen-reason" name="reason" rows="2" required <% if (problem?.form === "reopen") { %>aria-invalid="true" aria-describedby="reopen-error"<% } %> <%= focusIf("reopen", "reason") %>><%= problem?.form === "reopen" ? problem.comment : "" %></textarea>
       <% if (problem?.form === "reopen") { %><small id="reopen-error" role="alert"><%= problem.message %></small><% } %>
       <button type="submit" class="secondary compact">Reopen</button>
     </form>
@@ -339,7 +343,7 @@
     <form method="post" action="/tickets/<%= ticket.key %>/agreed-check">
       <label>
         Team's check (leave empty to remove it)
-        <textarea name="agreed_check" rows="3" <% if (problem?.form === "agreedCheck") { %>aria-invalid="true" aria-describedby="agreed-check-error"<% } %>><%= ticket.agreed_check ?? ticket.fix_check ?? "" %></textarea>
+        <textarea name="agreed_check" rows="3" <% if (problem?.form === "agreedCheck") { %>aria-invalid="true" aria-describedby="agreed-check-error"<% } %> <%= focusIf("agreedCheck", "agreed_check") %>><%= ticket.agreed_check ?? ticket.fix_check ?? "" %></textarea>
       </label>
       <% if (problem?.form === "agreedCheck") { %><small id="agreed-check-error"><%= problem.message %></small><% } %>
       <button type="submit" class="compact">Save team's check</button>
@@ -377,12 +381,12 @@
       </label>
       <label>
         What it shows
-        <input type="text" name="summary" required maxlength="500" <% if (problem?.form === "evidence") { %>aria-invalid="true" aria-describedby="evidence-error"<% } %> />
+        <input type="text" name="summary" required maxlength="500" <% if (problem?.form === "evidence") { %>aria-invalid="true" aria-describedby="evidence-error"<% } %> <%= focusIf("evidence", "summary") %> />
       </label>
       <% if (problem?.form === "evidence") { %><small id="evidence-error"><%= problem.message %></small><% } %>
       <label>
         Link (optional)
-        <input type="url" name="link" placeholder="https://" />
+        <input type="url" name="link" placeholder="https://" <%= focusIf("evidence", "link") %> />
       </label>
       <button type="submit" class="secondary compact">Attach evidence</button>
     </form>
@@ -412,7 +416,7 @@
   <form method="post" action="/tickets/<%= ticket.key %>/change-link" id="change-link">
     <label>
       Link to the code change
-      <input type="url" id="change-url" name="change_url" required <% if (problem?.form === "changeLink") { %>aria-invalid="true" aria-describedby="change-link-error"<% } %> />
+      <input type="url" id="change-url" name="change_url" required <% if (problem?.form === "changeLink") { %>aria-invalid="true" aria-describedby="change-link-error"<% } %> <%= focusIf("changeLink", "change_url") %> />
     </label>
     <% if (problem?.form === "changeLink") { %><small id="change-link-error"><%= problem.message %></small><% } %>
     <button type="submit" class="secondary compact">Save change link</button>
@@ -433,20 +437,20 @@
     <p><small>Try it yourself against the customer's check before you ask.</small></p>
     <label>
       Page on the live site to try (required)
-      <input type="url" name="try_url" required value="<%= asked.try_url ?? ticket.try_url ?? ticket.where_url ?? "" %>" />
+      <input type="url" name="try_url" required value="<%= asked.try_url ?? ticket.try_url ?? ticket.where_url ?? "" %>" <%= focusIf("ready", "try_url") %> />
     </label>
     <label>
       What did you try? (required)
-      <textarea name="tried" rows="2" required><%= asked.tried ?? "" %></textarea>
+      <textarea name="tried" rows="2" required <%= focusIf("ready", "tried") %>><%= asked.tried ?? "" %></textarea>
     </label>
     <label>
       What happened? (required)
-      <textarea name="result" rows="2" required><%= asked.result ?? "" %></textarea>
+      <textarea name="result" rows="2" required <%= focusIf("ready", "result") %>><%= asked.result ?? "" %></textarea>
     </label>
     <% if (ticket.customer_answer && !ticket.customer_answer.fixed) { %>
     <label>
       What changed since the customer said it still fails? (required)
-      <textarea name="response" rows="2" required><%= asked.response ?? "" %></textarea>
+      <textarea name="response" rows="2" required <%= focusIf("ready", "response") %>><%= asked.response ?? "" %></textarea>
     </label>
     <% } %>
     <% if (evidence.length > 0) { %>
@@ -547,7 +551,7 @@
   <% } %>
   <label>
     Your message
-    <textarea id="entry-body" name="body" rows="4" required <% if (entry.error) { %>aria-invalid="true" aria-describedby="body-error"<% } %>><%= entry.body %></textarea>
+    <textarea id="entry-body" name="body" rows="4" required <% if (entry.error) { %>aria-invalid="true" aria-describedby="body-error" autofocus<% } %>><%= entry.body %></textarea>
   </label>
   <% if (entry.error) { %><small id="body-error"><%= entry.error %></small><% } %>
   <button type="submit" class="compact">Send</button>

@@ -17,9 +17,10 @@ describe("a field's message", () => {
       const label =
         html.querySelector(`label:has([name=${name}])`) ??
         html.querySelectorAll("label").find((l) => l.querySelector(`[name=${name}]`));
-      expect(label?.querySelector("small"), name).toBeNull();
+      // A hint, such as the title's limits, may sit in the label; the message may not.
+      expect(label?.querySelector("small:not(.hint)"), name).toBeNull();
       const field = html.querySelector(`[name=${name}]`);
-      const id = field?.getAttribute("aria-describedby");
+      const id = field?.getAttribute("aria-describedby")?.split(" ")[0];
       expect(html.querySelector(`#${id}`)?.text, name).toMatch(/^Must /);
     }
   });

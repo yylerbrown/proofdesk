@@ -9,7 +9,8 @@ const valid = { title: "Printer jams", description: "It jams on page two." };
 /** Each box marked wrong, with the text of the message it points to (null if it points nowhere). */
 function invalidBoxes(html: HTMLElement): { name: string; message: string | null }[] {
   return html.querySelectorAll("[aria-invalid=true]").map((box) => {
-    const id = box.getAttribute("aria-describedby");
+    // The message comes first; a hint, such as the title's limits, may follow it.
+    const id = box.getAttribute("aria-describedby")?.split(" ")[0];
     const message = id ? (html.querySelector(`#${id}`)?.text.trim() ?? null) : null;
     return { name: box.getAttribute("name") ?? "", message };
   });

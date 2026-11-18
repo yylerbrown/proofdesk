@@ -49,7 +49,27 @@ type Problem = {
   comment: string;
   /** What was typed in the form, so it can be shown again. */
   values?: Record<string, string>;
+  /** The box that gets focus when the page comes back, so the visitor lands on the error. */
+  focus?: string;
 };
+
+// The boxes of each form on the ticket page, in the order the page draws them.
+const FORM_FIELDS: Record<Problem["form"], string[]> = {
+  answer: ["comment"],
+  agreedCheck: ["agreed_check"],
+  changeLink: ["change_url"],
+  ready: ["try_url", "tried", "result", "response"],
+  evidence: ["summary", "link"],
+  reopen: ["reason"],
+  handOff: ["to"],
+  resolve: ["reason", "duplicate_of", "note"],
+};
+
+/** The box a refused form should focus: the first one with a message, or else its first box. */
+function focusField(form: Problem["form"], fieldErrors: Record<string, string[] | undefined>) {
+  const fields = FORM_FIELDS[form];
+  return fields.find((name) => (fieldErrors[name] ?? []).length > 0) ?? fields[0];
+}
 
 /**
  * On the demo, what "Use sample fix" fills in, each value marked as a demo sample, so a visitor
@@ -378,6 +398,7 @@ export function pagesRouter(service: TicketService): Router {
           message,
           comment: asText(req.body?.comment ?? req.body?.reason),
           values,
+          focus: focusField(form, err.fieldErrors),
         });
       }
     };
