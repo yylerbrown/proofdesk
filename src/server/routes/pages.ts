@@ -10,6 +10,7 @@ import {
   formatTime,
   STATUS_LABELS,
   timeAgo,
+  reportFields,
   waitingOn,
 } from "../pages/format.js";
 import { rememberSaved, takeProblem, takeSaved, type SavedKey } from "../pages/saved.js";
@@ -21,7 +22,13 @@ import { parse } from "../validation.js";
 // send the answer. The answer is HTML built from a template in views/.
 
 // Passed to every ticket template so it can show labels and times.
-const helpers = { statusLabels: STATUS_LABELS, statuses: TICKET_STATUSES, formatTime, timeAgo };
+const helpers = {
+  statusLabels: STATUS_LABELS,
+  statuses: TICKET_STATUSES,
+  formatTime,
+  timeAgo,
+  reportFields,
+};
 
 // What the reply form holds: the kind chosen, the text typed, and a message if it was refused.
 type EntryForm = { kind: string; body: string; error?: string };

@@ -7,7 +7,16 @@
   <% for (const item of evidence) { %>
   <li>
     <p><strong><%= kindLabels[item.kind] ?? item.kind %>:</strong> <span class="user-text"><%= item.summary %></span></p>
-    <% if (item.link) { %><p><a href="<%= item.link %>" rel="noopener noreferrer nofollow" class="user-text"><%= item.link %></a></p><% } %>
+    <%# Each field on a line of its own, with its label. %>
+    <% if (item.link || item.scenario || item.revision || item.command || item.result) { %>
+    <dl class="evidence-fields">
+      <% if (item.link) { %><dt>Link</dt><dd><a href="<%= item.link %>" rel="noopener noreferrer nofollow" class="user-text"><%= item.link %></a></dd><% } %>
+      <% if (item.scenario) { %><dt>Scenario</dt><dd>Says it proves scenario <%= item.scenario %> of the test spec.</dd><% } %>
+      <% if (item.revision) { %><dt>Revision</dt><dd><code class="user-text"><%= item.revision %></code></dd><% } %>
+      <% if (item.command) { %><dt>Command</dt><dd><code class="user-text"><%= item.command %></code></dd><% } %>
+      <% if (item.result) { %><dt>Result</dt><dd class="user-text"><%= item.result %></dd><% } %>
+    </dl>
+    <% } %>
     <% if (item.stages) { %>
     <table class="stages">
       <tbody>
@@ -16,12 +25,15 @@
         <tr><th scope="row">All tests, after the fix</th><td><%= stageWords[item.stages.after_fix] %></td></tr>
       </tbody>
     </table>
-    <% } else if (item.report !== null) { %>
-    <p><small>A report is attached. Proofdesk cannot read its stages.</small></p>
+    <% } else if (item.report !== null) { const read = reportFields(item.report); %>
+    <%# A report in a format Proofdesk does not read: its top-level fields, as sent, unchecked. %>
+    <p><small>The report, as sent. Proofdesk does not check it.</small></p>
+    <% if (read.fields.length > 0) { %>
+    <dl class="evidence-fields report-fields">
+      <% for (const field of read.fields) { %><dt class="user-text"><%= field.name %></dt><dd class="user-text"><%= field.value %></dd><% } %>
+    </dl>
     <% } %>
-    <% if (item.scenario) { %><p><small>Says it proves scenario <%= item.scenario %> of the test spec.</small></p><% } %>
-    <% if (item.revision || item.command || item.result) { %>
-    <p><small><% if (item.revision) { %>Revision <code class="user-text"><%= item.revision %></code>. <% } %><% if (item.command) { %>Ran <code class="user-text"><%= item.command %></code>. <% } %><% if (item.result) { %>Result: <span class="user-text"><%= item.result %></span>.<% } %></small></p>
+    <% if (read.more > 0) { %><p><small><%= read.more %> more <%= read.more === 1 ? "field" : "fields" %> not shown.</small></p><% } %>
     <% } %>
     <p><small>Reported by <%= item.reported_by.name %><% if (item.reported_by.kind === "agent") { %> (AI agent)<% } %>, <%- include("time", { iso: item.created_at }) %>.</small></p>
   </li>

@@ -1357,3 +1357,26 @@ details.more {
 .quick-label {
   margin: var(--pd-space-3) 0 var(--pd-space-2);
 }
+
+/* Evidence fields, each on its own labelled line: the label small and muted, the value beside it. */
+dl.evidence-fields {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 2px var(--pd-space-2);
+  margin: 0 0 var(--pd-space-2);
+  font-size: var(--pd-text-sm);
+}
+dl.evidence-fields dt {
+  color: var(--pd-muted);
+  font-size: var(--pd-text-xs);
+  font-weight: var(--pd-weight-semibold);
+  line-height: 1.6;
+}
+dl.evidence-fields dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+dl.evidence-fields dd a {
+  display: inline;
+  white-space: normal;
+}
