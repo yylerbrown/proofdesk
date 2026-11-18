@@ -171,4 +171,4 @@ The workflow is built in this order: status commands and reopen; the owner-only 
 
 ### 2026-11-18: two corrections
 
-Two sentences above were corrected to say what happened. The opening line used to say this document was written before the features were built, and the standing rule on merging used to say a person reads every change before it merges. Every outside review named in this document, including the one that designed the ticket workflow, came from other AI sessions.
+Two sentences above were corrected to say what happened. The opening line used to say this document was written before the features were built, and the standing rule on merging used to say a person reads every change before it merges. The standing rules now also say how this build was merged and reviewed, including the merges that did not wait for CI. Every outside review named in this document, including the one that designed the ticket workflow, came from other AI sessions.
