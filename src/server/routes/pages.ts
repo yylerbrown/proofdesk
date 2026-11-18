@@ -14,10 +14,10 @@ import {
   waitingOn,
 } from "../pages/format.js";
 import { fileOnce, newFormId, readFormId, sameText, ticketFiledWith } from "../pages/form-id.js";
+import { readListPageQuery } from "../pages/list-query.js";
 import { rememberSaved, takeProblem, takeSaved, type SavedKey } from "../pages/saved.js";
-import { listQuerySchema, RESOLVE_REASON_LABELS, TICKET_STATUSES } from "../tickets/schemas.js";
+import { RESOLVE_REASON_LABELS, TICKET_STATUSES } from "../tickets/schemas.js";
 import { LIST_PAGE_SIZE, type Ticket, type TicketService } from "../tickets/service.js";
-import { parse } from "../validation.js";
 
 // The pages. Like the JSON routes, they only read the request, call the ticket service and
 // send the answer. The answer is HTML built from a template in views/.
@@ -388,9 +388,15 @@ export function pagesRouter(service: TicketService): Router {
 
   router.get("/tickets", (req, res) => {
     const actor = signedIn(req);
-    const { status, page, owner, q } = parse(listQuerySchema, req.query);
-    const current = status ?? "all";
-    const pageNumber = page ?? 1;
+    const query = readListPageQuery(req.query);
+    // A filter this viewer cannot use, such as Archived for a customer after a role switch or
+    // from a bookmark, shows their whole list instead of a refusal.
+    const current =
+      query.status === "archived" && !can(actor, "list_archived") ? "all" : query.status;
+    // A customer's list is their own tickets, so it has no owner filter to keep.
+    const owner = actor.role === "customer" ? undefined : query.owner;
+    const q = query.q;
+    const pageNumber = query.page;
     const tickets = service.listTickets(current, actor, pageNumber, { owner, q });
     // Every link on the list keeps the other filters, so a filtered view can be shared.
     const filters: ListFilters = { status: current, owner, q };
