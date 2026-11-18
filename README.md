@@ -145,6 +145,7 @@ All of them are in `.env.example`, with comments.
 | `DEMO_URL`                                                                          | Optional, on the real site: the demo's https address, linked from the sign-in page as "Try the demo without signing in".                                                    |
 | `REAL_SITE_URL`                                                                     | Optional, on the demo: the real site's https address, named on the welcome page as where GitHub sign-in with roles runs.                                                    |
 | `SOURCE_URL`                                                                        | Optional: the repository's https address. The welcome page then links **Source and setup** to its README, and `GET /api` names it. Both Fly apps set it to the public copy. |
+| `PUBLIC_URL`                                                                        | Optional: the address people and assistants reach this server at, for the commands to paste. Else `BETTER_AUTH_URL`, else each request's own address. The demo sets it.     |
 | `GIT_COMMIT`                                                                        | Reported by `GET /api/health`.                                                                                                                                              |
 
 ### GitHub sign-in

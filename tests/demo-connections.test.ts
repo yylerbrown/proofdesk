@@ -223,6 +223,42 @@ describe("the page that shows a demo key", () => {
     expect(html.querySelector("a[href='/sign-in']")?.text).toBe("Back to the welcome page");
     expect(html.querySelector("main a[href='/connections']")).toBeNull();
   });
+
+  /** A production build of the demo, as the README's Docker command runs it, with these settings. */
+  function productionDemo(env: Record<string, string> = {}) {
+    const built = buildTestApp({
+      NODE_ENV: "production",
+      DEMO: "on",
+      BETTER_AUTH_SECRET: "",
+      BETTER_AUTH_URL: "",
+      GITHUB_CLIENT_ID: "",
+      GITHUB_CLIENT_SECRET: "",
+      ...env,
+    });
+    seedDemo(createTicketService(built.db, built.config.ticketPrefix));
+    return built.app;
+  }
+
+  it("gives the address the request came to, on a production build with no public address", async () => {
+    const app = productionDemo();
+    const page = (await visitor(app).post("/demo/connection")).text;
+    expect(page).toMatch(/proofdesk http:\/\/127\.0\.0\.1:\d+\/mcp /);
+    expect(page).not.toContain("https://127.0.0.1");
+    // The guide at GET /api gives the same address.
+    const guide = JSON.stringify((await request(app).get("/api")).body);
+    expect(guide).toMatch(/http:\/\/127\.0\.0\.1:\d+\/api\/tickets/);
+    expect(guide).not.toContain("https://127.0.0.1");
+  });
+
+  it("gives the public address when one is set, on the page and in the guide", async () => {
+    const app = productionDemo({ PUBLIC_URL: "https://desk.example/" });
+    const page = (await visitor(app).post("/demo/connection")).text;
+    expect(page).toContain("proofdesk https://desk.example/mcp ");
+    expect(page).toContain('"https://desk.example/api/tickets"');
+    const guide = JSON.stringify((await request(app).get("/api")).body);
+    expect(guide).toContain("https://desk.example/api/tickets");
+    expect(guide).not.toContain("127.0.0.1");
+  });
 });
 
 describe("the token a customer's answer must carry", () => {

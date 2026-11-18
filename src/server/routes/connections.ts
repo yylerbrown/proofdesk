@@ -18,12 +18,16 @@ export const SCOPE_LABELS: Record<(typeof AGENT_SCOPES)[number], string> = {
   link_changes: "Link a code change to a ticket",
 };
 
-/** The site's own address, for the block an admin pastes into an assistant. */
+/**
+ * The site's own address, for the commands an assistant is given here and at GET /api: the
+ * configured public address, else the sign-in address, else the protocol and host the
+ * request came to. A server behind a proxy that ends HTTPS sets one of the first two, since
+ * the request reaches it over plain http.
+ */
 export function siteAddress(config: Config, req: Request): string {
+  if (config.publicUrl !== undefined) return config.publicUrl;
   if (config.signIn !== null) return config.signIn.baseUrl;
-  // The host's proxy ends HTTPS in front of a production server.
-  const protocol = config.nodeEnv === "production" ? "https" : req.protocol;
-  return `${protocol}://${req.get("host")}`;
+  return `${req.protocol}://${req.get("host")}`;
 }
 
 export function connectionsRouter(
