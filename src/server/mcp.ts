@@ -1,4 +1,4 @@
-import express, { type RequestHandler } from "express";
+import express, { type ErrorRequestHandler, type RequestHandler } from "express";
 import { originValidation, requireBearerAuth } from "@modelcontextprotocol/express";
 import { toNodeHandler } from "@modelcontextprotocol/node";
 import {
@@ -207,3 +207,21 @@ export function mcpEndpoint(
     (req, res) => void node(req, res, req.body),
   ];
 }
+
+/**
+ * Answers an error raised on /mcp before the SDK answers (a body that is not JSON or is too
+ * large, or the write allowance) as a JSON-RPC error an MCP client can read, never as a page.
+ * The HTTP status stays, and `data` carries the same code, hint and retry flag as the API.
+ */
+export const mcpErrorHandler: ErrorRequestHandler = (err, _req, res, next) => {
+  if (res.headersSent) {
+    next(err);
+    return;
+  }
+  const { status, body } = errorBody(err);
+  res.status(status).json({
+    jsonrpc: "2.0",
+    error: { code: -32000, message: body.error.message, data: body.error },
+    id: null,
+  });
+};

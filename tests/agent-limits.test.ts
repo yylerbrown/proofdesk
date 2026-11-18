@@ -10,6 +10,7 @@ import {
   DEMO_CONNECTION_LIMIT,
 } from "../src/server/connections/service.js";
 import { seedDemo } from "../src/server/demo.js";
+import { WRITE_LIMIT } from "../src/server/limits.js";
 import { createTicketService } from "../src/server/tickets/service.js";
 import {
   admin,
@@ -170,5 +171,46 @@ describe("the page that shows a new key", () => {
       .send({ name: "Helper", scopes: ["read_tickets"] });
     expect(issued.text).toMatch(/value="pd_/);
     expect(issued.headers["cache-control"]).toBe("no-store");
+  });
+});
+
+describe("an error on /mcp before the SDK answers", () => {
+  it("comes back as a JSON-RPC error, never as a page", async () => {
+    const { app } = buildTestApp();
+    await admin(app).post("/api/tickets").send(valid);
+    const key = await issue(app, ["read_tickets", "write_notes"]);
+    await handToAgent(app, "SUP-1", key);
+    const post = (body: string) =>
+      request(app)
+        .post("/mcp")
+        .set("Authorization", `Bearer ${key}`)
+        .set("Content-Type", "application/json")
+        .set("Accept", "application/json, text/event-stream")
+        .send(body);
+    const note = (body: string) =>
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: { name: "add_note", arguments: { key: "SUP-1", body } },
+      });
+    const asJsonRpc = (res: request.Response, status: number, code: string) => {
+      expect(res.status).toBe(status);
+      expect(res.headers["content-type"]).toMatch(/^application\/json/);
+      expect(res.body).toMatchObject({ jsonrpc: "2.0", id: null, error: { data: { code } } });
+    };
+
+    asJsonRpc(await post("{bad"), 400, "bad_request");
+    asJsonRpc(await post(note("x".repeat(101 * 1024))), 413, "bad_request");
+    for (let i = 0; i < WRITE_LIMIT; i++) {
+      await request(app)
+        .post("/api/tickets/SUP-1/entries")
+        .set("Authorization", `Bearer ${key}`)
+        .send({ kind: "note", body: `note ${i}` });
+    }
+    const over = await post(note("one more"));
+    asJsonRpc(over, 429, "too_many_requests");
+    expect(over.headers["retry-after"]).toMatch(/^\d+$/);
+    expect(over.body.error.data.retry).toBe(true);
   });
 });
