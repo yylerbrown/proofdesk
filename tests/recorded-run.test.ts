@@ -97,6 +97,26 @@ describe("the recorded run on the demo", () => {
     );
     expect(html.querySelector(".recorded-run a")?.getAttribute("href")).toBe("/assistant-run");
   });
+
+  it("keeps the assistant's review request apart from the customer's check, and says where SUP-4 comes from", async () => {
+    const { asTeam } = demo();
+    const html = parse((await asTeam().get("/tickets/SUP-8")).text);
+    const check = html
+      .querySelectorAll("section")
+      .find((s) => s.querySelector("h2")?.text === "How will we know it's fixed?")!;
+    const signal = check.querySelector(".assistant-signal")!;
+    expect(signal.querySelector(".signal-from")?.text).toBe("From the AI assistant");
+    expect(signal.querySelector(".review-requested")?.text).toBe(
+      "Review requested by Demo visitor ea29379c",
+    );
+    // The customer's words come first, under the heading; the request follows them.
+    const inside = check.innerHTML;
+    expect(inside.indexOf("<blockquote")).toBeGreaterThan(-1);
+    expect(inside.indexOf("<blockquote")).toBeLessThan(inside.indexOf("assistant-signal"));
+    expect(html.querySelector(".recorded-run")?.text).toContain(
+      "The run worked on the assistant sample, SUP-4, in an earlier copy of this demo",
+    );
+  });
 });
 
 describe("the assistant's work, on its own page", () => {
