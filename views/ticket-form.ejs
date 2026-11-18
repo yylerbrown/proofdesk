@@ -39,14 +39,14 @@
     <% } else { %>
     <textarea name="fix_check" rows="3" aria-describedby="<%= fixCheckDescribedBy %>" <% if (errors.fix_check) { %>aria-invalid="true"<% } %>><%= values.fix_check %></textarea>
     <% } %>
-    <% if (errors.fix_check) { %><small id="fix_check-error"><%= errors.fix_check.join(" ") %></small><% } %>
   </label>
+  <% if (errors.fix_check) { %><small id="fix_check-error"><%= errors.fix_check.join(" ") %></small><% } %>
 
   <label>
     Page where it happened (optional)
     <input type="url" name="where_url" value="<%= values.where_url %>" <% if (errors.where_url) { %>aria-invalid="true" aria-describedby="where_url-error"<% } %> />
-    <% if (errors.where_url) { %><small id="where_url-error"><%= errors.where_url.join(" ") %></small><% } %>
   </label>
+  <% if (errors.where_url) { %><small id="where_url-error"><%= errors.where_url.join(" ") %></small><% } %>
 
   <% if (!editKey) { %>
   <p class="initial-status">Initial status: <span class="badge status-new">New</span></p>
