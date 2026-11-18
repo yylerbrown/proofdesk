@@ -1,5 +1,26 @@
-import { DEMO_ACTORS } from "./actor.js";
+import { DEMO_ACTORS, type Actor } from "./actor.js";
 import type { TicketService } from "./tickets/service.js";
+
+/**
+ * Made-up customers who filed some of the samples. They cannot sign in. They make the team's
+ * list hold more than one customer's tickets, so a customer's own list visibly holds fewer.
+ */
+export const OTHER_DEMO_CUSTOMERS: Actor[] = [
+  {
+    id: "demo-customer-2",
+    kind: "person",
+    role: "customer",
+    name: "Second Demo Customer",
+    demo: true,
+  },
+  {
+    id: "demo-customer-3",
+    kind: "person",
+    role: "customer",
+    name: "Third Demo Customer",
+    demo: true,
+  },
+];
 
 /**
  * Fills an empty demo database with a few sample tickets, made through the ticket service
@@ -72,7 +93,64 @@ export function seedDemo(service: TicketService): void {
     customer,
   );
 
+  // Every status in the samples, so each filter changes the list: one the customer confirmed,
+  // and one where another customer said No and it went back to its owner.
+  const [second, third] = OTHER_DEMO_CUSTOMERS as [Actor, Actor];
+  const receipt = service.createTicket(
+    {
+      title: "Receipts show the wrong currency",
+      description: "My receipt says USD, but I paid in euros.",
+      fix_check: "My next receipt shows EUR",
+    },
+    customer,
+  );
+  askAndAnswer(service, receipt.key, team, customer, { fixed: "yes" });
+
+  const search = service.createTicket(
+    {
+      title: "Search finds nothing for an exact title",
+      description: "Searching for an article's exact title shows no results.",
+      fix_check: "Searching for an exact title shows that article first",
+    },
+    second,
+  );
+  askAndAnswer(service, search.key, team, second, {
+    fixed: "no",
+    comment: "Still nothing when the title has a comma in it.",
+  });
+
+  service.createTicket(
+    {
+      title: "Settings page text is hard to read in dark mode",
+      description: "In dark mode the labels on the settings page are dark grey on black.",
+      fix_check: "I can read every label on the settings page in dark mode",
+    },
+    third,
+  );
+
   // Record what was seeded, so a visitor's assistant is shown only this, never what other
   // visitors write.
   service.recordDemoSeed();
+}
+
+/** The team takes a sample, links a fix and asks; its customer answers. */
+function askAndAnswer(
+  service: TicketService,
+  key: string,
+  team: Actor,
+  customer: Actor,
+  answer: { fixed: "yes" } | { fixed: "no"; comment: string },
+): void {
+  service.takeAndStart(key, team);
+  service.linkChange(key, { change_url: "https://example.com/changes/42" }, team);
+  const asked = service.markReady(
+    key,
+    {
+      try_url: "https://example.com/",
+      tried: "Tried it the way the customer said.",
+      result: "It works.",
+    },
+    team,
+  );
+  service.answer(key, { ...answer, ready_token: asked.ready_token }, customer);
 }

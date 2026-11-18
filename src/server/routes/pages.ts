@@ -222,7 +222,12 @@ export function pagesRouter(service: TicketService): Router {
     const tickets = service.listTickets(current, actor, pageNumber);
     res.render("ticket-list", {
       ...helpers,
-      title: current === "all" ? "Tickets" : `${FILTER_TITLES[current]} tickets`,
+      title:
+        current !== "all"
+          ? `${FILTER_TITLES[current]} tickets`
+          : actor.role === "customer"
+            ? "My tickets"
+            : "All tickets",
       current,
       tickets: tickets.map((ticket) => ({ ...ticket, waiting: waitingOn(ticket, actor.role) })),
       viewerRole: actor.role,

@@ -122,10 +122,11 @@ describe("what a demo connection sees", () => {
       .send({ title: "Visitor ticket", description: "x" });
     const key = await getConnection(app);
     const keys = (await api(app, key).get("/api/tickets")).body.map((t: { key: string }) => t.key);
-    expect(keys.sort()).toEqual(["SUP-1", "SUP-2", "SUP-3", "SUP-4"]);
-    expect((await api(app, key).get("/api/tickets/SUP-5")).status).toBe(404);
+    expect(keys.sort()).toEqual(["SUP-1", "SUP-2", "SUP-3", "SUP-4", "SUP-5", "SUP-6", "SUP-7"]);
+    // The visitor's own ticket comes after the samples.
+    expect((await api(app, key).get("/api/tickets/SUP-8")).status).toBe(404);
     expect(
-      (await api(app, key).post("/api/tickets/SUP-5/entries", { kind: "note", body: "x" })).status,
+      (await api(app, key).post("/api/tickets/SUP-8/entries", { kind: "note", body: "x" })).status,
     ).toBe(404);
   });
 

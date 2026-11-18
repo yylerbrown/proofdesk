@@ -10,7 +10,11 @@
     archived: "Nothing is archived.",
   };
 %>
-<h1>Tickets</h1>
+<h1><%= mine ? "My tickets" : "All tickets" %></h1>
+<p class="list-note"><small>Tickets start New, move to In Progress when work starts, and become Resolved when the customer who filed them confirms the fix.</small></p>
+<% if (viewer && viewer.role === "admin") { %>
+<p class="role-note"><small><% if (viewer.readOnly) { %>Admin preview, read-only: you see every ticket with its history and internal notes, and nothing you do here changes them.<% } else { %>As an admin you see every ticket with its history and internal notes, restore archived tickets, delete tickets permanently and manage assistant connections.<% } %></small></p>
+<% } %>
 
 <nav aria-label="Filter by status">
   <ul>
