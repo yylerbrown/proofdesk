@@ -3,7 +3,7 @@ import { parse } from "node-html-parser";
 import { describe, expect, it } from "vitest";
 import { seedDemo } from "../src/server/demo.js";
 import { createTicketService } from "../src/server/tickets/service.js";
-import { as, buildTestApp, customerOne, SIGN_IN_ENV, teamActor, visitor } from "./helpers.js";
+import { admin, as, buildTestApp, customerOne, SIGN_IN_ENV, visitor } from "./helpers.js";
 
 // The welcome page names where to read the source and where sign-in with roles runs, and the
 // team's ticket page points at a real assistant's work beside connecting one.
@@ -56,7 +56,7 @@ describe("the team's ticket page", () => {
     await as(app, customerOne)
       .post("/api/tickets")
       .send({ title: "Printer jams", description: "x", fix_check: "Ten pages print" });
-    const prompt = parse((await as(app, teamActor).get("/tickets/SUP-1")).text).querySelector(
+    const prompt = parse((await admin(app).get("/tickets/SUP-1")).text).querySelector(
       ".spec-prompt",
     )!;
     expect(prompt.querySelectorAll("a").map((a) => [a.text, a.getAttribute("href")])).toEqual([

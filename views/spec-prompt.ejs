@@ -1,0 +1,9 @@
+<%# One quiet line suggesting the team ask their own assistant for a test spec, while the ticket has none and is not handed to an assistant. Proofdesk contacts no assistant itself. %>
+<% if (specPrompt) { %>
+<% const words = `Using Proofdesk, write a test spec for ${specPrompt.key}`; %>
+<div class="spec-prompt">
+  <p><small>Want better results? Ask your assistant to spec this ticket.<% if (specPrompt.connectUrl) { %> <a href="<%= specPrompt.connectUrl %>">Connect your assistant</a> ·<% } %> <a href="/assistant-run">See an assistant's work</a></small></p>
+  <pre class="paste"><code><%= words %></code></pre>
+  <button type="button" class="copy secondary" data-copy="<%= words %>" hidden>Copy</button>
+</div>
+<% } %>

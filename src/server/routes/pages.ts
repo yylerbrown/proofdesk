@@ -80,6 +80,20 @@ function demoNext(ticket: Ticket, actor: Actor) {
   return null;
 }
 
+// A person who pressed "Not now" on the invitation to connect an assistant: kept in their
+// browser, so it needs no account setting and no script.
+const INVITE_COOKIE = "assistant_invite";
+const INVITE_HIDDEN_FOR = 365 * 24 * 60 * 60 * 1000;
+
+/**
+ * Where to connect an assistant, for the team only: an admin's connections page, or on the demo
+ * the welcome page's own demo connection. Null for a team member, who cannot connect one.
+ */
+function connectUrl(actor: Actor): string | null {
+  if (actor.demo === true) return "/sign-in";
+  return can(actor, "manage_connections") ? "/connections" : null;
+}
+
 /** Why the team cannot ask the customer yet, in plain words, or null when that is not the question. */
 function askBlockedReason(ticket: Ticket, actor: Actor): string | null {
   if (actor.role === "customer" || actor.readOnly || ticket.archived_at !== null) return null;
@@ -179,11 +193,23 @@ export function pagesRouter(service: TicketService): Router {
       key: ticket.key,
       spec: service.getSpec(ticket.key, actor),
       canDecide: allowed.decideSpec,
-      // Where to connect an assistant: an admin's connections, or the demo's own button.
-      connectUrl: actor.demo === true ? "/sign-in" : "/connections",
-      offerPrompt:
-        ticket.archived_at === null && ticket.status !== "resolved" && can(actor, "list_all"),
     };
+    // One quiet line under the conversation suggesting the team ask an assistant for a spec:
+    // while there is none and the ticket is not already handed to an assistant.
+    const specPrompt =
+      !specPanel.spec &&
+      ticket.archived_at === null &&
+      ticket.status !== "resolved" &&
+      can(actor, "list_all") &&
+      agentHelp.current === null &&
+      !agentHelp.demoSample
+        ? {
+            key: ticket.key,
+            // Once an assistant is connected, the line need not say how to connect one.
+            connectUrl:
+              actor.demo !== true && agentHelp.candidates.length > 0 ? null : connectUrl(actor),
+          }
+        : null;
     res.status(status).render("ticket-show", {
       ...helpers,
       title: `${ticket.key}: ${ticket.title}`,
@@ -215,6 +241,7 @@ export function pagesRouter(service: TicketService): Router {
       confirmed: confirmedAt(ticket, events),
       evidence,
       specPanel,
+      specPrompt,
       allowed,
       entry: shownEntry,
       problem,
@@ -261,6 +288,17 @@ export function pagesRouter(service: TicketService): Router {
     const pageNumber = page ?? 1;
     const tickets = service.listTickets(current, actor, pageNumber);
     const signals = service.assistantSignals(tickets, actor);
+    // The invitation to bring an assistant: for the team only, until one is connected. On the
+    // demo every visitor gets their own connection, so it always invites.
+    const connected = actor.demo === true ? 0 : service.connectedAssistants();
+    const invite =
+      actor.role === "customer"
+        ? null
+        : connected > 0
+          ? { connected, manage: can(actor, "manage_connections") }
+          : req.cookies?.[INVITE_COOKIE] === "hidden"
+            ? null
+            : { connected: 0, connectUrl: connectUrl(actor) };
     res.render("ticket-list", {
       ...helpers,
       title:
@@ -281,7 +319,20 @@ export function pagesRouter(service: TicketService): Router {
       // A full page means there may be older tickets on the next one.
       nextPage: tickets.length === LIST_PAGE_SIZE ? pageNumber + 1 : null,
       showArchivedFilter: can(actor, "list_archived"),
+      invite,
     });
+  });
+
+  // "Not now" on the invitation to connect an assistant hides it in this browser.
+  router.post("/assistant-invite/hide", (req, res) => {
+    signedIn(req);
+    res.cookie(INVITE_COOKIE, "hidden", {
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: INVITE_HIDDEN_FOR,
+      path: "/",
+    });
+    res.redirect(303, "/tickets");
   });
 
   // Registered before "/tickets/:key" so that "new" is not read as a ticket key.

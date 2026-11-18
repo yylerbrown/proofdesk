@@ -1280,6 +1280,11 @@ export function createTicketService(
       return toTicket(row, actor);
     },
 
+    /** How many assistant connections people have issued that can work right now. */
+    connectedAssistants(): number {
+      return repository.liveConnections(db, new Date().toISOString()).length;
+    },
+
     /** Which agent connection is working on the ticket now, and which it could be handed to. */
     agentHelp(ticket: Ticket) {
       const id = parseKey(prefix, ticket.key)!;

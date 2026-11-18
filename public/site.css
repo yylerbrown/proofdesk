@@ -2112,3 +2112,62 @@ dl.run-facts dd {
   margin: 0 0 var(--pd-space-3);
   overflow-wrap: anywhere;
 }
+
+/*
+ * The invitation to bring your own AI assistant, on the team's ticket list: a compact strip of
+ * small text, a side offer that never pushes the tickets far down. On a wide screen its links sit
+ * beside the text. It goes once dismissed or once an assistant is connected.
+ */
+.assistant-invite {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--pd-space-1) var(--pd-space-4);
+  margin: 0 0 var(--pd-space-4);
+  padding: var(--pd-space-2) var(--pd-space-3);
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius);
+  background: var(--pd-surface);
+  font-size: var(--pd-text-sm);
+}
+.assistant-invite p {
+  flex: 1 1 28rem;
+  margin: 0;
+}
+.invite-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--pd-space-4);
+}
+.invite-actions form {
+  margin: 0;
+}
+.invite-actions button.link {
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  font-size: inherit;
+  line-height: inherit;
+}
+.invite-connect {
+  font-weight: var(--pd-weight-semibold);
+}
+.invite-who,
+.assistant-connected {
+  color: var(--pd-muted);
+}
+/*
+ * On a phone the strip keeps to its headline and links ("See an assistant's work" shows the rest),
+ * and each link keeps a 44-pixel tap area without making the strip taller.
+ */
+@media (max-width: 639px) {
+  .invite-more {
+    display: none;
+  }
+  .invite-actions :is(a, button.link) {
+    display: inline-block;
+    margin-block: -12px;
+    padding-block: 12px;
+  }
+}

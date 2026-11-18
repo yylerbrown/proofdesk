@@ -22,7 +22,6 @@
         <% if (viewer) { %>
         <ul class="links">
           <li class="tickets-link"><a href="/tickets">Tickets</a></li>
-          <% if (viewer.role !== "customer" && !viewer.demo) { %><li><a href="/connections">Connections</a></li><% } %>
           <li><a href="/tickets/new" role="button">New ticket</a></li>
         </ul>
         <ul class="account">
