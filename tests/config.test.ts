@@ -9,6 +9,7 @@ describe("loadConfig", () => {
       port: 3000,
       databasePath: "./data/app.db",
       gitCommit: undefined,
+      ticketPrefix: "SUP",
     });
   });
 
@@ -32,6 +33,13 @@ describe("loadConfig", () => {
   it("rejects an invalid port", () => {
     expect(() => loadConfig({ PORT: "abc" })).toThrow(/PORT/);
     expect(() => loadConfig({ PORT: "70000" })).toThrow(/PORT/);
+  });
+
+  it("reads TICKET_PREFIX and rejects a bad one", () => {
+    expect(loadConfig({ TICKET_PREFIX: "HELP" }).ticketPrefix).toBe("HELP");
+    for (const bad of ["S", "TOOLONGX", "sup", "SU1", "SU-P"]) {
+      expect(() => loadConfig({ TICKET_PREFIX: bad })).toThrow(/TICKET_PREFIX/);
+    }
   });
 
   it("rejects an unknown NODE_ENV", () => {

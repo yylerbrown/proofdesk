@@ -1,0 +1,94 @@
+import type { Db } from "../db.js";
+import type { TicketStatus } from "./schemas.js";
+
+// All SQL for tickets lives in this file. Every statement is a fixed string with ?
+// placeholders, so no user input is ever joined into SQL text.
+
+export type TicketRow = {
+  id: number;
+  title: string;
+  description: string;
+  status: TicketStatus;
+  where_url: string | null;
+  fix_check: string | null;
+  created_by: string | null;
+  owner_id: string | null;
+  agent_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type EventRow = {
+  id: number;
+  ticket_id: number;
+  actor: string;
+  type: string;
+  data: string; // JSON text
+  created_at: string;
+};
+
+export type NewTicket = {
+  title: string;
+  description: string;
+  whereUrl: string | null;
+  fixCheck: string | null;
+  now: string;
+};
+
+export type NewEvent = {
+  ticketId: number;
+  actor: string;
+  type: string;
+  data: object;
+  now: string;
+};
+
+/** Inserts a ticket with status "new" and returns its number. */
+export function insertTicket(db: Db, ticket: NewTicket): number {
+  const result = db
+    .prepare(
+      `INSERT INTO tickets (title, description, where_url, fix_check, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      ticket.title,
+      ticket.description,
+      ticket.whereUrl,
+      ticket.fixCheck,
+      ticket.now,
+      ticket.now,
+    );
+  return Number(result.lastInsertRowid);
+}
+
+export function findTicket(db: Db, id: number): TicketRow | undefined {
+  return db.prepare("SELECT * FROM tickets WHERE id = ?").get(id) as TicketRow | undefined;
+}
+
+/** Newest first. Pass undefined to get every status. */
+export function listTickets(db: Db, status: TicketStatus | undefined): TicketRow[] {
+  if (status === undefined) {
+    return db.prepare("SELECT * FROM tickets ORDER BY id DESC").all() as TicketRow[];
+  }
+  return db
+    .prepare("SELECT * FROM tickets WHERE status = ? ORDER BY id DESC")
+    .all(status) as TicketRow[];
+}
+
+export function updateTicketStatus(db: Db, id: number, status: TicketStatus, now: string): void {
+  db.prepare("UPDATE tickets SET status = ?, updated_at = ? WHERE id = ?").run(status, now, id);
+}
+
+export function insertEvent(db: Db, event: NewEvent): void {
+  db.prepare(
+    `INSERT INTO ticket_events (ticket_id, actor, type, data, created_at)
+     VALUES (?, ?, ?, ?, ?)`,
+  ).run(event.ticketId, event.actor, event.type, JSON.stringify(event.data), event.now);
+}
+
+/** Oldest first. */
+export function listEvents(db: Db, ticketId: number): EventRow[] {
+  return db
+    .prepare("SELECT * FROM ticket_events WHERE ticket_id = ? ORDER BY id ASC")
+    .all(ticketId) as EventRow[];
+}
