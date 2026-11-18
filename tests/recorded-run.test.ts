@@ -106,7 +106,16 @@ describe("the assistant's work, on its own page", () => {
     expect(welcome.querySelector(".assistant-run-link a")?.text).toBe("See an assistant's work");
     const page = parse((await visitor(app).get("/assistant-run")).text);
     expect(page.querySelector("h1")?.text).toBe("An assistant's work");
-    expect(page.querySelector("pre.run-summary")?.text).toContain("Calls and results");
+    // The summary as headed sections: every heading in summary.md is a heading on the page,
+    // and none of Markdown's marks are left.
+    const summary = page.querySelector(".run-summary")!;
+    const headings = summary.querySelectorAll("h2, h3").map((h) => h.text);
+    const kept = fs.readFileSync(`${RUN}/summary.md`, "utf8");
+    for (const [, heading] of kept.matchAll(/^#{1,2} (.+)$/gm)) expect(headings).toContain(heading);
+    // Code keeps its own characters (the command's file patterns use **); prose has no marks.
+    const prose = parse(summary.toString());
+    for (const code of prose.querySelectorAll("pre, code")) code.remove();
+    expect(prose.text).not.toMatch(/^#+ |\*\*/m);
     const links = page.querySelectorAll("main a").map((a) => a.getAttribute("href"));
     expect(links).toEqual(
       expect.arrayContaining([

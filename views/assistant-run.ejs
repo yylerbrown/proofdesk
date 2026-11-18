@@ -10,7 +10,54 @@
   <li><a href="/tickets/<%= recordedKey %>">The ticket it left, recorded on this demo</a>: its spec, evidence and review request as it sent them</li>
   <% } %>
 </ul>
-<h2>Summary of the run</h2>
-<pre class="paste run-summary"><%= summary %></pre>
+<%# The summary in docs/assistant-run/summary.md, as headed sections: the same words, without
+    Markdown's marks. A test checks that every heading there is a heading here. %>
+<div class="run-summary">
+<h2>One assistant run against the Proofdesk demo (second run)</h2>
+<dl class="evidence-fields">
+  <dt>When</dt><dd>18 Nov 2026, 14:29:25 to 14:30:21 UTC.</dd>
+  <dt>Product</dt><dd>https://support-desk-demo.fly.dev, commit e972938, seeded 14:20 UTC.</dd>
+  <dt>Assistant</dt><dd>Claude Code 2.1.319, headless, model alias <code>opus</code> (reported as <code>claude-opus-5-5</code>).</dd>
+  <dt>Outcome</dt><dd>The whole path. It found SUP-4 ("Sample for your AI assistant: the total adds tax twice"), reproduced the bug and tested a fix with Node in its scratch folder, proposed a one-scenario test spec, attached the test run as evidence naming that scenario, and asked the owner to review. Everything it told Proofdesk matches a result in the transcript. 15 turns, 55 seconds, US$0.28 at list price.</dd>
+</dl>
+
+<h3>Human steps before the run</h3>
+<ol>
+  <li>As a visitor: "Get a demo connection" on the welcome page. Key into a private file, never printed. Connection "Demo visitor ea29379c". Scopes: read tickets (without internal notes), write notes, attach evidence, propose specs.</li>
+  <li>Nothing else. SUP-4 was already owned by Demo Team Member and In Progress from the seed, and handed to every demo connection; the connection's <code>list_tickets</code> returned SUP-4 alone.</li>
+</ol>
+
+<h3>How it was run</h3>
+<p>From a new empty folder with a clean environment (HOME, PATH, USER, LANG and the key only):</p>
+<pre class="paste"><code>claude -p --model opus --setting-sources project --no-session-persistence --mcp-config mcp-config.json --strict-mcp-config --settings '&lt;sandbox on&gt;' --allowedTools "mcp__proofdesk" "Write(./**)" "Edit(./**)" "Read(./**)" "Bash(node *)" --output-format stream-json --verbose "&lt;prompt&gt;"</code></pre>
+<ul>
+  <li>File tools limited to the folder; only <code>node</code> commands allowed.</li>
+  <li>Claude Code's own sandbox switched on: no writes outside the folder, home folder unreadable, no network. Probes confirmed <code>curl</code>, <code>rm</code> and compound commands were refused.</li>
+  <li>The opening event shows one server and the nine Proofdesk tools the connection's scopes allow. One run, no coaching, no edits, no reruns.</li>
+</ul>
+
+<h3>The prompt</h3>
+<blockquote>Using Proofdesk, find the ticket that is ready for an assistant, read what the customer needs, actually do the check it describes as far as you can from here, attach what you found as evidence, propose a short test spec, and ask the owner to review. Do not claim anything you did not observe.</blockquote>
+
+<h3>Calls and results</h3>
+<ol>
+  <li><code>list_tickets</code>: one short row, SUP-4, with the customer's check.</li>
+  <li><code>get_ticket SUP-4</code>: check "total(100, 0.1) returns 110, and a test shows it"; owner Demo Team Member; no spec; <code>ready_token: null</code>.</li>
+  <li>Wrote <code>sup4/total.js</code> (the ticket's function kept as <code>totalOriginal</code>, the fix as <code>total</code>) and <code>sup4/total.test.js</code> (three node:test cases). Two shell attempts were refused for syntax; it switched to the file tools.</li>
+  <li><code>node --test sup4/total.test.js</code>: 3 passed, 0 failed on Node v25.2.1. The original returns 120, the fix returns 110, and the fix returns 100 with no tax.</li>
+  <li><code>propose_spec</code>: one scenario, "Tax is applied once". Came back proposed, <code>verified_by_proofdesk: false</code>.</li>
+  <li><code>add_evidence</code>: kind test, naming scenario 1, the command, the result, revision "local scratch copy, not the product repo", and a JSON report including what it did not verify. <code>verified_by_proofdesk: false</code>.</li>
+  <li><code>ask_owner_to_review</code>: what it observed, what it did not do (real code unchanged, nothing committed or deployed, other callers unchecked), and that the spec needs a person's decision.</li>
+</ol>
+
+<h3>The page afterwards</h3>
+<ul>
+  <li>Team view: the suggested spec (1 scenario, "Evidence names this scenario", Accept and Discard), the evidence "Reported by Demo visitor ea29379c (AI agent)", and the review request as an internal note.</li>
+  <li>Customer view: the check and the evidence with its label. No spec and no note.</li>
+</ul>
+
+<h3>Not done</h3>
+<p>Nobody accepted the spec or asked the customer, since those steps belong to people. The fix was tested on a copy of the ticket's snippet, not on real code.</p>
+</div>
 </div>
 <%- include("footer") %>

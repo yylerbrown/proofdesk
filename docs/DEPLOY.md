@@ -84,6 +84,14 @@ fly machine restart --app support-desk-demo
 `app.db*` is the database and its two companion files, `app.db-wal` and `app.db-shm`. The
 set-aside folder keeps what visitors wrote; delete it when it is no longer needed.
 
+## The source link
+
+The welcome page links **Source and setup** to the repository's README when `SOURCE_URL` holds the
+repository's https address. It is not written into `fly.toml`, because the address names the
+account that owns the repository: set it on each app, for example
+`fly secrets set SOURCE_URL=<the repository's address> --app support-desk-demo`. The link opens
+for strangers only once the repository is public.
+
 ## After every deploy
 
 1. `curl https://support-desk-demo.fly.dev/api/health` and
