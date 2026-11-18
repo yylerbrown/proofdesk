@@ -132,8 +132,11 @@ export type TicketEntry = {
   created_at: string;
   /** For a reply published from an internal note: that note's id. Shown to the team only. */
   based_on: number | null;
-  /** What a note is for: an ordinary note, a suggested reply, or a request for review. */
-  purpose: repository.NotePurpose;
+  /**
+   * Notes only: what a note is for, an ordinary note, a suggested reply, or a request for
+   * review. Null on a reply.
+   */
+  purpose: repository.NotePurpose | null;
 };
 
 /** One piece of evidence, as reported. Proofdesk verifies none of it. */
@@ -624,7 +627,8 @@ export function createTicketService(
       author_name: row.author_name,
       created_at: row.created_at,
       based_on: row.based_on ?? null,
-      purpose: row.purpose ?? "note",
+      // Purpose describes notes. A reply has none, so the API never calls a reply a note.
+      purpose: row.kind === "note" ? (row.purpose ?? "note") : null,
     };
   }
 
