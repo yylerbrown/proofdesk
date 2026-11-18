@@ -172,6 +172,18 @@ main > form,
   background: var(--pd-subtle);
   font-size: var(--pd-text-sm);
 }
+/* What a ticket's assistant asked for, set apart under the check and labelled as its own. */
+.assistant-signal {
+  margin-bottom: var(--pd-space-3);
+  padding-left: var(--pd-space-3);
+  border-left: 2px solid var(--pd-border-strong);
+}
+.assistant-signal p {
+  margin-bottom: var(--pd-space-1);
+}
+.signal-from {
+  color: var(--pd-muted);
+}
 /* Small explanations under a title or beside a control: muted, never body-black. */
 .list-note,
 .role-note,
@@ -697,22 +709,22 @@ form.inline {
  * get the soft grey under the pointer. The row scrolls sideways on its own if it must; the page
  * never does.
  */
-nav[aria-label="Filter by status"] {
+:is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"]) {
   display: block;
-  margin-bottom: var(--pd-space-3);
+  margin: 0;
   overflow-x: auto;
 }
-nav[aria-label="Filter by status"] ul {
+:is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"]) ul {
   display: flex;
   gap: 2px;
   margin: 0;
   padding: 0;
   white-space: nowrap;
 }
-nav[aria-label="Filter by status"] li {
+:is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"]) li {
   padding: 0;
 }
-nav[aria-label="Filter by status"] li a {
+:is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"]) li a {
   display: inline-block;
   margin: 0;
   padding: 5px 10px;
@@ -726,15 +738,42 @@ nav[aria-label="Filter by status"] li a {
     background-color var(--pd-ease),
     color var(--pd-ease);
 }
-nav[aria-label="Filter by status"] li a:hover {
+:is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"]) li a:hover {
   background-color: var(--pd-subtle);
   color: var(--pd-text);
 }
-nav[aria-label="Filter by status"] a[aria-current="page"],
-nav[aria-label="Filter by status"] a[aria-current="page"]:hover {
+:is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"]) a[aria-current="page"],
+:is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"])
+  a[aria-current="page"]:hover {
   border-color: var(--pd-border-strong);
   background-color: var(--pd-surface);
   color: var(--pd-text);
+}
+/*
+ * The list's filters on one row that wraps: status, owner (for the team) and a search box, which
+ * takes the rest of the row on a wide screen and a row of its own on a phone.
+ */
+.list-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pd-space-2) var(--pd-space-5);
+  margin-bottom: var(--pd-space-3);
+}
+form.list-search {
+  flex: 1 1 16rem;
+  max-width: 24rem;
+  margin: 0 0 0 auto;
+}
+form.list-search :is(input, button) {
+  margin: 0;
+  font-size: var(--pd-text-sm);
+}
+@media (max-width: 639px) {
+  form.list-search {
+    max-width: none;
+    margin-left: 0;
+  }
 }
 
 /* ---------- 7. Tables and list rows ---------- */
@@ -851,13 +890,22 @@ table.tickets td.row-actions > * + * {
   table.tickets td {
     white-space: nowrap;
   }
-  /* On a wide screen the title stays on one line; the full title is on hover. */
+  /*
+   * On a wide screen the title takes what is left and wraps to at most two lines, so a long one
+   * is read rather than cut off; the full title is on hover.
+   */
   table.tickets td.user-text {
     width: 100%;
     max-width: 0;
+    line-height: 1.35;
+    white-space: normal;
+  }
+  table.tickets td.user-text a {
+    display: -webkit-box;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
   }
 }
 /*
@@ -1923,6 +1971,24 @@ button.copy {
   padding: 2px 10px;
   font-size: var(--pd-text-xs);
 }
+/*
+ * On a phone the small text controls are 44-pixel tap targets, like More: History, the panel's
+ * disclosures such as Attach evidence, and the Copy buttons. A wider screen keeps them small.
+ */
+@media (max-width: 639px) {
+  details.history > summary,
+  details#reopen > summary,
+  .ticket-panel details:not(.more) > summary,
+  .ticket-thread details.publish > summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  button.copy {
+    min-height: 44px;
+    padding-inline: 16px;
+  }
+}
 .spec-prompt pre {
   margin-bottom: var(--pd-space-3);
 }
@@ -2091,13 +2157,19 @@ form.sample-fix {
 
 /* The viewer's one next action, right under the status line. */
 .next-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pd-space-2) var(--pd-space-3);
   margin: 0 0 var(--pd-space-4);
 }
-.next-action form {
+.next-action form,
+.next-action button,
+.next-action [role="button"] {
   margin: 0;
 }
-.next-action button {
-  margin: 0;
+.next-note {
+  color: var(--pd-muted);
 }
 /* On the demo, the next role to view as: quieter than the next action, and below it. */
 .demo-next button {

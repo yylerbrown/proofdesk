@@ -27,7 +27,7 @@ import { createConnectionService } from "./connections/service.js";
 import { connectionsRouter } from "./routes/connections.js";
 import { mcpEndpoint, mcpErrorHandler } from "./mcp.js";
 import { assistantRunRouter } from "./routes/assistant-run.js";
-import { teamMembers } from "./team/service.js";
+import { peopleRoles, teamMembers } from "./team/service.js";
 import { guide, openApiDocument } from "./api/describe.js";
 import { siteAddress } from "./routes/connections.js";
 // The limits live in limits.ts, where the API's guide reads them too.
@@ -60,6 +60,7 @@ export function createApp(config: Config, db: Db): Express {
   // growing. Real tickets have none.
   const tickets = createTicketService(db, config.ticketPrefix, config.demo ? DEMO_BUDGET : {}, {
     teamMembers: teamMembers(config, db),
+    peopleRoles: peopleRoles(config, db),
   });
   const connections = createConnectionService(db);
 

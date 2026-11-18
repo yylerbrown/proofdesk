@@ -22,7 +22,8 @@
         <% if (viewer) { %>
         <ul class="links">
           <li class="tickets-link"><a href="/tickets">Tickets</a></li>
-          <li><a href="/tickets/new" role="button">New ticket</a></li>
+          <%# The read-only admin preview cannot file a ticket, so it is not offered one. %>
+          <% if (!viewer.readOnly) { %><li><a href="/tickets/new" role="button">New ticket</a></li><% } %>
         </ul>
         <ul class="account">
           <% if (viewer.demo && demoPeople.length > 0) { %>

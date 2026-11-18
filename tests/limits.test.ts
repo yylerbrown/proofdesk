@@ -139,7 +139,14 @@ describe("reads come in bounded pages", () => {
     const second = await admin(app).get("/api/tickets?page=2");
     expect(second.body.map((t: { key: string }) => t.key)).toEqual(["SUP-1"]);
     const page = await admin(app).get("/tickets");
-    expect(page.text).toContain('href="/tickets?status=all&page=2"');
+    expect(page.text).toContain('href="/tickets?page=2"');
+    // The next page keeps the filters, on the API and on the page.
+    const narrowed = await admin(app).get("/api/tickets?owner=none&q=printer");
+    expect(narrowed.headers.link).toMatch(
+      /^<\/api\/tickets\?owner=none&q=printer&cursor=[^>]+>; rel="next"$/,
+    );
+    const filteredPage = await admin(app).get("/tickets?owner=none");
+    expect(filteredPage.text).toContain('href="/tickets?owner=none&amp;page=2"');
   });
 
   it("shows at most the latest entries and history of one ticket, oldest first", () => {

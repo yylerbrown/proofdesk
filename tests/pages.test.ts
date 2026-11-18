@@ -151,7 +151,7 @@ describe("ticket page", () => {
     expect(res.text).toContain('href="https://example.com/print"');
     expect(res.text).toContain("Ten pages print without a jam.");
     expect(res.text).toContain("Ticket filed");
-    expect(res.text).toContain("<td>Admin</td>");
+    expect(res.text).toContain('<td>Admin <small class="role-label">admin</small></td>');
     expect(res.text).toMatch(
       /<td><time datetime="[^"]+">\d{1,2} \w{3} \d{4}, \d{2}:\d{2} UTC<\/time>/,
     );

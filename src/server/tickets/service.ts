@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { DEMO_ACTORS, DEV_ACTORS, type Actor } from "../actor.js";
+import { DEMO_ACTORS, DEV_ACTORS, type Actor, type Role } from "../actor.js";
 import type { Db } from "../db.js";
 import { demoNotReady, HttpError, ValidationError } from "../errors.js";
 import { can, type Action } from "../permissions.js";
@@ -200,6 +200,9 @@ export const DEMO_BUDGET: Budget = {
 
 /** How many tickets a list page shows, and how many entries or events a ticket page shows. */
 export const LIST_PAGE_SIZE = 100;
+
+/** How a list may be narrowed besides its status: by owner, and by words to find. */
+export type ListNarrowing = { owner?: "me" | "none"; q?: string };
 export const THREAD_LIMIT = 200;
 
 // The kinds of history entry a customer may see. Any other kind, including one added later,
@@ -291,7 +294,11 @@ function doneWhen(row: { fix_check: string | null; agreed_check: string | null }
 }
 
 /** What the service needs to know from outside the database: who can own a ticket. */
-export type ServiceOptions = { teamMembers?: () => { id: string; name: string }[] };
+export type ServiceOptions = {
+  teamMembers?: () => { id: string; name: string }[];
+  /** Each person's role now, by id; without it, only the made-up people's roles are known. */
+  peopleRoles?: (ids: string[]) => Map<string, Role>;
+};
 
 export function createTicketService(
   db: Db,
@@ -715,12 +722,23 @@ export function createTicketService(
      * "archived" lists only archived tickets, for a team member or admin. Every other filter leaves
      * archived tickets out.
      */
-    listTickets(filter: TicketListFilter, actor: Actor, pageNumber = 1): Ticket[] {
+    listTickets(
+      filter: TicketListFilter,
+      actor: Actor,
+      pageNumber = 1,
+      narrowing: ListNarrowing = {},
+    ): Ticket[] {
       const page = { limit: LIST_PAGE_SIZE, offset: (pageNumber - 1) * LIST_PAGE_SIZE };
       const view = (rows: repository.TicketRow[]) => rows.map((row) => toTicket(row, actor));
+      const narrow = {
+        ownerId: narrowing.owner === "me" ? actor.id : null,
+        unassigned: narrowing.owner === "none",
+        // Searched as plain words: %, _ and \ in them mean themselves.
+        search: narrowing.q ? `%${narrowing.q.replace(/[\\%_]/g, "\\$&")}%` : null,
+      };
       if (filter === "archived") {
         requirePermission(actor, "list_archived");
-        return view(repository.listArchivedTickets(db, page));
+        return view(repository.listArchivedTickets(db, page, narrow));
       }
       const status = filter === "all" ? null : filter;
       if (can(actor, "list_all")) {
@@ -729,15 +747,15 @@ export function createTicketService(
         // cut, so newer tickets never push them off a page.
         if (isHandedAgent(actor)) {
           const handed = repository.handedTicketIds(db, actor.connection!.id);
-          return view(repository.listTicketsAmong(db, handed, status, page));
+          return view(repository.listTicketsAmong(db, handed, status, page, narrow));
         }
         if (isDemoAgent(actor)) {
-          return view(repository.listTicketsAmong(db, demoTicketIds(), status, page));
+          return view(repository.listTicketsAmong(db, demoTicketIds(), status, page, narrow));
         }
-        return view(repository.listAllTickets(db, status, page));
+        return view(repository.listAllTickets(db, status, page, narrow));
       }
       // An assistant files no tickets, so for one this list is empty.
-      return view(repository.listTicketsFiledBy(db, actor.id, status, page));
+      return view(repository.listTicketsFiledBy(db, actor.id, status, page, narrow));
     },
 
     getTicket(key: string, actor: Actor): Ticket {
@@ -1366,6 +1384,16 @@ export function createTicketService(
      * people of the entrance. An id that is neither, such as the "anonymous" of the first
      * tickets, is not in the map.
      */
+    /** Each person's role now, to show beside a name read live. */
+    peopleRoles(ids: string[]): Map<string, Role> {
+      if (options.peopleRoles) return options.peopleRoles(ids);
+      const roles = new Map<string, Role>();
+      for (const person of [...DEV_ACTORS, ...DEMO_ACTORS]) {
+        if (ids.includes(person.id)) roles.set(person.id, person.role);
+      }
+      return roles;
+    },
+
     peopleNames(ids: string[]): Map<string, string> {
       const names = repository.userNames(db, ids);
       for (const person of [...DEV_ACTORS, ...DEMO_ACTORS]) {

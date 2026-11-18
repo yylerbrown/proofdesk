@@ -17,25 +17,45 @@
 <% } %>
 <%- include("assistant-invite", { invite }) %>
 
+<%# The filters: by status, by owner for the team, and words to find. Each is a plain link or a GET form, and each keeps the others, so the address names the view and can be shared. %>
+<div class="list-filters">
 <nav aria-label="Filter by status">
   <ul>
     <li>
-      <a href="/tickets" <% if (current === "all") { %>aria-current="page"<% } %>>All</a>
+      <a href="<%= href({ status: "all" }) %>" <% if (current === "all") { %>aria-current="page"<% } %>>All</a>
     </li>
     <% for (const status of statuses) { %>
     <li>
-      <a href="/tickets?status=<%= status %>" <% if (current === status) { %>aria-current="page"<% } %>><%= statusLabels[status] %></a>
+      <a href="<%= href({ status }) %>" <% if (current === status) { %>aria-current="page"<% } %>><%= statusLabels[status] %></a>
     </li>
     <% } %>
     <% if (showArchivedFilter) { %>
     <li>
-      <a href="/tickets?status=archived" <% if (current === "archived") { %>aria-current="page"<% } %>>Archived</a>
+      <a href="<%= href({ status: "archived" }) %>" <% if (current === "archived") { %>aria-current="page"<% } %>>Archived</a>
     </li>
     <% } %>
   </ul>
 </nav>
+<% if (ownerFilters) { %>
+<nav aria-label="Filter by owner">
+  <ul>
+    <li><a href="<%= href({ owner: undefined }) %>" <% if (!filters.owner) { %>aria-current="page"<% } %>>Everyone</a></li>
+    <li><a href="<%= href({ owner: "me" }) %>" <% if (filters.owner === "me") { %>aria-current="page"<% } %>>Mine</a></li>
+    <li><a href="<%= href({ owner: "none" }) %>" <% if (filters.owner === "none") { %>aria-current="page"<% } %>>Unassigned</a></li>
+  </ul>
+</nav>
+<% } %>
+<form method="get" action="/tickets" role="search" class="list-search">
+  <% if (current !== "all") { %><input type="hidden" name="status" value="<%= current %>" /><% } %>
+  <% if (filters.owner) { %><input type="hidden" name="owner" value="<%= filters.owner %>" /><% } %>
+  <input type="search" name="q" value="<%= filters.q ?? "" %>" placeholder="Search titles and descriptions" aria-label="Search titles and descriptions" maxlength="100" />
+  <button type="submit" class="secondary">Search</button>
+</form>
+</div>
 
-<% if (tickets.length === 0) { %>
+<% if (tickets.length === 0 && narrowed) { %>
+<p class="empty">No tickets match. <a href="<%= href({ owner: undefined, q: undefined }) %>">Clear the owner and search</a>.</p>
+<% } else if (tickets.length === 0) { %>
 <p class="empty"><%= empty[current] %><% if (current !== "archived") { %> <a href="/tickets/new">File a ticket</a>.<% } %></p>
 <% } else { %>
 <div class="overflow-auto">
@@ -65,7 +85,7 @@
   </table>
 </div>
 <% if (nextPage) { %>
-<p><a href="/tickets?status=<%= current %>&page=<%= nextPage %>">Older tickets</a></p>
+<p><a href="<%= nextPage %>">Older tickets</a></p>
 <% } %>
 <% } %>
 <%- include("footer") %>
