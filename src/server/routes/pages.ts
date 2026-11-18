@@ -12,7 +12,7 @@ import {
   timeAgo,
   waitingOn,
 } from "../pages/format.js";
-import { rememberSaved, takeSaved, type SavedKey } from "../pages/saved.js";
+import { rememberSaved, takeProblem, takeSaved, type SavedKey } from "../pages/saved.js";
 import { listQuerySchema, TICKET_STATUSES } from "../tickets/schemas.js";
 import { LIST_PAGE_SIZE, type Ticket, type TicketService } from "../tickets/service.js";
 import { parse } from "../validation.js";
@@ -92,7 +92,10 @@ export function pagesRouter(service: TicketService): Router {
 
   // A page opened just after a save says what was saved.
   router.use((req, res, next) => {
-    if (req.method === "GET") res.locals.saved = takeSaved(req, res);
+    if (req.method === "GET") {
+      res.locals.saved = takeSaved(req, res);
+      res.locals.refused = takeProblem(req, res);
+    }
     next();
   });
 

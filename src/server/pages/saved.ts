@@ -47,3 +47,26 @@ export function takeSaved(req: Request, res: Response): string | null {
     ? SAVED_MESSAGES[key as SavedKey]
     : null;
 }
+
+const PROBLEM_COOKIE = "problem";
+
+/**
+ * Remembers why a ticket action was refused, for the ticket page the browser is sent back to.
+ * Only the server sets this cookie, from its own messages; it lives a minute and is read once.
+ */
+export function rememberProblem(res: Response, message: string): void {
+  res.cookie(PROBLEM_COOKIE, message.slice(0, 300), {
+    httpOnly: true,
+    sameSite: "lax",
+    maxAge: 60_000,
+    path: "/",
+  });
+}
+
+/** Why the last ticket action was refused, once: reading it clears it. Null when there is none. */
+export function takeProblem(req: Request, res: Response): string | null {
+  const message: unknown = req.cookies?.[PROBLEM_COOKIE];
+  if (message === undefined) return null;
+  res.clearCookie(PROBLEM_COOKIE, { path: "/" });
+  return typeof message === "string" && message.length > 0 ? message : null;
+}

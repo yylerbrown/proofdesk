@@ -10,8 +10,8 @@
   <label>
     Type <%= ticket.key %> to confirm
     <input type="text" name="confirm" autocomplete="off" required <% if (error) { %>aria-invalid="true" aria-describedby="confirm-error"<% } %> />
-    <% if (error) { %><small id="confirm-error"><%= error %></small><% } %>
   </label>
+  <% if (error) { %><small id="confirm-error"><%= error %></small><% } %>
   <div class="choice">
     <a href="/tickets/<%= ticket.key %>" role="button" class="secondary outline">Keep ticket</a>
     <button type="submit" class="danger">Delete permanently</button>

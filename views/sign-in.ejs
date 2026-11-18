@@ -15,6 +15,10 @@
   <p>Tell us what went wrong, follow it while the team works on it, and say when it is fixed.</p>
 </hgroup>
 
+<% if (viewer) { %>
+<p class="signed-in">You are signed in as <strong><%= viewer.name %></strong>. <a href="/tickets">Go to the tickets</a>, or sign out at the top to switch.</p>
+<% } %>
+
 <% if (failed) { %>
 <p class="notice">That sign-in did not work. Try again, or ask the support team if it keeps happening.</p>
 <% } %>

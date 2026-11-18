@@ -1,7 +1,15 @@
 import { parse } from "node-html-parser";
 import type { Express } from "express";
 import { describe, expect, it } from "vitest";
-import { admin, as, buildTestApp, customerOne, customerTwo, teamActor } from "./helpers.js";
+import {
+  admin,
+  as,
+  buildTestApp,
+  customerOne,
+  customerTwo,
+  refusedBackToTicket,
+  teamActor,
+} from "./helpers.js";
 
 // When the customer says No, the ticket's owner must see it at once, with the customer's own
 // words, and the ticket must be plainly back in the owner's hands.
@@ -63,7 +71,7 @@ describe("after the customer says No", () => {
     const { app } = buildTestApp();
     await saidNo(app);
     const row = parse((await as(app, teamActor).get("/tickets")).text).querySelector("tbody tr");
-    expect(row?.querySelectorAll("td")[4]?.text).toBe("Team: customer says not fixed");
+    expect(row?.querySelectorAll("td")[4]?.text).toBe("Team: customer says it still fails");
     const mine = parse((await as(app, customerOne).get("/tickets/SUP-1")).text).querySelector(
       "#customer-said-no",
     );
@@ -125,11 +133,11 @@ describe("evidence from the ticket page", () => {
     await as(app, customerOne).post("/api/tickets").send(valid);
     const html = parse((await as(app, customerOne).get("/tickets/SUP-1")).text);
     expect(html.querySelector("form[action$='/evidence']")).toBeNull();
-    const res = await as(app, customerOne)
-      .post("/tickets/SUP-1/evidence")
-      .type("form")
-      .send({ kind: "note", summary: "x" });
-    expect(res.status).toBe(403);
+    const reason = await refusedBackToTicket(as(app, customerOne), "/tickets/SUP-1/evidence", {
+      kind: "note",
+      summary: "x",
+    });
+    expect(reason).toBe("You are not allowed to do that.");
   });
 
   it("keeps the form open with the message when the summary is missing", async () => {

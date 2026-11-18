@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ValidationError } from "../src/server/errors.js";
 import { createTicketService } from "../src/server/tickets/service.js";
-import { admin, adminActor, buildTestApp } from "./helpers.js";
+import { admin, adminActor, buildTestApp, refusedBackToTicket } from "./helpers.js";
 
 type TestDb = ReturnType<typeof buildTestApp>["db"];
 
@@ -333,12 +333,9 @@ describe("edit, archive and restore on the pages", () => {
   it("answers a change to an archived ticket with an HTML page that says why", async () => {
     const { app } = setup();
     await admin(app).post("/tickets/SUP-1/archive");
-    const res = await admin(app)
-      .post("/tickets/SUP-1/status")
-      .type("form")
-      .send({ status: "resolved" });
-    expect(res.status).toBe(409);
-    expect(res.headers["content-type"]).toMatch(/html/);
-    expect(res.text).toContain("Ticket SUP-1 is archived. Restore it first.");
+    const reason = await refusedBackToTicket(admin(app), "/tickets/SUP-1/status", {
+      status: "resolved",
+    });
+    expect(reason).toBe("Ticket SUP-1 is archived. Restore it first.");
   });
 });

@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { admin, as, buildTestApp, customerOne, customerTwo, teamActor } from "./helpers.js";
+import {
+  admin,
+  as,
+  buildTestApp,
+  customerOne,
+  customerTwo,
+  refusedBackToTicket,
+  teamActor,
+} from "./helpers.js";
 
 const change = { change_url: "https://example.com/change/7" };
 const tryIt = {
@@ -33,11 +41,10 @@ describe("only the customer resolves a ticket", () => {
     const api = await admin(app).patch("/api/tickets/SUP-1").send({ status: "resolved" });
     expect(api.status).toBe(409);
     expect(api.body.error.code).toBe("needs_customer");
-    const form = await admin(app)
-      .post("/tickets/SUP-1/status")
-      .type("form")
-      .send({ status: "resolved" });
-    expect(form.status).toBe(409);
+    const reason = await refusedBackToTicket(admin(app), "/tickets/SUP-1/status", {
+      status: "resolved",
+    });
+    expect(reason).toMatch(/Only the customer resolves ticket SUP-1/);
     expect((await admin(app).get("/api/tickets/SUP-1")).body.status).toBe("in_progress");
 
     const page = await admin(app).get("/tickets/SUP-1");

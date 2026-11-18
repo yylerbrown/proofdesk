@@ -21,14 +21,14 @@
   <label>
     Title
     <input type="text" name="title" value="<%= values.title %>" required <% if (errors.title) { %>aria-invalid="true" aria-describedby="title-error"<% } %> />
-    <% if (errors.title) { %><small id="title-error"><%= errors.title.join(" ") %></small><% } %>
   </label>
+  <% if (errors.title) { %><small id="title-error"><%= errors.title.join(" ") %></small><% } %>
 
   <label>
     Description
     <textarea name="description" rows="6" required <% if (errors.description) { %>aria-invalid="true" aria-describedby="description-error"<% } %>><%= values.description %></textarea>
-    <% if (errors.description) { %><small id="description-error"><%= errors.description.join(" ") %></small><% } %>
   </label>
+  <% if (errors.description) { %><small id="description-error"><%= errors.description.join(" ") %></small><% } %>
 
   <label>
     How will we know it's fixed? (optional)

@@ -3,7 +3,15 @@ import request from "supertest";
 import type { Express } from "express";
 import { describe, expect, it } from "vitest";
 import { AGENT_SCOPES } from "../src/server/permissions.js";
-import { admin, as, buildTestApp, customerOne, handToAgent, teamActor } from "./helpers.js";
+import {
+  admin,
+  as,
+  buildTestApp,
+  customerOne,
+  handToAgent,
+  refusedBackToTicket,
+  teamActor,
+} from "./helpers.js";
 
 // Only the ticket's current owner asks the customer, after trying it, and the ask says what
 // they tried and what happened. After a No, it also says what changed.
@@ -54,8 +62,8 @@ describe("who asks the customer", () => {
     await admin(app)
       .post("/api/tickets/SUP-1/hand-off")
       .send({ to: "dev-admin-1", expected_owner: "dev-team-1" });
-    const former = await as(app, teamActor).post("/tickets/SUP-1/ready").type("form").send(ask);
-    expect(former.status).toBe(403);
+    const reason = await refusedBackToTicket(as(app, teamActor), "/tickets/SUP-1/ready", ask);
+    expect(reason).toMatch(/Only Admin, who owns ticket SUP-1, asks the customer/);
     expect((await reread(app)).ready_at).toBeNull();
 
     const owner = await admin(app).post("/api/tickets/SUP-1/ready").send(ask);

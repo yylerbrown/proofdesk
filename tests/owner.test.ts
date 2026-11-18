@@ -1,7 +1,15 @@
 import { AGENT_SCOPES } from "../src/server/permissions.js";
 import { describe, expect, it } from "vitest";
 import { createTicketService } from "../src/server/tickets/service.js";
-import { admin, adminActor, as, buildTestApp, customerOne, teamActor } from "./helpers.js";
+import {
+  admin,
+  adminActor,
+  as,
+  buildTestApp,
+  customerOne,
+  refusedBackToTicket,
+  teamActor,
+} from "./helpers.js";
 
 const valid = { title: "Printer is broken", description: "It jams on every page." };
 
@@ -146,13 +154,11 @@ describe("the owner on the ticket page", () => {
     expect(customer.text).not.toContain("/take");
   });
 
-  it("explains on a page why In Progress needs an owner", async () => {
+  it("explains on the ticket itself why In Progress needs an owner", async () => {
     const { app } = await setup();
-    const res = await admin(app)
-      .post("/tickets/SUP-1/status")
-      .type("form")
-      .send({ status: "in_progress" });
-    expect(res.status).toBe(409);
-    expect(res.text).toContain("Take ticket SUP-1 before moving it to In Progress.");
+    const reason = await refusedBackToTicket(admin(app), "/tickets/SUP-1/status", {
+      status: "in_progress",
+    });
+    expect(reason).toBe("Take ticket SUP-1 before moving it to In Progress.");
   });
 });

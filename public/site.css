@@ -1230,3 +1230,10 @@ textarea:focus {
 .ask-blocked button[disabled] {
   margin-right: 0.5rem;
 }
+
+/* Why a ticket action was refused, at the top of the ticket it came from. */
+.refused {
+  padding: 0.5rem 0.75rem;
+  border-left: 4px solid var(--pico-del-color);
+  background: var(--pico-card-sectioning-background-color);
+}

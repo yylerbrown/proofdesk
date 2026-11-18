@@ -37,6 +37,9 @@
       </nav>
     </header>
     <main class="container">
+      <% if (locals.refused) { %>
+      <p role="alert" class="refused"><%= locals.refused %></p>
+      <% } %>
       <% if (locals.saved) { %>
       <p role="status" class="saved"><%= locals.saved %></p>
       <% } %>

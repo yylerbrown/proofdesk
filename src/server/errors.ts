@@ -1,4 +1,5 @@
 import type { ErrorRequestHandler, RequestHandler } from "express";
+import { rememberProblem } from "./pages/saved.js";
 
 /** An error that carries an HTTP status and a stable machine-readable code. */
 export class HttpError extends Error {
@@ -161,6 +162,19 @@ export const pageErrorHandler: ErrorRequestHandler = (err, req, res, next) => {
     // a page that was being opened, remember its address so sign-in can return to it.
     const next = req.method === "GET" ? `?next=${encodeURIComponent(req.originalUrl)}` : "";
     res.redirect(303, `/sign-in${next}`);
+    return;
+  }
+  // A refused action on a ticket goes back to that ticket, with the reason shown there.
+  const ticketAction = /^\/tickets\/([A-Z]{2,6}-[1-9][0-9]*)\/[a-z/-]+$/.exec(req.path);
+  if (
+    req.method === "POST" &&
+    ticketAction !== null &&
+    (shown.status === 403 || shown.status === 409) &&
+    // A forged request from another site gets a plain refusal, never a trip to the ticket.
+    shown.code !== "cross_site_request"
+  ) {
+    rememberProblem(res, shown.message);
+    res.redirect(303, `/tickets/${ticketAction[1]}`);
     return;
   }
   let title = "Something went wrong";
