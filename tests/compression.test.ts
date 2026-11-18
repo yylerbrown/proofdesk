@@ -62,7 +62,9 @@ describe("compression", () => {
 describe("cache headers on static files", () => {
   it("lets a browser keep a stylesheet for ten minutes, then check it", async () => {
     const { app } = buildTestApp();
-    for (const file of ["/assets/site.css", "/assets/pico.min.css", "/assets/js/copy.js"]) {
+    // Only files that are in the repository: the compiled browser scripts under /assets/js exist
+    // only after a build, and this suite runs before one.
+    for (const file of ["/assets/site.css", "/assets/pico.min.css", "/assets/mark.svg"]) {
       const res = await request(app).get(file);
       expect(res.status, file).toBe(200);
       expect(res.headers["cache-control"], file).toBe("public, max-age=600");
