@@ -98,7 +98,8 @@ describe("showLocalTimes", () => {
   const format = new Intl.DateTimeFormat("en-US", {
     dateStyle: "medium",
     timeStyle: "short",
-    timeZone: "America/Vancouver",
+    // A zone with no clock changes, so the answer does not depend on the time-zone data.
+    timeZone: "Asia/Tokyo",
   });
   const element = (dateTime: string, relative = false): TimeElement => ({
     dateTime,
@@ -110,14 +111,14 @@ describe("showLocalTimes", () => {
   it("rewrites an exact time into the visitor's time zone", () => {
     const exact = element("2026-11-17T20:00:00.000Z");
     showLocalTimes([exact], format);
-    expect(exact.textContent).toBe("Nov 17, 2026, 12:00 PM");
+    expect(exact.textContent).toBe("Nov 18, 2026, 5:00 AM");
   });
 
   it("keeps the words of a relative time and puts the exact time on hover", () => {
     const relative = { ...element("2026-11-17T20:00:00.000Z", true), textContent: "3 hours ago" };
     showLocalTimes([relative], format);
     expect(relative.textContent).toBe("3 hours ago");
-    expect(relative.title).toBe("Nov 17, 2026, 12:00 PM");
+    expect(relative.title).toBe("Nov 18, 2026, 5:00 AM");
   });
 
   it("leaves the UTC text when the time cannot be read", () => {
