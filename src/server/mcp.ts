@@ -137,9 +137,9 @@ function actorOf(authInfo: AuthInfo | undefined): Actor {
 
 /**
  * The middleware for POST /mcp, in order: refuse a browser page from another site, read the
- * JSON body, check the connection key with the SDK's bearer check, refuse a batch, apply the
- * write allowance to tool calls that change something, then hand the request to the SDK's
- * handler.
+ * JSON body, check the connection key with the SDK's bearer check, refuse a body the JSON
+ * parser did not read and a batch, apply the write allowance to tool calls that change
+ * something, then hand the request to the SDK's handler.
  */
 export function mcpEndpoint(
   service: TicketService,
@@ -178,6 +178,19 @@ export function mcpEndpoint(
     express.json({ limit: "100kb" }),
     requireBearerAuth({ verifier }),
     (req, res, next) => {
+      // A body the JSON parser above skipped, such as one whose Content-Type it does not
+      // take for JSON, would be read by the SDK itself, past the size limit, the batch check
+      // and the write allowance. The SDK's test of the type is looser than the parser's.
+      if (req.method === "POST" && req.body === undefined) {
+        next(
+          new HttpError(
+            415,
+            "bad_request",
+            "Send one JSON-RPC message as the body, with Content-Type: application/json.",
+          ),
+        );
+        return;
+      }
       // One JSON-RPC message a request. The SDK would run every call in an array, and the
       // write allowance below counts one call a request. The SDK's own client never batches.
       if (Array.isArray(req.body)) {

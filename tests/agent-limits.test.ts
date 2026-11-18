@@ -174,6 +174,47 @@ describe("the page that shows a new key", () => {
   });
 });
 
+describe("a request to /mcp whose body the JSON parser did not read", () => {
+  it("is refused, so no batch or write slips past the batch check and the allowance", async () => {
+    const { app, db } = buildTestApp();
+    await admin(app).post("/api/tickets").send(valid);
+    const key = await issue(app, ["read_tickets", "write_notes"]);
+    await handToAgent(app, "SUP-1", key);
+    const server = await listenLocally(app);
+    servers.push(server);
+    const { port } = server.address() as AddressInfo;
+    const note = (id: number) => ({
+      jsonrpc: "2.0",
+      id,
+      method: "tools/call",
+      params: { name: "add_note", arguments: { key: "SUP-1", body: `note ${id}` } },
+    });
+    // fetch sends this no-break space as the single byte 0xA0. Express's JSON parser does not
+    // take that type for JSON, but the SDK trims it off and would read the body itself.
+    const post = (body: unknown) =>
+      fetch(`http://127.0.0.1:${port}/mcp`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json ",
+          Accept: "application/json, text/event-stream",
+        },
+        body: JSON.stringify(body),
+      });
+    for (const body of [[note(1), note(2)], note(3)]) {
+      const res = await post(body);
+      expect(res.status).toBe(415);
+      expect(await res.json()).toMatchObject({
+        jsonrpc: "2.0",
+        id: null,
+        error: { code: -32000, message: expect.any(String), data: { code: "bad_request" } },
+      });
+    }
+    const notes = db.prepare("SELECT COUNT(*) AS n FROM ticket_entries").get() as { n: number };
+    expect(notes.n).toBe(0);
+  });
+});
+
 describe("an error on /mcp before the SDK answers", () => {
   it("comes back as a JSON-RPC error, never as a page", async () => {
     const { app } = buildTestApp();
