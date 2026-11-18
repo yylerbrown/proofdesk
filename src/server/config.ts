@@ -29,6 +29,8 @@ const schema = z.object({
     .optional(),
   TEAM_GITHUB_IDS: githubIds,
   ADMIN_GITHUB_IDS: githubIds,
+  // The demo's address, offered on the real site's sign-in page to try it without signing in.
+  DEMO_URL: z.url({ protocol: /^https$/ }).optional(),
 });
 
 const SIGN_IN_NAMES = [
@@ -58,6 +60,8 @@ export type Config = {
   demo: boolean;
   /** GitHub sign-in settings, or null when they are not set. */
   signIn: SignInConfig | null;
+  /** The demo's address, linked from the sign-in page of a server that is not the demo. */
+  demoUrl: string | undefined;
   /**
    * A header that the host's proxy sets to the visitor's address, or undefined to use the
    * address of the connection. Behind a proxy the connection always comes from the proxy.
@@ -84,6 +88,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     CLIENT_IP_HEADER: env.CLIENT_IP_HEADER || undefined,
     TEAM_GITHUB_IDS: env.TEAM_GITHUB_IDS || undefined,
     ADMIN_GITHUB_IDS: env.ADMIN_GITHUB_IDS || undefined,
+    DEMO_URL: env.DEMO_URL || undefined,
   });
   if (!result.success) {
     const details = result.error.issues
@@ -146,6 +151,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     devSignIn: data.DEV_SIGN_IN === "on",
     demo: data.DEMO === "on",
     signIn,
+    demoUrl: data.DEMO === "on" ? undefined : data.DEMO_URL,
     clientIpHeader: data.CLIENT_IP_HEADER,
     teamGithubIds: data.TEAM_GITHUB_IDS,
     adminGithubIds: data.ADMIN_GITHUB_IDS,

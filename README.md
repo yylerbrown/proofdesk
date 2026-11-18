@@ -112,18 +112,19 @@ A real run needs the four GitHub settings, with `-e` or `--env-file`, and a diff
 
 All of them are in `.env.example`, with comments.
 
-| Name                                                                                | What it does                                                                                                   |
-| ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`                                                                          | `development`, `test` or `production`. Production refuses the development entrance and requires https sign-in. |
-| `PORT`                                                                              | Default 3000.                                                                                                  |
-| `DATABASE_PATH`                                                                     | The SQLite file. Default `./data/app.db`.                                                                      |
-| `TICKET_PREFIX`                                                                     | The letters before a ticket's number, default `SUP`. Fixed when the database is created.                       |
-| `DEV_SIGN_IN`                                                                       | `on` offers four made-up people. Development only.                                                             |
-| `DEMO`                                                                              | `on` makes this server the demo: sample data, three demo people, no GitHub sign-in.                            |
-| `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | GitHub sign-in. All four or none. Required in production unless `DEMO=on`.                                     |
-| `TEAM_GITHUB_IDS`, `ADMIN_GITHUB_IDS`                                               | GitHub user numbers, separated by commas. Everyone else is a customer.                                         |
-| `CLIENT_IP_HEADER`                                                                  | Behind a proxy, the header with the visitor's address, for rate limits. Fly.io: `fly-client-ip`.               |
-| `GIT_COMMIT`                                                                        | Reported by `GET /api/health`.                                                                                 |
+| Name                                                                                | What it does                                                                                                             |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `NODE_ENV`                                                                          | `development`, `test` or `production`. Production refuses the development entrance and requires https sign-in.           |
+| `PORT`                                                                              | Default 3000.                                                                                                            |
+| `DATABASE_PATH`                                                                     | The SQLite file. Default `./data/app.db`.                                                                                |
+| `TICKET_PREFIX`                                                                     | The letters before a ticket's number, default `SUP`. Fixed when the database is created.                                 |
+| `DEV_SIGN_IN`                                                                       | `on` offers four made-up people. Development only.                                                                       |
+| `DEMO`                                                                              | `on` makes this server the demo: sample data, three demo people, no GitHub sign-in.                                      |
+| `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | GitHub sign-in. All four or none. Required in production unless `DEMO=on`.                                               |
+| `TEAM_GITHUB_IDS`, `ADMIN_GITHUB_IDS`                                               | GitHub user numbers, separated by commas. Everyone else is a customer.                                                   |
+| `CLIENT_IP_HEADER`                                                                  | Behind a proxy, the header with the visitor's address, for rate limits. Fly.io: `fly-client-ip`.                         |
+| `DEMO_URL`                                                                          | Optional, on the real site: the demo's https address, linked from the sign-in page as "Try the demo without signing in". |
+| `GIT_COMMIT`                                                                        | Reported by `GET /api/health`.                                                                                           |
 
 ### GitHub sign-in
 

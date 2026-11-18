@@ -5,7 +5,7 @@ import { toNodeHandler } from "better-auth/node";
 import express, { type Express } from "express";
 import { ipKeyGenerator, rateLimit } from "express-rate-limit";
 import helmet from "helmet";
-import { actorMiddleware } from "./actor.js";
+import { actorMiddleware, DEMO_ACTORS } from "./actor.js";
 import { createAuth } from "./auth.js";
 import type { Config } from "./config.js";
 import type { Db } from "./db.js";
@@ -53,6 +53,8 @@ export function createApp(config: Config, db: Db): Express {
   app.set("views", path.join(rootDir, "views"));
   // Every page shows the demo banner when this server is the demo.
   app.locals.demo = config.demo;
+  // On the demo, the header offers every demo person, to switch role without losing the page.
+  app.locals.demoPeople = config.demo ? DEMO_ACTORS : [];
 
   // One ticket service, shared by the JSON API and the pages, so the rules exist once.
   // The demo has a hard budget of rows, so rate limits are not the only thing that stops it

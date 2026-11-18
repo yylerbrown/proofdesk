@@ -1237,3 +1237,36 @@ textarea:focus {
   border-left: 4px solid var(--pico-del-color);
   background: var(--pico-card-sectioning-background-color);
 }
+
+/* The demo's role switch: Pico's dropdown under "Signed in as", holding plain text buttons. */
+.switch-role > summary {
+  font-size: var(--pd-text-sm);
+}
+.switch-role .switch-label {
+  margin-left: var(--pd-space-2);
+  color: var(--pd-text);
+  text-decoration: underline;
+}
+.switch-role ul form {
+  margin: 0;
+}
+.switch-role ul button.link {
+  width: 100%;
+  text-align: left;
+}
+
+/* The demo's walk-through: the first and strongest choice on the welcome page. */
+.try-workflow button {
+  width: 100%;
+}
+.try-steps {
+  margin-bottom: var(--pd-space-6);
+}
+/* On the demo, the next role to view a ticket as, just under its title. */
+.demo-next {
+  margin-bottom: var(--pd-space-5);
+}
+.demo-next form,
+.demo-next p {
+  margin: 0;
+}

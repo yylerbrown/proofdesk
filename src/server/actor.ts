@@ -133,6 +133,9 @@ export function actorMiddleware(
       req.actor = entrancePeople(config).find((actor) => actor.id === id) ?? null;
     }
     res.locals.viewer = req.actor;
+    // The page being shown, so switching role on the demo can come back to it. It is checked
+    // again where it is used, as any address sent back by a browser is.
+    res.locals.here = req.originalUrl;
     // What a signed-in person sees holds tickets and notes. Browsers must not keep it in
     // their cache, where it would outlive signing out.
     if (req.actor !== null) res.set("Cache-Control", "no-store");

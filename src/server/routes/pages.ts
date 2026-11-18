@@ -1,6 +1,6 @@
 import { Router, type Request, type RequestHandler, type Response } from "express";
 import type { Actor } from "../actor.js";
-import { signedIn } from "../actor.js";
+import { DEMO_ACTORS, signedIn } from "../actor.js";
 import { HttpError, ValidationError } from "../errors.js";
 import { can } from "../permissions.js";
 import {
@@ -34,6 +34,34 @@ type Problem = {
   /** What was typed in the form, so it can be shown again. */
   values?: Record<string, string>;
 };
+
+/** The sample a demo visitor files when they start the ticket workflow. Made up, like the demo. */
+const WALKTHROUGH_SAMPLE = {
+  title: "The export button downloads an empty file",
+  description:
+    "When I export this month's report as CSV, the file has the header row and nothing else.",
+  where_url: "https://example.com/reports",
+  fix_check: "I export this month's report and the file has every row.",
+};
+
+/**
+ * On the demo, the next role to view this ticket as, so one ticket can be followed from the
+ * customer's words to their Yes: the team after the customer has filed or answered No, and the
+ * customer who filed it when the team has it. After the Yes, the list of resolved tickets.
+ */
+function demoNext(ticket: Ticket, actor: Actor) {
+  if (actor.demo !== true || ticket.archived_at !== null) return null;
+  if (ticket.status === "resolved") return { resolved: true as const };
+  const filer = DEMO_ACTORS.find((person) => person.id === ticket.created_by);
+  const team = DEMO_ACTORS.find((person) => person.role === "team");
+  if (actor.id === ticket.created_by && ticket.ready_at === null && team !== undefined) {
+    return { switchTo: team.id, label: "View this ticket as a team member" };
+  }
+  if (actor.role !== "customer" && filer !== undefined && filer.id !== actor.id) {
+    return { switchTo: filer.id, label: "View this ticket as the customer who filed it" };
+  }
+  return null;
+}
 
 /** Why the team cannot ask the customer yet, in plain words, or null when that is not the question. */
 function askBlockedReason(ticket: Ticket, actor: Actor): string | null {
@@ -139,6 +167,7 @@ export function pagesRouter(service: TicketService): Router {
       viewerRole: actor.role,
       viewerId: actor.id,
       askBlocked: askBlockedReason(ticket, actor),
+      demoNext: demoNext(ticket, actor),
       handOffTo: service.handOffCandidates(ticket),
       agentHelp: service.agentHelp(ticket),
       entries,
@@ -205,8 +234,14 @@ export function pagesRouter(service: TicketService): Router {
 
   // Registered before "/tickets/:key" so that "new" is not read as a ticket key.
   router.get("/tickets/new", (req, res) => {
-    signedIn(req);
-    res.render("ticket-form", { ...newForm, values: emptyForm, errors: {} });
+    const actor = signedIn(req);
+    // On the demo, the ticket workflow starts from a filled-in sample the visitor can change.
+    const sample = actor.demo === true && req.query.try === "1";
+    res.render("ticket-form", {
+      ...newForm,
+      values: sample ? WALKTHROUGH_SAMPLE : emptyForm,
+      errors: {},
+    });
   });
 
   router.post("/tickets", (req, res) => {
