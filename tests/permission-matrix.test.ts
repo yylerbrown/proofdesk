@@ -297,13 +297,14 @@ const TABLE: Record<string, Row> = {
     handedAgent: whileHanded(NO),
     ...outsiders,
   },
-  // Only the customer who filed a resolved ticket reopens it, however it was resolved.
+  // The customer who filed a resolved ticket reopens it, however it was resolved. The owner or
+  // an admin also reopens one the team resolved, but never one the customer confirmed fixed.
   reopen: {
     filer: [NOT_NOW, NOT_NOW, NOT_NOW, NOT_NOW, OK, OK, HIDDEN],
-    owner: [NO, NO, NO, NO, NO, NO, REFUSED],
-    teamNotOwner: [NO, NO, NO, NO, NO, NO, REFUSED],
-    demoTeam: [NO, NO, NO, NO, NO, NO, REFUSED],
-    admin: [NO, NO, NO, NO, NO, NO, REFUSED],
+    owner: [NOT_NOW, NOT_NOW, NOT_NOW, NOT_NOW, NO, OK, REFUSED],
+    teamNotOwner: [REFUSED, REFUSED, REFUSED, REFUSED, NO, NO, REFUSED],
+    demoTeam: [REFUSED, REFUSED, REFUSED, REFUSED, NO, NO, REFUSED],
+    admin: [NOT_NOW, NOT_NOW, NOT_NOW, NOT_NOW, NO, OK, REFUSED],
     preview: all(NO),
     handedAgent: whileHanded(NO),
     ...outsiders,

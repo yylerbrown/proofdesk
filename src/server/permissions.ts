@@ -83,7 +83,10 @@ export const CAPABILITIES: Record<Action, Capability> = {
   read_activity: { people: "The team.", agent: "people_only" },
   propose_spec: { people: "The team.", agent: "propose_specs" },
   decide_spec: { people: "The team.", agent: "people_only" },
-  reopen: { people: "Only the customer who filed it.", agent: "people_only" },
+  reopen: {
+    people: "The customer who filed it, or, when the team resolved it, its owner or an admin.",
+    agent: "people_only",
+  },
   hand_off: { people: "The ticket's owner, or an admin.", agent: "people_only" },
   hand_to_agent: { people: "The ticket's owner.", agent: "people_only" },
   adopt_check: { people: "Only the customer who filed it.", agent: "people_only" },
@@ -168,7 +171,9 @@ export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean
   if (action === "resolve_with_reason") return isStaff && actor.kind === "person";
   // Only the person who filed the ticket answers "Did this fix it?". Not the team for them.
   if (action === "answer") return isOwn;
-  if (action === "reopen") return isOwn;
+  // The customer reopens either kind of resolution. A person on the team may ask too; the
+  // ticket service lets only the owner or an admin through, and only for the team's own.
+  if (action === "reopen") return isOwn || (isStaff && actor.kind === "person");
   if (action === "hand_off") return isStaff && actor.kind === "person";
   if (action === "hand_to_agent") return isStaff && actor.kind === "person";
   if (action === "adopt_check") return isOwn;

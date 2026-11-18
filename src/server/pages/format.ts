@@ -135,6 +135,10 @@ export function describeEvent(event: TicketEvent): string {
   if (event.type === "note_added") return "Internal note added";
   if (event.type === "review_requested") return "Review of the evidence requested";
   if (event.type === "reopened") return "Reopened by the customer: still happening";
+  if (event.type === "reopened_by_team") {
+    const reopened = z.object({ reason: z.string() }).safeParse(event.data);
+    if (reopened.success) return `Reopened by the team: ${reopened.data.reason}`;
+  }
   if (event.type === "resolved_by_team") {
     const resolved = z
       .object({
