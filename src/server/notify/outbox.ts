@@ -3,6 +3,7 @@ import { entrancePeople, type Actor } from "../actor.js";
 import type { Config } from "../config.js";
 import type { Db } from "../db.js";
 import { OTHER_DEMO_CUSTOMERS } from "../demo.js";
+import { emailMeOf } from "../people/repository.js";
 import { buildKey } from "../tickets/keys.js";
 import { RESOLVE_REASON_LABELS, RESOLVE_REASONS } from "../tickets/schemas.js";
 import { composeNotice } from "./compose.js";
@@ -122,7 +123,7 @@ function writeNoticesOf(
     const recipient = recipientOf(db, planned.recipientId, settings);
     // Someone with no stored address, who is not one of the made-up people, gets no row.
     if (recipient === undefined) continue;
-    if (!wantsEmail()) continue;
+    if (!wantsEmail(db, planned.recipientId)) continue;
     const ticketKey = buildKey(settings.ticketPrefix, event.ticket_id);
     const { subject, body } = composeNotice({
       kind: planned.kind,
@@ -153,12 +154,11 @@ function writeNoticesOf(
 }
 
 /**
- * Whether the person wants email about their tickets. There is no switch for it yet, so
- * everyone does. A per-person "Email me" setting is checked here once it exists, read by the
- * person's id.
+ * Whether the person wants email about their tickets: the "Email me about my tickets" switch
+ * on their account page, which is on until they switch it off.
  */
-function wantsEmail(): boolean {
-  return true;
+function wantsEmail(db: Db, personId: string): boolean {
+  return emailMeOf(db, personId);
 }
 
 /**

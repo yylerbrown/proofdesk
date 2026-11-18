@@ -1,0 +1,29 @@
+<%- include("header") %>
+<div class="column-form account">
+<h1>Your account</h1>
+<dl>
+  <dt>Name</dt>
+  <dd class="user-text account-name"><%= name %></dd>
+  <dt>Email address</dt>
+  <% if (email) { %>
+  <dd><span class="user-text account-email"><%= email %></span><br /><small>From your GitHub account; change it on GitHub.</small></dd>
+  <% } else { %>
+  <dd><small class="account-email"><%= madeUpLine %></small></dd>
+  <% } %>
+  <dt>Role</dt>
+  <dd><span class="account-role"><%= roleWord %></span><br /><small class="account-allows"><%= roleAllows %></small>
+    <% if (showAskAnAdmin) { %><br /><small class="account-ask">On the support team? Ask an admin to add you.</small><% } %>
+    <% if (showPeopleLink) { %><br /><small><a href="/people">People</a></small><% } %>
+  </dd>
+</dl>
+
+<h2>Email</h2>
+<form method="post" action="/account" class="email-me">
+  <fieldset <% if (!canChangeEmailMe) { %>disabled<% } %>>
+    <label><input type="checkbox" role="switch" name="email_me" <% if (emailMe) { %>checked<% } %> /> Email me about my tickets</label>
+  </fieldset>
+  <% if (mailLine) { %><p class="mail-line"><small><%= mailLine %></small></p><% } %>
+  <% if (canChangeEmailMe) { %><button type="submit">Save</button><% } %>
+</form>
+</div>
+<%- include("footer") %>

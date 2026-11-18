@@ -7,6 +7,7 @@ import type { AgentScope } from "./permissions.js";
 import type { Db } from "./db.js";
 import { HttpError } from "./errors.js";
 import { chosenRoleOf } from "./people/repository.js";
+import { roleWordOf } from "./people/words.js";
 
 export type Role = "customer" | "team" | "admin";
 
@@ -135,6 +136,8 @@ export function actorMiddleware(
       req.actor = entrancePeople(config).find((actor) => actor.id === id) ?? null;
     }
     res.locals.viewer = req.actor;
+    // The role as the header shows it, such as "Team member".
+    res.locals.viewerRoleWord = req.actor === null ? null : roleWordOf(req.actor);
     // The page being shown, so switching role on the demo can come back to it. It is checked
     // again where it is used, as any address sent back by a browser is.
     res.locals.here = req.originalUrl;

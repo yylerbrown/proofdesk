@@ -33,7 +33,7 @@
           <% if (viewer.demo && demoPeople.length > 0) { %>
           <li class="viewer">
             <details class="dropdown switch-role">
-              <summary>Signed in as <strong><%= viewer.name %></strong> <small class="role-label"><%= viewer.role %></small> <span class="switch-label">Switch role</span></summary>
+              <summary>Signed in as <strong><%= viewer.name %></strong> <small class="role-label"><%= viewerRoleWord %></small> <span class="switch-label">Switch role</span></summary>
               <ul>
                 <% for (const person of demoPeople.filter((p) => p.id !== viewer.id)) { %>
                 <li>
@@ -48,7 +48,8 @@
             </details>
           </li>
           <% } else { %>
-          <li class="viewer">Signed in as <strong><%= viewer.name %></strong> <small class="role-label"><%= viewer.role %></small></li>
+          <%# The name opens the person's own account page: who Proofdesk thinks they are. %>
+          <li class="viewer">Signed in as <a href="/account" class="account-link"><strong><%= viewer.name %></strong></a> <small class="role-label"><%= viewerRoleWord %></small></li>
           <% } %>
           <li>
             <form method="post" action="/sign-out" class="sign-out">

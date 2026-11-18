@@ -7,20 +7,15 @@ import { HttpError } from "../errors.js";
 import { can } from "../permissions.js";
 import { buildKey } from "../tickets/keys.js";
 import { parse } from "../validation.js";
+import { createAccountService } from "./account.js";
 import * as repository from "./repository.js";
+import { ROLE_LABELS } from "./words.js";
 
 // The People page: an admin chooses who is on the team. The server settings come first and
 // cannot be changed here, nobody changes their own role, and someone who still owns open
 // tickets keeps the team role until those tickets have another owner.
 
 export const ROLES = ["customer", "team", "admin"] as const satisfies readonly Role[];
-
-/** Each role's name on the page. */
-export const ROLE_LABELS: Record<Role, string> = {
-  customer: "Customer",
-  team: "Team member",
-  admin: "Admin",
-};
 
 /** One short line for each role, shown beside its choice. */
 export const ROLE_LINES: Record<Role, string> = {
@@ -124,6 +119,9 @@ export function createPeopleService(db: Db, config: Config) {
   }
 
   return {
+    /** Each person's own account page, which shares the People page's routes. */
+    account: createAccountService(db, config),
+
     /** The People page for this admin. With the id of someone just changed, says what changed. */
     page(actor: Actor, changedId?: string): PeoplePage {
       mayLook(actor);
