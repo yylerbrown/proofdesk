@@ -45,11 +45,14 @@ export function ticketsRouter(service: TicketService, connections: ConnectionSer
       if (action.paged && Array.isArray(result)) {
         const next = nextCursor(req.query, result);
         if (next !== null) {
-          const status =
-            typeof req.query.status === "string"
-              ? `status=${encodeURIComponent(req.query.status)}&`
-              : "";
-          res.set("Link", `</api${action.path}?${status}cursor=${next}>; rel="next"`);
+          // The next page keeps the same filters.
+          const params = new URLSearchParams();
+          for (const name of ["status", "owner", "q"]) {
+            const value = req.query[name];
+            if (typeof value === "string" && value !== "") params.set(name, value);
+          }
+          params.set("cursor", next);
+          res.set("Link", `</api${action.path}?${params}>; rel="next"`);
         }
       }
       res.status(action.status ?? 200).json(result);

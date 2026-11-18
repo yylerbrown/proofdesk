@@ -24,8 +24,8 @@ Each one takes under a minute on the demo, starting from its welcome page.
 **Ticket list with filters**
 
 - Start as: **View as Demo Team Member**
-- Press: **Tickets**, then **New**, **In Progress**, **Resolved**
-- You should see: "All tickets", and each filter changes the list. A customer's list is "My tickets": only their own.
+- Press: **Tickets**, then **New**, **In Progress**, **Resolved**; **Mine** and **Unassigned**; or type words and press **Search**
+- You should see: "All tickets", and each filter changes the list. They combine in the address, so a filtered view can be shared. A customer's list is "My tickets": only their own, with the search.
 
 **Update status: New to In Progress**
 
@@ -292,8 +292,7 @@ code. The specification ([`docs/SPEC.md`](docs/SPEC.md)), the history of every s
   rules; and upgrading tickets resolved before the customer's Yes was required.
 - **Demo visitors share identities.** Everyone who views as Demo Customer is the same customer.
 - **Not built on purpose:** a board with status columns or dragging, priority ordering, closing a
-  ticket without the customer, a second filter beyond status, and any model call of the site's
-  own.
+  ticket without the customer, and any model call of the site's own.
 
 ## Known limits and design debt
 

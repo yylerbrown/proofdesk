@@ -200,6 +200,9 @@ export const DEMO_BUDGET: Budget = {
 
 /** How many tickets a list page shows, and how many entries or events a ticket page shows. */
 export const LIST_PAGE_SIZE = 100;
+
+/** How a list may be narrowed besides its status: by owner, and by words to find. */
+export type ListNarrowing = { owner?: "me" | "none"; q?: string };
 export const THREAD_LIMIT = 200;
 
 // The kinds of history entry a customer may see. Any other kind, including one added later,
@@ -715,12 +718,23 @@ export function createTicketService(
      * "archived" lists only archived tickets, for a team member or admin. Every other filter leaves
      * archived tickets out.
      */
-    listTickets(filter: TicketListFilter, actor: Actor, pageNumber = 1): Ticket[] {
+    listTickets(
+      filter: TicketListFilter,
+      actor: Actor,
+      pageNumber = 1,
+      narrowing: ListNarrowing = {},
+    ): Ticket[] {
       const page = { limit: LIST_PAGE_SIZE, offset: (pageNumber - 1) * LIST_PAGE_SIZE };
       const view = (rows: repository.TicketRow[]) => rows.map((row) => toTicket(row, actor));
+      const narrow = {
+        ownerId: narrowing.owner === "me" ? actor.id : null,
+        unassigned: narrowing.owner === "none",
+        // Searched as plain words: %, _ and \ in them mean themselves.
+        search: narrowing.q ? `%${narrowing.q.replace(/[\\%_]/g, "\\$&")}%` : null,
+      };
       if (filter === "archived") {
         requirePermission(actor, "list_archived");
-        return view(repository.listArchivedTickets(db, page));
+        return view(repository.listArchivedTickets(db, page, narrow));
       }
       const status = filter === "all" ? null : filter;
       if (can(actor, "list_all")) {
@@ -729,15 +743,15 @@ export function createTicketService(
         // cut, so newer tickets never push them off a page.
         if (isHandedAgent(actor)) {
           const handed = repository.handedTicketIds(db, actor.connection!.id);
-          return view(repository.listTicketsAmong(db, handed, status, page));
+          return view(repository.listTicketsAmong(db, handed, status, page, narrow));
         }
         if (isDemoAgent(actor)) {
-          return view(repository.listTicketsAmong(db, demoTicketIds(), status, page));
+          return view(repository.listTicketsAmong(db, demoTicketIds(), status, page, narrow));
         }
-        return view(repository.listAllTickets(db, status, page));
+        return view(repository.listAllTickets(db, status, page, narrow));
       }
       // An assistant files no tickets, so for one this list is empty.
-      return view(repository.listTicketsFiledBy(db, actor.id, status, page));
+      return view(repository.listTicketsFiledBy(db, actor.id, status, page, narrow));
     },
 
     getTicket(key: string, actor: Actor): Ticket {
