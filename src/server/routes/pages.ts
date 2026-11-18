@@ -206,6 +206,11 @@ export function pagesRouter(service: TicketService): Router {
     }
   });
 
+  router.post("/tickets/:key/agreed-check", (req, res) => {
+    const ticket = service.agreeCheck(req.params.key, req.body, signedIn(req));
+    res.redirect(303, `/tickets/${ticket.key}`);
+  });
+
   router.post("/tickets/:key/take", (req, res) => {
     const ticket = service.takeTicket(req.params.key, signedIn(req));
     res.redirect(303, `/tickets/${ticket.key}`);

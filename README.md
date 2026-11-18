@@ -88,16 +88,17 @@ refuses to start if `TICKET_PREFIX` later differs, because that would rename eve
 
 More routes change a ticket. Each one writes an event in the same transaction.
 
-| Method and path                  | What it does                                                                 |
-| -------------------------------- | ---------------------------------------------------------------------------- |
-| `PUT /api/tickets/:key`          | Replaces the title, description, link and check. Same rules as create.       |
-| `POST /api/tickets/:key/archive` | Archives the ticket. Nothing is deleted.                                     |
-| `POST /api/tickets/:key/restore` | Brings an archived ticket back.                                              |
-| `POST /api/tickets/:key/take`    | Makes the signed-in team member the owner.                                   |
-| `POST /api/tickets/:key/release` | Leaves the ticket without an owner. Not while it is in progress.             |
-| `GET /api/tickets/:key/entries`  | The conversation, oldest first. Internal notes only for the team.            |
-| `POST /api/tickets/:key/entries` | Adds `{ "kind": "reply" or "note", "body": "..." }`. Notes are team only.    |
-| `DELETE /api/tickets/:key`       | Deletes the ticket permanently. Admin only. Body: `{ "confirm": "SUP-42" }`. |
+| Method and path                      | What it does                                                                    |
+| ------------------------------------ | ------------------------------------------------------------------------------- |
+| `PUT /api/tickets/:key`              | Replaces the title, description, link and check. Same rules as create.          |
+| `POST /api/tickets/:key/archive`     | Archives the ticket. Nothing is deleted.                                        |
+| `POST /api/tickets/:key/restore`     | Brings an archived ticket back.                                                 |
+| `PUT /api/tickets/:key/agreed-check` | Team only. Sets the agreed check `{ "agreed_check": "..." }`; empty removes it. |
+| `POST /api/tickets/:key/take`        | Makes the signed-in team member the owner.                                      |
+| `POST /api/tickets/:key/release`     | Leaves the ticket without an owner. Not while it is in progress.                |
+| `GET /api/tickets/:key/entries`      | The conversation, oldest first. Internal notes only for the team.               |
+| `POST /api/tickets/:key/entries`     | Adds `{ "kind": "reply" or "note", "body": "..." }`. Notes are team only.       |
+| `DELETE /api/tickets/:key`           | Deletes the ticket permanently. Admin only. Body: `{ "confirm": "SUP-42" }`.    |
 
 An archived ticket is left out of every list except `GET /api/tickets?status=archived`, and it
 cannot be edited or change status until it is restored (409 `ticket_archived`). A team member

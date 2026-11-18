@@ -25,9 +25,30 @@
 <p class="user-text"><a href="<%= ticket.where_url %>" rel="noopener noreferrer nofollow"><%= ticket.where_url %></a></p>
 <% } %>
 
-<% if (ticket.fix_check) { %>
+<% if (ticket.fix_check || ticket.agreed_check || allowed.agreeCheck) { %>
 <h2>How will we know it's fixed?</h2>
+<% if (ticket.agreed_check) { %>
+<p><strong>Agreed check</strong></p>
+<blockquote class="user-text"><%= ticket.agreed_check %></blockquote>
+<p><strong>In the customer's words</strong></p>
+<% } %>
+<% if (ticket.fix_check) { %>
 <blockquote class="user-text"><%= ticket.fix_check %></blockquote>
+<% } else { %>
+<p>The customer did not say.</p>
+<% } %>
+<% if (allowed.agreeCheck) { %>
+<details>
+  <summary>Agree a tighter check</summary>
+  <form method="post" action="/tickets/<%= ticket.key %>/agreed-check">
+    <label>
+      Agreed check (leave empty to remove it)
+      <textarea name="agreed_check" rows="3"><%= ticket.agreed_check ?? ticket.fix_check ?? "" %></textarea>
+    </label>
+    <button type="submit">Save agreed check</button>
+  </form>
+</details>
+<% } %>
 <% } %>
 
 <% if (allowed.take || allowed.release) { %>

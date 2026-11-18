@@ -14,7 +14,8 @@ export type Action =
   | "note"
   | "read_notes"
   | "take"
-  | "release";
+  | "release"
+  | "agree_check";
 
 /** The two facts about a ticket that permissions depend on. */
 export type TicketFacts = {
@@ -32,6 +33,7 @@ export type TicketFacts = {
  * - An archived ticket is gone for customers. A team member or admin can see and restore it.
  * - Only an admin deletes a ticket permanently.
  * - A team member takes a ticket, becoming its owner, or releases it. An agent cannot own one.
+ * - A team member may tighten the customer's check. The customer's words are kept beside it.
  * - A customer replies on their own tickets. Internal notes are for the team only, and a
  *   customer never sees them.
  */
@@ -59,5 +61,6 @@ export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean
   // An owner is always a person, even when an agent does the work.
   if (action === "take") return isStaff && actor.kind === "person";
   if (action === "release") return isStaff;
+  if (action === "agree_check") return isStaff;
   return false;
 }

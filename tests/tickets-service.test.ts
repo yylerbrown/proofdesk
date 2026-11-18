@@ -236,6 +236,7 @@ describe("ticket service returns what is stored", () => {
     const ticket = service.createTicket(input, actor);
     expect(Object.keys(ticket).sort()).toEqual([
       "agent_id",
+      "agreed_check",
       "archived_at",
       "created_at",
       "created_by",

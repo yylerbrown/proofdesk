@@ -32,6 +32,11 @@ export function ticketsRouter(service: TicketService): Router {
     res.json(service.editTicket(req.params.key, req.body, signedIn(req)));
   });
 
+  // Sets the agreed version of the check: { "agreed_check": "..." }. Empty removes it.
+  router.put("/tickets/:key/agreed-check", (req, res) => {
+    res.json(service.agreeCheck(req.params.key, req.body, signedIn(req)));
+  });
+
   router.post("/tickets/:key/take", (req, res) => {
     res.json(service.takeTicket(req.params.key, signedIn(req)));
   });
