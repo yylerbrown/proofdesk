@@ -62,7 +62,7 @@ const HINTS: Record<string, string> = {
   keeps_owner:
     "Work has started, so the ticket keeps an owner. Hand it to a team member instead (POST .../hand-off).",
   needs_customer:
-    "Only the customer's answer resolves a ticket. Its owner asks them with Ask the customer to verify on the ticket page, or POST /api/tickets/{key}/ready.",
+    "A status change does not resolve a ticket. The customer confirms a fix with Yes, which its owner asks with Ask the customer to verify (POST /api/tickets/{key}/ready); its owner or an admin can also resolve it with a reason (POST /api/tickets/{key}/resolve).",
   needs_change_link: "Link the change first (PUT .../change-link), then ask the customer.",
   not_in_progress: "Move the ticket to in_progress first.",
   not_waiting: "The team has not asked this question yet, or it was withdrawn.",

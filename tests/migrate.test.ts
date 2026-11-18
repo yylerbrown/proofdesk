@@ -50,7 +50,8 @@ const ALL = [
   "0021_reply_source.sql",
   "0022_blocked_notes.sql",
   "0023_note_purpose.sql",
-  "0024_agent_activity_created_index.sql",
+  "0024_team_resolution.sql",
+  "0025_agent_activity_created_index.sql",
 ];
 
 describe("runMigrations", () => {

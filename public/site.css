@@ -1421,7 +1421,8 @@ details.history[open] > summary {
 details.history > summary,
 details#reopen > summary,
 .ticket-panel details > summary,
-.ticket-thread details.publish > summary {
+.ticket-thread details.publish > summary,
+.ticket-thread details.spec-prompt > summary {
   display: inline-block;
   color: var(--pd-muted);
   font-size: var(--pd-text-sm);
@@ -1432,13 +1433,15 @@ details#reopen > summary,
 details.history > summary:hover,
 details#reopen > summary:hover,
 .ticket-panel details > summary:hover,
-.ticket-thread details.publish > summary:hover {
+.ticket-thread details.publish > summary:hover,
+.ticket-thread details.spec-prompt > summary:hover {
   color: var(--pd-text);
 }
 details.history > summary::after,
 details#reopen > summary::after,
 .ticket-panel details > summary::after,
-.ticket-thread details.publish > summary::after {
+.ticket-thread details.publish > summary::after,
+.ticket-thread details.spec-prompt > summary::after {
   display: inline-block;
   float: none;
   width: 0.9rem;
@@ -1979,7 +1982,8 @@ button.copy {
   details.history > summary,
   details#reopen > summary,
   .ticket-panel details:not(.more) > summary,
-  .ticket-thread details.publish > summary {
+  .ticket-thread details.publish > summary,
+  .ticket-thread details.spec-prompt > summary {
     display: inline-flex;
     align-items: center;
     min-height: 44px;
@@ -2244,4 +2248,27 @@ dl.run-facts dd {
     margin-block: -12px;
     padding-block: 12px;
   }
+}
+
+/*
+ * How a resolved ticket was resolved: "Customer confirmed" or "Resolved by the team: <reason>",
+ * small and muted beside the status. A ticket the team resolved says so in a plain block, with
+ * no tick: the tick is only for the customer's Yes.
+ */
+.resolution-label {
+  color: var(--pd-muted);
+}
+table.tickets .resolution-label {
+  display: block;
+  font-size: var(--pd-text-xs);
+  white-space: normal;
+}
+article.resolved-by-team {
+  padding: var(--pd-space-3) var(--pd-space-4);
+  border: var(--pd-hairline);
+  border-radius: var(--pd-radius);
+  background: var(--pd-subtle);
+}
+article.resolved-by-team p {
+  margin-bottom: var(--pd-space-1);
 }

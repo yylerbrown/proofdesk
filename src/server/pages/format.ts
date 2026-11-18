@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { TICKET_STATUSES, type TicketStatus } from "../tickets/schemas.js";
+import {
+  RESOLVE_REASON_LABELS,
+  RESOLVE_REASONS,
+  TICKET_STATUSES,
+  type TicketStatus,
+} from "../tickets/schemas.js";
 import type { Role } from "../actor.js";
 import type { Ticket, TicketEvent } from "../tickets/service.js";
 
@@ -59,6 +64,8 @@ export function waitingOn(ticket: Ticket, viewer: Role): string {
  */
 export function confirmedAt(ticket: Ticket, events: TicketEvent[]): string | null {
   if (ticket.status !== "resolved") return null;
+  // Resolved by the team, with a reason: an earlier Yes in the history does not make it confirmed.
+  if (ticket.resolution?.by === "team") return null;
   const answer = [...events].reverse().find((event) => event.type === "customer_answered");
   if (answer === undefined) return null;
   const parsed = z.object({ fixed: z.literal(true) }).safeParse(answer.data);
@@ -128,6 +135,23 @@ export function describeEvent(event: TicketEvent): string {
   if (event.type === "note_added") return "Internal note added";
   if (event.type === "review_requested") return "Review of the evidence requested";
   if (event.type === "reopened") return "Reopened by the customer: still happening";
+  if (event.type === "resolved_by_team") {
+    const resolved = z
+      .object({
+        reason: z.enum(RESOLVE_REASONS),
+        note: z.string().nullable(),
+        duplicate_of: z.string().nullable(),
+      })
+      .safeParse(event.data);
+    if (resolved.success) {
+      const { reason, note, duplicate_of } = resolved.data;
+      const why =
+        reason === "duplicate" && duplicate_of
+          ? `Duplicate of ${duplicate_of}`
+          : RESOLVE_REASON_LABELS[reason];
+      return `Resolved by the team: ${why}${note ? ` (${note})` : ""}`;
+    }
+  }
   if (event.type === "agent_handed" || event.type === "agent_handoff_ended") {
     const handoff = z
       .object({ connection: z.string(), reason: z.string().optional() })
