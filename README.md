@@ -1,9 +1,15 @@
-# Support Desk
+# Proofdesk
 
-Support Desk will be a customer support ticketing system. This repository holds only the
-project skeleton plus the tickets core: an Express server written in TypeScript, a SQLite
-database with a small migration runner, a JSON API and pages to submit tickets, list them
-and change their status, tests, a Dockerfile and a CI workflow. There is no sign-in yet.
+Proofdesk is a customer support ticketing system. A customer files a ticket and says how they
+will know it is fixed; the team works on it in the open, with internal notes beside the replies;
+and only the customer marks it resolved, by answering "Did this fix it?". It is an Express
+server in TypeScript with a SQLite database, server-rendered pages, GitHub sign-in, a JSON API,
+tests, a Dockerfile and a CI workflow.
+
+The whole look (colours and fonts) is in one file, `public/theme.css`; replace it to change it.
+
+The mark, a tick, means "the customer confirmed it". Beyond the header and the browser tab, it
+appears only on a ticket the customer resolved by answering yes.
 
 ## Run with Docker
 
@@ -91,10 +97,18 @@ was saved. The message comes from a fixed list in `src/server/pages/saved.ts`, s
 form can make a page show text of its own. The JSON list (`GET /api/tickets`) uses the same
 order as the page.
 
+On a wide screen the ticket page has two columns: the description and the conversation on the
+left, and a panel on the right with the status, the owner, both checks, the fix and, last and
+set apart in red, archive and permanent delete. On a narrow screen it is one column, with the
+panel between the description and the conversation.
+
 ## API
 
 All routes are under `/api` and speak JSON. Errors look like
-`{ "error": { "code": "...", "message": "..." } }`. A ticket is addressed by its public key,
+`{ "error": { "code": "...", "message": "...", "hint": "...", "retry": false } }`: the hint says
+what to do next, `retry` says whether sending the same request again can work, and a validation
+error also lists `fields`. The routes are built from one table, `ACTIONS` in
+`src/server/api/actions.ts`. A ticket is addressed by its public key,
 for example `SUP-42`. The prefix comes from `TICKET_PREFIX` (2 to 6 capital letters, default `SUP`).
 The prefix is chosen when the database is first created and is stored in it. The server
 refuses to start if `TICKET_PREFIX` later differs, because that would rename every ticket.
@@ -138,6 +152,40 @@ accepts `where_url` (an http or https URL, at most 500 characters) and `fix_chec
 The ticket routes need a signed-in browser session, so they are not meant to be called with
 `curl`. A request that changes something must also say it comes from this site, which a
 browser does by itself (see Security).
+
+## Agent connections
+
+Proofdesk makes no AI calls of its own. An AI assistant works on tickets through the API with
+a **connection**: an admin issues one on the Connections page, gives it a name, chooses what it
+may do, and copies its key, which is shown once. If the key is lost or leaked, revoke the
+connection and issue a new one. Only a hash of the key is stored.
+
+An assistant sends the key on each request: `Authorization: Bearer pd_...`. Keys work on the
+JSON API only, never on the pages.
+
+What an agent may do is decided by the capability table, `CAPABILITIES` in
+`src/server/permissions.ts`, which the tests are generated from. The scopes are named by what
+they allow: read tickets, write internal notes, send replies, link changes, change the status
+(never to resolved). Answering "Did this fix it?", resolving, owning a ticket, asking the
+customer, archiving, restoring, deleting and managing connections are for people only. Each
+agent action in the history records the connection, who issued it, its scopes at that moment
+and the ticket's owner. Each connection has its own write allowance.
+
+Every ticket the API returns starts with `done_when`: the agreed check, the customer's own words,
+and one line of guidance. Only the customer can say a ticket is fixed; the check guides the work
+but does not authorize running commands, disclosing anything, or continuing without end. With no
+check, the guidance says to ask the named owner instead of guessing. Next comes `waiting_on`:
+`team`, `customer` or `nobody`.
+
+**Evidence** sits beside the check: `POST /api/tickets/:key/evidence` with a kind (`test`,
+`check_run`, `change_link` or `note`), a one-line summary, and optionally a link, the revision
+tested, the command that ran, a short result and the original report. The report of `ops/prove`
+(`evidence.json`) can be attached as it is, and the ticket page reads its three stages into a
+small table: the new test before the fix, the existing tests before it, all tests after it. A
+stage counts only when the report states it plainly; anything missing is shown as unknown,
+never as passed. Every piece is labelled with who reported it and "Not checked by Proofdesk",
+because Proofdesk verifies none of it. Evidence never changes a ticket's status. The customer
+sees it in the "Did this fix it?" box, and only their answer resolves the ticket.
 
 ## From merged to confirmed
 
@@ -254,6 +302,9 @@ npm run format
 - `src/server/pages/format.ts` turns stored values into the words shown on a page.
 - `views/` holds the page templates (EJS: HTML with small pieces of JavaScript).
 - `public/site.css` holds the few style rules added on top of the Pico CSS stylesheet.
+- `src/browser/local-time.ts` is the only browser code: it rewrites each `<time>` into the
+  visitor's own time zone. `npm run build` (and `npm run dev`) compile it to `public/js/`,
+  which is not committed. Without scripts, the pages show times in UTC.
 - `src/server/actor.ts` decides who is acting on a request, from the sign-in cookie.
 - `src/server/permissions.ts` holds `can()`, the one function that says who may do what.
 - `src/server/routes/sign-in.ts` is the sign-in page, the GitHub start and the development entrance.

@@ -22,6 +22,12 @@ export function sameOriginOnly(config: Config): RequestHandler {
       next();
       return;
     }
+    // An agent signed in with its connection key in the Authorization header. A browser never
+    // adds that header by itself, so another site cannot forge such a request.
+    if (req.actor?.kind === "agent") {
+      next();
+      return;
+    }
     const site = req.get("Sec-Fetch-Site");
     const origin = req.get("Origin");
     let fromThisSite = false;

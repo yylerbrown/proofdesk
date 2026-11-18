@@ -1,3 +1,4 @@
+import { AGENT_SCOPES } from "../src/server/permissions.js";
 import { describe, expect, it } from "vitest";
 import { createTicketService } from "../src/server/tickets/service.js";
 import { admin, adminActor, as, buildTestApp, customerOne, teamActor } from "./helpers.js";
@@ -51,6 +52,8 @@ describe("a named human owner", () => {
     expect(refused.body.error).toEqual({
       code: "needs_owner",
       message: "Take ticket SUP-1 before moving it to In Progress.",
+      hint: "Take the ticket first (POST .../take), then change the status.",
+      retry: false,
     });
     expect((await admin(app).get("/api/tickets/SUP-1")).body.status).toBe("new");
 
@@ -88,7 +91,13 @@ describe("a named human owner", () => {
     const { db } = buildTestApp();
     const service = createTicketService(db, "SUP");
     service.createTicket(valid, adminActor);
-    const agent = { id: "helper-1", kind: "agent" as const, role: "team" as const, name: "Helper" };
+    const agent = {
+      id: "helper-1",
+      kind: "agent" as const,
+      role: "team" as const,
+      name: "Helper",
+      scopes: [...AGENT_SCOPES],
+    };
     expect(() => service.takeTicket("SUP-1", agent)).toThrow(/not allowed/);
     expect(service.getTicket("SUP-1", adminActor).owner_id).toBeNull();
   });
@@ -110,13 +119,13 @@ describe("the owner on the ticket page", () => {
   it("shows the owner to everyone and the buttons to the team only", async () => {
     const { app } = await setup();
     const unowned = await as(app, teamActor).get("/tickets/SUP-1");
-    expect(unowned.text).toContain("no owner yet");
+    expect(unowned.text).toContain("<p>Unassigned</p>");
     expect(unowned.text).toContain("Take this ticket");
 
     const taken = await as(app, teamActor).post("/tickets/SUP-1/take");
     expect(taken.status).toBe(303);
     const page = await as(app, teamActor).get("/tickets/SUP-1");
-    expect(page.text).toContain("owner Team Member");
+    expect(page.text).toContain("<p>Team Member</p>");
     expect(page.text).toContain("Release it");
     expect(page.text).not.toContain("Take this ticket");
     expect(page.text).toContain("<td>Owner: Team Member</td>");
@@ -124,7 +133,7 @@ describe("the owner on the ticket page", () => {
     expect((await admin(app).get("/tickets/SUP-1")).text).toContain("Take over from Team Member");
 
     const customer = await as(app, customerOne).get("/tickets/SUP-1");
-    expect(customer.text).toContain("owner Team Member");
+    expect(customer.text).toContain("<p>Team Member</p>");
     expect(customer.text).not.toContain("/take");
   });
 

@@ -1,23 +1,26 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="light dark" />
-    <title><%= title %> - Support Desk</title>
+    <meta name="color-scheme" content="light" />
+    <title><%= title %> - Proofdesk</title>
+    <link rel="icon" href="/assets/mark.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/assets/pico.min.css" />
+    <link rel="stylesheet" href="/assets/theme.css" />
     <link rel="stylesheet" href="/assets/site.css" />
   </head>
   <body>
-    <header class="container">
-      <nav>
+    <header class="site-header">
+      <nav class="container">
         <ul>
-          <li><a href="/tickets"><strong>Support Desk</strong></a></li>
+          <li><a href="/tickets" class="brand"><img src="/assets/mark.svg" alt="" width="24" height="24" /><strong>Proofdesk</strong></a></li>
         </ul>
         <% if (viewer) { %>
         <ul>
           <li><a href="/tickets">Tickets</a></li>
-          <li><a href="/tickets/new" role="button">New ticket</a></li>
+          <% if (viewer.role === "admin" && !viewer.readOnly) { %><li><a href="/connections">Connections</a></li><% } %>
+          <li><a href="/tickets/new" role="button" class="outline">New ticket</a></li>
           <li class="viewer">Signed in as <strong><%= viewer.name %></strong> <small class="role-label"><%= viewer.role %></small></li>
           <li>
             <form method="post" action="/sign-out" class="sign-out">

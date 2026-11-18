@@ -53,7 +53,7 @@
         <td><%- include("status-badge", { status: ticket.status }) %></td>
         <td><%= ticket.owner_name ?? "Unassigned" %></td>
         <td><%= ticket.waiting %></td>
-        <td><time datetime="<%= ticket.created_at %>" title="<%= formatTime(ticket.created_at) %>"><%= timeAgo(ticket.created_at) %></time></td>
+        <td><time datetime="<%= ticket.created_at %>" data-relative title="<%= formatTime(ticket.created_at) %>"><%= timeAgo(ticket.created_at) %></time></td>
       </tr>
       <% } %>
     </tbody>

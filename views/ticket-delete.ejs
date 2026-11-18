@@ -8,12 +8,12 @@
 <form method="post" action="/tickets/<%= ticket.key %>/delete">
   <label>
     Type <%= ticket.key %> to confirm
-    <input type="text" name="confirm" autocomplete="off" required <% if (error) { %>aria-invalid="true"<% } %> />
-    <% if (error) { %><small><%= error %></small><% } %>
+    <input type="text" name="confirm" autocomplete="off" required <% if (error) { %>aria-invalid="true" aria-describedby="confirm-error"<% } %> />
+    <% if (error) { %><small id="confirm-error"><%= error %></small><% } %>
   </label>
-  <div role="group">
-    <a href="/tickets/<%= ticket.key %>" role="button" class="secondary">Keep ticket</a>
-    <button type="submit">Delete permanently</button>
+  <div class="choice">
+    <a href="/tickets/<%= ticket.key %>" role="button" class="secondary outline compact">Keep ticket</a>
+    <button type="submit" class="danger compact">Delete permanently</button>
   </div>
 </form>
 <%- include("footer") %>

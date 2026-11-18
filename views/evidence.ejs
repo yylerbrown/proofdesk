@@ -1,0 +1,28 @@
+<%# Evidence, as reported. Nothing here is verified by Proofdesk, and it never looks like the customer's yes: no tick, no green. %>
+<%
+  const kindLabels = { test: "Test", check_run: "Check run", change_link: "Change", note: "Note" };
+  const stageWords = { failed: "failed", passed: "passed", unknown: "unknown" };
+%>
+<ul class="evidence">
+  <% for (const item of evidence) { %>
+  <li>
+    <p><strong><%= kindLabels[item.kind] ?? item.kind %>:</strong> <span class="user-text"><%= item.summary %></span></p>
+    <% if (item.link) { %><p><a href="<%= item.link %>" rel="noopener noreferrer nofollow" class="user-text"><%= item.link %></a></p><% } %>
+    <% if (item.stages) { %>
+    <table class="stages">
+      <tbody>
+        <tr><th scope="row">The new test, before the fix</th><td><%= stageWords[item.stages.before_fix] %></td></tr>
+        <tr><th scope="row">Existing tests, before the fix</th><td><%= stageWords[item.stages.existing_tests] %></td></tr>
+        <tr><th scope="row">All tests, after the fix</th><td><%= stageWords[item.stages.after_fix] %></td></tr>
+      </tbody>
+    </table>
+    <% } else if (item.report !== null) { %>
+    <p><small>A report is attached. Proofdesk cannot read its stages.</small></p>
+    <% } %>
+    <% if (item.revision || item.command || item.result) { %>
+    <p><small><% if (item.revision) { %>Revision <code class="user-text"><%= item.revision %></code>. <% } %><% if (item.command) { %>Ran <code class="user-text"><%= item.command %></code>. <% } %><% if (item.result) { %>Result: <span class="user-text"><%= item.result %></span>.<% } %></small></p>
+    <% } %>
+    <p><small>Reported by <%= item.reported_by.name %><% if (item.reported_by.kind === "agent") { %> (AI agent)<% } %>, <%- include("time", { iso: item.created_at }) %>. Not checked by Proofdesk.</small></p>
+  </li>
+  <% } %>
+</ul>

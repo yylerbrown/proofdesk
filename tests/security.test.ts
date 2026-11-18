@@ -69,7 +69,8 @@ describe("security headers", () => {
     ];
     for (const address of pages) {
       const res = await admin(app).get(address);
-      expect(res.text, address).not.toMatch(/<script/i);
+      if (res.status === 200) expect(res.text, address).toContain(OWN_SCRIPT);
+      expect(withoutOwnScript(res.text), address).not.toMatch(/<script/i);
       expect(res.text, address).not.toMatch(/<style/i);
       expect(res.text, address).not.toMatch(/\sstyle=/i);
       expect(res.text, address).not.toMatch(/\son[a-z]+=/i);
@@ -222,6 +223,17 @@ describe("SQL injection", () => {
   });
 });
 
+// The one script tag the pages carry: a file from this site that shows times in local time.
+const OWN_SCRIPT = '<script type="module" src="/assets/js/local-time.js"></script>';
+
+// The one image tag: the mark beside the name in the header.
+const OWN_MARK = '<img src="/assets/mark.svg" alt="" width="24" height="24" />';
+
+/** A page without its own script and mark tags, so that any other such tag stands out. */
+function withoutOwnScript(html: string): string {
+  return html.replace(OWN_SCRIPT, "").replace(OWN_MARK, "");
+}
+
 describe("script injection in pages", () => {
   // Each of these would do something if a page ever printed it as markup.
   const hostile = [
@@ -275,7 +287,7 @@ describe("script injection in pages", () => {
       expect(res.status, address).toBe(200);
       expect(res.text, address).toContain("T2 ");
       // No tag and no attribute from the hostile text may appear as markup.
-      expect(res.text, address).not.toMatch(/<(script|img|svg)\b/i);
+      expect(withoutOwnScript(res.text), address).not.toMatch(/<(script|img|svg)\b/i);
       expect(res.text, address).not.toContain("<h1>gone");
       // A quote from the text must not end an attribute and start a new one.
       expect(res.text, address).not.toContain('" onmouseover=');

@@ -37,7 +37,7 @@ describe("editing a ticket (service)", () => {
     const edited = service.editTicket(
       "SUP-1",
       { ...original, title: "Printer jams on every page", fix_check: "" },
-      { id: "helper-1", kind: "agent", role: "team", name: "Helper" },
+      { id: "helper-1", kind: "person", role: "team", name: "Helper" },
     );
     expect(edited).toMatchObject({
       title: "Printer jams on every page",
@@ -52,7 +52,7 @@ describe("editing a ticket (service)", () => {
     expect(last).toMatchObject({
       type: "edited",
       actor: "helper-1",
-      actor_kind: "agent",
+      actor_kind: "person",
       data: {
         changes: {
           title: { from: original.title, to: "Printer jams on every page" },
