@@ -7,6 +7,24 @@
 </hgroup>
 <% const staff = viewerRole !== "customer"; %>
 
+<%# The viewer's one next action, right under the status: what to press now. %>
+<% if (allowed.takeAndStart) { %>
+<div class="next-action">
+  <form method="post" action="/tickets/<%= ticket.key %>/take-and-start">
+    <button type="submit">Take ticket and start work</button>
+  </form>
+</div>
+<% } else if (allowed.start) { %>
+<div class="next-action">
+  <form method="post" action="/tickets/<%= ticket.key %>/status">
+    <input type="hidden" name="status" value="in_progress" />
+    <button type="submit">Start work</button>
+  </form>
+</div>
+<% } else if (allowed.markReady || askBlocked) { %>
+<p class="next-action"><a href="#ask">Next: ask the customer to verify</a></p>
+<% } %>
+
 <% if (locals.recordedRun) { %>
 <p class="recorded-run">A recorded example of a real assistant run: what it sent is shown here as it sent it. <a href="/assistant-run">See its transcript and files</a></p>
 <% } %>
@@ -19,7 +37,7 @@
   <form method="post" action="/sign-in/dev">
     <input type="hidden" name="id" value="<%= demoNext.switchTo %>" />
     <input type="hidden" name="next" value="/tickets/<%= ticket.key %>" />
-    <button type="submit" class="secondary"><%= demoNext.label %></button>
+    <button type="submit" class="secondary outline"><%= demoNext.label %></button>
   </form>
   <% } %>
 </div>
@@ -157,17 +175,6 @@
 <section>
   <h2>Owner</h2>
   <p><%= ticket.owner_name ?? "Unassigned" %></p>
-  <% if (allowed.takeAndStart) { %>
-  <form method="post" action="/tickets/<%= ticket.key %>/take-and-start">
-    <button type="submit" class="compact">Take ticket and start work</button>
-  </form>
-  <% } %>
-  <% if (allowed.start) { %>
-  <form method="post" action="/tickets/<%= ticket.key %>/status">
-    <input type="hidden" name="status" value="in_progress" />
-    <button type="submit" class="compact">Start work</button>
-  </form>
-  <% } %>
   <% if (allowed.handOff && handOffTo.length > 0) { %>
   <details <% if (problem?.form === "handOff") { %>open<% } %>>
     <summary>Hand off to…</summary>
