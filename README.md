@@ -113,8 +113,8 @@ claude mcp add --transport http proofdesk \
 Your assistant sees only the sample ticket made for assistants, which is handed to every visitor's
 connection, and what it writes itself, never what other visitors' assistants write. It can read a ticket (which starts with the customer's check, as `done_when`), attach
 evidence, and ask the owner to request the customer's check; it can never answer for the
-customer or resolve. On the real site an admin issues connections on the **Connections** page,
-and a ticket's owner hands the ticket to one with **Hand to an AI assistant**: an assistant sees
+customer or resolve. On the real site an admin issues connections on the **Connections** page
+(**Connect your assistant** on the ticket list), and a ticket's owner hands the ticket to one with **Hand to an AI assistant**: an assistant sees
 only the tickets handed to it.
 [`docs/AGENTS_GUIDE.md`](docs/AGENTS_GUIDE.md) has the setup for Claude Code and Claude Desktop,
 the tools, the limits and a worked example.
