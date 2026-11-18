@@ -1,13 +1,12 @@
 import { createApp } from "./app.js";
 import { loadConfig } from "./config.js";
-import { openDatabase } from "./db.js";
 import { seedDemo } from "./demo.js";
-import { runMigrations } from "./migrate.js";
+import { openAndMigrate } from "./start.js";
 import { createTicketService } from "./tickets/service.js";
 
 const config = loadConfig();
-const db = openDatabase(config.databasePath);
-const applied = runMigrations(db);
+// A database labelled for the other purpose is refused before any migration touches it.
+const { db, applied } = openAndMigrate(config);
 if (applied.length > 0) console.log(`Applied migrations: ${applied.join(", ")}`);
 // createApp checks the database's purpose first, so the demo is only seeded into a demo
 // database.

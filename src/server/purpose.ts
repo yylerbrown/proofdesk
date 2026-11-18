@@ -32,6 +32,22 @@ export function checkDatabasePurpose(db: Db, demo: boolean): void {
   }
 }
 
+/**
+ * The same refusal, before any migration runs: a database already labelled for the other
+ * purpose is refused untouched, so a demo server pointed at the real file cannot change it
+ * first. A database with no label yet (a new file, or one from before labels) passes here and
+ * gets its label from checkDatabasePurpose after the migrations.
+ */
+export function checkPurposeBeforeMigrating(db: Db, demo: boolean): void {
+  const hasMeta = db
+    .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'app_meta'")
+    .get();
+  if (hasMeta === undefined) return;
+  const stored = getMeta(db, PURPOSE_KEY);
+  if (stored === undefined) return;
+  checkDatabasePurpose(db, demo);
+}
+
 /** True when no ticket, deleted ticket or signed-in person has ever been stored. */
 function isEmpty(db: Db): boolean {
   const count = (sql: string) => (db.prepare(sql).get() as { n: number }).n;

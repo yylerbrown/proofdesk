@@ -11,7 +11,8 @@
     "test:browser": "playwright test -c tests/browser/playwright.config.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "description": "A customer support ticketing system.",
   "dependencies": {

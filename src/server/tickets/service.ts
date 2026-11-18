@@ -405,9 +405,9 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
     if (before.ready_at !== null) repository.clearReady(db, before.id);
   }
 
-  /** Throws 409 when a budget is used up. */
-  function requireRoom(used: number, most: number | undefined, what: string): void {
-    if (most !== undefined && used >= most) {
+  /** Throws 409 when a budget is used up. Counts only when there is a budget to count against. */
+  function requireRoom(count: () => number, most: number | undefined, what: string): void {
+    if (most !== undefined && count() >= most) {
       throw new HttpError(409, "budget_full", `This server holds no more ${what}.`);
     }
   }
@@ -415,7 +415,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
   /** Writes a history entry, within the budget of events per ticket. */
   function logEvent(event: repository.NewEvent): void {
     requireRoom(
-      repository.countRows(db, "ticket_events", event.ticketId),
+      () => repository.countRows(db, "ticket_events", event.ticketId),
       budget.eventsPerTicket,
       "changes to this ticket",
     );
@@ -440,7 +440,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
       const ticket = parse(createTicketSchema, input);
       const now = new Date().toISOString();
       const row = db.transaction(() => {
-        requireRoom(repository.countTickets(db), budget.tickets, "tickets");
+        requireRoom(() => repository.countTickets(db), budget.tickets, "tickets");
         const id = repository.insertTicket(db, {
           title: ticket.title,
           description: ticket.description,
@@ -799,7 +799,6 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
       return toTicket(row, actor);
     },
 
-    /** The history, oldest first. Someone who may not read notes does not see them added. */
     /**
      * The display name for each id that wrote history: a GitHub name, or one of the made-up
      * people of the entrance. An id that is neither, such as the "anonymous" of the first
@@ -813,6 +812,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
       return names;
     },
 
+    /** The history, oldest first. Someone who may not read notes does not see them added. */
     listEvents(key: string, actor: Actor): TicketEvent[] {
       const row = requireRow(key, actor);
       let events = repository.listEvents(db, row.id, THREAD_LIMIT).map(toEvent);
@@ -885,7 +885,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
         requirePermission(actor, "attach_evidence", ticket);
         requireNotArchived(key, ticket);
         requireRoom(
-          repository.countRows(db, "ticket_evidence", ticket.id),
+          () => repository.countRows(db, "ticket_evidence", ticket.id),
           budget.evidencePerTicket,
           "evidence on this ticket",
         );
@@ -938,7 +938,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
         requirePermission(actor, entry.kind === "note" ? "note" : "reply", ticket);
         requireNotArchived(key, ticket);
         requireRoom(
-          repository.countRows(db, "ticket_entries", ticket.id),
+          () => repository.countRows(db, "ticket_entries", ticket.id),
           budget.entriesPerTicket,
           "replies on this ticket",
         );
