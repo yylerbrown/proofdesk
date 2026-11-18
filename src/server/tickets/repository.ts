@@ -687,14 +687,6 @@ export function decideSpec(
   ).run(state, by.id, by.name, now, id);
 }
 
-/** How many specs one author proposed on a ticket. */
-export function countSpecsBy(db: Db, ticketId: number, author: string): number {
-  const row = db
-    .prepare("SELECT COUNT(*) AS n FROM ticket_specs WHERE ticket_id = ? AND author = ?")
-    .get(ticketId, author);
-  return (row as { n: number }).n;
-}
-
 export function countSpecs(db: Db, ticketId: number): number {
   const row = db
     .prepare("SELECT COUNT(*) AS n FROM ticket_specs WHERE ticket_id = ?")

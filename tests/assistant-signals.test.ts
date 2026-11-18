@@ -81,6 +81,14 @@ describe("who a ticket is handed to", () => {
     expect((await as(app, teamActor).get("/api/tickets/SUP-1")).body.agent_id).toBe("1");
   });
 
+  it("is only ever an active hand-off, never the old agent_id column", async () => {
+    const { app, db } = buildTestApp();
+    await as(app, customerOne).post("/api/tickets").send(valid);
+    // Nothing writes this column any more; a value left in it must not show as a hand-off.
+    db.prepare("UPDATE tickets SET agent_id = '7' WHERE id = 1").run();
+    expect((await as(app, teamActor).get("/api/tickets/SUP-1")).body.agent_id).toBeNull();
+  });
+
   it("on the demo, is the demo's assistants for the sample made for them", async () => {
     const built = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
     seedDemo(createTicketService(built.db, built.config.ticketPrefix));

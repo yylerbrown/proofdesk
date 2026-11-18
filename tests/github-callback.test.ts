@@ -1,6 +1,6 @@
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { SIGN_IN_LIMIT } from "../src/server/app.js";
+import { SIGN_IN_LIMIT } from "../src/server/limits.js";
 import { buildTestApp, PRODUCTION_SIGN_IN_ENV, SIGN_IN_ENV, visitor } from "./helpers.js";
 
 type TestApp = ReturnType<typeof buildTestApp>["app"];

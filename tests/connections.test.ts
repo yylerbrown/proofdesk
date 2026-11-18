@@ -3,7 +3,7 @@ import request from "supertest";
 import type { Express } from "express";
 import { describe, expect, it } from "vitest";
 import { ACTIONS } from "../src/server/api/actions.js";
-import { WRITE_LIMIT } from "../src/server/app.js";
+import { WRITE_LIMIT } from "../src/server/limits.js";
 import { AGENT_SCOPES, CAPABILITIES } from "../src/server/permissions.js";
 import { admin, as, buildTestApp, customerOne, handToAgent, teamActor } from "./helpers.js";
 
