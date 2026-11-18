@@ -101,7 +101,9 @@ describe("a connection key on the API", () => {
     const { app } = buildTestApp();
     const key = await issue(app, ["read_tickets"]);
     const unknown = `pd_00000000_${"a".repeat(32)}`;
-    for (const bad of ["nonsense", unknown, `${key.slice(0, -1)}x`]) {
+    // One character changed. Not always to "x": the key may already end in "x".
+    const changed = key.slice(0, -1) + (key.endsWith("x") ? "y" : "x");
+    for (const bad of ["nonsense", unknown, changed]) {
       const res = await agent(app, bad).get("/api/tickets");
       expect(res.status, bad).toBe(401);
       expect(res.body.error.code).toBe("invalid_connection_key");
