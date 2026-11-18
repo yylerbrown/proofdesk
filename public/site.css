@@ -462,6 +462,17 @@ header nav .viewer strong {
     font-size: var(--pd-text-xs);
     white-space: normal;
   }
+  /*
+   * The People link is the one plain text link left in the phone header, so it gets a full
+   * 44-pixel tap. Its negative margin lets the tap reach into the row's padding, so the header
+   * keeps its height.
+   */
+  .site-header nav li.people-link a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin-block: -6px;
+  }
   .site-header .sign-out button {
     min-height: 44px;
     font-size: var(--pd-text-xs);
