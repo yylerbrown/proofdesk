@@ -12,6 +12,19 @@ header nav .viewer {
 header nav .viewer strong {
   color: var(--pico-color);
 }
+header nav .viewer {
+  white-space: nowrap;
+}
+/* On a phone the header wraps onto two rows instead of squeezing every word. */
+@media (max-width: 600px) {
+  header nav,
+  header nav ul {
+    flex-wrap: wrap;
+  }
+  header nav li {
+    padding: 0.4rem 0.5rem;
+  }
+}
 .role-label {
   margin-left: 0.25rem;
   padding: 0.05rem 0.4rem;
@@ -75,12 +88,118 @@ header nav .viewer strong {
   margin: 0 0.75rem 0 0;
 }
 
-/* Long titles in the list wrap instead of widening the table. */
+/* In the list only the title wraps; the short columns stay on one line. */
+table.tickets th,
+table.tickets td {
+  white-space: nowrap;
+}
 table.tickets td.user-text {
   min-width: 12rem;
+  white-space: pre-wrap;
 }
 
 /* An internal note is set apart, so it is never mistaken for a reply the customer sees. */
 .entry.note {
   border-left: 4px solid var(--pico-del-color);
+}
+
+/*
+ * Buttons and links styled as buttons take the width of their words, not the whole column.
+ * The element names are needed to outweigh the stylesheet's own full-width rule.
+ */
+button.compact,
+a.compact {
+  width: auto;
+}
+.ticket-panel select {
+  display: block;
+  width: auto;
+  margin-top: 0.25rem;
+}
+button.compact,
+a.compact {
+  padding: 0.35rem 0.8rem;
+  font-size: 0.9rem;
+}
+.ticket-panel form {
+  margin-bottom: 0.75rem;
+}
+
+/* Archive and permanent delete are set apart: their own box at the bottom of the panel, in red. */
+.danger-zone {
+  padding: 0.75rem;
+  border: 1px solid var(--pico-del-color);
+  border-radius: var(--pico-border-radius);
+}
+.danger-zone p {
+  margin-bottom: 0.5rem;
+}
+a.danger[role="button"] {
+  border-color: var(--pico-del-color);
+  background: transparent;
+  color: var(--pico-del-color);
+}
+
+/*
+ * The ticket page. Wide: the description, then the conversation, on the left; the panel of
+ * things a person acts on, on the right. Narrow: one column, the panel after the description.
+ */
+.ticket-layout {
+  display: grid;
+  gap: 0 2rem;
+  grid-template-areas: "summary" "panel" "thread";
+}
+.ticket-summary {
+  grid-area: summary;
+}
+.ticket-panel {
+  grid-area: panel;
+}
+.ticket-thread {
+  grid-area: thread;
+}
+.ticket-layout > * {
+  min-width: 0;
+}
+.ticket-panel section {
+  margin-bottom: 1.25rem;
+}
+.ticket-panel h2 {
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+@media (min-width: 900px) {
+  .ticket-layout {
+    grid-template-columns: minmax(0, 1fr) 18rem;
+    grid-template-rows: auto 1fr;
+    grid-template-areas: "summary panel" "thread panel";
+  }
+  .ticket-panel {
+    align-self: start;
+    padding-left: 1.5rem;
+    border-left: 1px solid var(--pico-muted-border-color);
+  }
+}
+
+/* The page headings are quieter, so the ticket's own title stands out. */
+.ticket-summary h2,
+.ticket-thread h2 {
+  font-size: 1.25rem;
+}
+.ticket-summary h3 {
+  font-size: 1rem;
+}
+
+/* Long words and links anywhere in the page wrap instead of widening it. */
+main {
+  overflow-wrap: break-word;
+}
+
+/* Focus is always visible for keyboard users, on links as well as buttons and boxes. */
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--pico-primary);
+  outline-offset: 2px;
 }

@@ -110,13 +110,13 @@ describe("the owner on the ticket page", () => {
   it("shows the owner to everyone and the buttons to the team only", async () => {
     const { app } = await setup();
     const unowned = await as(app, teamActor).get("/tickets/SUP-1");
-    expect(unowned.text).toContain("no owner yet");
+    expect(unowned.text).toContain("<p>Unassigned</p>");
     expect(unowned.text).toContain("Take this ticket");
 
     const taken = await as(app, teamActor).post("/tickets/SUP-1/take");
     expect(taken.status).toBe(303);
     const page = await as(app, teamActor).get("/tickets/SUP-1");
-    expect(page.text).toContain("owner Team Member");
+    expect(page.text).toContain("<p>Team Member</p>");
     expect(page.text).toContain("Release it");
     expect(page.text).not.toContain("Take this ticket");
     expect(page.text).toContain("<td>Owner: Team Member</td>");
@@ -124,7 +124,7 @@ describe("the owner on the ticket page", () => {
     expect((await admin(app).get("/tickets/SUP-1")).text).toContain("Take over from Team Member");
 
     const customer = await as(app, customerOne).get("/tickets/SUP-1");
-    expect(customer.text).toContain("owner Team Member");
+    expect(customer.text).toContain("<p>Team Member</p>");
     expect(customer.text).not.toContain("/take");
   });
 
