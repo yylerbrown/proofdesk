@@ -262,7 +262,7 @@ describe("a request to /mcp whose body the JSON parser did not read", () => {
         method: "POST",
         headers: {
           Authorization: `Bearer ${key}`,
-          "Content-Type": "application/json ",
+          "Content-Type": "application/json\u00a0",
           Accept: "application/json, text/event-stream",
         },
         body: JSON.stringify(body),
@@ -304,7 +304,11 @@ describe("an error on /mcp before the SDK answers", () => {
     const asJsonRpc = (res: request.Response, status: number, code: string) => {
       expect(res.status).toBe(status);
       expect(res.headers["content-type"]).toMatch(/^application\/json/);
-      expect(res.body).toMatchObject({ jsonrpc: "2.0", id: null, error: { data: { code } } });
+      expect(res.body).toMatchObject({
+        jsonrpc: "2.0",
+        id: null,
+        error: { code: -32000, message: expect.any(String), data: { code } },
+      });
     };
 
     asJsonRpc(await post("{bad"), 400, "bad_request");
