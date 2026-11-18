@@ -389,10 +389,21 @@ header nav .viewer strong {
 /*
  * The menu is measured against the details element, so it is an inline block as wide as its
  * button: as a plain inline box it can be 0px wide in WebKit, and the menu then shrinks to a
- * 10px strip with the choices spilling out over the page.
+ * 10px strip with the choices spilling out over the page. Pico gives a dropdown in a nav a
+ * negative bottom margin, which an inline block would obey: at phone width the button would then
+ * stick out of its row, so the margin is taken off.
  */
 .site-header details.dropdown.switch-role {
   display: inline-block;
+  margin-block: 0;
+}
+/*
+ * Pico lays an invisible layer over the whole page while the menu is open, which takes the next
+ * click. The menus script closes the menu on a click outside it, so the layer is not needed, and
+ * without it that click reaches what it was aimed at.
+ */
+.site-header details.dropdown.switch-role[open] > summary::before {
+  display: none;
 }
 /* Its menu: a small popover, the one kind of thing that floats, as wide as its button. */
 .site-header details.dropdown.switch-role > summary + ul {

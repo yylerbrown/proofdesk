@@ -96,7 +96,7 @@ describe("the menus' look", () => {
 
   it("measures the Switch role list against a box as wide as its button", () => {
     expect(css).toMatch(
-      /\.site-header details\.dropdown\.switch-role \{\s*display: inline-block;\s*\}/,
+      /\.site-header details\.dropdown\.switch-role \{\s*display: inline-block;\s*margin-block: 0;\s*\}/,
     );
   });
 });
