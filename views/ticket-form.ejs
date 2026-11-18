@@ -24,6 +24,11 @@
 <p class="notice already-filed" role="status">This form was already filed as <a href="/tickets/<%= alreadyFiled.key %>"><%= alreadyFiled.key %></a>. <a href="/tickets/new">Start a new ticket</a>.</p>
 <% } %>
 
+<% if (locals.readOnly) { %>
+<%# The demo's admin preview changes nothing, so it gets no form to fill in and then lose. %>
+<p class="notice read-only-note">The admin preview is read-only. Switch to Demo Customer to file a ticket.</p>
+<p><a href="/tickets">Back to the ticket list</a></p>
+<% } else { %>
 <form method="post" action="<%= action %>">
   <% if (locals.formId) { %><input type="hidden" name="form" value="<%= formId %>" /><% } %>
   <%# Each hint sits inside its label, so the box is named by the label words alone and the hint is read once, as its description. %>
@@ -69,4 +74,5 @@
     <a href="<%= editKey ? `/tickets/${editKey}` : "/tickets" %>">Cancel</a>
   </div>
 </form>
+<% } %>
 <%- include("footer") %>

@@ -207,5 +207,5 @@ export const pageErrorHandler: ErrorRequestHandler = (err, req, res, next) => {
   let title = "Something went wrong";
   if (shown.status === 404) title = "Not found";
   else if (shown.status < 500) title = "That request did not work";
-  res.status(shown.status).render("error", { title, message: shown.message });
+  res.status(shown.status).render("error", { title, message: shown.message, status: shown.status });
 };
