@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { signedIn } from "../actor.js";
 import { HttpError, ValidationError } from "../errors.js";
 import { can } from "../permissions.js";
@@ -12,6 +12,10 @@ import { parse } from "../validation.js";
 
 // Passed to every ticket template so it can show labels and times.
 const helpers = { statusLabels: STATUS_LABELS, statuses: TICKET_STATUSES, formatTime };
+
+// What the reply form holds: the kind chosen, the text typed, and a message if it was refused.
+type EntryForm = { kind: string; body: string; error?: string };
+const emptyEntry: EntryForm = { kind: "reply", body: "" };
 
 const emptyForm = { title: "", description: "", where_url: "", fix_check: "" };
 
@@ -38,6 +42,28 @@ function readTicketForm(body: Record<string, unknown> | undefined): typeof empty
 
 export function pagesRouter(service: TicketService): Router {
   const router = Router();
+
+  /** Renders the ticket page: the ticket, its conversation, its history and its controls. */
+  function showTicket(req: Request, res: Response, status: number, entry: EntryForm): void {
+    const actor = signedIn(req);
+    const ticket = service.getTicket(req.params.key as string, actor);
+    const entries = service.listEntries(ticket.key, actor);
+    const history = service.listEvents(ticket.key, actor).map((event) => ({
+      when: event.created_at,
+      what: describeEvent(event),
+      who: describeActor(event),
+    }));
+    const allowed = service.allowedActions(ticket, actor);
+    res.status(status).render("ticket-show", {
+      ...helpers,
+      title: ticket.key,
+      ticket,
+      entries,
+      history,
+      allowed,
+      entry,
+    });
+  }
 
   router.get("/", (_req, res) => {
     res.redirect("/tickets");
@@ -82,17 +108,26 @@ export function pagesRouter(service: TicketService): Router {
   });
 
   router.get("/tickets/:key", (req, res) => {
-    const actor = signedIn(req);
-    const ticket = service.getTicket(req.params.key, actor);
-    const history = service.listEvents(req.params.key, actor).map((event) => ({
-      when: event.created_at,
-      what: describeEvent(event),
-      who: describeActor(event),
-    }));
-    const allowed = service.allowedActions(ticket, actor);
-    res.render("ticket-show", { ...helpers, title: ticket.key, ticket, history, allowed });
+    showTicket(req, res, 200, emptyEntry);
   });
 
+  // Adds a reply or a note from the form under the conversation.
+  router.post("/tickets/:key/entries", (req, res) => {
+    const actor = signedIn(req);
+    const entry = { kind: asText(req.body?.kind) || "reply", body: asText(req.body?.body) };
+    try {
+      const ticket = service.getTicket(req.params.key, actor);
+      service.addEntry(req.params.key, entry, actor);
+      res.redirect(303, `/tickets/${ticket.key}#conversation`);
+    } catch (err) {
+      if (!(err instanceof ValidationError)) throw err;
+      // Show the ticket again with what was typed and the message under the box.
+      showTicket(req, res, 400, {
+        ...entry,
+        error: err.fieldErrors.body?.join(" ") ?? err.message,
+      });
+    }
+  });
   // The edit form is the new ticket form, filled in with the ticket as it is now.
   router.get("/tickets/:key/edit", (req, res) => {
     const actor = signedIn(req);

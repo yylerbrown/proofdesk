@@ -52,6 +52,39 @@
 </div>
 <% } %>
 
+<h2 id="conversation">Conversation</h2>
+<% if (entries.length === 0) { %>
+<p>No replies yet.</p>
+<% } %>
+<% for (const item of entries) { %>
+<article class="entry<% if (item.kind === "note") { %> note<% } %>">
+  <header>
+    <strong><%= item.author_name %></strong>
+    <small>(<%= item.author_role %>)<% if (item.kind === "note") { %>, internal note, the customer does not see this<% } %>, <%= formatTime(item.created_at) %></small>
+  </header>
+  <p class="user-text"><%= item.body %></p>
+</article>
+<% } %>
+
+<% if (allowed.reply) { %>
+<form method="post" action="/tickets/<%= ticket.key %>/entries">
+  <% if (allowed.note) { %>
+  <fieldset>
+    <label><input type="radio" name="kind" value="reply" <% if (entry.kind !== "note") { %>checked<% } %> /> Reply to the customer</label>
+    <label><input type="radio" name="kind" value="note" <% if (entry.kind === "note") { %>checked<% } %> /> Internal note, for the team only</label>
+  </fieldset>
+  <% } else { %>
+  <input type="hidden" name="kind" value="reply" />
+  <% } %>
+  <label>
+    Your message
+    <textarea name="body" rows="4" required <% if (entry.error) { %>aria-invalid="true"<% } %>><%= entry.body %></textarea>
+    <% if (entry.error) { %><small><%= entry.error %></small><% } %>
+  </label>
+  <button type="submit">Send</button>
+</form>
+<% } %>
+
 <% if (allowed.delete) { %>
 <p><a href="/tickets/<%= ticket.key %>/delete">Delete this ticket permanently</a></p>
 <% } %>

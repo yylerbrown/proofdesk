@@ -43,11 +43,11 @@ cp .env.example .env   # then fill it in; npm run dev reads it
 npm run dev
 ```
 
-| Role        | What they can do                                                                               |
-| ----------- | ---------------------------------------------------------------------------------------------- |
-| Customer    | File tickets. See, edit and archive only their own. Cannot change a status.                    |
-| Team member | See, edit, archive and change the status of every ticket. See and restore archived tickets.    |
-| Admin       | Everything a team member can. Permanent deletion, when it is built, will be for an admin only. |
+| Role        | What they can do                                                                                            |
+| ----------- | ----------------------------------------------------------------------------------------------------------- |
+| Customer    | File tickets. See, edit, archive and reply on only their own. Cannot change a status or see internal notes. |
+| Team member | See, edit, archive and change the status of every ticket. See and restore archived tickets.                 |
+| Admin       | Everything a team member can. Permanent deletion, when it is built, will be for an admin only.              |
 
 One function, `can()` in `src/server/permissions.ts`, answers every permission question, and
 the ticket service asks it on every call. A ticket someone may not see answers 404, the same
@@ -93,6 +93,8 @@ More routes change a ticket. Each one writes an event in the same transaction.
 | `PUT /api/tickets/:key`          | Replaces the title, description, link and check. Same rules as create.       |
 | `POST /api/tickets/:key/archive` | Archives the ticket. Nothing is deleted.                                     |
 | `POST /api/tickets/:key/restore` | Brings an archived ticket back.                                              |
+| `GET /api/tickets/:key/entries`  | The conversation, oldest first. Internal notes only for the team.            |
+| `POST /api/tickets/:key/entries` | Adds `{ "kind": "reply" or "note", "body": "..." }`. Notes are team only.    |
 | `DELETE /api/tickets/:key`       | Deletes the ticket permanently. Admin only. Body: `{ "confirm": "SUP-42" }`. |
 
 An archived ticket is left out of every list except `GET /api/tickets?status=archived`, and it

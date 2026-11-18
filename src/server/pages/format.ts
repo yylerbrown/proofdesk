@@ -53,6 +53,8 @@ export function describeEvent(event: TicketEvent): string {
       return `Edited: ${fields.join(", ")}`;
     }
   }
+  if (event.type === "reply_added") return "Reply added";
+  if (event.type === "note_added") return "Internal note added";
   if (event.type === "archived") return "Archived";
   if (event.type === "restored") return "Restored";
   return event.type;
