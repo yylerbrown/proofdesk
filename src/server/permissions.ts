@@ -23,25 +23,24 @@ export type TicketFacts = {
  *
  * - A customer works only with their own tickets and cannot change a status.
  * - A team member works with every ticket.
- * - An archived ticket exists only for an admin, who alone can restore it.
+ * - An archived ticket is gone for customers. A team member or admin can see and restore it.
  */
 export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean {
-  const isAdmin = actor.role === "admin";
-  const isStaff = actor.role === "team" || isAdmin;
+  const isStaff = actor.role === "team" || actor.role === "admin";
 
   if (action === "create") return true;
   if (action === "list_all") return isStaff;
-  if (action === "list_archived") return isAdmin;
+  if (action === "list_archived") return isStaff;
 
   // Every other action is about one ticket.
   if (ticket === undefined) return false;
-  if (ticket.archived_at !== null && !isAdmin) return false;
+  if (ticket.archived_at !== null && !isStaff) return false;
   const isOwn = ticket.created_by === actor.id;
 
   if (action === "read") return isStaff || isOwn;
   if (action === "edit") return isStaff || isOwn;
   if (action === "archive") return isStaff || isOwn;
   if (action === "change_status") return isStaff;
-  if (action === "restore") return isAdmin;
+  if (action === "restore") return isStaff;
   return false;
 }

@@ -33,6 +33,7 @@ const ALL = [
   "0004_events_append_only.sql",
   "0005_ticket_archive.sql",
   "0006_sign_in_tables.sql",
+  "0007_tickets_created_by_index.sql",
 ];
 
 describe("runMigrations", () => {
@@ -65,6 +66,22 @@ describe("runMigrations", () => {
     expect(runMigrations(db, dir)).toEqual(["0001_a.sql", "0002_b.sql"]);
     fs.writeFileSync(path.join(dir, "0003_c.sql"), "CREATE TABLE c (id INTEGER);");
     expect(runMigrations(db, dir)).toEqual(["0003_c.sql"]);
+  });
+
+  it("skips a file that another server applied in the meantime, instead of failing", () => {
+    const dir = tempDir();
+    // The first file also does what a second server would have done at the same moment:
+    // it creates the table of the second file and records that file as applied.
+    fs.writeFileSync(
+      path.join(dir, "0001_a.sql"),
+      `CREATE TABLE a (id INTEGER);
+       CREATE TABLE b (id INTEGER);
+       INSERT INTO schema_migrations (name) VALUES ('0002_b.sql');`,
+    );
+    fs.writeFileSync(path.join(dir, "0002_b.sql"), "CREATE TABLE b (id INTEGER);");
+    const db = memoryDb();
+    expect(runMigrations(db, dir)).toEqual(["0001_a.sql"]);
+    expect(db.prepare("SELECT COUNT(*) AS n FROM schema_migrations").get()).toEqual({ n: 2 });
   });
 
   it("rolls back a failing migration and does not record it", () => {

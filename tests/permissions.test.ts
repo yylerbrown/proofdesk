@@ -14,7 +14,8 @@ describe("can", () => {
     ["anyone files a ticket", customerOne, "create", undefined, true],
     ["a customer does not list every ticket", customerOne, "list_all", undefined, false],
     ["a team member lists every ticket", teamActor, "list_all", undefined, true],
-    ["a team member does not list archived tickets", teamActor, "list_archived", undefined, false],
+    ["a customer does not list archived tickets", customerOne, "list_archived", undefined, false],
+    ["a team member lists archived tickets", teamActor, "list_archived", undefined, true],
     ["an admin lists archived tickets", adminActor, "list_archived", undefined, true],
 
     ["a customer reads their own ticket", customerOne, "read", own, true],
@@ -39,10 +40,17 @@ describe("can", () => {
     ["a team member archives any ticket", teamActor, "archive", own, true],
 
     ["an archived ticket is gone for its own customer", customerOne, "read", ownArchived, false],
-    ["an archived ticket is gone for a team member", teamActor, "read", ownArchived, false],
+    ["a team member reads an archived ticket", teamActor, "read", ownArchived, true],
+    [
+      "a customer does not archive what is already archived",
+      customerOne,
+      "archive",
+      ownArchived,
+      false,
+    ],
     ["an admin reads an archived ticket", adminActor, "read", ownArchived, true],
     ["a customer does not restore", customerOne, "restore", ownArchived, false],
-    ["a team member does not restore", teamActor, "restore", ownArchived, false],
+    ["a team member restores", teamActor, "restore", ownArchived, true],
     ["an admin restores", adminActor, "restore", ownArchived, true],
 
     ["a ticket action without a ticket is refused", adminActor, "read", undefined, false],

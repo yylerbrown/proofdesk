@@ -209,6 +209,9 @@ describe("a customer", () => {
     expect(page.status).toBe(403);
     expect(page.headers["content-type"]).toMatch(/html/);
     expect((await as(app, customerOne).get("/tickets")).text).not.toContain("status=archived");
+    // Still nothing after one of their own is archived.
+    await as(app, customerOne).post("/api/tickets/SUP-1/archive");
+    expect((await as(app, customerOne).get("/api/tickets?status=archived")).status).toBe(403);
   });
 });
 
@@ -226,15 +229,55 @@ describe("a team member", () => {
     expect(events.body.at(-1)).toMatchObject({ actor: teamActor.id, type: "status_changed" });
   });
 
-  it("archives a ticket but cannot see archived tickets or restore", async () => {
+  it("archives a ticket, still sees it under Archived, and restores it", async () => {
     const { app } = await twoCustomers();
     const team = as(app, teamActor);
     expect((await team.post("/api/tickets/SUP-1/archive")).status).toBe(200);
-    expect((await team.get("/api/tickets/SUP-1")).status).toBe(404);
-    expect((await team.post("/api/tickets/SUP-1/restore")).status).toBe(404);
-    expect((await team.get("/api/tickets?status=archived")).status).toBe(403);
-    expect((await team.get("/tickets")).text).not.toContain("status=archived");
-    expect((await admin(app).get("/api/tickets/SUP-1")).body.archived_at).not.toBeNull();
+    expect((await team.get("/api/tickets/SUP-1")).status).toBe(200);
+    const list = await team.get("/api/tickets?status=archived");
+    expect(list.body.map((t: { key: string }) => t.key)).toEqual(["SUP-1"]);
+    expect((await team.get("/tickets")).text).toContain("status=archived");
+
+    const restored = await team.post("/api/tickets/SUP-1/restore");
+    expect(restored.status).toBe(200);
+    expect(restored.body.archived_at).toBeNull();
+    // Back with its customer.
+    expect((await as(app, customerOne).get("/api/tickets/SUP-1")).status).toBe(200);
+  });
+});
+
+describe("archiving asks first", () => {
+  it("shows a page that explains what happens, worded for who is asking", async () => {
+    const { app } = await twoCustomers();
+    const mine = await as(app, customerOne).get("/tickets/SUP-1/archive");
+    expect(mine.status).toBe(200);
+    expect(mine.text).toContain("you will not be able to open it again");
+    expect(mine.text).toContain('<form method="post" action="/tickets/SUP-1/archive">');
+    expect(mine.text).toContain('href="/tickets/SUP-1"');
+
+    const staff = await as(app, teamActor).get("/tickets/SUP-1/archive");
+    expect(staff.text).toContain("You can find it under Archived and restore it.");
+  });
+
+  it("archives nothing by being opened", async () => {
+    const { app } = await twoCustomers();
+    await as(app, customerOne).get("/tickets/SUP-1/archive");
+    expect((await admin(app).get("/api/tickets/SUP-1")).body.archived_at).toBeNull();
+    expect((await admin(app).get("/api/tickets/SUP-1/events")).body).toHaveLength(1);
+  });
+
+  it("is where the ticket page sends you, instead of archiving at once", async () => {
+    const { app } = await twoCustomers();
+    const page = await as(app, customerOne).get("/tickets/SUP-1");
+    expect(page.text).toContain('href="/tickets/SUP-1/archive"');
+    expect(page.text).not.toContain('<form method="post" action="/tickets/SUP-1/archive">');
+  });
+
+  it("is not there for another customer's ticket or an archived one", async () => {
+    const { app } = await twoCustomers();
+    expect((await as(app, customerOne).get("/tickets/SUP-2/archive")).status).toBe(404);
+    await as(app, teamActor).post("/api/tickets/SUP-1/archive");
+    expect((await as(app, teamActor).get("/tickets/SUP-1/archive")).status).toBe(403);
   });
 });
 

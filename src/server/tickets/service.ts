@@ -166,7 +166,7 @@ export function createTicketService(db: Db, prefix: string) {
 
     /**
      * A team member or admin gets every ticket. A customer gets only the ones they filed.
-     * "archived" lists only archived tickets, for an admin. Every other filter leaves
+     * "archived" lists only archived tickets, for a team member or admin. Every other filter leaves
      * archived tickets out.
      */
     listTickets(filter: TicketListFilter, actor: Actor): Ticket[] {
@@ -276,7 +276,7 @@ export function createTicketService(db: Db, prefix: string) {
       return toTicket(row);
     },
 
-    /** Brings an archived ticket back into the ordinary lists. Only an admin may. */
+    /** Brings an archived ticket back into the ordinary lists. Not for customers. */
     restoreTicket(key: string, actor: Actor): Ticket {
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
