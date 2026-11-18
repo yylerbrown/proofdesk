@@ -1,0 +1,26 @@
+<%- include("header") %>
+<div class="column-form">
+<p class="back"><a href="/tickets/<%= ticket.key %>">Back to <%= ticket.key %></a></p>
+<h1>Email notices for <%= ticket.key %></h1>
+<p><strong><%= ticket.title %></strong></p>
+<% if (forTeam) { %>
+<p>The emails this ticket gave its customer and its owner when something needed them, newest first. Internal notes are never emailed.</p>
+<% } else { %>
+<p>The emails about this ticket that went to you, newest first.</p>
+<% } %>
+
+<% if (notices.length === 0) { %>
+<p>No email notices yet.</p>
+<% } %>
+<% for (const notice of notices) { %>
+<article class="entry">
+  <header>
+    <strong>To <%= notice.to %></strong>
+    <small><%- include("time", { iso: notice.when }) %>. <%= notice.state %>.</small>
+  </header>
+  <p>Subject: <%= notice.subject %></p>
+  <pre class="paste"><%= notice.body %></pre>
+</article>
+<% } %>
+</div>
+<%- include("footer") %>

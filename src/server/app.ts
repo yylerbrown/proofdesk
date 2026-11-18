@@ -18,6 +18,7 @@ import {
 } from "./errors.js";
 import { compressAnswers, requestId, requestLog, type LogLine } from "./http-basics.js";
 import { healthRouter } from "./routes/health.js";
+import { noticesRouter } from "./routes/notices.js";
 import { pagesRouter } from "./routes/pages.js";
 import { signInRouter } from "./routes/sign-in.js";
 import { checkDatabasePurpose } from "./purpose.js";
@@ -226,6 +227,7 @@ export function createApp(config: Config, db: Db, options: { log?: LogLine } = {
   app.use(assistantRunRouter(rootDir, () => tickets.recordedRunKey()));
   app.use(signInRouter(config, auth, () => tickets.hasDemoSeed()));
   app.use(pagesRouter(tickets));
+  app.use(noticesRouter(tickets, db, config.ticketPrefix));
   app.use(
     connectionsRouter(
       connections,
