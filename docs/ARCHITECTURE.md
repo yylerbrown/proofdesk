@@ -10,8 +10,8 @@ Auth. Inputs are checked with zod.
   ([`API.md`](API.md)) and the MCP endpoint for AI assistants all call the same service
   functions.
 - **The ticket service** holds the rules and the transactions.
-- **Repositories** hold the ticket, connection and team-list SQL. Startup checks and sign-in
-  lookups keep a few queries of their own.
+- **Repositories** hold the ticket, connection, team-list, people and email outbox SQL. Startup
+  checks and sign-in lookups keep a few queries of their own.
 
 ## Permissions
 
@@ -20,14 +20,15 @@ ticket, for people and for agents, whatever the door (a page, the JSON API or an
 Its table, `CAPABILITIES`, says for each action which people may take it and which agent scope it
 needs, or that it is for people only. Who owns the ticket and the order of the workflow are
 checked in the ticket service: for example, only the ticket's owner asks the customer, and only
-once work has started and the change is linked.
+once work has started.
 
 ## The ticket's life
 
 - **Three statuses**: New, In Progress and Resolved.
 - The customer's Yes to "Did this fix it?" resolves a ticket as "Customer confirmed". Its owner or
-  an admin can also resolve it with a required reason, shown everywhere as "Resolved by the team:
-  <reason>". The customer can reopen either; the owner or an admin can reopen only the team's own
+  an admin can also resolve it with a required reason, and so can a team member when nobody owns
+  it yet, who then becomes its owner. It shows everywhere as "Resolved by the team: <reason>".
+  The customer can reopen either; the owner or an admin can reopen only the team's own
   resolution. An agent never resolves or reopens.
 - Every ticket in progress has a named person who owns it, never an agent.
 - **History is add-only.** Every change writes a history entry in the same transaction, saying
@@ -45,6 +46,10 @@ once work has started and the change is linked.
 - `src/server/permissions.ts` holds `can()` and the capability table.
 - `src/server/mcp.ts` is the MCP endpoint; `src/server/connections/` the agent connections;
   `src/server/team/` who can own a ticket.
+- `src/server/people/` holds the People page's rules and each person's account page: an admin
+  chooses roles, which apply at once, and people named in the server settings keep theirs.
+- `src/server/notify/` holds email notices: who is told about what, worked out from the ticket
+  history; the outbox they are written to; and sending with nodemailer once a mail server is set.
 - `views/` holds the page templates; `public/theme.css` every colour and font.
 - `migrations/` holds numbered SQL files; `tests/` the tests; `ops/prove/` the patch checker.
 

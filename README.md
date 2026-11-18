@@ -55,24 +55,13 @@ Each one takes under a minute on the demo, starting from its welcome page.
 
 - Start as: Demo Team Member, owning the ticket
 - Press: **Ask the customer to verify**, then **View this ticket as the customer who filed it** and **Yes, resolve ticket**
-- You should see: **Resolved**, and "Customer confirmed it is fixed." The owner can also resolve without the customer: press "Resolve" under Status and choose a reason, and the ticket then shows "Resolved by the team: <reason>" to everyone.
+- You should see: **Resolved**, and "Customer confirmed it is fixed." Asking takes one press; what was tried, the change link and evidence are optional details. The team can also resolve without the customer, on a New ticket nobody owns or on one they own: press "Resolve" under Status and choose a reason, and the ticket then shows "Resolved by the team: <reason>" to everyone.
 
 **A working product**
 
 - Start as: The welcome page
 - Press: **Try the ticket workflow**
 - You should see: One ticket from New to Resolved, switching role on the same ticket, in about two minutes.
-
-**Source on GitHub, and a README on how to run it**
-
-- Start as: [github.com/yylerbrown/proofdesk](https://github.com/yylerbrown/proofdesk)
-- Press: [Run it yourself](#run-it-yourself)
-- You should see: A copy running on your own machine.
-
-**A live URL**
-
-- Press: The two links above
-- You should see: The demo, and the production site.
 
 **SSO with roles and permissions**
 
@@ -90,23 +79,26 @@ Each one takes under a minute on the demo, starting from its welcome page.
 
 - Start as: Any ticket
 - Press: **How will we know it's fixed?** on the form; **Did this fix it?** for the customer
-- You should see: The customer's own check stays on the ticket. Their Yes resolves it as "Customer confirmed"; a No goes back to the named owner with their words. Evidence is labelled as reported, never as verified. The history cannot be changed.
+- You should see: The customer's own check stays on the ticket. Their Yes resolves it as "Customer confirmed"; a No goes back to the named owner with their words. Evidence is labelled as reported, never as verified. The history cannot be changed. Proofdesk writes an email notice to the customer or the owner when the ticket needs them, and a ticket's notices page (`/tickets/SUP-1/notices`) shows each one in its exact words.
 
-This is what the customer meets when the team says it is fixed:
+This is what the customer meets when the team says it is fixed, here with the optional details the team can add:
 
-<img src="docs/img/did-this-fix-it.png" width="560" alt="The customer's view of a ticket the team says is fixed: the box &quot;Did this fix it?&quot; shows what the team tried, what happened and the customer's own check, with &quot;Yes, resolve ticket&quot; and a way to say No">
+<img src="docs/img/did-this-fix-it.png" width="560" alt="The customer's view of a ticket the team says is fixed: the box &quot;Did this fix it?&quot; shows the optional details the team gave, what they tried and what happened, and the customer's own check, with &quot;Yes, resolve ticket&quot; and a way to say No">
 
 ## Sign-in and roles
 
 The production site signs people in with GitHub. Proofdesk reads your name, picture and email
 address, never your code: it asks GitHub only for permission to read your email address, and
-keeps no GitHub token after sign-in. Everyone starts as a customer.
+keeps no GitHub token after sign-in. Everyone starts as a customer. An admin chooses who is on
+the team on the **People** page, and the change applies on that person's next page. People named
+in the server settings keep that role, and the page shows them locked. Each person's name in the
+header opens their account page, with a switch for email notices.
 
-| Role        | How you get it                                                                    | What you can do                                                                                                                                                                                                                                       |
-| ----------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Customer    | Sign in.                                                                          | File tickets. Read, edit and reply on your own tickets, answer "Did this fix it?", and reopen a resolved ticket that is still broken. You never see the team's internal notes.                                                                        |
-| Team member | The site's owner lists your GitHub user ID in `TEAM_GITHUB_IDS` in the settings.  | See every ticket. Take one and start work, reply, write internal notes, link the change, attach evidence, ask the customer to verify, archive and restore, hand on a ticket you own, resolve it with a reason, and reopen it if the team resolved it. |
-| Admin       | The site's owner lists your GitHub user ID in `ADMIN_GITHUB_IDS` in the settings. | Everything a team member can, and resolve any open ticket with a reason, reopen any ticket the team resolved, issue AI assistant connections on **Connections** and delete a ticket permanently.                                                      |
+| Role        | How you get it                                                                                          | What you can do                                                                                                                                                                                                                                                                                 |
+| ----------- | ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Customer    | Sign in.                                                                                                | File tickets. Read, edit and reply on your own tickets, answer "Did this fix it?", and reopen a resolved ticket that is still broken. You never see the team's internal notes.                                                                                                                  |
+| Team member | An admin chooses it on **People**, or the site's owner lists your GitHub user ID in `TEAM_GITHUB_IDS`.  | See every ticket. Take one and start work, reply, write internal notes, link the change, attach evidence, ask the customer to verify, archive and restore, hand on a ticket you own, resolve with a reason a ticket you own or a New ticket nobody owns, and reopen it if the team resolved it. |
+| Admin       | An admin chooses it on **People**, or the site's owner lists your GitHub user ID in `ADMIN_GITHUB_IDS`. | Everything a team member can, and resolve any open ticket with a reason, reopen any ticket the team resolved, choose who is on the team on **People**, issue AI assistant connections on **Connections** and delete a ticket permanently.                                                       |
 
 On the demo there is no sign-in. Pick Demo Customer, Demo Team Member or Admin preview
 (read-only) on the welcome page, and use **Switch role** beside "Signed in as" in the header to
@@ -197,7 +189,7 @@ All of them are in `.env.example`, with comments.
 | `DEV_SIGN_IN`                                                                       | `on` offers four made-up people. Development only.                                                                                                                          |
 | `DEMO`                                                                              | `on` makes this server the demo: sample data, three demo people, no GitHub sign-in.                                                                                         |
 | `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | GitHub sign-in. All four or none. Required in production unless `DEMO=on`.                                                                                                  |
-| `TEAM_GITHUB_IDS`, `ADMIN_GITHUB_IDS`                                               | GitHub user IDs, separated by commas. Everyone else is a customer.                                                                                                          |
+| `TEAM_GITHUB_IDS`, `ADMIN_GITHUB_IDS`                                               | GitHub user IDs, separated by commas. These people keep that role and show as locked on **People**; an admin chooses everyone else's, a customer by default.                |
 | `CLIENT_IP_HEADER`                                                                  | Behind a proxy, the header with the visitor's address, for rate limits. Fly.io: `fly-client-ip`.                                                                            |
 | `DEMO_URL`                                                                          | Optional, on the production site: the demo's https address, linked from the sign-in page as "Try the demo without signing in".                                              |
 | `REAL_SITE_URL`                                                                     | Optional, on the demo: the production site's https address, named on the welcome page as where GitHub sign-in with roles runs.                                              |
@@ -249,6 +241,10 @@ holds the rules and the transactions; repositories hold the SQL. The pages, the
 order of the workflow are checked in the ticket service. Every change writes an add-only history
 entry in the same transaction, and database triggers refuse to change it.
 
+The top-level `ops/prove` folder is a command-line check, apart from the site, for a patch an
+assistant proposes: it checks the patch touches only the files it names, and that its new test
+fails before the change and passes after ([`ops/prove/README.md`](ops/prove/README.md)).
+
 ## How it is verified
 
 | Command                | What it runs                                                                                                                                                                                                                                  |
@@ -280,14 +276,16 @@ code. The specification ([`docs/SPEC.md`](docs/SPEC.md)), the history of every s
 
 - **Last writer wins** for edits to a ticket and to the team's check. Only the customer's answer
   carries a version check, so an old page cannot answer a newer question.
-- **Email needs a mail server.** Notices are sent only once `SMTP_URL` and `MAIL_FROM` are set,
-  and nobody can turn them off for themselves yet. Until then, and always on the demo, a ticket's
-  notices page (`/tickets/SUP-1/notices`) shows each one as not sent, with its exact words.
+- **Email needs a mail server.** Notices are written to an outbox from the ticket history and
+  sent with nodemailer only once `SMTP_URL` and `MAIL_FROM` are set; each person can switch them
+  off on their account page. The demo never sends, so there a ticket's notices page
+  (`/tickets/SUP-1/notices`) shows each one as not sent, with its exact words.
 - **Evidence is reported, not verified.** Proofdesk shows who reported it and checks none of it.
 - **One machine.** SQLite on one disk; rate-limit counts are in memory and reset on a restart.
   Several machines would need Postgres and a shared store for the rate limits.
-- **Roles are set in the server settings.** The site's owner names team members and admins by
-  GitHub user ID; there is no page for it yet.
+- **Roles in the server settings win.** Someone named in `ADMIN_GITHUB_IDS` or `TEAM_GITHUB_IDS`
+  keeps that role whatever the People page says; only a change to the settings moves them. The
+  page shows each person's name and email address, not their GitHub login, which is not stored.
 - **Demo visitors share identities.** Everyone who views as Demo Customer is the same customer.
 - **The dev login's cookie is unsigned.** It is safe only because production refuses the dev
   login.

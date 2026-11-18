@@ -1,12 +1,20 @@
 import fs from "node:fs";
 import { parse } from "node-html-parser";
 import { describe, expect, it } from "vitest";
-import { wireMenu, type Menu, type Page } from "../src/browser/menus.js";
+import {
+  closeOnEscape,
+  keepInView,
+  wireMenu,
+  type Menu,
+  type MenuList,
+  type Page,
+} from "../src/browser/menus.js";
 import { admin, buildTestApp } from "./helpers.js";
 
 // "Switch role" and "More" are native details menus. The menus script closes them on Escape,
 // with focus back on their button, and when focus or a click goes somewhere else on the page.
-// Text fields show the same focus ring as buttons and links.
+// More scrolls into view when it opens below the window. The ticket's Resolve panel holds a
+// form, so it closes on Escape only. Text fields show the same focus ring as buttons and links.
 
 /** A stand-in details element: its open flag, what it holds, and the listeners it was given. */
 function fakeMenu(inside: unknown[]) {
@@ -74,6 +82,49 @@ describe("the menus script", () => {
     expect(menu.open).toBe(true);
     page.click({ target: {} });
     expect(menu.open).toBe(false);
+  });
+
+  it("closes the Resolve panel on Escape only, never when focus or a click moves away", () => {
+    const { menu, listeners } = fakeMenu([]);
+    let focused = 0;
+    closeOnEscape(menu as unknown as Menu, { focus: () => (focused += 1) });
+    expect(Object.keys(listeners)).toEqual(["keydown"]);
+    listeners.keydown!({ key: "Escape" } as never);
+    expect(menu.open).toBe(false);
+    expect(focused).toBe(1);
+  });
+
+  it("opens More upward when it has no room below, and scrolls only when neither way fits", () => {
+    const { menu, listeners } = fakeMenu([]);
+    let bottom = 700;
+    let aboveButton = 500;
+    const opensUp: boolean[] = [];
+    const scrolls: unknown[] = [];
+    const list: MenuList = {
+      getBoundingClientRect: () => ({ bottom, height: 100 }),
+      classList: { toggle: (_name, force) => opensUp.push(force) },
+      scrollIntoView: (options) => scrolls.push(options),
+    };
+    keepInView(menu as unknown as Menu, list, () => ({ windowHeight: 800, aboveButton }));
+    const open = () => listeners.toggle!(undefined as never);
+
+    // Room below: it opens below, as before.
+    open();
+    expect(opensUp).toEqual([false]);
+    // No room below, room above: it opens upward and the page stays still.
+    bottom = 900;
+    open();
+    expect(opensUp).toEqual([false, false, true]);
+    expect(scrolls).toEqual([]);
+    // No room either way: the page scrolls to it.
+    aboveButton = 50;
+    open();
+    expect(opensUp.at(-1)).toBe(false);
+    expect(scrolls).toEqual([{ block: "nearest" }]);
+    // Closing it changes nothing.
+    menu.open = false;
+    open();
+    expect(scrolls.length).toBe(1);
   });
 
   it("is loaded on every page, as a script file the security policy allows", async () => {
