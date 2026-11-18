@@ -1,8 +1,9 @@
 import type { Db } from "../db.js";
 import type { EntryKind, TicketStatus } from "./schemas.js";
 
-// All SQL for tickets lives in this file. Every statement is a fixed string with ?
-// placeholders, so no user input is ever joined into SQL text.
+// The SQL for tickets lives in this file, except one query in the ticket service that records
+// what demo seeding wrote. Every statement here is a fixed string with ? placeholders, so no
+// user input is ever joined into SQL text.
 
 export type TicketRow = {
   id: number;

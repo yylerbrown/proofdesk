@@ -170,11 +170,15 @@ rendered on the server with EJS and the Pico CSS stylesheet, and GitHub sign-in 
 Auth. Inputs are checked with zod.
 
 - **Three layers.** Routes only read the request and call the service. The service holds the
-  rules and the transactions. The repository holds all the SQL.
-- **One permission function**, `can()` in `src/server/permissions.ts`, decides who may do what,
-  for people and for agents, whatever the door (a page, the JSON API or an agent tool). Its
-  table, `CAPABILITIES`, says for each action which people may take it and which agent scope it
-  needs, or that it is for people only.
+  rules and the transactions. The repositories hold the ticket and connection SQL; startup
+  checks, sign-in lookups, the team list and one demo-seeding query keep a few queries of their
+  own.
+- **One permission function**, `can()` in `src/server/permissions.ts`, decides by role, by who
+  filed the ticket and by agent scope, for people and for agents, whatever the door (a page, the
+  JSON API or an agent tool). The service adds the owner and state rules, such as only the
+  ticket's owner asking the customer, and only once work has started and the change is linked.
+  Its table, `CAPABILITIES`, says for each action which people may take it and which agent
+  scope it needs, or that it is for people only.
 - **Three statuses**: New, In Progress and Resolved. Only the customer's Yes resolves. Every
   ticket in progress has a named person who owns it, never an agent.
 - **History is add-only.** Every change writes a history entry in the same transaction, saying
@@ -296,7 +300,8 @@ curl -b jar http://localhost:3000/api/tickets
 Each item has a test that fails if it is removed (`tests/security.test.ts` unless another is
 named).
 
-- Every SQL statement is a fixed string with bound values.
+- Every SQL statement is a fixed string with bound values, except one in demo seeding that names
+  its table from a fixed list in the code, never from input.
 - Templates escape ticket text; links are limited to http and https.
 - `helmet` sets the security headers; the content security policy allows scripts and styles
   only from this server, and no page has an inline script or style.
