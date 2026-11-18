@@ -25,6 +25,7 @@ import {
   deleteTicketSchema,
   resolveSchema,
   RESOLVE_REASON_LABELS,
+  sameText,
   type ResolveReason,
   type TicketListFilter,
   type TicketStatus,
@@ -912,13 +913,10 @@ export function createTicketService(
         // The check is the customer's own words. The team edits the rest, never those.
         const isFiler = before.created_by === actor.id;
         if (!isFiler) after.fix_check = before.fix_check;
-        // Text saved before line breaks were stored plainly may still hold \r\n, and the team's
-        // copy of the check is that stored text: the same words with the same line breaks are
-        // not a change, so both sides are compared with plain line breaks.
-        const plain = (text: string | null) => text?.replace(/\r\n?/g, "\n") ?? null;
+        // Stored text may still hold old line endings: the same words are not a change.
         const changes: Record<string, { from: string | null; to: string | null }> = {};
         for (const field of ["title", "description", "where_url", "fix_check"] as const) {
-          if (plain(before[field]) !== plain(after[field])) {
+          if (!sameText(before[field], after[field])) {
             changes[field] = { from: before[field], to: after[field] };
           }
         }
@@ -997,10 +995,11 @@ export function createTicketService(
         requirePermission(actor, "agree_check", before);
         const { agreed_check } = parse(agreeCheckSchema, input);
         // The same words as the customer's are not a tighter check: keep none.
+        // Stored text may still hold old line endings, so both checks compare with sameText.
         const agreed =
-          agreed_check === "" || agreed_check === before.fix_check ? null : agreed_check;
+          agreed_check === "" || sameText(agreed_check, before.fix_check) ? null : agreed_check;
         requireNotArchived(key, before);
-        if (before.agreed_check === agreed) return before; // nothing changes
+        if (sameText(before.agreed_check, agreed)) return before; // nothing changes
         const now = new Date().toISOString();
         withdrawQuestion(before);
         repository.updateAgreedCheck(db, before.id, agreed, now);
@@ -1064,12 +1063,13 @@ export function createTicketService(
         const evidenceIds = fields.evidence_ids ?? [];
         // Already waiting for an answer. The very same question again is a retry, and changes
         // nothing. A different one would change what the customer is answering: withdraw first.
+        // Stored text may still hold old line endings, so the words compare with sameText.
         if (before.ready_at !== null) {
           const same =
             before.try_url === try_url &&
-            before.ready_tried === tried &&
-            before.ready_result === result &&
-            (before.ready_response ?? null) === response &&
+            sameText(before.ready_tried, tried) &&
+            sameText(before.ready_result, result) &&
+            sameText(before.ready_response ?? null, response) &&
             (before.ready_evidence ?? "[]") === JSON.stringify(evidenceIds);
           if (same) return before;
           throw new HttpError(

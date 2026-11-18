@@ -11,11 +11,17 @@ const blankIsMissing = (value: unknown) =>
 // A browser sends each line break in a text box as two characters, "\r\n", while the box's
 // maxlength counts it as one. Every text box's words are read with "\n" alone, so a line break
 // counts once here too, and each one is stored the same way.
-const textBox = () =>
-  z
-    .string()
-    .overwrite((text) => text.replace(/\r\n?/g, "\n"))
-    .trim();
+const plainLineBreaks = (text: string) => text.replace(/\r\n?/g, "\n");
+
+const textBox = () => z.string().overwrite(plainLineBreaks).trim();
+
+// Text stored before line breaks were stored plainly may still hold "\r\n". New words are the
+// same as stored words when they match with plain line breaks, so every comparison of new text
+// with stored text uses this.
+export function sameText(a: string | null, b: string | null): boolean {
+  if (a === null || b === null) return a === b;
+  return plainLineBreaks(a) === plainLineBreaks(b);
+}
 
 // The messages are written for a person, because the ticket form shows them under each box.
 // A link that must be an http or https address, as for "Where did this happen?".
