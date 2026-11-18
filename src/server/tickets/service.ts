@@ -1137,7 +1137,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
         requirePermission(actor, "propose_spec", ticket);
         requireNotArchived(key, ticket);
         requireRoom(
-          repository.countSpecs(db, ticket.id),
+          () => repository.countSpecs(db, ticket.id),
           budget.specsPerTicket,
           "specs on this ticket",
         );
