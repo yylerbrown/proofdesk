@@ -72,7 +72,7 @@ export function createApp(config: Config, db: Db): Express {
   // GitHub sign-in, when its settings are present. The library answers everything under
   // /api/auth itself: the return from GitHub, and its own session routes. It must be
   // mounted before any body parser, because it reads the request body itself.
-  const auth = config.signIn === null ? null : createAuth(db, config.signIn);
+  const auth = config.signIn === null ? null : createAuth(db, config.signIn, config.clientIpHeader);
   if (auth !== null) {
     app.all("/api/auth/*splat", toNodeHandler(auth));
   }
@@ -87,11 +87,18 @@ export function createApp(config: Config, db: Db): Express {
   const tooMany: Parameters<typeof rateLimit>[0] = {
     standardHeaders: "draft-8",
     legacyHeaders: false,
-    keyGenerator: (req) => req.actor?.id ?? ipKeyGenerator(req.ip ?? ""),
+    keyGenerator: (req) => req.actor?.id ?? ipKeyGenerator(clientAddress(req)),
     handler: (_req, _res, next) => {
       next(new HttpError(429, "too_many_requests", "Too many requests. Try again in a while."));
     },
   };
+  // The visitor's address: from the proxy's header when one is configured, otherwise from
+  // the connection.
+  function clientAddress(req: express.Request): string {
+    const fromProxy =
+      config.clientIpHeader === undefined ? undefined : req.get(config.clientIpHeader);
+    return fromProxy ?? req.ip ?? "";
+  }
   const filingLimit = rateLimit({ ...tooMany, windowMs: 10 * 60 * 1000, limit: FILING_LIMIT });
   const signInLimit = rateLimit({ ...tooMany, windowMs: 60 * 1000, limit: SIGN_IN_LIMIT });
 

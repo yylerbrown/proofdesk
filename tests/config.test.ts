@@ -13,6 +13,7 @@ describe("loadConfig", () => {
       ticketPrefix: "SUP",
       devSignIn: false,
       signIn: null,
+      clientIpHeader: undefined,
       teamGithubIds: [],
       adminGithubIds: [],
     });

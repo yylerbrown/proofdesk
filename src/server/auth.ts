@@ -7,7 +7,7 @@ import type { Db } from "./db.js";
  * Builds the sign-in library (Better Auth) with GitHub as the only way in. It keeps people
  * and sessions in the same database, in the tables of migration 0006.
  */
-export function createAuth(db: Db, signIn: SignInConfig) {
+export function createAuth(db: Db, signIn: SignInConfig, clientIpHeader: string | undefined) {
   return betterAuth({
     database: db,
     secret: signIn.secret,
@@ -20,6 +20,10 @@ export function createAuth(db: Db, signIn: SignInConfig) {
     // are decided by the GitHub account, so that would let a different account inherit
     // someone's role.
     account: { accountLinking: { enabled: false } },
+    // The library's own rate limits count per visitor address. Behind a proxy it must read
+    // that address from the header the proxy sets.
+    advanced:
+      clientIpHeader === undefined ? {} : { ipAddress: { ipAddressHeaders: [clientIpHeader] } },
     telemetry: { enabled: false },
   });
 }

@@ -54,7 +54,7 @@ async function signedInBrowser(db: TestDb, githubId: string, name: string) {
 describe("the sign-in library's tables", () => {
   it("are all created by our own migration, with nothing left for the library to add", async () => {
     const { db, config } = buildSignInApp();
-    const wanted = await getMigrations(createAuth(db, config.signIn!).options);
+    const wanted = await getMigrations(createAuth(db, config.signIn!, undefined).options);
     expect(wanted.toBeCreated).toEqual([]);
     expect(wanted.toBeAdded).toEqual([]);
   });
