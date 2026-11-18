@@ -1,39 +1,46 @@
 # Proofdesk
 
-Proofdesk keeps the customer's definition of "fixed" attached to the ticket, so people and agents
-can do the work while the customer decides whether it is resolved.
+A support desk where the customer says how to check a fix and gets to say whether it worked.
 
-## Try it
+A test can pass while the customer is still stuck. The team and its assistant see the customer's
+words and record what they tried. If the fix misses, the ticket goes back to someone the customer
+already knows.
 
-**The demo: <https://support-desk-demo.fly.dev>.** No account needed. The welcome page lets you
-look around as one of three made-up people. The tickets are sample data, shared with everyone
-who visits, so do not type anything private.
+- **The demo, no account needed: <https://support-desk-demo.fly.dev>.** Sample data, shared with
+  everyone who visits, so do not type anything private.
+- **The real site, with GitHub sign-in: <https://proofdesk.fly.dev>.**
 
-| View as              | Can                                                                                                                                                                                   | Cannot                                                                          |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| **Demo Customer**    | File a ticket. Read, edit and reply on the tickets the Demo Customer filed (every visitor shares this one customer). Answer "Did this fix it?" on them.                               | See the team's internal notes, change a status, archive or delete.              |
-| **Demo Team Member** | See every ticket. Take one and become its owner, move it to In Progress, reply, write internal notes, offer a clearer check, link the code change, attach evidence, ask the customer. | Resolve a ticket (only the customer can), archive, restore or delete.           |
-| **Demo Admin**       | See everything, archived tickets included.                                                                                                                                            | Change anything: the demo admin is read-only, so no visitor can empty the demo. |
+## The rubric, line by line
 
-To switch person, use **Sign out** in the header and pick another.
+Each row takes under a minute on the demo, starting from its welcome page.
 
-**The real site: <https://proofdesk.fly.dev>**, with GitHub sign-in. Everyone who signs in is a
-customer, except the GitHub accounts the owner has named as team members or admins.
+| Rubric line                                     | Start as                            | Press                                                                                                                              | You should see                                                                                                                                                                                                 |
+| ----------------------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ticket submission: title, description, status   | The welcome page                    | **Try the ticket workflow**, then **File ticket**                                                                                  | The form says "Initial status: New" and is filled with a sample you can change. The filed ticket shows **New**.                                                                                                |
+| Ticket list with filters                        | **View as Demo Team Member**        | **Tickets**, then **New**, **In Progress**, **Resolved**                                                                           | "All tickets", and each filter changes the list. A customer's list is "My tickets": only their own.                                                                                                            |
+| Update status: New to In Progress               | Demo Team Member, on a New ticket   | **Take ticket and start work**                                                                                                     | **In Progress**, with you as its owner.                                                                                                                                                                        |
+| Update status: to Resolved                      | Demo Team Member, owning the ticket | **Save change link**, **Ask customer to confirm**, then **View this ticket as the customer who filed it** and **Yes, it is fixed** | **Resolved**, and "The customer confirmed it is fixed." Wherever the team looks for Resolved, the page says it comes from the customer's Yes and how to ask.                                                   |
+| A working product                               | The welcome page                    | **Try the ticket workflow**                                                                                                        | One ticket from New to Resolved, switching role on the same ticket, in about two minutes.                                                                                                                      |
+| Source on GitHub, and a README on how to run it | This repository                     | [Run it yourself](#run-it-yourself)                                                                                                | A copy running on your own machine.                                                                                                                                                                            |
+| Bonus: a live URL                               |                                     | The two links above                                                                                                                | The demo, and the real site.                                                                                                                                                                                   |
+| Bonus: SSO with roles and permissions           | The real site                       | **Sign in with GitHub**                                                                                                            | Signed in as a customer, a team member or an admin, set by GitHub user numbers. On the demo the three roles are offered by name, the admin as **Admin preview (read-only)**.                                   |
+| Bonus: AI features                              | The welcome page                    | **Get a demo connection**, then paste the command into your own assistant, for example Claude Code                                 | Your assistant, through MCP, reads a sample ticket and its check, proposes a test spec, writes notes and attaches evidence. Proofdesk makes no model calls of its own.                                         |
+| Bonus: creative extras                          | Any ticket                          | **How will we know it's fixed?** on the form; **Did this fix it?** for the customer                                                | The customer's own check stays on the ticket. Only their Yes resolves. A No goes back to the named owner with their words. Evidence is labelled as reported, never as verified. The history cannot be changed. |
 
-## One ticket, from the customer's check to their Yes
+Tickets start New, move to In Progress when work starts, and become Resolved when the customer
+who filed them confirms the fix.
 
-1. **The customer says what "fixed" means.** As Demo Customer, choose **New ticket**. Describe
-   the problem, and fill in **How will we know it's fixed?**, for example "A ten-page PDF prints
-   without a jam". The ticket is New, with no owner, waiting on the team.
-2. **The team does the work and shows it.** As Demo Team Member, open the ticket. **Take ticket
-   and start work**, paste the **Link to the code change**, and under
-   **Evidence** choose **Attach evidence** to say what you checked. Then **Ask customer to confirm**, with
-   the page on the live site to try. Nothing the team does resolves the ticket.
-3. **The customer decides.** As Demo Customer, open the ticket. **Did this fix it?** shows their
-   own check, the team's interpretation if any, what the owner tried and the evidence. **No** needs a few words: the ticket goes
-   back to its owner with those words shown first, and the team asks again when it is fixed.
-   **Yes** resolves it, and only then does the ticket show the tick: "The customer confirmed it
-   is fixed."
+## Who can do what on the demo
+
+| View as                       | Can                                                                                                                                                                | Cannot                                                                |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| **Demo Customer**             | File a ticket. Read, edit and reply on the tickets the Demo Customer filed (every visitor shares this one customer). Answer "Did this fix it?" on them.            | See the team's internal notes, change a status, archive or delete.    |
+| **Demo Team Member**          | See every ticket. Take one and start work, reply, write internal notes, offer a clearer check, link the code change, attach evidence, ask the customer to confirm. | Resolve a ticket (only the customer can), archive, restore or delete. |
+| **Admin preview (read-only)** | See everything, archived tickets included.                                                                                                                         | Change anything, so no visitor can empty the demo.                    |
+
+To change role, open **Switch role** beside "Signed in as" in the header and pick another
+person: you stay on the same page. On the real site, everyone who signs in is a customer, except the GitHub accounts
+the owner has named as team members or admins.
 
 ## Connect your own AI assistant
 
@@ -67,15 +74,12 @@ npm ci
 ```
 
 ```bash
-cp .env.example .env
+DEV_SIGN_IN=on npm run dev
 ```
 
-```bash
-npm run dev
-```
-
-Open <http://localhost:3000> and pick a person. `.env.example` turns on the development entrance
-(`DEV_SIGN_IN=on`); `npm run dev` reads `.env` and keeps running until you stop it.
+Open <http://localhost:3000> and pick a person. It keeps running until you stop it. To keep your
+settings in a file instead, copy `.env.example` to `.env`, which turns the development entrance
+on; `npm run dev` reads it.
 
 **The demo, locally**, on its own database:
 
@@ -159,7 +163,7 @@ Auth. Inputs are checked with zod.
 
 | Command                | What it runs                                                                                                                                                                    |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm test`             | Every unit and route test with vitest: 666 when this was written.                                                                                                               |
+| `npm test`             | Every unit and route test with vitest: 742 when this was written.                                                                                                               |
 | `npm run test:browser` | One real-browser journey with Playwright: a customer files, the team works it, No then Yes, and a second customer is refused. Run `npx playwright install chromium` once first. |
 | `npm run typecheck`    | TypeScript, strict.                                                                                                                                                             |
 | `npm run lint`         | ESLint.                                                                                                                                                                         |
@@ -193,6 +197,9 @@ code. The specification ([`docs/SPEC.md`](docs/SPEC.md)), the history of every s
   reassigning tickets when someone leaves the team; documentation generated from conditional
   rules; and upgrading tickets resolved before the customer's Yes was required.
 - **Demo visitors share identities.** Everyone who views as Demo Customer is the same customer.
+- **Not built on purpose:** a board with status columns or dragging, priority ordering, closing a
+  ticket without the customer, a second filter beyond status, and any model call of the site's
+  own.
 
 ---
 
@@ -288,11 +295,16 @@ ticket carries a `ticket_id` column, and a test fails if one is missing from the
 
 ### Deploying
 
-Two Fly.io apps, both described in [`docs/DEPLOY.md`](docs/DEPLOY.md): `support-desk-demo`
-(`fly.toml`, the demo) and `proofdesk` (`fly.proofdesk.toml`, the real site). Each runs one
-machine with its own disk. The **Deploy** workflow runs only when started by hand. On the demo,
-assistant connections appear once its database has been reset since they were added: delete
-the database file and restart.
+Two Fly.io apps in `sjc`, both described in [`docs/DEPLOY.md`](docs/DEPLOY.md), each with one
+machine and its own disk: `support-desk-demo`, the demo, deployed with `fly.toml`; and
+`proofdesk`, the real site.
+
+**The real site always deploys with `--config fly.proofdesk.toml`.** `fly.toml` sets `DEMO=on`,
+and the real site refuses to start with it, as designed.
+
+The demo adds its samples only to an empty database. To reset it, move `app.db`, `app.db-wal`
+and `app.db-shm` aside on its disk and restart the machine. After a deploy, check
+`/api/health` on both, and that the demo's welcome page offers **Get a demo connection**.
 
 ### Layout
 

@@ -47,8 +47,10 @@ Done once, already done:
    The server refuses to start in production without the four sign-in settings, or with an
    address that does not start with `https://`.
 
-The commands below name the demo app; for the real site use `--app proofdesk`, and deploy it with
-`--config fly.proofdesk.toml`.
+The commands below name the demo app; for the real site use `--app proofdesk`.
+
+**The real site always deploys with `--config fly.proofdesk.toml`.** `fly.toml` sets `DEMO=on`;
+deployed with it, the real site refuses to start, as designed.
 
 ## Deploy
 
@@ -64,6 +66,31 @@ save it as the repository secret `FLY_API_TOKEN`, and run the **Deploy** workflo
 Actions tab. It never runs on its own, and it deploys the demo (`fly.toml`) only.
 
 With one machine and one disk, each deploy has a few seconds of downtime.
+
+## Resetting the demo
+
+The demo adds its sample tickets only to an empty database, so new samples, and assistant
+connections on a database seeded by older code, appear only after a reset. Move the database
+files aside on the disk, then restart the machine; it starts on an empty database and seeds it:
+
+```sh
+fly ssh console --app support-desk-demo
+mkdir /data/set-aside
+mv /data/app.db* /data/set-aside/
+exit
+fly machine restart --app support-desk-demo
+```
+
+`app.db*` is the database and its two companion files, `app.db-wal` and `app.db-shm`. The
+set-aside folder keeps what visitors wrote; delete it when it is no longer needed.
+
+## After every deploy
+
+1. `curl https://support-desk-demo.fly.dev/api/health` and
+   `curl https://proofdesk.fly.dev/api/health` both answer `"status":"ok"` with the commit.
+2. The demo's welcome page offers **Get a demo connection**. If it does not, reset the demo.
+3. The real site's sign-in page shows **Sign in with GitHub** and **Try the demo without signing
+   in**.
 
 ## After the first deploy: first, does it start?
 
