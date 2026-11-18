@@ -44,5 +44,8 @@
     </tbody>
   </table>
 </div>
+<% if (nextPage) { %>
+<p><a href="/tickets?status=<%= current %>&page=<%= nextPage %>">Older tickets</a></p>
+<% } %>
 <% } %>
 <%- include("footer") %>

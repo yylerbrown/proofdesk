@@ -74,4 +74,5 @@ export type TicketListFilter = (typeof TICKET_LIST_FILTERS)[number];
 
 export const listQuerySchema = z.object({
   status: z.enum(TICKET_LIST_FILTERS).optional(),
+  page: z.coerce.number().int().min(1).max(100000).optional(),
 });

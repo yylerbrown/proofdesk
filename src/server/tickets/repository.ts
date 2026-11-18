@@ -79,15 +79,18 @@ export function findTicket(db: Db, id: number): TicketRow | undefined {
   return db.prepare("SELECT * FROM tickets WHERE id = ?").get(id) as TicketRow | undefined;
 }
 
+/** Which slice of a long list to read: at most `limit` rows, after skipping `offset`. */
+export type Page = { limit: number; offset: number };
+
 /** Every ticket that is not archived, newest first. Pass a status to get only that status. */
-export function listAllTickets(db: Db, status: TicketStatus | null): TicketRow[] {
+export function listAllTickets(db: Db, status: TicketStatus | null, page: Page): TicketRow[] {
   return db
     .prepare(
       `SELECT * FROM tickets
        WHERE archived_at IS NULL AND (@status IS NULL OR status = @status)
-       ORDER BY id DESC`,
+       ORDER BY id DESC LIMIT @limit OFFSET @offset`,
     )
-    .all({ status }) as TicketRow[];
+    .all({ status, ...page }) as TicketRow[];
 }
 
 /**
@@ -99,22 +102,26 @@ export function listTicketsFiledBy(
   db: Db,
   createdBy: string,
   status: TicketStatus | null,
+  page: Page,
 ): TicketRow[] {
   return db
     .prepare(
       `SELECT * FROM tickets
        WHERE created_by = @createdBy AND archived_at IS NULL
          AND (@status IS NULL OR status = @status)
-       ORDER BY id DESC`,
+       ORDER BY id DESC LIMIT @limit OFFSET @offset`,
     )
-    .all({ createdBy, status }) as TicketRow[];
+    .all({ createdBy, status, ...page }) as TicketRow[];
 }
 
 /** Archived tickets only, newest first. */
-export function listArchivedTickets(db: Db): TicketRow[] {
+export function listArchivedTickets(db: Db, page: Page): TicketRow[] {
   return db
-    .prepare("SELECT * FROM tickets WHERE archived_at IS NOT NULL ORDER BY id DESC")
-    .all() as TicketRow[];
+    .prepare(
+      `SELECT * FROM tickets WHERE archived_at IS NOT NULL
+       ORDER BY id DESC LIMIT @limit OFFSET @offset`,
+    )
+    .all(page) as TicketRow[];
 }
 
 export type TicketText = {
@@ -213,11 +220,26 @@ export function insertEvent(db: Db, event: NewEvent): void {
   );
 }
 
-/** Oldest first. */
-export function listEvents(db: Db, ticketId: number): EventRow[] {
+/** The latest `limit` events of a ticket, oldest first. */
+export function listEvents(db: Db, ticketId: number, limit: number): EventRow[] {
   return db
-    .prepare("SELECT * FROM ticket_events WHERE ticket_id = ? ORDER BY id ASC")
-    .all(ticketId) as EventRow[];
+    .prepare(
+      `SELECT * FROM (
+         SELECT * FROM ticket_events WHERE ticket_id = ? ORDER BY id DESC LIMIT ?
+       ) ORDER BY id ASC`,
+    )
+    .all(ticketId, limit) as EventRow[];
+}
+
+/** How many rows a ticket has in a table that has a ticket_id column. */
+export function countRows(db: Db, table: "ticket_events" | "ticket_entries", id: number): number {
+  // The table name is one of the two fixed names above, never from a request.
+  const row = db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE ticket_id = ?`).get(id);
+  return (row as { n: number }).n;
+}
+
+export function countTickets(db: Db): number {
+  return (db.prepare("SELECT COUNT(*) AS n FROM tickets").get() as { n: number }).n;
 }
 
 /** Reads one value from the app_meta table, or undefined when the key is not there. */
@@ -295,13 +317,20 @@ export function insertEntry(db: Db, entry: NewEntry): EntryRow {
   return { id: Number(result.lastInsertRowid), ...entry };
 }
 
-/** Oldest first. Internal notes are left out unless includeNotes is true. */
-export function listEntries(db: Db, ticketId: number, includeNotes: boolean): EntryRow[] {
+/** The latest `limit` entries, oldest first. Notes are left out unless includeNotes is true. */
+export function listEntries(
+  db: Db,
+  ticketId: number,
+  includeNotes: boolean,
+  limit: number,
+): EntryRow[] {
   return db
     .prepare(
-      `SELECT * FROM ticket_entries
-       WHERE ticket_id = @ticketId AND (@includeNotes = 1 OR kind = 'reply')
-       ORDER BY id ASC`,
+      `SELECT * FROM (
+         SELECT * FROM ticket_entries
+         WHERE ticket_id = @ticketId AND (@includeNotes = 1 OR kind = 'reply')
+         ORDER BY id DESC LIMIT @limit
+       ) ORDER BY id ASC`,
     )
-    .all({ ticketId, includeNotes: includeNotes ? 1 : 0 }) as EntryRow[];
+    .all({ ticketId, includeNotes: includeNotes ? 1 : 0, limit }) as EntryRow[];
 }

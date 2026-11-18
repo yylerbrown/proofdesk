@@ -196,7 +196,7 @@ unless another is named):
 - **Sign-in cannot send people elsewhere.** After signing in, the browser returns to the page
   that was asked for, and only an address on this site is accepted.
 - **Flooding.** The `express-rate-limit` library limits one person to 20 new tickets in ten
-  minutes and one address to 10 sign-in starts a minute. A refused ticket, for example a form with a mistake in it, does not count. The sign-in library limits its own
+  minutes and one address to 10 sign-in starts a minute. A refused ticket, for example a form with a mistake in it, does not count. On top of that, every request that changes something, pages and API together, shares one allowance of 120 per ten minutes. A real person is counted by account; demo visitors, who share three made-up identities, are counted by address. The demo also has a hard budget of rows (200 tickets, 50 replies and 100 history entries per ticket), and lists, conversations and history are read in bounded pages (100 tickets a page, the latest 200 entries). The sign-in library limits its own
   routes in production. The counts are kept in memory, so they reset when the server restarts.
 
 - **GitHub tokens are stored encrypted.** The token GitHub hands over at sign-in is only kept

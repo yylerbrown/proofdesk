@@ -15,8 +15,8 @@ export function ticketsRouter(service: TicketService): Router {
   });
 
   router.get("/tickets", (req, res) => {
-    const { status } = parse(listQuerySchema, req.query);
-    res.json(service.listTickets(status ?? "all", signedIn(req)));
+    const { status, page } = parse(listQuerySchema, req.query);
+    res.json(service.listTickets(status ?? "all", signedIn(req), page ?? 1));
   });
 
   router.get("/tickets/:key", (req, res) => {
