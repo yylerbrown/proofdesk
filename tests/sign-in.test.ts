@@ -1,3 +1,5 @@
+import http from "node:http";
+import type { AddressInfo } from "node:net";
 import { betterAuth } from "better-auth";
 import { getMigrations } from "better-auth/db/migration";
 import { testUtils } from "better-auth/plugins";
@@ -7,13 +9,17 @@ import { describe, expect, it, vi } from "vitest";
 import { FILING_LIMIT, SIGN_IN_LIMIT } from "../src/server/limits.js";
 import { createAuth } from "../src/server/auth.js";
 import { DEV_COOKIE } from "../src/server/actor.js";
+import { loadConfig } from "../src/server/config.js";
 import {
   admin,
   adminActor,
   as,
   buildTestApp,
+  closeServers,
   customerOne,
   customerTwo,
+  FROM_THIS_SITE,
+  listenLocally,
   SIGN_IN_ENV,
   signedInLine,
   visitor,
@@ -80,6 +86,17 @@ describe("the team list on a ticket page", () => {
     // Two more people, and not one more query for them.
     expect(accountQueries()).toBe(few);
     prepare.mockRestore();
+  });
+});
+
+describe("the development entrance beside GitHub sign-in", () => {
+  // The entrance lets anyone pick who they are, the admin included, so a server that
+  // signs real people in through GitHub must never offer it, whatever its mode.
+  it.each(["development", "test"])("is refused in %s mode, with a clear message", (mode) => {
+    expect(() => loadConfig({ ...SIGN_IN_ENV, NODE_ENV: mode, DEV_SIGN_IN: "on" })).toThrow(
+      "Invalid environment configuration: DEV_SIGN_IN must not be on together with the " +
+        "GitHub sign-in settings. It lets anyone act as an admin.",
+    );
   });
 });
 
@@ -186,10 +203,11 @@ describe("starting a GitHub sign-in", () => {
     expect(String(res.headers["set-cookie"])).toContain("HttpOnly");
   });
 
-  it("lets the library answer under /api/auth", async () => {
+  it("asks GitHub for the email permission and nothing else", async () => {
     const { app } = buildSignInApp();
-    const res = await request(app).get("/api/auth/ok");
-    expect(res.status).toBe(200);
+    const res = await visitor(app).post("/sign-in/github");
+    const target = new URL(res.headers.location as string);
+    expect(target.searchParams.get("scope")).toBe("user:email");
   });
 
   it("is not there when GitHub sign-in is not configured", async () => {
@@ -209,6 +227,107 @@ describe("starting a GitHub sign-in", () => {
     const res = await visitor(app).post("/sign-in/github");
     expect(res.status).toBe(429);
     expect(res.text).toContain("Too many requests.");
+  });
+});
+
+// The sign-in library's own API. The app never uses it: it starts a sign-in, reads the session
+// and signs out by calling the library directly. Each row is a route the library answers when
+// it is given all of /api/auth, sent the way the library expects it.
+const LIBRARY_ROUTES: [method: "get" | "post", path: string, body?: object][] = [
+  ["post", "/api/auth/update-user", { name: "Ada Admin" }],
+  ["post", "/api/auth/get-access-token", { providerId: "github" }],
+  ["get", "/api/auth/list-sessions"],
+  ["get", "/api/auth/get-session"],
+  ["post", "/api/auth/sign-in/social", { provider: "github" }],
+  ["get", "/api/auth/account-info"],
+  ["post", "/api/auth/change-email", { newEmail: "someone@example.com" }],
+  ["post", "/api/auth/revoke-sessions", {}],
+  ["post", "/api/auth/link-social", { provider: "github" }],
+  ["get", "/api/auth/list-accounts"],
+  ["get", "/api/auth/ok"],
+  ["get", "/api/auth/error"],
+  ["post", "/api/auth/sign-out", {}],
+  ["post", "/api/auth/callback/github", { provider: "github" }],
+];
+
+describe("the sign-in library's own routes", () => {
+  it.each(LIBRARY_ROUTES)(
+    "answer 404 to a signed-in customer and to a visitor: %s %s",
+    async (method, path, body) => {
+      const { app, db } = buildSignInApp();
+      const customer = await signedInBrowser(db, "5005", "Sam Customer");
+      for (const cookie of [customer.cookie, undefined]) {
+        const req = visitor(app)[method](path);
+        if (cookie !== undefined) req.set("Cookie", cookie);
+        const res = body === undefined ? await req : await req.send(body);
+        expect(res.status).toBe(404);
+        expect(res.body.error.code).toBe("not_found");
+        expect(res.headers["set-cookie"]).toBeUndefined();
+      }
+      // Nothing changed and nothing started: the name is the one GitHub gave, the customer is
+      // still signed in, and no sign-in is waiting for GitHub.
+      expect(db.prepare(`SELECT "name" FROM "user"`).all()).toEqual([{ name: "Sam Customer" }]);
+      expect(db.prepare(`SELECT COUNT(*) AS n FROM "session"`).get()).toEqual({ n: 1 });
+      expect(db.prepare(`SELECT COUNT(*) AS n FROM "verification"`).get()).toEqual({ n: 0 });
+    },
+  );
+
+  // Express would also send these to the route of GitHub's return: it ignores letter case and a
+  // trailing slash, and answers HEAD with a GET route. GitHub sends none of them.
+  it.each([
+    ["get", "/api/auth/callback/GitHub"],
+    ["get", "/api/auth/callback/github/"],
+    ["head", "/api/auth/callback/github"],
+  ] as const)("answer 404 to GitHub's return sent another way: %s %s", async (method, path) => {
+    const { app } = buildSignInApp();
+    const res = await visitor(app)[method](path).query({ code: "made-up-code", state: "unknown" });
+    // The app's own 404, which is JSON: the library was not asked.
+    expect(res.status).toBe(404);
+    expect(res.headers["content-type"]).toMatch(/^application\/json/);
+    expect(res.headers["set-cookie"]).toBeUndefined();
+  });
+
+  // Each request says it carries 64 MB, and only its headers are sent. A server that read the
+  // body before answering would wait for it and never answer.
+  it.each([
+    ["POST", "/api/auth/sign-in/social", 404],
+    ["POST", "/api/auth/callback/github", 404],
+    // GitHub's return, which the library answers. With no sign-in under way, it sends the
+    // browser back to the sign-in page.
+    ["GET", "/api/auth/callback/github", 302],
+  ] as const)("answer %s %s before any of its body arrives", async (method, path, expected) => {
+    const { app } = buildSignInApp();
+    const server = await listenLocally(app);
+    try {
+      const { port } = server.address() as AddressInfo;
+      const status = await new Promise<number>((resolve, reject) => {
+        const req = http.request({
+          host: "127.0.0.1",
+          port,
+          method,
+          path,
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Length": String(64 * 1024 * 1024),
+            ...FROM_THIS_SITE,
+          },
+        });
+        req.on("response", (res) => {
+          res.resume();
+          resolve(res.statusCode ?? 0);
+          req.destroy();
+        });
+        req.on("error", reject);
+        req.setTimeout(4000, () => {
+          req.destroy();
+          reject(new Error(`No answer to ${method} ${path}: the server waited for the body.`));
+        });
+        req.flushHeaders();
+      });
+      expect(status).toBe(expected);
+    } finally {
+      await closeServers([server]);
+    }
   });
 });
 
@@ -302,10 +421,12 @@ describe("requests forged from another site", () => {
   });
 
   it("compares Origin with the configured address, not with the Host header", async () => {
-    // SIGN_IN_ENV says this site is http://desk.test.
-    const { app } = buildTestApp({ ...SIGN_IN_ENV, DEV_SIGN_IN: "on" });
+    // SIGN_IN_ENV says this site is http://desk.test. The development entrance is never open
+    // beside GitHub sign-in, so an admin signed in through GitHub posts here.
+    const { app, db } = buildSignInApp();
+    const boss = await signedInBrowser(db, "1001", "Ada Admin");
     const post = (headers: Record<string, string>) =>
-      request(app).post("/api/tickets").set("Cookie", cookie).set(headers).send(valid);
+      request(app).post("/api/tickets").set("Cookie", boss.cookie).set(headers).send(valid);
 
     expect((await post({ Origin: "http://desk.test" })).status).toBe(201);
     // A Host header that agrees with a foreign Origin does not help.

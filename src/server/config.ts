@@ -123,6 +123,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   if (missing.length > 0 && missing.length < SIGN_IN_NAMES.length) {
     throw new Error(`Invalid environment configuration: also set ${missing.join(", ")}.`);
   }
+  // The development entrance lets anyone pick who they are, the admin included. A server
+  // that signs real people in through GitHub never offers it, whatever NODE_ENV says.
+  if (data.DEV_SIGN_IN === "on" && missing.length === 0) {
+    throw new Error(
+      "Invalid environment configuration: DEV_SIGN_IN must not be on together with the " +
+        "GitHub sign-in settings. It lets anyone act as an admin.",
+    );
+  }
   // The demo is fenced off: it never has real sign-in, so it can never hold a real account,
   // and it is a separate server with its own database.
   if (data.DEMO === "on" && missing.length === 0) {
