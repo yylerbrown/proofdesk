@@ -181,3 +181,17 @@ describe("what a demo connection sees", () => {
     expect((await api(app, a).get("/api/tickets/SUP-4/evidence")).body).toHaveLength(1);
   });
 });
+
+describe("a demo connection asking to resolve", () => {
+  it("is told plainly that only the customer resolves, though it may not change status at all", async () => {
+    const { app } = buildDemo();
+    const key = await getConnection(app);
+    const res = await request(app)
+      .patch("/api/tickets/SUP-4")
+      .set("Authorization", `Bearer ${key}`)
+      .send({ status: "resolved" });
+    expect(res.status).toBe(409);
+    expect(res.body.error).toMatchObject({ code: "needs_customer", retry: false });
+    expect(res.body.error.message).toMatch(/Only the customer resolves ticket SUP-4/);
+  });
+});

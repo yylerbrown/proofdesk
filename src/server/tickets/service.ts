@@ -192,6 +192,15 @@ function pinPrefix(db: Db, prefix: string): void {
  * What an agent's history entry records beside its id: which connection, who issued it, and
  * the scopes it held at that moment. Null for a person.
  */
+/** The answer to anyone who tries to resolve a ticket by changing its status. */
+function needsCustomer(key: string): HttpError {
+  return new HttpError(
+    409,
+    "needs_customer",
+    `Only the customer resolves ticket ${key}, by answering "Did this fix it?".`,
+  );
+}
+
 function agentContext(actor: Actor): object | null {
   if (actor.kind !== "agent" || actor.connection === undefined) return null;
   return {
@@ -484,16 +493,15 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
       const { status } = parse(changeStatusSchema, input);
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
+        // An agent asking to resolve gets the real reason first, whatever its scopes: nobody
+        // resolves a ticket by changing its status.
+        if (actor.kind === "agent" && status === "resolved" && before.status !== "resolved") {
+          throw needsCustomer(key);
+        }
         requirePermission(actor, "change_status", before);
         requireNotArchived(key, before);
         if (before.status === status) return before; // nothing changes, so nothing is logged
-        if (status === "resolved") {
-          throw new HttpError(
-            409,
-            "needs_customer",
-            `Only the customer resolves ticket ${key}, by answering "Did this fix it?".`,
-          );
-        }
+        if (status === "resolved") throw needsCustomer(key);
         if (status === "in_progress" && before.owner_id === null) {
           throw new HttpError(
             409,
