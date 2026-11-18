@@ -2,7 +2,7 @@
 <p class="back"><a href="/connections">All connections</a></p>
 <h1 class="user-text"><%= connection.name %></h1>
 <p>Key starts <code>pd_<%= connection.key_prefix %></code>. Issued by <%= connection.issued_by %>, <%- include("time", { iso: connection.created_at }) %>.
-<% if (connection.revoked_at) { %><strong>Revoked</strong> <%- include("time", { iso: connection.revoked_at }) %>.<% } else if (connection.expires_at) { %>Expires <%- include("time", { iso: connection.expires_at }) %>.<% } %>
+<% if (connection.revoked_at) { %><strong>Revoked</strong> <%- include("time", { iso: connection.revoked_at }) %>.<% if (connection.revoked_reason) { %> <%= connection.revoked_reason %><% } %><% } else if (connection.expires_at) { %>Expires <%- include("time", { iso: connection.expires_at }) %>.<% } %>
 Last acted: <% if (connection.last_used_at) { %><%- include("time", { iso: connection.last_used_at }) %><% } else { %>never<% } %>.</p>
 <p>It may: <%= connection.scopes.map((s) => scopeLabels[s]).join("; ") %>.</p>
 
