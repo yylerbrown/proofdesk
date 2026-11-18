@@ -44,10 +44,10 @@ async function filed() {
 }
 
 describe("the Status section", () => {
-  it("offers Start work on a New ticket the viewer can take, and it takes and starts", async () => {
+  it("offers Start work and Resolve on a New ticket the viewer can take, and Start work takes and starts", async () => {
     const { app } = await filed();
     const section = (await statusSection(app, teamActor))!;
-    expect(actions(section)).toEqual(["Start work"]);
+    expect(actions(section)).toEqual(["Start work", "Resolve"]);
     const form = section.querySelector("form")!;
     expect(form.getAttribute("action")).toBe("/tickets/SUP-1/take-and-start");
     expect((await as(app, teamActor).post("/tickets/SUP-1/take-and-start")).status).toBe(303);
@@ -65,11 +65,14 @@ describe("the Status section", () => {
     expect(actions(section)[0]).toBe("Start work");
   });
 
-  it("offers Resolve on an In Progress ticket to its owner and admins, opening the reason form in place", async () => {
+  it("offers its owner Ask the customer to verify and Resolve on an In Progress ticket, and admins Resolve", async () => {
     const { app } = await filed();
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
     const owner = (await statusSection(app, teamActor))!;
-    expect(actions(owner)).toEqual(["Resolve"]);
+    expect(actions(owner)).toEqual(["Ask the customer to verify", "Resolve"]);
+    // One press asks: the form sends nothing but the ticket's address.
+    const ask = owner.querySelector("form[action='/tickets/SUP-1/ready']")!;
+    expect(ask.querySelectorAll("input, textarea")).toHaveLength(0);
     // A details element, so it opens without scripts; its summary reads as a button.
     const resolve = owner.querySelector("details.resolve")!;
     expect(resolve.querySelector("summary")?.getAttribute("role")).toBe("button");
@@ -112,7 +115,10 @@ describe("the Status section", () => {
       .post("/api/tickets/SUP-1/reopen")
       .send({ reason: "Resolved by mistake." })
       .expect(200);
-    expect(actions((await statusSection(app, teamActor))!)).toEqual(["Resolve"]);
+    expect(actions((await statusSection(app, teamActor))!)).toEqual([
+      "Ask the customer to verify",
+      "Resolve",
+    ]);
   });
 });
 

@@ -62,8 +62,7 @@ const HINTS: Record<string, string> = {
   keeps_owner:
     "Work has started, so the ticket keeps an owner. Hand it to a team member instead (POST .../hand-off).",
   needs_customer:
-    "A status change does not resolve a ticket. The customer confirms a fix with Yes, which its owner asks with Ask the customer to verify (POST /api/tickets/{key}/ready); its owner or an admin can also resolve it with a reason (POST /api/tickets/{key}/resolve).",
-  needs_change_link: "Link the change first (PUT .../change-link), then ask the customer.",
+    "A status change does not resolve a ticket. The customer confirms a fix with Yes, which its owner asks with Ask the customer to verify (POST /api/tickets/{key}/ready); its owner or an admin can also resolve it with a reason (POST /api/tickets/{key}/resolve), and a team member can resolve one nobody owns yet, becoming its owner.",
   not_in_progress: "Move the ticket to in_progress first.",
   not_waiting: "The team has not asked this question yet, or it was withdrawn.",
   only_filer_reopens:
@@ -79,7 +78,6 @@ const HINTS: Record<string, string> = {
   not_open:
     "The ticket is resolved. The customer who filed it can reopen it, and so can its owner or an admin when the team resolved it.",
   question_open: "Withdraw the open question first (POST .../withdraw-question), then ask again.",
-  needs_check: "Ask the customer how they will know it is fixed, or offer them wording to adopt.",
   no_interpretation: "The team has not offered any wording for the check.",
   question_changed: "Get the ticket again and answer with its current ready_token.",
   idempotency_key_reused:

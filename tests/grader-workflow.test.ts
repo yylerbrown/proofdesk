@@ -14,9 +14,9 @@ import {
   visitor,
 } from "./helpers.js";
 
-// From a cold walk by a grader: titles lead to their tickets, the team reads plainly who
-// resolves, and on the demo the owner can reach the customer's question with labelled sample
-// values instead of inventing evidence.
+// From a cold walk by a first-time visitor: titles lead to their tickets, the team reads plainly
+// who resolves, and after taking a ticket the owner asks the customer in one press, on the demo
+// as on the real site, with nothing to invent first.
 
 const valid = { title: "Printer jams", description: "x", fix_check: "Ten pages print" };
 
@@ -68,7 +68,7 @@ describe("who resolves", () => {
     const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     // On the ticket, Resolve sits under the status for those who may; the line says the way on.
     expect(page.querySelector(".status-rule")?.text).toBe(
-      "Take the ticket, then ask the customer to verify.",
+      "Start work, then ask the customer to verify.",
     );
     const edit = parse((await as(app, teamActor).get("/tickets/SUP-1/edit")).text);
     expect(edit.querySelector(".status-rule")?.text).toBe(sentence);
@@ -78,83 +78,30 @@ describe("who resolves", () => {
   });
 });
 
-describe("the demo's sample fix", () => {
-  it("is offered to the owner of a ticket in progress, and fills the fix with labelled sample values", async () => {
+describe("the demo's ask", () => {
+  it("is one press after taking the ticket, with no sample values to fill in", async () => {
     const { asDemo } = await demoInProgress();
     const page = parse((await asDemo("demo-team").get("/tickets/SUP-2")).text);
-    expect(page.querySelector(".next-action form[action$='/sample-fix'] button")?.text).toBe(
-      "Use sample fix",
-    );
-
-    const used = await asDemo("demo-team").post("/tickets/SUP-2/sample-fix").set(FROM_THIS_SITE);
-    expect(used.status).toBe(303);
-    expect(used.headers.location).toBe("/tickets/SUP-2?sample=1#ask");
-    const ticket = (await asDemo("demo-team").get("/api/tickets/SUP-2")).body;
-    expect(ticket.change_url).toBe("https://example.com/demo-sample-fix");
-
-    const ask = parse(
-      (await asDemo("demo-team").get("/tickets/SUP-2?sample=1")).text,
-    ).querySelector("form#ask")!;
-    expect(ask.querySelector("textarea[name=tried]")?.text).toMatch(/^Demo sample value: /);
-    expect(ask.querySelector("textarea[name=result]")?.text).toMatch(/^Demo sample value: /);
-    expect(ask.querySelector("input[name=try_url]")?.getAttribute("value")).toMatch(/^https:\/\//);
-    // The owner still presses the ask; nothing is sent to the customer by the sample.
-    expect(ticket.ready_at).toBeNull();
-  });
-
-  it("after the customer's No, also fills what changed, so the second ask can be sent as it is", async () => {
-    const { asDemo } = await demoInProgress();
-    const team = asDemo("demo-team");
-    await team.post("/tickets/SUP-2/sample-fix").set(FROM_THIS_SITE);
-    const fields = (html: string) => {
-      const form = parse(html).querySelector("form#ask")!;
-      const values: Record<string, string> = {};
-      for (const box of form.querySelectorAll("input[name], textarea[name]")) {
-        if (box.getAttribute("type") === "checkbox") continue;
-        values[box.getAttribute("name")!] = box.getAttribute("value") ?? box.text;
-      }
-      return values;
-    };
-    const first = fields((await asDemo("demo-team").get("/tickets/SUP-2?sample=1")).text);
-    expect(
-      (
-        await asDemo("demo-team")
-          .post("/tickets/SUP-2/ready")
-          .set(FROM_THIS_SITE)
-          .type("form")
-          .send(first)
-      ).status,
-    ).toBe(303);
-    const token = (await asDemo("demo-customer").get("/api/tickets/SUP-2")).body.ready_token;
-    await asDemo("demo-customer")
-      .post("/tickets/SUP-2/answer")
-      .set(FROM_THIS_SITE)
-      .type("form")
-      .send({ fixed: "no", comment: "Still February.", ready_token: token });
-
-    await asDemo("demo-team").post("/tickets/SUP-2/sample-fix").set(FROM_THIS_SITE);
-    const again = fields((await asDemo("demo-team").get("/tickets/SUP-2?sample=1")).text);
-    expect(again.response).toMatch(/^Demo sample value: /);
-    const sent = await asDemo("demo-team")
-      .post("/tickets/SUP-2/ready")
-      .set(FROM_THIS_SITE)
-      .type("form")
-      .send(again);
-    expect(sent.status).toBe(303);
-    expect((await asDemo("demo-team").get("/api/tickets/SUP-2")).body.ready_at).not.toBeNull();
-  });
-
-  it("is not offered, and not open, outside the demo or to anyone but the owner", async () => {
-    const { app } = buildTestApp();
-    await as(app, customerOne).post("/api/tickets").send(valid);
-    await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
-    const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
+    const next = page.querySelector(".next-action form")!;
+    expect(next.getAttribute("action")).toBe("/tickets/SUP-2/ready");
+    expect(next.querySelector("button")?.text).toBe("Ask the customer to verify");
+    expect(page.text).not.toContain("Demo sample value");
     expect(page.querySelector("form[action$='/sample-fix']")).toBeNull();
-    expect((await as(app, teamActor).post("/tickets/SUP-1/sample-fix")).status).toBe(404);
 
-    const { asDemo } = await demoInProgress();
+    const asked = await asDemo("demo-team").post("/tickets/SUP-2/ready").set(FROM_THIS_SITE);
+    expect([asked.status, asked.headers.location]).toEqual([303, "/tickets/SUP-2"]);
     const customer = parse((await asDemo("demo-customer").get("/tickets/SUP-2")).text);
-    expect(customer.querySelector("form[action$='/sample-fix']")).toBeNull();
+    expect(customer.querySelector("#did-this-fix-it h2")?.text).toBe("Did this fix it?");
+  });
+
+  it("has no sample fix address any more", async () => {
+    const { asDemo } = await demoInProgress();
+    const old = await asDemo("demo-team").post("/tickets/SUP-2/sample-fix").set(FROM_THIS_SITE);
+    expect(old.status).toBe(404);
+    expect((await asDemo("demo-team").get("/api/tickets/SUP-2")).body).toMatchObject({
+      change_url: null,
+      ready_at: null,
+    });
   });
 });
 
@@ -182,7 +129,7 @@ describe("the team's next step", () => {
     };
   };
 
-  it("on the real site: take, link the change, ask, then nothing while the customer answers", async () => {
+  it("on the real site: take, ask, then nothing while the customer answers", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
     const page = async () => parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
@@ -193,63 +140,33 @@ describe("the team's next step", () => {
     });
 
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
-    const linkStep = await page();
-    expect(step(linkStep)).toEqual({
-      label: "Add the code change link",
-      to: "#change-url",
-      note: "Next: link the code change, then ask the customer to verify.",
-    });
-    expect(linkStep.querySelector("form#change-link input[name=change_url]")).not.toBeNull();
-
-    await as(app, teamActor)
-      .put("/api/tickets/SUP-1/change-link")
-      .send({ change_url: "https://example.com/c" });
     const askStep = await page();
     expect(step(askStep)).toEqual({
       label: "Ask the customer to verify",
-      to: "#ask",
-      note: "Next: try it yourself, then ask the customer to verify.",
+      to: "/tickets/SUP-1/ready",
+      note: 'Sends the customer "Did this fix it?".',
     });
-    // It leads to the working form, not to the greyed button.
+    // The longer form, with its optional boxes, works too: never a greyed button.
     expect(askStep.querySelector("form#ask button[type=submit]")?.hasAttribute("disabled")).toBe(
       false,
     );
 
-    await as(app, teamActor)
-      .post("/api/tickets/SUP-1/ready")
-      .send({ try_url: "https://example.com/t", tried: "Printed.", result: "No jam." });
+    // Pressing the step sends the form as it is, with no fields.
+    expect((await as(app, teamActor).post("/tickets/SUP-1/ready")).status).toBe(303);
     expect(step(await page())).toBeNull();
     // Someone who does not own it has no step to take.
     expect(step(parse((await admin(app).get("/tickets/SUP-1")).text))).toBeNull();
   });
 
-  it("asks how the customer will know when they never said", async () => {
+  it("asks the customer to verify even when they never said how they will know", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne)
       .post("/api/tickets")
       .send({ title: "Printer jams", description: "x" });
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
-    await as(app, teamActor)
-      .put("/api/tickets/SUP-1/change-link")
-      .send({ change_url: "https://example.com/c" });
     const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    expect(step(page)).toEqual({
-      label: "Ask how they will know",
-      to: "#entry-body",
-      note: "Next: the customer has not said how they will know it is fixed. Ask them in a reply.",
-    });
-    expect(page.querySelector("textarea#entry-body")).not.toBeNull();
-  });
-
-  it("on the demo: take, the sample fix, then ask", async () => {
-    const { asDemo } = await demoInProgress();
-    const page = async () => parse((await asDemo("demo-team").get("/tickets/SUP-2")).text);
-    expect(step(await page())).toEqual({
-      label: "Use sample fix",
-      to: "/tickets/SUP-2/sample-fix",
-      note: "Next: link the code change. On the demo, a labelled sample stands in for it.",
-    });
-    await asDemo("demo-team").post("/tickets/SUP-2/sample-fix").set(FROM_THIS_SITE);
-    expect(step(await page())?.label).toBe("Ask the customer to verify");
+    expect(step(page)?.label).toBe("Ask the customer to verify");
+    expect((await as(app, teamActor).post("/tickets/SUP-1/ready")).status).toBe(303);
+    expect((await admin(app).get("/api/tickets/SUP-1")).body.waiting_on).toBe("customer");
   });
 });

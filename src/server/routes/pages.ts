@@ -71,18 +71,6 @@ function focusField(form: Problem["form"], fieldErrors: Record<string, string[] 
   return fields.find((name) => (fieldErrors[name] ?? []).length > 0) ?? fields[0];
 }
 
-/**
- * On the demo, what "Use sample fix" fills in, each value marked as a demo sample, so a visitor
- * can reach the customer's question without inventing evidence.
- */
-const SAMPLE_FIX = {
-  change_url: "https://example.com/demo-sample-fix",
-  tried: "Demo sample value: I followed the customer's steps on the page to try.",
-  result: "Demo sample value: it worked as the customer's check describes.",
-  // Asked again after the customer's No, the owner says what changed since.
-  response: "Demo sample value: I changed what the customer said still failed, and tried it again.",
-};
-
 /** The sample a demo visitor files when they start the ticket workflow. Made up, like the demo. */
 const WALKTHROUGH_SAMPLE = {
   title: "The export button downloads an empty file",
@@ -150,15 +138,13 @@ type NextStep = {
 };
 
 /**
- * The step this viewer can take now: take the ticket, start work, link the code change (on the
- * demo, the sample fix), ask the customer how they will know it is fixed, then ask them to
- * verify. Each is possible when it is shown; null when there is nothing for this viewer to press.
+ * The step this viewer can take now: take the ticket and start work, start work, then ask the
+ * customer to verify. Each is possible when it is shown; null when there is nothing for this
+ * viewer to press.
  */
 function nextStep(
   ticket: Ticket,
-  actor: Actor,
   allowed: ReturnType<TicketService["allowedActions"]>,
-  sampleFix: boolean,
 ): NextStep | null {
   const at = `/tickets/${ticket.key}`;
   if (allowed.takeAndStart) {
@@ -170,41 +156,13 @@ function nextStep(
       form: { action: `${at}/status`, fields: { status: "in_progress" } },
     };
   }
-  // After that, only the owner of a ticket in progress has a step, until the customer is asked.
-  const owning =
-    ticket.owner_id === actor.id &&
-    ticket.status === "in_progress" &&
-    ticket.ready_at === null &&
-    ticket.archived_at === null;
-  if (!owning) return null;
-  if (ticket.change_url === null) {
-    if (sampleFix) {
-      return {
-        label: "Use sample fix",
-        form: { action: `${at}/sample-fix` },
-        note: "Next: link the code change. On the demo, a labelled sample stands in for it.",
-      };
-    }
-    if (!allowed.linkChange) return null;
-    return {
-      label: "Add the code change link",
-      // The field itself, so following the link puts the cursor in it.
-      href: "#change-url",
-      note: "Next: link the code change, then ask the customer to verify.",
-    };
-  }
-  if (ticket.fix_check === null) {
-    return {
-      label: "Ask how they will know",
-      href: "#entry-body",
-      note: "Next: the customer has not said how they will know it is fixed. Ask them in a reply.",
-    };
-  }
+  // One press asks the customer. What the owner tried, a page to try and evidence are optional,
+  // in the form under "The fix".
   if (allowed.markReady) {
     return {
       label: "Ask the customer to verify",
-      href: "#ask",
-      note: "Next: try it yourself, then ask the customer to verify.",
+      form: { action: `${at}/ready` },
+      note: 'Sends the customer "Did this fix it?".',
     };
   }
   return null;
@@ -218,9 +176,6 @@ function askBlockedReason(ticket: Ticket, actor: Actor): string | null {
   if (ticket.owner_id !== actor.id)
     return `Only ${ticket.owner_name} can ask the customer to verify.`;
   if (ticket.status !== "in_progress") return "Start work first.";
-  if (ticket.fix_check === null)
-    return "The customer has not said how they will know it is fixed. Ask them in a reply.";
-  if (ticket.change_url === null) return "Add the link to the code change first.";
   return null;
 }
 type TicketAction = (key: string, input: unknown, actor: Actor) => Ticket;
@@ -299,11 +254,6 @@ export function pagesRouter(service: TicketService): Router {
       role: event.actor_kind === "agent" ? null : (roles.get(event.actor) ?? null),
     }));
     const allowed = service.allowedActions(ticket, actor);
-    const sampleFix =
-      actor.demo === true &&
-      ticket.owner_id === actor.id &&
-      ticket.status === "in_progress" &&
-      ticket.ready_at === null;
     const evidence = service.listEvidence(ticket.key, actor);
     const agentHelp = service.agentHelp(ticket);
     // Once an assistant is at work on the ticket, the team's message box starts as an internal
@@ -345,18 +295,7 @@ export function pagesRouter(service: TicketService): Router {
       askBlocked: askBlockedReason(ticket, actor),
       assistantSignal: service.assistantSignals([ticket], actor).get(ticket.key) ?? null,
       demoNext: demoNext(ticket, actor),
-      // On the demo, the owner of a ticket in progress may fill the fix with sample values.
-      sampleFix,
-      nextStep: nextStep(ticket, actor, allowed, sampleFix),
-      askSample:
-        actor.demo === true && req.query.sample === "1"
-          ? {
-              try_url: ticket.try_url ?? ticket.where_url ?? "https://example.com/demo-sample-page",
-              tried: SAMPLE_FIX.tried,
-              result: SAMPLE_FIX.result,
-              response: SAMPLE_FIX.response,
-            }
-          : null,
+      nextStep: nextStep(ticket, allowed),
       recordedRun: service.recordedRunKey() === ticket.key,
       assistantSampleKey: service.assistantSampleKey(),
       handOffTo: service.handOffCandidates(ticket),
@@ -675,18 +614,6 @@ export function pagesRouter(service: TicketService): Router {
   router.post("/tickets/:key/agreed-check", ticketForm("agreedCheck", service.agreeCheck));
   router.post("/tickets/:key/change-link", ticketForm("changeLink", service.linkChange));
 
-  // On the demo only: link a sample change, then open the ask filled with sample values.
-  router.post("/tickets/:key/sample-fix", (req, res) => {
-    const actor = signedIn(req);
-    if (actor.demo !== true) {
-      throw new HttpError(404, "not_found", "There is no page at this address.");
-    }
-    const ticket = service.getTicket(req.params.key as string, actor);
-    if (ticket.change_url === null) {
-      service.linkChange(ticket.key, { change_url: SAMPLE_FIX.change_url }, actor);
-    }
-    res.redirect(303, `/tickets/${ticket.key}?sample=1#ask`);
-  });
   router.post("/tickets/:key/ready", ticketForm("ready", service.markReady));
   router.post("/tickets/:key/answer", ticketForm("answer", service.answer));
   router.post("/tickets/:key/reopen", ticketForm("reopen", service.reopen));

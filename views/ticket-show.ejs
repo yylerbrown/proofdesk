@@ -251,6 +251,11 @@
     <button type="submit" class="secondary compact">Start work</button>
   </form>
   <% } %>
+  <% if (allowed.markReady) { %>
+  <form method="post" action="/tickets/<%= ticket.key %>/ready">
+    <button type="submit" class="secondary compact">Ask the customer to verify</button>
+  </form>
+  <% } %>
   <% if (allowed.resolveWithReason) { %>
   <% const resolving = problem?.form === "resolve" ? (problem.values ?? {}) : {}; %>
   <details class="resolve" <% if (problem?.form === "resolve") { %>open<% } %>>
@@ -295,16 +300,14 @@
   <% if (!allowed.reopen) { %><p class="status-rule"><small>The customer who filed it can reopen it.</small></p><% } %>
   <% } else if (ticket.ready_at) { %>
   <p class="status-rule"><small>The customer's Yes moves it to Resolved.</small></p>
+  <% } else if (allowed.markReady) { %>
+  <p class="status-rule"><small>The customer's Yes moves it to Resolved. To tell them what you tried, <a href="#ask">add details first</a>.</small></p>
   <% } else if (ticket.owner_id && ticket.owner_id === viewerId) { %>
-  <% if (ticket.status === "in_progress" && !ticket.change_url && allowed.linkChange) { %>
-  <p class="status-rule"><small>Next: <a href="#change-url">add the link to the code change</a>.</small></p>
-  <% } else { %>
-  <p class="status-rule"><small>When the fix is in, <a href="#ask">ask the customer to verify</a>.</small></p>
-  <% } %>
+  <p class="status-rule"><small>Start work, then ask the customer to verify.</small></p>
   <% } else if (ticket.owner_id) { %>
   <p class="status-rule"><small>Only <%= ticket.owner_name %> can ask the customer to verify.</small></p>
   <% } else if (allowed.take || allowed.takeAndStart) { %>
-  <p class="status-rule"><small>Take the ticket, then ask the customer to verify.</small></p>
+  <p class="status-rule"><small>Start work, then ask the customer to verify.</small></p>
   <% } else { %>
   <p class="status-rule"><small>The team takes the ticket and asks the customer to verify.</small></p>
   <% } %>
@@ -410,9 +413,8 @@
   <% } %>
   <% } %>
   <% if (allowed.linkChange) { %>
-  <%# The owner links the change as their next step, so the box is open for them; anyone else finds it behind a disclosure. %>
-  <% const linkFolded = ticket.change_url || ticket.owner_id !== viewerId; %>
-  <% if (linkFolded) { %><details class="change-link" <% if (problem?.form === "changeLink") { %>open<% } %>><summary><%= ticket.change_url ? "Change the link" : "Add the code change link" %></summary><% } %>
+  <%# The link to the code change is optional, so it waits behind a disclosure. %>
+  <details class="change-link" <% if (problem?.form === "changeLink") { %>open<% } %>><summary><%= ticket.change_url ? "Change the link" : "Add the code change link" %></summary>
   <form method="post" action="/tickets/<%= ticket.key %>/change-link" id="change-link">
     <label>
       Link to the code change
@@ -421,36 +423,28 @@
     <% if (problem?.form === "changeLink") { %><small id="change-link-error"><%= problem.message %></small><% } %>
     <button type="submit" class="secondary compact">Save change link</button>
   </form>
-  <% if (linkFolded) { %></details><% } %>
-  <% } %>
-  <%# On the demo, the owner can fill the change link and the ask with labelled sample values, so
-      nobody has to invent evidence to reach the customer's question. %>
-  <% if (locals.sampleFix && ticket.change_url) { %>
-  <form method="post" action="/tickets/<%= ticket.key %>/sample-fix" class="sample-fix">
-    <button type="submit" class="secondary compact">Use sample fix</button>
-    <small>Demo only: fills the change link and the ask below with values marked as demo samples.</small>
-  </form>
+  </details>
   <% } %>
   <% if (allowed.markReady) { %>
-  <% const asked = problem?.form === "ready" ? (problem.values ?? {}) : (locals.askSample ?? {}); %>
+  <% const asked = problem?.form === "ready" ? (problem.values ?? {}) : {}; %>
   <form method="post" action="/tickets/<%= ticket.key %>/ready" class="ask" id="ask">
-    <p><small>Try it yourself against the customer's check before you ask.</small></p>
+    <p><small>Every box is optional. The customer sees what you write.</small></p>
     <label>
-      Page on the live site to try (required)
-      <input type="url" name="try_url" required value="<%= asked.try_url ?? ticket.try_url ?? ticket.where_url ?? "" %>" <%= focusIf("ready", "try_url") %> />
+      Page on the live site to try (optional)
+      <input type="url" name="try_url" value="<%= asked.try_url ?? ticket.try_url ?? ticket.where_url ?? "" %>" <%= focusIf("ready", "try_url") %> />
     </label>
     <label>
-      What did you try? (required)
-      <textarea name="tried" rows="2" required <%= focusIf("ready", "tried") %>><%= asked.tried ?? "" %></textarea>
+      What did you try? (optional)
+      <textarea name="tried" rows="2" <%= focusIf("ready", "tried") %>><%= asked.tried ?? "" %></textarea>
     </label>
     <label>
-      What happened? (required)
-      <textarea name="result" rows="2" required <%= focusIf("ready", "result") %>><%= asked.result ?? "" %></textarea>
+      What happened? (optional)
+      <textarea name="result" rows="2" <%= focusIf("ready", "result") %>><%= asked.result ?? "" %></textarea>
     </label>
     <% if (ticket.customer_answer && !ticket.customer_answer.fixed) { %>
     <label>
-      What changed since the customer said it still fails? (required)
-      <textarea name="response" rows="2" required <%= focusIf("ready", "response") %>><%= asked.response ?? "" %></textarea>
+      What changed since the customer said it still fails? (optional)
+      <textarea name="response" rows="2" <%= focusIf("ready", "response") %>><%= asked.response ?? "" %></textarea>
     </label>
     <% } %>
     <% if (evidence.length > 0) { %>
@@ -462,10 +456,10 @@
     </fieldset>
     <% } %>
     <% if (problem?.form === "ready") { %><p><small id="ready-error" role="alert"><%= problem.message %></small></p><% } %>
-    <button type="submit" class="compact" <% if (problem?.form === "ready") { %>aria-describedby="ready-error"<% } %>>Ask the customer to verify</button>
+    <button type="submit" class="secondary compact" <% if (problem?.form === "ready") { %>aria-describedby="ready-error"<% } %>>Ask with these details</button>
   </form>
   <% } else if (askBlocked) { %>
-  <p class="ask-blocked" id="ask"><button type="button" class="compact" disabled aria-describedby="ask-blocked-why">Ask the customer to verify</button> <small id="ask-blocked-why"><%= askBlocked %></small></p>
+  <p class="ask-blocked"><button type="button" class="compact" disabled aria-describedby="ask-blocked-why">Ask the customer to verify</button> <small id="ask-blocked-why"><%= askBlocked %></small></p>
   <% } %>
 </section>
 <% } %>

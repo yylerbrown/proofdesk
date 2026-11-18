@@ -287,9 +287,9 @@ export function updateChangeUrl(db: Db, id: number, changeUrl: string, now: stri
 
 /** What the owner records when asking the customer. */
 export type AskRecord = {
-  tryUrl: string;
-  tried: string;
-  result: string;
+  tryUrl: string | null;
+  tried: string | null;
+  result: string | null;
   response: string | null;
   evidenceIds: number[];
 };

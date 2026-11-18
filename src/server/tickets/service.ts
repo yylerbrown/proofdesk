@@ -1019,17 +1019,18 @@ export function createTicketService(
     },
 
     /**
-     * After the change is live and a team member has checked it, asks the customer "Did
-     * this fix it?", pointing them at the page to try. The ticket must be in progress (so it
-     * has an owner) and have its change link.
+     * Asks the customer "Did this fix it?". The ticket must be in progress, and only its owner
+     * asks. Everything else is optional: a page to try, what the owner tried and what happened,
+     * what changed since the customer's last No, and evidence. The customer sees each one given.
      */
     markReady(key: string, input: unknown, actor: Actor): Ticket {
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "mark_ready", before);
-        const { try_url, tried, result, response, evidence_ids } = parse(markReadySchema, input);
+        // Every field is optional, so a request with no body at all asks with nothing else.
+        const fields = parse(markReadySchema, input ?? {});
         requireNotArchived(key, before);
-        // Only the ticket's current owner asks the customer, after trying it themselves.
+        // Only the ticket's current owner asks the customer.
         if (before.owner_id !== actor.id) {
           throw new HttpError(
             403,
@@ -1040,17 +1041,11 @@ export function createTicketService(
         if (before.status !== "in_progress") {
           throw new HttpError(409, "not_in_progress", `Move ticket ${key} to In Progress first.`);
         }
-        if (before.change_url === null) {
-          throw new HttpError(409, "needs_change_link", `Add the change link to ${key} first.`);
-        }
-        // The customer is asked against their own words, or words they adopted.
-        if (before.fix_check === null) {
-          throw new HttpError(
-            409,
-            "needs_check",
-            `The customer has not said how they will know ${key} is fixed. Ask them in a reply first.`,
-          );
-        }
+        const try_url = fields.try_url ?? null;
+        const tried = fields.tried || null;
+        const result = fields.result || null;
+        const response = fields.response || null;
+        const evidenceIds = fields.evidence_ids ?? [];
         // Already waiting for an answer. The very same question again is a retry, and changes
         // nothing. A different one would change what the customer is answering: withdraw first.
         if (before.ready_at !== null) {
@@ -1058,8 +1053,8 @@ export function createTicketService(
             before.try_url === try_url &&
             before.ready_tried === tried &&
             before.ready_result === result &&
-            (before.ready_response ?? null) === (response || null) &&
-            (before.ready_evidence ?? "[]") === JSON.stringify(evidence_ids ?? []);
+            (before.ready_response ?? null) === response &&
+            (before.ready_evidence ?? "[]") === JSON.stringify(evidenceIds);
           if (same) return before;
           throw new HttpError(
             409,
@@ -1067,22 +1062,14 @@ export function createTicketService(
             `The customer is already answering a question on ${key}. Withdraw it first to ask a different one.`,
           );
         }
-        // After a No, the next question must say what changed since.
-        const last = repository.latestAnswer(db, before.id);
-        if (last !== undefined && !last.fixed && !response) {
-          throw new ValidationError("Say what changed since the customer said it still fails.", {
-            response: ["Say what changed since the customer said it still fails."],
-          });
-        }
         // The evidence relied on must be this ticket's own.
         const own = new Set(repository.listEvidence(db, before.id, THREAD_LIMIT).map((e) => e.id));
-        const evidenceIds = evidence_ids ?? [];
         if (evidenceIds.some((id) => !own.has(id))) {
           throw new ValidationError("Choose evidence attached to this ticket.", {
             evidence_ids: ["Choose evidence attached to this ticket."],
           });
         }
-        const ask = { tryUrl: try_url, tried, result, response: response || null, evidenceIds };
+        const ask = { tryUrl: try_url, tried, result, response, evidenceIds };
         const now = new Date().toISOString();
         // Asking the customer ends any agent's work on the ticket.
         endAgent(before, "the customer was asked", actor, now);
@@ -1188,7 +1175,10 @@ export function createTicketService(
       return toTicket(row, actor);
     },
 
-    /** Makes the actor the owner of the ticket, also when someone else owned it before. */
+    /**
+     * Makes the actor the owner of an unowned ticket. A ticket someone else owns is refused:
+     * giving it to someone else is a hand-off.
+     */
     takeTicket(key: string, actor: Actor): Ticket {
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
@@ -1325,14 +1315,16 @@ export function createTicketService(
 
     /**
      * The ticket's owner, or an admin, resolves it without the customer's Yes, with a reason
-     * from the list: it then shows as "Resolved by the team: <reason>" wherever the ticket does,
-     * apart from "Customer confirmed". An open question to the customer is withdrawn first, with
+     * from the list. A team member may also resolve a ticket nobody owns yet; whoever resolves
+     * an unowned ticket becomes its owner, with its own history entry, so a named person stands
+     * behind the resolution and can reopen it. The ticket then shows as "Resolved by the team:
+     * <reason>" wherever the ticket does, apart from "Customer confirmed". An open question to the customer is withdrawn first, with
      * its own history entry, and any assistant's work on the ticket ends. The customer who filed
      * it can reopen it, as after their own Yes. An agent never resolves, by this or any door.
      */
     resolveWithReason(key: string, input: unknown, actor: Actor): Ticket {
       const row = db.transaction(() => {
-        const before = requireRow(key, actor);
+        let before = requireRow(key, actor);
         requirePermission(actor, "resolve_with_reason", before);
         const { reason, note, duplicate_of } = parse(resolveSchema, input);
         if (reason === "other" && !note) {
@@ -1344,11 +1336,11 @@ export function createTicketService(
           });
         }
         requireNotArchived(key, before);
-        if (before.owner_id !== actor.id && actor.role !== "admin") {
+        if (before.owner_id !== null && before.owner_id !== actor.id && actor.role !== "admin") {
           throw new HttpError(
             403,
             "not_owner",
-            `Only ${before.owner_name ?? "its owner"}, who owns ticket ${key}, or an admin can resolve it with a reason.`,
+            `Only ${before.owner_name}, who owns ticket ${key}, or an admin can resolve it with a reason.`,
           );
         }
         if (before.status === "resolved") {
@@ -1366,6 +1358,8 @@ export function createTicketService(
           }
           duplicateOf = buildKey(prefix, other.id);
         }
+        // Nobody owns it yet: the person resolving it becomes its owner first.
+        if (before.owner_id === null) before = setOwner(before, actor.id, actor.name, actor);
         const now = new Date().toISOString();
         if (before.ready_at !== null) {
           repository.clearReady(db, before.id, now);
@@ -2058,8 +2052,6 @@ export function createTicketService(
           can(actor, "mark_ready", ticket) &&
           ticket.owner_id === actor.id &&
           ticket.status === "in_progress" &&
-          ticket.change_url !== null &&
-          ticket.fix_check !== null &&
           ticket.ready_at === null,
         // The same rules as withdrawQuestionAsked.
         withdrawQuestion:
@@ -2071,7 +2063,7 @@ export function createTicketService(
         resolveWithReason:
           !archived &&
           can(actor, "resolve_with_reason", ticket) &&
-          (ticket.owner_id === actor.id || actor.role === "admin") &&
+          (ticket.owner_id === null || ticket.owner_id === actor.id || actor.role === "admin") &&
           ticket.status !== "resolved",
         reply: !archived && can(actor, "reply", ticket),
         note: !archived && can(actor, "note", ticket),
