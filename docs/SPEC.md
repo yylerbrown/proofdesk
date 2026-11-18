@@ -141,3 +141,13 @@ The build order for this part:
 4. JSON and agent-tool (MCP) access to that path through the shared services.
 5. Minimal discovery: a guide, exact examples, errors that say what to do next, paging and repeat-safe writes.
 6. A minimal activity trail, including refusals.
+
+### 2026-11-17, later still: test specs
+
+Asked for by the owner after the agent path worked: an optional test spec, drafted by a visitor's own assistant.
+
+- **A spec belongs to a ticket** and is a suggestion until a person on the team accepts it: a one-paragraph summary, and scenarios, each given / when / then in plain words, with the automated test that would prove it if one is named. One spec is in force at a time; a new proposal replaces it and the old one stays in the history.
+- **An agent proposes it** with the scope `propose_specs`. It cannot accept or discard one. The customer reads it.
+- **The site never contacts anyone's assistant.** A ticket with no spec shows the team, and every demo visitor, one line to copy into their own assistant.
+- **Evidence may name the scenario it proves.** The customer's "Did this fix it?" box then counts the scenarios with evidence, as reported, never as a pass.
+- **A spec never changes the status.** On the demo, a connection sees only the spec it proposed itself.
