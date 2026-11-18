@@ -10,7 +10,8 @@ import { AGENT_SCOPES, can, CAPABILITIES } from "../permissions.js";
 
 /** Each scope in the words the page uses. */
 export const SCOPE_LABELS: Record<(typeof AGENT_SCOPES)[number], string> = {
-  read_tickets: "Read tickets, their conversations and internal notes",
+  read_tickets: "Read the tickets handed to it and their conversations, without internal notes",
+  read_notes: "Read the team's internal notes on those tickets",
   write_notes: "Write internal notes for the team",
   attach_evidence: "Attach evidence that the check was met",
   propose_specs: "Propose a test spec, which a person accepts or discards",

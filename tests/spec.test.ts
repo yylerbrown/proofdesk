@@ -178,19 +178,21 @@ describe("proposing a spec", () => {
 });
 
 describe("deciding on a spec", () => {
-  it("is for the team: the customer reads it but cannot accept it", async () => {
+  it("is for the team: the customer sees a spec only once it is accepted, and cannot accept it", async () => {
     const { app } = await setup();
     const client = await connect(app);
     await call(client, "propose_spec", { key: "SUP-1", ...spec() });
 
+    // A proposed spec is a suggestion for the team: not on the customer's page or API.
     const customerPage = await as(app, customerOne).get("/tickets/SUP-1");
-    expect(customerPage.text).toContain("Ten pages from the tray");
+    expect(customerPage.text).not.toContain("Ten pages from the tray");
     expect(customerPage.text).not.toContain("/spec/decision");
     const refused = await as(app, customerOne)
       .post("/api/tickets/SUP-1/spec/decision")
       .send({ decision: "accept" });
     expect(refused.status).toBe(403);
-    expect((await as(app, customerOne).get("/api/tickets/SUP-1")).body.spec.state).toBe("proposed");
+    expect((await as(app, customerOne).get("/api/tickets/SUP-1")).body.spec).toBeNull();
+    expect((await as(app, teamActor).get("/api/tickets/SUP-1")).body.spec.state).toBe("proposed");
 
     const teamPage = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     expect(teamPage.querySelectorAll("form[action='/tickets/SUP-1/spec/decision']")).toHaveLength(
@@ -268,7 +270,11 @@ describe("the spec on the ticket page", () => {
     });
     expect(beyond.body.error.code).toBe("validation_error");
 
-    // Ask the customer, so the box appears.
+    // The team accepts it, so the customer may see it, then asks, so the box appears.
+    await as(app, teamActor)
+      .post("/tickets/SUP-1/spec/decision")
+      .type("form")
+      .send({ decision: "accept" });
     const team = as(app, teamActor);
     await team.put("/api/tickets/SUP-1/change-link").send({ change_url: "https://e.com/c/1" });
     await team
@@ -278,7 +284,7 @@ describe("the spec on the ticket page", () => {
       "#did-this-fix-it",
     )!;
     expect(box.text).toContain(
-      "1 of 2 scenarios in the suggested test spec have evidence naming them, as reported.",
+      "1 of 2 scenarios in the agreed test spec have evidence naming them, as reported.",
     );
     expect(box.innerHTML).not.toMatch(/✓|badge|passed all/i);
   });
@@ -342,9 +348,9 @@ describe("test specs on the demo", () => {
       const result = await b.callTool({ name: tool, arguments: { key: sample } });
       expect(JSON.stringify(result.content), tool).not.toContain(marker);
     }
-    // People on the demo see it on the ticket page, as a suggestion.
+    // The demo's team sees it on the ticket page, as a suggestion.
     const page = await visitor(app)
-      .set("Cookie", `${DEV_COOKIE}=demo-customer`)
+      .set("Cookie", `${DEV_COOKIE}=demo-team`)
       .get(`/tickets/${sample}`);
     expect(page.text).toContain(marker);
     expect(page.text).toContain("(reported, not verified)");

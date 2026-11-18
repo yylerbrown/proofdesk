@@ -35,6 +35,9 @@ export type Action =
  */
 export const AGENT_SCOPES = [
   "read_tickets",
+  // Reading the team's internal notes is a scope of its own, off unless chosen, so a key given
+  // to read one ticket never reads the team's notes by accident.
+  "read_notes",
   "write_notes",
   "attach_evidence",
   "propose_specs",
@@ -56,7 +59,7 @@ export const CAPABILITIES: Record<Action, Capability> = {
   list_all: { people: "The team.", agent: "read_tickets" },
   list_archived: { people: "The team.", agent: "people_only" },
   read: { people: "The team, or the customer who filed it.", agent: "read_tickets" },
-  read_notes: { people: "The team.", agent: "read_tickets" },
+  read_notes: { people: "The team.", agent: "read_notes" },
   edit: { people: "The team, or the customer who filed it.", agent: "people_only" },
   change_status: { people: "The ticket's owner, to start work.", agent: "people_only" },
   archive: { people: "The team, or the customer who filed it.", agent: "people_only" },

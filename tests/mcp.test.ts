@@ -314,3 +314,52 @@ describe("what an assistant is sent", () => {
     );
   });
 });
+
+describe("the team's internal notes", () => {
+  it("are never read by a default key, on any door, and are read once a key is given them", async () => {
+    const { app } = buildTestApp();
+    await as(app, customerOne).post("/api/tickets").send(valid);
+    await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
+    const marker = "NOTE-MARKER-41c2";
+    await as(app, teamActor)
+      .post("/api/tickets/SUP-1/entries")
+      .send({ kind: "note", body: `Internal: ${marker}` });
+    const defaults = parse((await admin(app).get("/connections")).text)
+      .querySelectorAll("input[name=scopes][checked]")
+      .map((input) => input.getAttribute("value")!);
+    expect(defaults).not.toContain("read_notes");
+    const plain = await issue(app, defaults);
+    await handToAgent(app, "SUP-1", plain);
+
+    const bearer = (path: string) => request(app).get(path).set("Authorization", `Bearer ${plain}`);
+    for (const path of [
+      "/api/tickets/SUP-1",
+      "/api/tickets/SUP-1/entries",
+      "/api/tickets/SUP-1/events",
+      "/api/tickets/SUP-1/evidence",
+      "/api/tickets",
+    ]) {
+      const res = await bearer(path);
+      expect(res.status, path).toBe(200);
+      expect(res.text, path).not.toContain(marker);
+    }
+    const client = await connect(app, plain);
+    for (const tool of ["get_ticket", "list_entries", "list_events", "list_evidence"]) {
+      const result = await client.callTool({ name: tool, arguments: { key: "SUP-1" } });
+      expect(JSON.stringify(result.content), tool).not.toContain(marker);
+    }
+    // Its own note it reads back: those are its words, not the team's.
+    await call(client, "add_note", { key: "SUP-1", body: "Mine: reproduced it" });
+    const own = await call(client, "list_entries", { key: "SUP-1" });
+    expect(JSON.stringify(own.body)).toContain("Mine: reproduced it");
+
+    // The same ticket, handed to a key that is given the notes.
+    await as(app, teamActor).post("/tickets/SUP-1/agent/end");
+    const withNotes = await issue(app, [...defaults, "read_notes"], "Notes reader");
+    await handToAgent(app, "SUP-1", withNotes);
+    const read = await request(app)
+      .get("/api/tickets/SUP-1/entries")
+      .set("Authorization", `Bearer ${withNotes}`);
+    expect(read.text).toContain(marker);
+  });
+});

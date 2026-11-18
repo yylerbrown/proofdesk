@@ -70,7 +70,9 @@ describe("getting a demo connection", () => {
     const res = await visitor(app).post("/demo/connection");
     const page = parse(res.text);
     expect(page.querySelector("h1")?.text).toBe("Your demo connection");
-    expect(page.querySelector("main")?.text).toContain("never sees what other visitors write");
+    expect(page.querySelector("main")?.text).toContain(
+      "never receives what other visitors' assistants write",
+    );
     const expires = page.querySelector("main time")?.getAttribute("datetime");
     const hours = (Date.parse(expires!) - Date.now()) / 3600000;
     expect(hours).toBeGreaterThan(23);
