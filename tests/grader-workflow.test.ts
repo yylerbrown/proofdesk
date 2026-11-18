@@ -45,7 +45,7 @@ describe("the ticket list", () => {
 
   it("offers a description box short enough that File ticket shows on a laptop screen", async () => {
     const { app } = buildTestApp();
-    const form = parse((await as(app, customerOne).get("/tickets/new")).text);
+    const form = parse((await as(app, customerOne).get("/tickets/new").redirects(1)).text);
     expect(form.querySelector("textarea[name=description]")?.getAttribute("rows")).toBe("3");
   });
 
