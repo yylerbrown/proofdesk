@@ -1,4 +1,4 @@
-import express, { type RequestHandler } from "express";
+import express, { type ErrorRequestHandler, type RequestHandler } from "express";
 import { originValidation, requireBearerAuth } from "@modelcontextprotocol/express";
 import { toNodeHandler } from "@modelcontextprotocol/node";
 import {
@@ -40,7 +40,9 @@ function inputSchema(row: ApiAction) {
         }
       : {}),
     ...(row.path.includes(":key")
-      ? { key: z.string().meta({ description: "The ticket's key, for example SUP-42." }) }
+      ? {
+          key: z.string().max(30).meta({ description: "The ticket's key, for example SUP-42." }),
+        }
       : {}),
     ...(row.query?.shape ?? {}),
     ...((row.body as z.ZodObject | undefined)?.shape ?? {}),
@@ -135,9 +137,9 @@ function actorOf(authInfo: AuthInfo | undefined): Actor {
 
 /**
  * The middleware for POST /mcp, in order: refuse a browser page from another site, read the
- * JSON body, check the connection key with the SDK's bearer check, refuse a batch, apply the
- * write allowance to tool calls that change something, then hand the request to the SDK's
- * handler.
+ * JSON body, check the connection key with the SDK's bearer check, refuse a body the JSON
+ * parser did not read and a batch, apply the write allowance to tool calls that change
+ * something, then hand the request to the SDK's handler.
  */
 export function mcpEndpoint(
   service: TicketService,
@@ -176,6 +178,19 @@ export function mcpEndpoint(
     express.json({ limit: "100kb" }),
     requireBearerAuth({ verifier }),
     (req, res, next) => {
+      // A body the JSON parser above skipped, such as one whose Content-Type it does not
+      // take for JSON, would be read by the SDK itself, past the size limit, the batch check
+      // and the write allowance. The SDK's test of the type is looser than the parser's.
+      if (req.method === "POST" && req.body === undefined) {
+        next(
+          new HttpError(
+            415,
+            "bad_request",
+            "Send one JSON-RPC message as the body, with Content-Type: application/json.",
+          ),
+        );
+        return;
+      }
       // One JSON-RPC message a request. The SDK would run every call in an array, and the
       // write allowance below counts one call a request. The SDK's own client never batches.
       if (Array.isArray(req.body)) {
@@ -205,3 +220,22 @@ export function mcpEndpoint(
     (req, res) => void node(req, res, req.body),
   ];
 }
+
+/**
+ * Answers an error raised on /mcp before the SDK answers (a body that is not JSON, is too
+ * large or was not read, or the write allowance) as a JSON-RPC error an MCP client can read,
+ * never as a page. The HTTP status stays, and `data` carries the same code, hint and retry
+ * flag as the API.
+ */
+export const mcpErrorHandler: ErrorRequestHandler = (err, _req, res, next) => {
+  if (res.headersSent) {
+    next(err);
+    return;
+  }
+  const { status, body } = errorBody(err);
+  res.status(status).json({
+    jsonrpc: "2.0",
+    error: { code: -32000, message: body.error.message, data: body.error },
+    id: null,
+  });
+};

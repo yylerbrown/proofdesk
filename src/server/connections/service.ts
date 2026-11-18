@@ -15,6 +15,15 @@ import * as repository from "./repository.js";
 export const DEMO_CONNECTION_HOURS = 24;
 export const DEMO_CONNECTION_LIMIT = 200;
 
+/** How many of a connection's latest requests its activity trail keeps. Older ones are dropped. */
+export const ACTIVITY_KEPT = 1000;
+
+// What the activity trail stores of what an agent sent: a ticket key only when it has a
+// ticket key's form, and an idempotency key only when a write would accept it. Anything else
+// is stored as nothing, so a request cannot make its row as large as it likes.
+const TICKET_KEY_FORM = /^[A-Z]{2,6}-[1-9][0-9]{0,15}$/;
+const IDEMPOTENCY_KEY_MAX = 100;
+
 /** What a new connection may do unless the admin chooses otherwise: read, write notes, attach evidence, propose a test spec. */
 export const DEFAULT_SCOPES: AgentScope[] = [
   "read_tickets",
@@ -117,17 +126,20 @@ export function createConnectionService(db: Db) {
     /**
      * A visitor's own short-lived connection to the public demo. No admin issues it: anyone
      * on the demo's welcome page may ask. It sees only the sample tickets and what it writes
-     * itself, it expires within a day, and only so many may be live at once.
+     * itself, it expires within a day, and only so many may be live at once. At that cap the
+     * live one issued first is ended to make room. Using a key does not keep it, so nobody
+     * can choose whose key the next one ends: pushing out a visitor's key takes a new
+     * connection for every live one issued before it.
      */
     issueDemo() {
       const now = new Date();
-      if (repository.countLiveDemo(db, now.toISOString()) >= DEMO_CONNECTION_LIMIT) {
-        throw new HttpError(
-          409,
-          "budget_full",
-          "The demo has as many assistant connections as it can hold. Try again later.",
-        );
+      const live = repository.countLiveDemo(db, now.toISOString());
+      if (live >= DEMO_CONNECTION_LIMIT) {
+        repository.revokeOldestDemo(db, now.toISOString(), live - DEMO_CONNECTION_LIMIT + 1);
       }
+      // What ended connections did is forgotten, so however many visitors come and go, the
+      // demo keeps the trails of at most its live connections.
+      repository.forgetEndedDemoActivity(db, now.toISOString());
       const expiresAt = new Date(now.getTime() + DEMO_CONNECTION_HOURS * 3600 * 1000);
       const issued = issue("Demo visitor", DEMO_SCOPES, "demo-welcome-page", {
         demo: true,
@@ -152,16 +164,23 @@ export function createConnectionService(db: Db) {
       },
     ): void {
       if (actor.kind !== "agent" || actor.connection === undefined) return;
-      repository.insertActivity(db, {
-        connection_id: actor.connection.id,
-        door: entry.door,
-        action: entry.action,
-        ticket_key: entry.ticketKey === "" ? null : entry.ticketKey,
-        idempotency_key: entry.idempotencyKey ?? null,
-        outcome: entry.outcome,
-        code: entry.code,
-        created_at: new Date().toISOString(),
-      });
+      repository.insertActivity(
+        db,
+        {
+          connection_id: actor.connection.id,
+          door: entry.door,
+          action: entry.action,
+          ticket_key: TICKET_KEY_FORM.test(entry.ticketKey) ? entry.ticketKey : null,
+          idempotency_key:
+            entry.idempotencyKey !== undefined && entry.idempotencyKey.length <= IDEMPOTENCY_KEY_MAX
+              ? entry.idempotencyKey
+              : null,
+          outcome: entry.outcome,
+          code: entry.code,
+          created_at: new Date().toISOString(),
+        },
+        ACTIVITY_KEPT,
+      );
     },
 
     /** One connection and its latest activity, for the team. */
