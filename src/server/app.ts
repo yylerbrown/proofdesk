@@ -30,6 +30,8 @@ import { connectionsRouter } from "./routes/connections.js";
 import { mcpEndpoint, mcpErrorHandler } from "./mcp.js";
 import { assistantRunRouter } from "./routes/assistant-run.js";
 import { peopleRoles, teamMembers } from "./team/service.js";
+import { createPeopleService } from "./people/service.js";
+import { peopleRouter } from "./routes/people.js";
 import { guide, openApiDocument } from "./api/describe.js";
 import { siteAddress } from "./routes/connections.js";
 // The limits live in limits.ts, where the API's guide reads them too.
@@ -227,6 +229,7 @@ export function createApp(config: Config, db: Db, options: { log?: LogLine } = {
   app.use(assistantRunRouter(rootDir, () => tickets.recordedRunKey()));
   app.use(signInRouter(config, auth, () => tickets.hasDemoSeed()));
   app.use(pagesRouter(tickets));
+  app.use(peopleRouter(createPeopleService(db, config)));
   app.use(noticesRouter(tickets, db, config.ticketPrefix));
   app.use(
     connectionsRouter(

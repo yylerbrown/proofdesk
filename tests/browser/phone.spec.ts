@@ -189,6 +189,14 @@ test("on a phone each ticket row puts the key and status on one line over the ti
   await expect(page.getByRole("columnheader", { name: "Title" })).toBeVisible();
 });
 
+test("on a phone the admin's People link is a 44-pixel tap target", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/sign-in");
+  await page.getByRole("button", { name: "Admin preview (read-only)" }).click();
+  await page.goto("/tickets");
+  await expectTapTargets(page, ".site-header li.people-link a");
+});
+
 test("a select in the ticket's side panel stays inside its card", async ({ page }) => {
   await signInAsTeam(page);
   for (const width of [1280, 390]) {

@@ -10,8 +10,8 @@ export type TeamMember = { id: string; name: string };
 
 /**
  * Who can own a ticket: the made-up team members and admins of the entrance, and the people who
- * have signed in with a GitHub account named as team or admin in the configuration. A read-only
- * demo admin is not among them. Read fresh each time, so a change of configuration counts.
+ * have signed in whose role is team or admin, from the server settings or the People page. A
+ * read-only demo admin is not among them. Read fresh each time, so a change counts at once.
  */
 export function teamMembers(config: Config, db: Db): () => TeamMember[] {
   return () => {
@@ -20,15 +20,18 @@ export function teamMembers(config: Config, db: Db): () => TeamMember[] {
       .map(({ id, name }) => ({ id, name }));
     // One query for everyone who has signed in, with their GitHub user numbers.
     const signedIn = listSignedInPeople(db)
-      .filter((person) => roleOf(config, person.github_id ?? undefined) !== "customer")
+      .filter(
+        (person) =>
+          roleOf(config, person.github_id ?? undefined, person.chosen_role) !== "customer",
+      )
       .map(({ id, name }) => ({ id, name }));
     return [...made, ...signedIn];
   };
 }
 
 /**
- * Each person's role now, by their id: a made-up person's own, or for a GitHub account the role
- * the configuration gives its user number. It is shown beside a name wherever the name is read
+ * Each person's role now, by their id: a made-up person's own, or for a signed-in person the
+ * role from the server settings or the People page. It is shown beside a name wherever the name is read
  * live, so a display name such as "Proofdesk Support" cannot pass a customer off as the team.
  */
 export function peopleRoles(config: Config, db: Db): (ids: string[]) => Map<string, Role> {
@@ -40,7 +43,7 @@ export function peopleRoles(config: Config, db: Db): (ids: string[]) => Map<stri
     }
     for (const person of listSignedInPeople(db)) {
       if (wanted.has(person.id))
-        roles.set(person.id, roleOf(config, person.github_id ?? undefined));
+        roles.set(person.id, roleOf(config, person.github_id ?? undefined, person.chosen_role));
     }
     return roles;
   };
