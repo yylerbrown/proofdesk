@@ -9,7 +9,16 @@ import {
   createConnectionService,
   DEMO_CONNECTION_LIMIT,
 } from "../src/server/connections/service.js";
-import { admin, buildTestApp, closeServers, handToAgent, listenLocally } from "./helpers.js";
+import { seedDemo } from "../src/server/demo.js";
+import { createTicketService } from "../src/server/tickets/service.js";
+import {
+  admin,
+  buildTestApp,
+  closeServers,
+  handToAgent,
+  listenLocally,
+  visitor,
+} from "./helpers.js";
 
 // What an agent's key can make the server store, whatever it sends, on both doors, and how
 // many demo connections a few visitors can hold.
@@ -144,5 +153,22 @@ describe("the demo's connections at its cap", () => {
       )
       .get(new Date().toISOString()) as { n: number };
     expect(live.n).toBe(DEMO_CONNECTION_LIMIT);
+  });
+});
+
+describe("the page that shows a new key", () => {
+  it("is never kept by a browser, even for a demo visitor who is not signed in", async () => {
+    const demo = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
+    seedDemo(createTicketService(demo.db, demo.config.ticketPrefix));
+    const shown = await visitor(demo.app).post("/demo/connection");
+    expect(shown.text).toMatch(/value="pd_/);
+    expect(shown.headers["cache-control"]).toBe("no-store");
+    const { app } = buildTestApp();
+    const issued = await admin(app)
+      .post("/connections")
+      .type("form")
+      .send({ name: "Helper", scopes: ["read_tickets"] });
+    expect(issued.text).toMatch(/value="pd_/);
+    expect(issued.headers["cache-control"]).toBe("no-store");
   });
 });

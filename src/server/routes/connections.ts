@@ -61,6 +61,8 @@ export function connectionsRouter(
     const actor = signedIn(req);
     try {
       const { connection, key } = connections.create(req.body, actor);
+      // The page holds the key, which must never be kept in a browser's cache.
+      res.set("Cache-Control", "no-store");
       res.render("connection-created", {
         title: `Connection ${connection.name}`,
         connection,
@@ -82,6 +84,8 @@ export function connectionsRouter(
     if (!config.demo) throw new HttpError(404, "not_found", "There is no page at this address.");
     if (!demoReady()) throw demoNotReady();
     const { connection, key } = connections.issueDemo();
+    // A demo visitor is not signed in, so nothing else stops a cache keeping this key.
+    res.set("Cache-Control", "no-store");
     res.render("connection-created", {
       title: "Your demo connection",
       connection,
