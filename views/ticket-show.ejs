@@ -121,11 +121,23 @@
     <input type="hidden" name="ready_token" value="<%= ticket.ready_token %>" />
     <label>
       No, it is not fixed. What is still wrong?
-      <textarea name="comment" rows="3" required <% if (problem?.form === "answer") { %>aria-invalid="true" aria-describedby="answer-error"<% } %>><%= problem?.form === "answer" ? problem.comment : "" %></textarea>
+      <textarea id="answer-comment" name="comment" rows="3" required <% if (problem?.form === "answer") { %>aria-invalid="true" aria-describedby="answer-error"<% } %>><%= problem?.form === "answer" ? problem.comment : "" %></textarea>
     </label>
     <% if (problem?.form === "answer") { %><small id="answer-error"><%= problem.message %></small><% } %>
     <button type="submit" class="secondary large">No, send it back</button>
   </form>
+  <%# Common answers, as plain words. With scripts, each fills the box above, to change before
+      sending; without, each sends its words as an ordinary answer. %>
+  <p class="quick-label"><small>Or answer No in a few words:</small></p>
+  <div class="quick-answers" role="group" aria-label="Quick answers">
+    <% for (const words of ["Still happening", "Partly fixed", "Something else broke"]) { %>
+    <form method="post" action="/tickets/<%= ticket.key %>/answer">
+      <input type="hidden" name="fixed" value="no" />
+      <input type="hidden" name="ready_token" value="<%= ticket.ready_token %>" />
+      <button type="submit" name="comment" value="<%= words %>" class="secondary quick" data-fill="answer-comment"><%= words %></button>
+    </form>
+    <% } %>
+  </div>
 </article>
 <% } %>
 
@@ -427,11 +439,22 @@
   <% } %>
   <label>
     Your message
-    <textarea name="body" rows="4" required <% if (entry.error) { %>aria-invalid="true" aria-describedby="body-error"<% } %>><%= entry.body %></textarea>
+    <textarea id="entry-body" name="body" rows="4" required <% if (entry.error) { %>aria-invalid="true" aria-describedby="body-error"<% } %>><%= entry.body %></textarea>
   </label>
   <% if (entry.error) { %><small id="body-error"><%= entry.error %></small><% } %>
   <button type="submit" class="compact">Send</button>
 </form>
+<%# A few common replies for the team, as plain words: they fill the box, or send as they are. %>
+<% if (allowed.note) { %>
+<div class="quick-answers" role="group" aria-label="Quick replies">
+  <% for (const words of ["Thanks, we can reproduce this.", "Can you send a screenshot?", "Which browser and device are you using?"]) { %>
+  <form method="post" action="/tickets/<%= ticket.key %>/entries">
+    <input type="hidden" name="kind" value="reply" />
+    <button type="submit" name="body" value="<%= words %>" class="secondary quick" data-fill="entry-body" data-fill-kind="reply"><%= words %></button>
+  </form>
+  <% } %>
+</div>
+<% } %>
 <% } %>
 
 <details class="history">

@@ -85,12 +85,12 @@ test("a customer files a ticket, the team works it, and only the customer resolv
   await test.step("the team member replies, adds an internal note and links the change", async () => {
     await team.getByRole("radio", { name: "Reply to the customer" }).check();
     await team.getByLabel("Your message").fill(reply);
-    await team.getByRole("button", { name: "Send" }).click();
+    await team.getByRole("button", { name: "Send", exact: true }).click();
     await expect(savedMessage(team)).toContainText("Reply sent");
 
     await team.getByRole("radio", { name: "Internal note, for the team only" }).check();
     await team.getByLabel("Your message").fill(note);
-    await team.getByRole("button", { name: "Send" }).click();
+    await team.getByRole("button", { name: "Send", exact: true }).click();
     await expect(savedMessage(team)).toContainText("Internal note added");
     await expect(team.getByText(note)).toBeVisible();
 
