@@ -15,13 +15,13 @@
 <div class="overflow-auto">
   <table class="people">
     <thead>
-      <tr><th scope="col">Name</th><th scope="col">Email address</th><th scope="col">First signed in</th><th scope="col">Role</th></tr>
+      <tr><th scope="col">Person</th><th scope="col">First signed in</th><th scope="col">Role</th></tr>
     </thead>
     <tbody>
       <% for (const person of people) { %>
       <tr>
-        <td class="user-text"><%= person.name %></td>
-        <td class="user-text"><%= person.email ?? "None, a made-up person" %></td>
+        <%# The email address beside the name, since anyone can choose their display name. %>
+        <td class="user-text"><span class="person-name"><%= person.name %></span><br /><small class="person-email"><%= person.email ?? "Made up for the demo" %></small></td>
         <td><% if (person.firstSignedIn) { %><%- include("time", { iso: person.firstSignedIn }) %><% } else { %>Never<% } %></td>
         <td>
           <% if (person.locked) { %>

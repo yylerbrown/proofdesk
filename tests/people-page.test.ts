@@ -39,13 +39,13 @@ function rowsOf(html: string) {
       const cells = row.querySelectorAll("td");
       const select = row.querySelector("select");
       return {
-        name: cells[0]!.text.trim(),
-        email: cells[1]!.text.trim(),
+        name: cells[0]!.querySelector(".person-name")!.text.trim(),
+        email: cells[0]!.querySelector(".person-email")!.text.trim(),
         role: select
           ? (select.querySelector("option[selected]")?.getAttribute("value") ?? null)
           : null,
         disabled: select?.hasAttribute("disabled") ?? null,
-        says: select ? null : cells[3]!.text.replace(/\s+/g, " ").trim(),
+        says: select ? null : cells[2]!.text.replace(/\s+/g, " ").trim(),
       };
     });
 }
