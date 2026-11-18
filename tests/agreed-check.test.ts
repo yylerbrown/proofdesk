@@ -1,3 +1,4 @@
+import { parse } from "node-html-parser";
 import { describe, expect, it } from "vitest";
 import { admin, as, buildTestApp, customerOne, teamActor } from "./helpers.js";
 
@@ -80,7 +81,7 @@ describe("the agreed check", () => {
     expect(form.status).toBe(303);
 
     const customer = await as(app, customerOne).get("/tickets/SUP-1");
-    expect(customer.text).toContain("Team's interpretation");
+    expect(customer.text).toContain("Team's check");
     expect(customer.text).toContain(`${tighter} &lt;b&gt;now&lt;/b&gt;`);
     expect(customer.text).toContain("In the customer's words");
     expect(customer.text).toContain(words);
@@ -88,6 +89,7 @@ describe("the agreed check", () => {
 
     const team = await as(app, teamActor).get("/tickets/SUP-1");
     expect(team.text).toContain('action="/tickets/SUP-1/agreed-check"');
-    expect(team.text).toContain("interpretation of the check:");
+    // The history says it in words.
+    expect(parse(team.text).querySelector("main")!.text).toContain("Team's check: ");
   });
 });

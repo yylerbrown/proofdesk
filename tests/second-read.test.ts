@@ -34,7 +34,7 @@ describe("the 'Did this fix it?' box", () => {
   it("shows the agreed check and the customer's own words, each labelled", async () => {
     const { app } = await waiting();
     const shown = box((await as(app, customerOne).get("/tickets/SUP-1")).text);
-    expect(shown).toContain("The team's interpretation of your check:");
+    expect(shown).toContain("Team's check:");
     expect(shown).toContain(tighter);
     expect(shown).toContain("In your words:");
     expect(shown).toContain(words);

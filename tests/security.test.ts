@@ -232,7 +232,7 @@ const OWN_SCRIPTS = [
 ];
 
 // The one image tag: the mark beside the name in the header.
-const OWN_MARK = '<img src="/assets/mark.svg" alt="" width="24" height="24" />';
+const OWN_MARK = '<img src="/assets/brand.svg" alt="" width="24" height="24" />';
 
 /** A page without its own script and mark tags, so that any other such tag stands out. */
 function withoutOwnScript(html: string): string {

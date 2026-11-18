@@ -162,7 +162,7 @@ Designed by an outside reviewer against this specification, the permission funct
 - **An agent is a contributor, never an owner.** The owner may hand an in-progress ticket to one named connection; the agent sees only tickets handed to it, and loses access on revoke, transfer, ask or archive. The demo keeps its per-connection isolation instead. Agents do not send public replies: suggested wording arrives as an internal note, which a person may publish as their own reply.
 - **After a No** the owner keeps the ticket, the customer's comment is shown first, the team's list says "Customer says it still fails", and the next ask needs the owner's response to that No and a fresh check.
 - **Silence** leaves the question open, dated, never closed by a timer.
-- **The customer's check is theirs.** Staff wording is labelled "Team's interpretation" unless the customer adopts it.
+- **The customer's check is theirs.** Staff wording is labelled "Team's check" unless the customer adopts it.
 
 Left out on purpose, and listed in the README's limits: human review records against evidence ids, reconciling owners when team membership changes, documentation generated from conditional rules, and upgrading the provenance of tickets resolved before this workflow.
 

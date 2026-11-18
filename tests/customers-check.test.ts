@@ -3,7 +3,7 @@ import type { Express } from "express";
 import { describe, expect, it } from "vitest";
 import { admin, as, buildTestApp, customerOne, teamActor } from "./helpers.js";
 
-// The check is the customer's own words. The team may offer an interpretation beside them,
+// The check is the customer's own words. The team may offer its own wording, the team's check, beside them,
 // which the customer may adopt; only then are those words the check.
 
 const valid = {
@@ -32,7 +32,7 @@ describe("the team and the customer's words", () => {
     expect(own.querySelector("textarea[name=fix_check]")?.text).toBe("Ten pages print");
   });
 
-  it("labels the team's wording as its interpretation, never as agreed", async () => {
+  it("labels the team's wording as the team's check, never as agreed", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
     await as(app, teamActor)
@@ -41,7 +41,7 @@ describe("the team and the customer's words", () => {
     const page = parse((await as(app, customerOne).get("/tickets/SUP-1")).text).querySelector(
       "main",
     )!.text;
-    expect(page).toContain("Team's interpretation");
+    expect(page).toContain("Team's check");
     expect(page).not.toContain("Agreed check");
     expect((await reread(app)).done_when).toMatchObject({
       team_interpretation: "A 10-page PDF prints twice",
@@ -51,7 +51,7 @@ describe("the team and the customer's words", () => {
 });
 
 describe("the customer's own changes", () => {
-  it("retire the team's interpretation, withdraw an open question, and keep the old words in the history", async () => {
+  it("retire the team's check, withdraw an open question, and keep the old words in the history", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
     await as(app, teamActor)
@@ -82,7 +82,7 @@ describe("the customer's own changes", () => {
     });
   });
 
-  it("can adopt the team's interpretation as their own check; nobody else can", async () => {
+  it("can adopt the team's check as their own; nobody else can", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
     await as(app, teamActor)
@@ -131,7 +131,7 @@ describe("a ticket with no check", () => {
       .send({ try_url: "https://example.com/t", tried: "Printed.", result: "Fine." });
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe("needs_check");
-    // A team interpretation alone is not enough: the customer has not said it.
+    // A team's check alone is not enough: the customer has not said it.
     await as(app, teamActor)
       .put("/api/tickets/SUP-1/agreed-check")
       .send({ agreed_check: "Ten pages print" });

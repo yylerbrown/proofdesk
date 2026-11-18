@@ -70,7 +70,7 @@ const statusChangeSchema = z.object({
   to: z.enum(TICKET_STATUSES),
 });
 
-// Both a change of owner and a change of the agreed check record { from, to } as text.
+// Both a change of owner and a change of the team's check record { from, to } as text.
 const ownerChangeSchema = z.object({ from: z.string().nullable(), to: z.string().nullable() });
 
 const editSchema = z.object({ changes: z.record(z.string(), z.unknown()) });
@@ -109,9 +109,7 @@ export function describeEvent(event: TicketEvent): string {
   if (event.type === "check_agreed") {
     const check = ownerChangeSchema.safeParse(event.data);
     if (check.success) {
-      return check.data.to === null
-        ? "Team's interpretation of the check removed"
-        : `Team's interpretation of the check: ${check.data.to}`;
+      return check.data.to === null ? "Team's check removed" : `Team's check: ${check.data.to}`;
     }
   }
   if (event.type === "change_linked") return "Change link added";
