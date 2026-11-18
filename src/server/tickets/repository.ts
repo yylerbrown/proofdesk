@@ -1,5 +1,5 @@
 import type { Db } from "../db.js";
-import type { EntryKind, TicketStatus } from "./schemas.js";
+import type { EntryKind, ResolveReason, TicketStatus } from "./schemas.js";
 
 // The SQL for tickets lives in this file. Every statement here is a fixed string with ?
 // placeholders, so no user input is ever joined into SQL text.
@@ -27,6 +27,13 @@ export type TicketRow = {
   ready_result: string | null;
   ready_response: string | null;
   ready_evidence: string | null; // JSON list of evidence ids
+  // Set only when the team resolved the ticket without the customer's Yes.
+  resolved_reason: ResolveReason | null;
+  resolved_note: string | null;
+  resolved_duplicate_of: string | null;
+  resolved_by: string | null;
+  resolved_by_name: string | null;
+  resolved_at: string | null;
 };
 
 export type EventRow = {
@@ -242,10 +249,32 @@ export function updateTicketArchived(
  * Changes the status. Any change of status also ends a wait for the customer's answer: the
  * question "Did this fix it?" is only asked about the ticket as it was when it was asked.
  */
+/** Changes the status. Any change clears a resolution by the team: only the team's own sets one. */
 export function updateTicketStatus(db: Db, id: number, status: TicketStatus, now: string): void {
   db.prepare(
-    "UPDATE tickets SET status = ?, ready_at = NULL, ready_token = NULL, updated_at = ? WHERE id = ?",
+    `UPDATE tickets SET status = ?, ready_at = NULL, ready_token = NULL, updated_at = ?,
+       resolved_reason = NULL, resolved_note = NULL, resolved_duplicate_of = NULL,
+       resolved_by = NULL, resolved_by_name = NULL, resolved_at = NULL
+     WHERE id = ?`,
   ).run(status, now, id);
+}
+
+export type TeamResolution = {
+  reason: ResolveReason;
+  note: string | null;
+  duplicateOf: string | null;
+  by: string;
+  byName: string;
+};
+
+/** Resolves the ticket by the team, with its reason, and closes any open question. */
+export function resolveByTeam(db: Db, id: number, r: TeamResolution, now: string): void {
+  db.prepare(
+    `UPDATE tickets SET status = 'resolved', ready_at = NULL, ready_token = NULL, updated_at = @now,
+       resolved_reason = @reason, resolved_note = @note, resolved_duplicate_of = @duplicateOf,
+       resolved_by = @by, resolved_by_name = @byName, resolved_at = @now
+     WHERE id = @id`,
+  ).run({ ...r, now, id });
 }
 
 export function updateChangeUrl(db: Db, id: number, changeUrl: string, now: string): void {

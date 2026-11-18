@@ -14,7 +14,7 @@ import {
   waitingOn,
 } from "../pages/format.js";
 import { rememberSaved, takeProblem, takeSaved, type SavedKey } from "../pages/saved.js";
-import { listQuerySchema, TICKET_STATUSES } from "../tickets/schemas.js";
+import { listQuerySchema, RESOLVE_REASON_LABELS, TICKET_STATUSES } from "../tickets/schemas.js";
 import { LIST_PAGE_SIZE, type Ticket, type TicketService } from "../tickets/service.js";
 import { parse } from "../validation.js";
 
@@ -35,7 +35,15 @@ type EntryForm = { kind: string; body: string; error?: string };
 
 // A refused form on the ticket page: which one, the message, and a comment to keep.
 type Problem = {
-  form: "answer" | "agreedCheck" | "changeLink" | "ready" | "evidence" | "reopen" | "handOff";
+  form:
+    | "answer"
+    | "agreedCheck"
+    | "changeLink"
+    | "ready"
+    | "evidence"
+    | "reopen"
+    | "handOff"
+    | "resolve";
   message: string;
   comment: string;
   /** What was typed in the form, so it can be shown again. */
@@ -203,6 +211,7 @@ const FORM_SAVED: Record<Problem["form"], (input: unknown) => SavedKey> = {
   evidence: () => "evidence",
   reopen: () => "reopened",
   handOff: () => "handedOff",
+  resolve: () => "resolvedByTeam",
   answer: (input) =>
     (input as Record<string, unknown> | undefined)?.fixed === "yes" ? "fixed" : "notFixed",
 };
@@ -335,6 +344,7 @@ export function pagesRouter(service: TicketService): Router {
       specPanel,
       specPrompt,
       allowed,
+      resolveReasons: RESOLVE_REASON_LABELS,
       entry: shownEntry,
       problem,
     });
@@ -608,6 +618,7 @@ export function pagesRouter(service: TicketService): Router {
   router.post("/tickets/:key/ready", ticketForm("ready", service.markReady));
   router.post("/tickets/:key/answer", ticketForm("answer", service.answer));
   router.post("/tickets/:key/reopen", ticketForm("reopen", service.reopen));
+  router.post("/tickets/:key/resolve", ticketForm("resolve", service.resolveWithReason));
   router.post("/tickets/:key/adopt-check", (req, res) => {
     const ticket = service.adoptCheck(req.params.key, signedIn(req));
     rememberSaved(res, "adopted");

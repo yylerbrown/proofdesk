@@ -63,7 +63,8 @@ describe("who resolves", () => {
   it("is said exactly where the team looks for Resolved: the status and the edit page", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
-    const sentence = "Only the customer who filed this ticket can resolve it.";
+    const sentence =
+      "The customer confirms a fix with Yes; the team can also resolve with a reason.";
     const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     expect(page.querySelector(".status-rule")?.text.startsWith(sentence)).toBe(true);
     const edit = parse((await as(app, teamActor).get("/tickets/SUP-1/edit")).text);

@@ -187,6 +187,10 @@ describe("real answers", () => {
     expectShape("end_agent_work", await admin(app).post(`${t}/agent/end`));
     await as(app, customerOne).post("/api/tickets").send(valid);
     expectShape("take_and_start", await admin(app).post("/api/tickets/SUP-3/take-and-start"));
+    expectShape(
+      "resolve_with_reason",
+      await admin(app).post("/api/tickets/SUP-3/resolve").send({ reason: "wont_fix" }),
+    );
     expectShape("archive_ticket", await admin(app).post(`${t}/archive`));
     expectShape("restore_ticket", await admin(app).post(`${t}/restore`));
     expectShape("delete_ticket", await admin(app).delete(t).send({ confirm: "SUP-1" }));

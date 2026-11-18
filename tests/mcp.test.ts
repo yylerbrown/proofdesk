@@ -177,7 +177,9 @@ describe("the one path: read, evidence, ask the owner", () => {
       .set("Authorization", `Bearer ${key}`)
       .send({ status: "resolved" });
     expect(refused.body.error.code).toBe("needs_customer");
-    expect(refused.body.error.hint).toMatch(/Only the customer's answer resolves a ticket/);
+    expect(refused.body.error.hint).toMatch(
+      /A status change does not resolve a ticket\. The customer confirms a fix with Yes/,
+    );
     // A people-only action is not a tool at all: the SDK refuses the call as unknown.
     await expect(
       client.callTool({ name: "answer", arguments: { key: "SUP-1", fixed: "yes" } }),
@@ -332,6 +334,7 @@ describe("what an assistant is sent", () => {
       waiting_on: "team",
       owner_name: "Team Member",
       customer_check: "Ten pages print",
+      resolution_label: null,
     };
     const api = await request(app).get("/api/tickets").set("Authorization", `Bearer ${key}`);
     expect(Object.keys(api.body[0]).sort()).toEqual([...Object.keys(row), "updated_at"].sort());

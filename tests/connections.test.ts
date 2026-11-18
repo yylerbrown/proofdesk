@@ -193,6 +193,7 @@ const BODIES: Record<string, object> = {
   hand_off: { to: "dev-team-1", expected_owner: "dev-admin-1" },
   give_to_agent: { connection_id: 1 },
   decide_spec: { decision: "accept" },
+  resolve_with_reason: { reason: "wont_fix" },
 };
 
 describe("the capability table on the JSON door", () => {
@@ -218,6 +219,7 @@ describe("the capability table on the JSON door", () => {
         "mark_ready",
         "release_ticket",
         "reopen",
+        "resolve_with_reason",
         "restore_ticket",
         "take_and_start",
         "take_ticket",
