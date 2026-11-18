@@ -21,6 +21,7 @@ export type Action =
   | "answer"
   | "manage_connections"
   | "attach_evidence"
+  | "read_activity"
   | "propose_spec"
   | "decide_spec";
 
@@ -69,6 +70,7 @@ export const CAPABILITIES: Record<Action, Capability> = {
   answer: { people: "Only the customer who filed it.", agent: "people_only" },
   manage_connections: { people: "An admin.", agent: "people_only" },
   attach_evidence: { people: "The team.", agent: "attach_evidence" },
+  read_activity: { people: "The team.", agent: "people_only" },
   propose_spec: { people: "The team.", agent: "propose_specs" },
   decide_spec: { people: "The team.", agent: "people_only" },
 };
@@ -118,6 +120,7 @@ export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean
   if (action === "list_all") return isStaff;
   if (action === "list_archived") return isStaff;
   if (action === "manage_connections") return actor.role === "admin" && actor.kind === "person";
+  if (action === "read_activity") return isStaff && actor.kind === "person";
 
   // Every other action is about one ticket.
   if (ticket === undefined) return false;

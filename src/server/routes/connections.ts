@@ -4,7 +4,7 @@ import type { Config } from "../config.js";
 import { DEFAULT_SCOPES, type ConnectionService } from "../connections/service.js";
 import { HttpError, ValidationError } from "../errors.js";
 import { formatTime } from "../pages/format.js";
-import { AGENT_SCOPES, CAPABILITIES } from "../permissions.js";
+import { AGENT_SCOPES, can, CAPABILITIES } from "../permissions.js";
 
 // The admin's page for agent connections: issue one, see its key once, revoke it.
 
@@ -45,6 +45,7 @@ export function connectionsRouter(
       ...shared,
       title: "Agent connections",
       connections: connections.list(actor),
+      canManage: can(actor, "manage_connections"),
       form: { name: "", scopes: DEFAULT_SCOPES, errors: {}, ...form },
     });
   }
@@ -91,6 +92,17 @@ export function connectionsRouter(
       address: siteAddress(config, req),
       scopeLabels: SCOPE_LABELS,
       formatTime,
+    });
+  });
+
+  // One connection: what it may do and everything it asked for lately, done or refused.
+  router.get("/connections/:id", (req, res) => {
+    const { connection, activity } = connections.activity(Number(req.params.id), signedIn(req));
+    res.render("connection", {
+      ...shared,
+      title: `Connection ${connection.name}`,
+      connection,
+      activity,
     });
   });
 

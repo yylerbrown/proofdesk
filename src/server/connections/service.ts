@@ -141,8 +141,52 @@ export function createConnectionService(db: Db) {
       return issued;
     },
 
+    /**
+     * Records what an agent asked for and how it ended. A person's requests are not recorded
+     * here: their history is the ticket's own.
+     */
+    record(
+      actor: Actor,
+      entry: {
+        door: "api" | "mcp";
+        action: string;
+        ticketKey: string;
+        idempotencyKey: string | undefined;
+        outcome: "done" | "refused" | "failed";
+        code: string | null;
+      },
+    ): void {
+      if (actor.kind !== "agent" || actor.connection === undefined) return;
+      repository.insertActivity(db, {
+        connection_id: actor.connection.id,
+        door: entry.door,
+        action: entry.action,
+        ticket_key: entry.ticketKey === "" ? null : entry.ticketKey,
+        idempotency_key: entry.idempotencyKey ?? null,
+        outcome: entry.outcome,
+        code: entry.code,
+        created_at: new Date().toISOString(),
+      });
+    },
+
+    /** One connection and its latest activity, for the team. */
+    activity(id: number, viewer: Actor) {
+      if (!can(viewer, "read_activity")) {
+        throw new HttpError(403, "forbidden", "Only the team sees agent activity.");
+      }
+      const row = repository.findById(db, id);
+      if (row === undefined) throw new HttpError(404, "not_found", "There is no such connection.");
+      return {
+        connection: toConnection(row),
+        activity: repository.listActivity(db, id, 200),
+      };
+    },
+
+    /** The issued connections, for the team to see. Only an admin issues or revokes them. */
     list(actor: Actor): Connection[] {
-      requireAdmin(actor);
+      if (!can(actor, "read_activity")) {
+        throw new HttpError(403, "forbidden", "Only the team sees agent connections.");
+      }
       return repository.listIssued(db).map(toConnection);
     },
 

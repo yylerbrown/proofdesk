@@ -57,7 +57,11 @@ function text(value: unknown) {
 }
 
 /** Builds the MCP server for one request, acting as the agent the key belongs to. */
-function buildServer(service: TicketService, actor: Actor): McpServer {
+function buildServer(
+  service: TicketService,
+  connections: ConnectionService,
+  actor: Actor,
+): McpServer {
   const server = new McpServer(
     { name: "proofdesk", version: "1.0.0" },
     { instructions: MCP_INSTRUCTIONS },
@@ -69,6 +73,15 @@ function buildServer(service: TicketService, actor: Actor): McpServer {
       async (args: Record<string, unknown>) => {
         const { key, idempotency_key: idempotencyKey, ...fields } = args;
         const ticketKey = typeof key === "string" ? key : "";
+        const record = (outcome: "done" | "refused" | "failed", code: string | null) =>
+          connections.record(actor, {
+            door: "mcp",
+            action: row.name,
+            ticketKey,
+            idempotencyKey: typeof idempotencyKey === "string" ? idempotencyKey : undefined,
+            outcome,
+            code,
+          });
         try {
           const call = () =>
             row.run({
@@ -94,10 +107,15 @@ function buildServer(service: TicketService, actor: Actor): McpServer {
             row.paged && Array.isArray(ran)
               ? { items: ran, next_cursor: nextCursor(fields, ran) }
               : ran;
+          record("done", null);
           return { content: text({ untrusted_content_note: UNTRUSTED, result }) };
         } catch (err) {
           // A refusal is a result the agent can act on: what happened and what to do next.
-          if (!(err instanceof HttpError)) throw err;
+          if (!(err instanceof HttpError)) {
+            record("failed", "internal_error");
+            throw err;
+          }
+          record(err.status < 500 ? "refused" : "failed", err.code);
           return { isError: true, content: text(errorBody(err).body) };
         }
       },
@@ -143,7 +161,9 @@ export function mcpEndpoint(
       };
     },
   };
-  const handler = createMcpHandler(({ authInfo }) => buildServer(service, actorOf(authInfo)));
+  const handler = createMcpHandler(({ authInfo }) =>
+    buildServer(service, connections, actorOf(authInfo)),
+  );
   const node = toNodeHandler(handler);
   const writing = new Set(TOOL_ACTIONS.filter((row) => row.method !== "get").map((r) => r.name));
 

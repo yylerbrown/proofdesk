@@ -54,10 +54,13 @@ describe("issuing a connection", () => {
     expect(rows).not.toContain(secret);
   });
 
-  it("is for an admin only", async () => {
+  it("is for an admin only; the team may look, a customer may not", async () => {
     const { app } = buildTestApp();
+    const team = await as(app, teamActor).get("/connections");
+    expect(team.status).toBe(200);
+    expect(parse(team.text).querySelector("form[action='/connections']")).toBeNull();
+    expect((await as(app, customerOne).get("/connections")).status).toBe(403);
     for (const who of [teamActor, customerOne]) {
-      expect((await as(app, who).get("/connections")).status).toBe(403);
       const res = await as(app, who)
         .post("/connections")
         .type("form")
