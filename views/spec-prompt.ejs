@@ -4,7 +4,7 @@
 <details class="spec-prompt">
   <summary>Want better results? Ask your assistant to spec this ticket.</summary>
   <pre class="paste"><code><%= words %></code></pre>
-  <button type="button" class="copy secondary" data-copy="<%= words %>" hidden>Copy</button>
+  <button type="button" class="copy secondary" data-copy="<%= words %>" aria-label="Copy the prompt" hidden>Copy</button>
   <p><small><% if (specPrompt.connectUrl) { %><a href="<%= specPrompt.connectUrl %>">Connect your assistant</a> · <% } %><a href="/assistant-run">See an assistant's work</a></small></p>
 </details>
 <% } %>

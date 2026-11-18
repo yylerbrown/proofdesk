@@ -1808,6 +1808,12 @@ export function createTicketService(
     },
 
     /** The demo's recorded example of a real assistant run, by key, or null when there is none. */
+    /** On the demo, the key of the sample ticket made for assistants; null elsewhere. */
+    assistantSampleKey(): string | null {
+      const id = demoSeed()?.assistant;
+      return id === undefined ? null : buildKey(prefix, id);
+    },
+
     recordedRunKey(): string | null {
       const id = demoSeed()?.recorded;
       return id === undefined ? null : buildKey(prefix, id);

@@ -51,6 +51,35 @@ describe("the copy script", () => {
     expect(button.textContent).toBe("Copy");
   });
 
+  it("says what happened in a status line too, which a named button needs", async () => {
+    const clicks: (() => void)[] = [];
+    const make = (copy: string): CopyButton => ({
+      dataset: { copy },
+      hidden: true,
+      textContent: "Copy",
+      addEventListener: (_type, listener) => void clicks.push(listener),
+    });
+    const status = { textContent: "" as string | null };
+    let allow = true;
+    wireCopyButtons(
+      [make("pd_x"), make("claude mcp add")],
+      { writeText: () => (allow ? Promise.resolve() : Promise.reject(new Error("denied"))) },
+      () => {},
+      status,
+    );
+    // The line exists before any click, empty, so its first message is announced.
+    expect(status.textContent).toBe("");
+    clicks[0]!();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(status.textContent).toBe("Copied");
+    allow = false;
+    clicks[1]!();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(status.textContent).toBe("Select the text to copy");
+  });
+
   it("says to select the text by hand when the browser refuses to copy", async () => {
     let click = () => {};
     const button: CopyButton = {
@@ -80,23 +109,38 @@ describe("copy buttons on the pages", () => {
       .post("/connections")
       .type("form")
       .send({ name: "Helper", scopes: ["read_tickets"] });
-    const found = copies(read(page.text));
-    expect(found).toHaveLength(3);
+    const html = read(page.text);
+    const found = copies(html);
+    expect(found).toHaveLength(4);
     for (const item of found) {
       expect(item.copies).toBe(item.shown);
       expect(item.hidden).toBe(true);
     }
     expect(found[0]!.copies).toMatch(/^pd_/);
     expect(found[1]!.copies).toMatch(/^claude mcp add --transport http proofdesk /);
-    expect(found[2]!.copies).toMatch(/^curl -H "Authorization: Bearer pd_/);
+    // The .mcp.json entry carries the real key, ready to paste.
+    const entry = JSON.parse(found[2]!.copies!) as {
+      mcpServers: { proofdesk: { type: string; headers: { Authorization: string } } };
+    };
+    expect(entry.mcpServers.proofdesk.type).toBe("http");
+    expect(entry.mcpServers.proofdesk.headers.Authorization).toBe(`Bearer ${found[0]!.copies}`);
+    expect(found[3]!.copies).toMatch(/^curl -H "Authorization: Bearer pd_/);
+    // Each is named for what it copies, so four buttons are not four times "Copy".
+    expect(html.querySelectorAll("button.copy").map((b) => b.getAttribute("aria-label"))).toEqual([
+      "Copy the key",
+      "Copy the Claude Code command",
+      "Copy the .mcp.json entry",
+      "Copy the curl command",
+    ]);
   });
 
   it("sit beside the demo key's command too", async () => {
     const built = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
     seedDemo(createTicketService(built.db, built.config.ticketPrefix));
     const found = copies(read((await visitor(built.app).post("/demo/connection")).text));
-    expect(found.length).toBe(3);
+    expect(found.length).toBe(5);
     for (const item of found) expect(item.copies).toBe(item.shown);
+    expect(found[2]!.copies).toBe("Using Proofdesk, write a test spec for SUP-4");
   });
 
   it("sits beside the prompt that asks an assistant for a test spec", async () => {
