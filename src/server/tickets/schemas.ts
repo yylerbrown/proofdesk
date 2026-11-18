@@ -41,6 +41,15 @@ export const addEntrySchema = z.object({
     .max(5000, "Must be at most 5000 characters."),
 });
 
+// An agent asking the ticket's named owner to request the customer's check.
+export const verificationRequestSchema = z.object({
+  message: z
+    .string()
+    .trim()
+    .min(1, "Say what was done and what evidence is attached.")
+    .max(2000, "Must be at most 2000 characters."),
+});
+
 // The agreed version of the check. An empty text removes it, leaving the customer's words.
 export const agreeCheckSchema = z.object({
   agreed_check: z.string().trim().max(500, "Must be at most 500 characters."),

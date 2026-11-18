@@ -18,8 +18,17 @@ async function issue(app: Express, scopes: string[], name = "Sam's assistant") {
   expect(res.status).toBe(200);
   const key = parse(res.text).querySelector("input.key")?.getAttribute("value");
   expect(key).toMatch(/^pd_[0-9a-f]{8}_/);
+  // One paste connects Claude Code, in the form its documentation gives.
+  // The parser keeps a <pre> as raw text, so the command is read from the HTML.
+  const command = /id="claude-code"><code>([^<]*)<\/code>/.exec(res.text)?.[1];
+  expect(command).toBe(
+    `claude mcp add --transport http proofdesk ${command?.split(" ")[6]} --header "Authorization: Bearer ${key}"`,
+  );
+  expect(command?.split(" ")[6]).toMatch(/^http:\/\/127\.0\.0\.1(:\d+)?\/mcp$/);
   // The example command quotes the address, so a shell does not read its "?" as a pattern.
-  expect(parse(res.text).querySelector("pre.paste")?.text).toMatch(/"http[^"]+\?status=new"/);
+  expect(parse(res.text).querySelectorAll("pre.paste").at(-1)?.text).toMatch(
+    /"http[^"]+\?status=new"/,
+  );
   return key!;
 }
 

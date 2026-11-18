@@ -11,6 +11,7 @@ import {
   linkChangeSchema,
   listQuerySchema,
   markReadySchema,
+  verificationRequestSchema,
 } from "../tickets/schemas.js";
 import { addEvidenceSchema } from "../tickets/evidence.js";
 import type { TicketService } from "../tickets/service.js";
@@ -81,7 +82,7 @@ export const ACTIONS: ApiAction[] = [
     name: "get_ticket",
     method: "get",
     path: "/tickets/:key",
-    summary: "One ticket.",
+    summary: "One ticket, led by done_when: what the customer will accept as fixed.",
     needs: "read",
     run: ({ service, actor, key }) => service.getTicket(key, actor),
   },
@@ -232,6 +233,24 @@ export const ACTIONS: ApiAction[] = [
     body: addEvidenceSchema,
     status: 201,
     run: ({ service, actor, key, body }) => service.addEvidence(key, body, actor),
+  },
+  {
+    name: "request_verification",
+    method: "post",
+    path: "/tickets/:key/verification-request",
+    summary:
+      "Ask the ticket's named owner to request the customer's check, once evidence is attached. Written as an internal note; only the owner asks the customer, and only the customer answers.",
+    needs: "note",
+    body: verificationRequestSchema,
+    status: 201,
+    run: ({ service, actor, key, body }) => {
+      const { message } = parse(verificationRequestSchema, body);
+      return service.addEntry(
+        key,
+        { kind: "note", body: `Asks the owner to request the customer's check: ${message}` },
+        actor,
+      );
+    },
   },
   {
     name: "list_events",

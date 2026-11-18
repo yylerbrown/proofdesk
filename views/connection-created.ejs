@@ -9,7 +9,12 @@
   <input type="text" readonly value="<%= key %>" class="key" />
 </label>
 
-<p>An assistant that can run commands can call the API with it, for example:</p>
+<h2>Connect Claude Code</h2>
+<p>Paste this in a terminal:</p>
+<pre class="paste" id="claude-code"><code>claude mcp add --transport http proofdesk <%= address %>/mcp --header "Authorization: Bearer <%= key %>"</code></pre>
+
+<h2>Other assistants</h2>
+<p>The MCP endpoint is <code><%= address %>/mcp</code>; send the key as <code>Authorization: Bearer &lt;key&gt;</code>. In Claude Desktop, add a custom connector with that address and the key as a request header, where your organization has that option. An assistant that runs commands can also call the API directly:</p>
 <pre class="paste"><code>curl -H "Authorization: Bearer <%= key %>" "<%= address %>/api/tickets?status=new"</code></pre>
 
 <p><a href="/connections">Back to connections</a></p>
