@@ -31,10 +31,11 @@ desk and the product apart: the repository owns its tests, and the desk keeps wh
 
 ## Dropped
 
-| What                            | Why                                                                                                                                                                |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| The list as an accordion        | The status filters already split open from resolved; folding Resolved away hides the status a grader most needs to find.                                           |
-| "Agent tooling" as the umbrella | It would make the product harder to recognise while adding nothing a grader can try. "What would help an agent do this ticket well?" chooses improvements instead. |
+| What                                        | Why                                                                                                                                                                                             |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The list as an accordion                    | The status filters already split open from resolved; folding Resolved away hides the status a grader most needs to find.                                                                        |
+| "Agent tooling" as the umbrella             | It would make the product harder to recognise while adding nothing a grader can try. "What would help an agent do this ticket well?" chooses improvements instead.                              |
+| A central AI with token limits per customer | Proofdesk makes no model calls of its own, so there is nothing to meter. The cost stays with whoever runs the assistant, and the desk never sends a customer's ticket text to a model provider. |
 
 ## Already built
 
