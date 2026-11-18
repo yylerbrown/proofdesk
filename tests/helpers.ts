@@ -121,3 +121,23 @@ export async function handToAgent(app: Express, ticketKey: string, agentKey: str
     .send({ connection_id: connectionId });
   if (given.status !== 200) throw new Error(`Could not hand ${ticketKey}: ${given.text}`);
 }
+
+/**
+ * Posts a page form as one browser and expects it refused the way the pages refuse a ticket
+ * action: back to the ticket (303), with the reason shown at the top. Returns that reason.
+ */
+export async function refusedBackToTicket(
+  browser: ReturnType<typeof visitor>,
+  path: string,
+  fields: Record<string, string> = {},
+): Promise<string> {
+  const res = await browser.post(path).type("form").send(fields);
+  const key = /^\/tickets\/([^/]+)\//.exec(path)![1];
+  if (res.status !== 303 || res.headers.location !== `/tickets/${key}`) {
+    throw new Error(`Expected a trip back to ${key}, got ${res.status}: ${res.text.slice(0, 200)}`);
+  }
+  const page = await browser.get(`/tickets/${key}`);
+  const reason = /<p role="alert" class="refused">([^<]*)<\/p>/.exec(page.text)?.[1];
+  if (reason === undefined) throw new Error("The ticket page shows no reason");
+  return reason;
+}

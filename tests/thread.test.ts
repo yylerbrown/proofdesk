@@ -1,6 +1,14 @@
 import fs from "node:fs";
 import { describe, expect, it } from "vitest";
-import { admin, as, buildTestApp, customerOne, customerTwo, teamActor } from "./helpers.js";
+import {
+  admin,
+  as,
+  buildTestApp,
+  customerOne,
+  customerTwo,
+  refusedBackToTicket,
+  teamActor,
+} from "./helpers.js";
 
 const valid = { title: "Printer is broken", description: "It jams on every page." };
 const reply = (body: string) => ({ kind: "reply", body });
@@ -70,11 +78,7 @@ describe("replies and internal notes", () => {
     const res = await as(app, customerOne).post("/api/tickets/SUP-1/entries").send(note("x"));
     expect(res.status).toBe(403);
     // A page form that tries it is refused too.
-    const form = await as(app, customerOne)
-      .post("/tickets/SUP-1/entries")
-      .type("form")
-      .send(note("x"));
-    expect(form.status).toBe(403);
+    await refusedBackToTicket(as(app, customerOne), "/tickets/SUP-1/entries", note("x"));
     expect((await admin(app).get("/api/tickets/SUP-1/entries")).body).toHaveLength(3);
   });
 

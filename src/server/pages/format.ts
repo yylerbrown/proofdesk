@@ -49,7 +49,7 @@ export function waitingOn(ticket: Ticket, viewer: Role): string {
   if (ticket.waiting_on === "customer") return viewer === "customer" ? "You" : "Customer";
   if (viewer === "customer") return "Support team";
   // After a no, the team sees why the ticket is back with them.
-  return ticket.customer_answer?.fixed === false ? "Team: customer says not fixed" : "Team";
+  return ticket.customer_answer?.fixed === false ? "Team: customer says it still fails" : "Team";
 }
 
 /**

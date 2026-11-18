@@ -8,8 +8,8 @@
   <label>
     Name
     <input type="text" name="name" value="<%= form.name %>" required maxlength="60" <% if (form.errors.name) { %>aria-invalid="true" aria-describedby="name-error"<% } %> />
-    <% if (form.errors.name) { %><small id="name-error"><%= form.errors.name.join(" ") %></small><% } %>
   </label>
+  <% if (form.errors.name) { %><small id="name-error"><%= form.errors.name.join(" ") %></small><% } %>
   <fieldset <% if (form.errors.scopes) { %>aria-describedby="scopes-error"<% } %>>
     <legend>What it may do</legend>
     <% for (const scope of scopes) { %>
