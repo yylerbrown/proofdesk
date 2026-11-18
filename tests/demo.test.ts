@@ -52,7 +52,10 @@ describe("the demo entrance", () => {
     const page = await visitor(app).get("/sign-in");
     expect(page.text).toContain("Try the demo");
     expect(page.text).toContain("Do not type anything private here.");
-    for (const person of DEMO_ACTORS) expect(page.text).toContain(person.name);
+    // The admin is named for what it is before anyone enters: a preview that changes nothing.
+    expect(page.text).toContain("View as Demo Customer");
+    expect(page.text).toContain("View as Demo Team Member");
+    expect(page.text).toContain("Admin preview (read-only)");
     expect(page.text).not.toContain("Customer One");
     expect(page.text).not.toContain("Sign in with GitHub");
 

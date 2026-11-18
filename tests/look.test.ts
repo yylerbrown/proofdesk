@@ -58,7 +58,7 @@ describe("the welcome for a signed-out visitor", () => {
     expect(people.map((li) => li.querySelector("button")?.text)).toEqual([
       "View as Demo Customer",
       "View as Demo Team Member",
-      "View as Demo Admin",
+      "Admin preview (read-only)",
     ]);
     for (const li of people) expect(li.querySelector(".try")?.text.length).toBeGreaterThan(20);
     expect(people[2]?.querySelector(".try")?.text).toContain("changes nothing");

@@ -42,6 +42,10 @@ export function signInRouter(
       demo: config.demo,
       // On the demo, the welcome page offers a visitor their own assistant connection.
       demoAgents: config.demo && demoReady(),
+      // The demo's walk-through starts as its customer, on a new ticket filled with a sample.
+      walkthrough: config.demo ? people.find((person) => person.role === "customer") : undefined,
+      // The real site links to the demo, so a visitor can try it without signing in.
+      demoUrl: config.demoUrl,
     });
   });
 

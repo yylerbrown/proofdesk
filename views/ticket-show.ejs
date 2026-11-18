@@ -6,6 +6,21 @@
   <p><%= ticket.key %> <%- include("status-badge", { status: ticket.status }) %> filed <%- include("time", { iso: ticket.created_at }) %></p>
 </hgroup>
 
+<%# On the demo: the next role to view this same ticket as, or where resolved tickets are listed. %>
+<% if (locals.demoNext) { %>
+<div class="demo-next">
+  <% if (demoNext.resolved) { %>
+  <p>The customer's Yes resolved it. <a href="/tickets?status=resolved">See every resolved ticket</a></p>
+  <% } else { %>
+  <form method="post" action="/sign-in/dev">
+    <input type="hidden" name="id" value="<%= demoNext.switchTo %>" />
+    <input type="hidden" name="next" value="/tickets/<%= ticket.key %>" />
+    <button type="submit" class="secondary"><%= demoNext.label %></button>
+  </form>
+  <% } %>
+</div>
+<% } %>
+
 <% if (ticket.archived_at) { %>
 <article>
   <p>This ticket was archived on <%- include("time", { iso: ticket.archived_at }) %>. It is hidden from the lists and cannot be changed until it is restored.</p>

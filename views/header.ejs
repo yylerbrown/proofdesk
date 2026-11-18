@@ -26,7 +26,26 @@
           <li><a href="/tickets/new" role="button">New ticket</a></li>
         </ul>
         <ul class="account">
+          <% if (viewer.demo && demoPeople.length > 0) { %>
+          <li class="viewer">
+            <details class="dropdown switch-role">
+              <summary>Signed in as <strong><%= viewer.name %></strong> <small class="role-label"><%= viewer.role %></small> <span class="switch-label">Switch role</span></summary>
+              <ul>
+                <% for (const person of demoPeople.filter((p) => p.id !== viewer.id)) { %>
+                <li>
+                  <form method="post" action="/sign-in/dev">
+                    <input type="hidden" name="id" value="<%= person.id %>" />
+                    <input type="hidden" name="next" value="<%= here %>" />
+                    <button type="submit" class="link"><%= person.readOnly ? "Admin preview (read-only)" : `View as ${person.name}` %></button>
+                  </form>
+                </li>
+                <% } %>
+              </ul>
+            </details>
+          </li>
+          <% } else { %>
           <li class="viewer">Signed in as <strong><%= viewer.name %></strong> <small class="role-label"><%= viewer.role %></small></li>
+          <% } %>
           <li>
             <form method="post" action="/sign-out" class="sign-out">
               <button type="submit" class="link">Sign out</button>
