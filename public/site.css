@@ -357,6 +357,30 @@ table button.danger:is(:hover, :active) {
   color: var(--pd-danger);
   text-decoration: underline;
 }
+/*
+ * Row button: a small quiet button inside a list row, such as "Take and start" or "Up". Plain
+ * buttons, one click each; nothing in the list is dragged.
+ */
+:is(button, [type="submit"], [role="button"]).row-action {
+  min-height: 0;
+  margin: 0;
+  padding: 2px 8px;
+  border-color: var(--pd-border);
+  background-color: var(--pd-surface);
+  color: var(--pd-muted);
+  font-size: var(--pd-text-xs);
+  letter-spacing: 0;
+}
+:is(button, [type="submit"], [role="button"]).row-action:is(:hover, :active) {
+  border-color: var(--pd-border-strong);
+  background-color: var(--pd-subtle);
+  color: var(--pd-text);
+}
+@media (max-width: 639px) {
+  :is(button, [type="submit"], [role="button"]).row-action {
+    min-height: 32px;
+  }
+}
 /* Only "Yes, it is fixed" is large. */
 button.large {
   padding: 10px 18px;
@@ -512,6 +536,24 @@ table.tickets td:first-child a::after {
   inset: 0;
   content: "";
 }
+/*
+ * Room for row actions: a last cell holding small row buttons, right-aligned on one line. Its
+ * buttons sit above the whole-row link, so a click on them never opens the ticket.
+ */
+table.tickets td.row-actions {
+  padding-left: var(--pd-space-3);
+  text-align: right;
+  white-space: nowrap;
+}
+table.tickets td.row-actions :is(form, button, a) {
+  display: inline-flex;
+  position: relative;
+  z-index: 1;
+  margin: 0;
+}
+table.tickets td.row-actions > * + * {
+  margin-left: var(--pd-space-1);
+}
 @media (min-width: 640px) {
   table.tickets th,
   table.tickets td {
@@ -528,8 +570,8 @@ table.tickets td:first-child a::after {
 }
 /* On a phone: key, title and status. Owner, waiting and filed are on the ticket page. */
 @media (max-width: 639px) {
-  table.tickets th:nth-child(n + 4),
-  table.tickets td:nth-child(n + 4) {
+  table.tickets th:nth-child(n + 4):not(.row-actions),
+  table.tickets td:nth-child(n + 4):not(.row-actions) {
     display: none;
   }
   table.tickets th:nth-child(3),
@@ -539,6 +581,14 @@ table.tickets td:first-child a::after {
   }
   table.tickets td.user-text {
     min-width: 0;
+  }
+  /* Row buttons wrap under each other rather than widening the row. */
+  table.tickets td.row-actions {
+    min-width: 4.5rem;
+    white-space: normal;
+  }
+  table.tickets td.row-actions > * {
+    margin-block: 2px;
   }
   /* A short name stays whole rather than breaking letter by letter in a squeezed cell. */
   table.connections td.user-text {
