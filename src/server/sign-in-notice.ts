@@ -8,6 +8,13 @@ import type { Request, Response } from "express";
 /** One message for the sign-in page. An alert is read out at once by screen readers. */
 export type SignInNotice = { text: string; alert: boolean };
 
+/**
+ * When GitHub shares no verified email address. An unverified address is withheld before the
+ * library sees it, so the answer is the same whether or not that address has a person here.
+ */
+const NO_VERIFIED_EMAIL =
+  "GitHub did not share a verified email address for this account. Verify one on GitHub, then sign in again.";
+
 /** What GitHub or the sign-in library reported, by the code it put in "?error=...". */
 const ERROR_MESSAGES = {
   access_denied:
@@ -17,8 +24,8 @@ const ERROR_MESSAGES = {
   state_invalid: "That sign-in expired before GitHub sent you back. Sign in again.",
   account_not_linked:
     "Your email address already belongs to a different GitHub account here. Sign in with that account.",
-  email_not_verified:
-    "GitHub has not verified your email address yet. Verify it on GitHub, then sign in again.",
+  email_not_found: NO_VERIFIED_EMAIL,
+  email_not_verified: NO_VERIFIED_EMAIL,
 } as const;
 
 /** An error code that may be shown as it is: lowercase letters and underscores, kept short. */
