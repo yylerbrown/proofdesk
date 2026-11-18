@@ -1220,3 +1220,8 @@ textarea:focus {
 .scenarios li p {
   margin-bottom: 0.25rem;
 }
+
+/* The customer's no, first on the ticket, until the team asks them again. */
+.customer-said-no {
+  border-left: 4px solid var(--pico-del-color);
+}

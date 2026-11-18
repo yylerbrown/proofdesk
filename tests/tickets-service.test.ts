@@ -249,6 +249,7 @@ describe("ticket service returns what is stored", () => {
       "change_url",
       "created_at",
       "created_by",
+      "customer_answer",
       "description",
       "done_when",
       "fix_check",

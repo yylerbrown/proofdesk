@@ -79,6 +79,7 @@ describe("create and get", () => {
         guidance: expect.stringContaining("Only the customer can say this is fixed."),
       },
       waiting_on: "team",
+      customer_answer: null,
       key: "SUP-1",
       title: "Cannot log in",
       description: "The page says my password is wrong.",

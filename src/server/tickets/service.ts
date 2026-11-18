@@ -44,9 +44,14 @@ export type DoneWhen = {
 /** Who has to act next: the team until the customer is asked, then the customer, then nobody. */
 export type WaitingOn = "team" | "customer" | "nobody";
 
+/** The customer's latest answer to "Did this fix it?": yes or no, when, and their words for a no. */
+export type CustomerAnswer = { fixed: boolean; at: string; comment: string | null };
+
 export type Ticket = {
   done_when: DoneWhen;
   waiting_on: WaitingOn;
+  /** The customer's latest answer, or null if they have not answered yet. */
+  customer_answer: CustomerAnswer | null;
   key: string;
   title: string;
   description: string;
@@ -300,6 +305,8 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
       done_when: doneWhen(row),
       waiting_on:
         row.status === "resolved" ? "nobody" : row.ready_at !== null ? "customer" : "team",
+      // A demo connection sees no visitor's words, and a customer's comment is a visitor's.
+      customer_answer: isDemoAgent(actor) ? null : (repository.latestAnswer(db, row.id) ?? null),
       key: buildKey(prefix, row.id),
       title: row.title,
       description: row.description,
@@ -782,7 +789,8 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
           actorKind: actor.kind,
           context: agentContext(actor),
           type: "customer_answered",
-          data: { fixed: fixed === "yes" },
+          // A no keeps the customer's words with the answer, so the owner sees them with it.
+          data: fixed === "yes" ? { fixed: true } : { fixed: false, comment },
           now,
         });
         return { ...before, status, ...noQuestion, updated_at: now } as repository.TicketRow;
@@ -1217,6 +1225,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
           ticket.status !== "in_progress",
         agreeCheck: !archived && can(actor, "agree_check", ticket),
         linkChange: !archived && can(actor, "link_change", ticket),
+        attachEvidence: !archived && can(actor, "attach_evidence", ticket),
         markReady:
           !archived &&
           can(actor, "mark_ready", ticket) &&

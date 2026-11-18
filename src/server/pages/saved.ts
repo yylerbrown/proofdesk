@@ -15,6 +15,7 @@ export const SAVED_MESSAGES = {
   restored: "Ticket restored.",
   archived: "Ticket archived.",
   check: "Agreed check saved.",
+  evidence: "Evidence attached. It is shown as reported by you; it does not resolve the ticket.",
   link: "Change link saved.",
   ready: "The customer has been asked to check the fix.",
   fixed: "Thank you. The ticket is resolved.",

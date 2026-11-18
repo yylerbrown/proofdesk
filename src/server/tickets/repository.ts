@@ -253,6 +253,36 @@ export function saveIdempotency(db: Db, row: IdempotencyRow): void {
   ).run(row);
 }
 
+/**
+ * The customer's latest answer to "Did this fix it?" on a ticket, with their comment for a no,
+ * or undefined if they have never answered. An answer recorded before comments were kept in
+ * the history finds its comment in the reply written at the same moment.
+ */
+export function latestAnswer(
+  db: Db,
+  ticketId: number,
+): { fixed: boolean; at: string; comment: string | null } | undefined {
+  const event = db
+    .prepare(
+      `SELECT actor, data, created_at FROM ticket_events
+       WHERE ticket_id = ? AND type = 'customer_answered' ORDER BY id DESC LIMIT 1`,
+    )
+    .get(ticketId) as { actor: string; data: string; created_at: string } | undefined;
+  if (event === undefined) return undefined;
+  const data = JSON.parse(event.data) as { fixed?: boolean; comment?: string };
+  let comment = data.comment ?? null;
+  if (data.fixed === false && comment === null) {
+    const entry = db
+      .prepare(
+        `SELECT body FROM ticket_entries
+         WHERE ticket_id = ? AND author = ? AND created_at = ? AND kind = 'reply' LIMIT 1`,
+      )
+      .get(ticketId, event.actor, event.created_at) as { body: string } | undefined;
+    comment = entry?.body ?? null;
+  }
+  return { fixed: data.fixed === true, at: event.created_at, comment };
+}
+
 /** The named human owner of a ticket right now, or null. */
 export function ownerOf(db: Db, ticketId: number): string | null {
   const row = db.prepare("SELECT owner_id FROM tickets WHERE id = ?").get(ticketId) as

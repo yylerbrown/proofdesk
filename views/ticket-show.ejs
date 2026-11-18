@@ -22,6 +22,25 @@
     with the panel between the description and the conversation. %>
 <div class="ticket-layout">
 <div class="ticket-summary">
+<%# The customer said it is not fixed: shown first, until the team asks them again. %>
+<% if (ticket.customer_answer && !ticket.customer_answer.fixed && ticket.ready_at === null && ticket.status !== "resolved") { %>
+<article class="customer-said-no" id="customer-said-no">
+  <% if (viewerRole === "customer") { %>
+  <h2>You said it is not fixed</h2>
+  <% } else { %>
+  <h2>The customer says it is not fixed</h2>
+  <% } %>
+  <% if (ticket.customer_answer.comment) { %>
+  <blockquote class="user-text"><%= ticket.customer_answer.comment %></blockquote>
+  <% } %>
+  <p><small>Answered <%- include("time", { iso: ticket.customer_answer.at }) %>.</small></p>
+  <% if (viewerRole === "customer") { %>
+  <p>The team has your words. You will be asked again when they think it is fixed.</p>
+  <% } else { %>
+  <p>It is back with <strong><%= ticket.owner_name ?? "the team" %></strong>. Fix what the customer describes, then ask them again.</p>
+  <% } %>
+</article>
+<% } %>
 <%# The only tick inside the product: the customer said yes, it is fixed. %>
 <% if (confirmed) { %>
 <article class="confirmed">
@@ -137,11 +156,39 @@
 
 <%- include("spec", { specPanel }) %>
 
-<% if (evidence.length > 0) { %>
+<% if (evidence.length > 0 || allowed.attachEvidence) { %>
 <section>
   <h2>Evidence</h2>
-  <p class="evidence-note">Reported by the team. Not checked by Proofdesk.</p>
+  <% if (evidence.length > 0) { %>
+  <p class="evidence-note">As reported by whoever attached it. Not checked by Proofdesk.</p>
   <%- include("evidence", { evidence }) %>
+  <% } %>
+  <% if (allowed.attachEvidence) { %>
+  <details <% if (problem?.form === "evidence") { %>open<% } %>>
+    <summary>Attach evidence</summary>
+    <form method="post" action="/tickets/<%= ticket.key %>/evidence">
+      <label>
+        Kind
+        <select name="kind">
+          <option value="check_run">I checked it</option>
+          <option value="test">A test</option>
+          <option value="change_link">A change</option>
+          <option value="note">A note</option>
+        </select>
+      </label>
+      <label>
+        What it shows
+        <input type="text" name="summary" required maxlength="500" <% if (problem?.form === "evidence") { %>aria-invalid="true" aria-describedby="evidence-error"<% } %> />
+        <% if (problem?.form === "evidence") { %><small id="evidence-error"><%= problem.message %></small><% } %>
+      </label>
+      <label>
+        Link (optional)
+        <input type="url" name="link" placeholder="https://" />
+      </label>
+      <button type="submit" class="secondary compact">Attach evidence</button>
+    </form>
+  </details>
+  <% } %>
 </section>
 <% } %>
 
