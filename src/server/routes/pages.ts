@@ -50,6 +50,8 @@ const SAMPLE_FIX = {
   change_url: "https://example.com/demo-sample-fix",
   tried: "Demo sample value: I followed the customer's steps on the page to try.",
   result: "Demo sample value: it worked as the customer's check describes.",
+  // Asked again after the customer's No, the owner says what changed since.
+  response: "Demo sample value: I changed what the customer said still failed, and tried it again.",
 };
 
 /** The sample a demo visitor files when they start the ticket workflow. Made up, like the demo. */
@@ -76,6 +78,90 @@ function demoNext(ticket: Ticket, actor: Actor) {
   }
   if (actor.role !== "customer" && filer !== undefined && filer.id !== actor.id) {
     return { switchTo: filer.id, label: "View this ticket as the customer who filed it" };
+  }
+  return null;
+}
+
+// A person who pressed "Not now" on the invitation to connect an assistant: kept in their
+// browser, so it needs no account setting and no script.
+const INVITE_COOKIE = "assistant_invite";
+const INVITE_HIDDEN_FOR = 365 * 24 * 60 * 60 * 1000;
+
+/**
+ * Where to connect an assistant, for the team only: an admin's connections page, or on the demo
+ * the welcome page's own demo connection. Null for a team member, who cannot connect one.
+ */
+function connectUrl(actor: Actor): string | null {
+  if (actor.demo === true) return "/sign-in";
+  return can(actor, "manage_connections") ? "/connections" : null;
+}
+
+/** The one step a viewer can take now, as the ticket page's primary button. */
+type NextStep = {
+  label: string;
+  /** A form the button submits, or else the place on the page the button leads to. */
+  form?: { action: string; fields?: Record<string, string> };
+  href?: string;
+  /** One line saying what this step is for, after the button. */
+  note?: string;
+};
+
+/**
+ * The step this viewer can take now: take the ticket, start work, link the code change (on the
+ * demo, the sample fix), ask the customer how they will know it is fixed, then ask them to
+ * verify. Each is possible when it is shown; null when there is nothing for this viewer to press.
+ */
+function nextStep(
+  ticket: Ticket,
+  actor: Actor,
+  allowed: ReturnType<TicketService["allowedActions"]>,
+  sampleFix: boolean,
+): NextStep | null {
+  const at = `/tickets/${ticket.key}`;
+  if (allowed.takeAndStart) {
+    return { label: "Take ticket and start work", form: { action: `${at}/take-and-start` } };
+  }
+  if (allowed.start) {
+    return {
+      label: "Start work",
+      form: { action: `${at}/status`, fields: { status: "in_progress" } },
+    };
+  }
+  // After that, only the owner of a ticket in progress has a step, until the customer is asked.
+  const owning =
+    ticket.owner_id === actor.id &&
+    ticket.status === "in_progress" &&
+    ticket.ready_at === null &&
+    ticket.archived_at === null;
+  if (!owning) return null;
+  if (ticket.change_url === null) {
+    if (sampleFix) {
+      return {
+        label: "Use sample fix",
+        form: { action: `${at}/sample-fix` },
+        note: "Next: link the code change. On the demo, a labelled sample stands in for it.",
+      };
+    }
+    if (!allowed.linkChange) return null;
+    return {
+      label: "Add the code change link",
+      href: "#change-link",
+      note: "Next: link the code change, then ask the customer to verify.",
+    };
+  }
+  if (ticket.fix_check === null) {
+    return {
+      label: "Ask how they will know",
+      href: "#entry-body",
+      note: "Next: the customer has not said how they will know it is fixed. Ask them in a reply.",
+    };
+  }
+  if (allowed.markReady) {
+    return {
+      label: "Ask the customer to verify",
+      href: "#ask",
+      note: "Next: try it yourself, then ask the customer to verify.",
+    };
   }
   return null;
 }
@@ -165,6 +251,11 @@ export function pagesRouter(service: TicketService): Router {
       who: describeActor(event, names),
     }));
     const allowed = service.allowedActions(ticket, actor);
+    const sampleFix =
+      actor.demo === true &&
+      ticket.owner_id === actor.id &&
+      ticket.status === "in_progress" &&
+      ticket.ready_at === null;
     const evidence = service.listEvidence(ticket.key, actor);
     const agentHelp = service.agentHelp(ticket);
     // Once an assistant is at work on the ticket, the team's message box starts as an internal
@@ -179,11 +270,23 @@ export function pagesRouter(service: TicketService): Router {
       key: ticket.key,
       spec: service.getSpec(ticket.key, actor),
       canDecide: allowed.decideSpec,
-      // Where to connect an assistant: an admin's connections, or the demo's own button.
-      connectUrl: actor.demo === true ? "/sign-in" : "/connections",
-      offerPrompt:
-        ticket.archived_at === null && ticket.status !== "resolved" && can(actor, "list_all"),
     };
+    // One quiet line under the conversation suggesting the team ask an assistant for a spec:
+    // while there is none and the ticket is not already handed to an assistant.
+    const specPrompt =
+      !specPanel.spec &&
+      ticket.archived_at === null &&
+      ticket.status !== "resolved" &&
+      can(actor, "list_all") &&
+      agentHelp.current === null &&
+      !agentHelp.demoSample
+        ? {
+            key: ticket.key,
+            // Once an assistant is connected, the line need not say how to connect one.
+            connectUrl:
+              actor.demo !== true && agentHelp.candidates.length > 0 ? null : connectUrl(actor),
+          }
+        : null;
     res.status(status).render("ticket-show", {
       ...helpers,
       title: `${ticket.key}: ${ticket.title}`,
@@ -194,17 +297,15 @@ export function pagesRouter(service: TicketService): Router {
       assistantSignal: service.assistantSignals([ticket], actor).get(ticket.key) ?? null,
       demoNext: demoNext(ticket, actor),
       // On the demo, the owner of a ticket in progress may fill the fix with sample values.
-      sampleFix:
-        actor.demo === true &&
-        ticket.owner_id === actor.id &&
-        ticket.status === "in_progress" &&
-        ticket.ready_at === null,
+      sampleFix,
+      nextStep: nextStep(ticket, actor, allowed, sampleFix),
       askSample:
         actor.demo === true && req.query.sample === "1"
           ? {
               try_url: ticket.try_url ?? ticket.where_url ?? "https://example.com/demo-sample-page",
               tried: SAMPLE_FIX.tried,
               result: SAMPLE_FIX.result,
+              response: SAMPLE_FIX.response,
             }
           : null,
       recordedRun: service.recordedRunKey() === ticket.key,
@@ -215,6 +316,7 @@ export function pagesRouter(service: TicketService): Router {
       confirmed: confirmedAt(ticket, events),
       evidence,
       specPanel,
+      specPrompt,
       allowed,
       entry: shownEntry,
       problem,
@@ -261,6 +363,17 @@ export function pagesRouter(service: TicketService): Router {
     const pageNumber = page ?? 1;
     const tickets = service.listTickets(current, actor, pageNumber);
     const signals = service.assistantSignals(tickets, actor);
+    // The invitation to bring an assistant: for the team only, until one is connected. On the
+    // demo every visitor gets their own connection, so it always invites.
+    const connected = actor.demo === true ? 0 : service.connectedAssistants();
+    const invite =
+      actor.role === "customer"
+        ? null
+        : connected > 0
+          ? { connected, manage: can(actor, "manage_connections") }
+          : req.cookies?.[INVITE_COOKIE] === "hidden"
+            ? null
+            : { connected: 0, connectUrl: connectUrl(actor) };
     res.render("ticket-list", {
       ...helpers,
       title:
@@ -281,7 +394,20 @@ export function pagesRouter(service: TicketService): Router {
       // A full page means there may be older tickets on the next one.
       nextPage: tickets.length === LIST_PAGE_SIZE ? pageNumber + 1 : null,
       showArchivedFilter: can(actor, "list_archived"),
+      invite,
     });
+  });
+
+  // "Not now" on the invitation to connect an assistant hides it in this browser.
+  router.post("/assistant-invite/hide", (req, res) => {
+    signedIn(req);
+    res.cookie(INVITE_COOKIE, "hidden", {
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: INVITE_HIDDEN_FOR,
+      path: "/",
+    });
+    res.redirect(303, "/tickets");
   });
 
   // Registered before "/tickets/:key" so that "new" is not read as a ticket key.

@@ -64,3 +64,19 @@ describe("confirmation pages", () => {
     expect(choice[0]?.classList.contains("danger")).toBe(false);
   });
 });
+
+describe("who sees a message", () => {
+  it("puts the two choices in one track of their own, apart from the legend", async () => {
+    const { app } = buildTestApp();
+    await admin(app).post("/api/tickets").send(valid);
+    const html = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
+    const fieldset = html.querySelector("fieldset:has(input[name=kind])")!;
+    expect(fieldset.querySelector("legend")?.text).toBe("Who sees it");
+    const track = fieldset.querySelector(".kind-choice")!;
+    expect(track.querySelectorAll("input[name=kind]").map((i) => i.getAttribute("value"))).toEqual([
+      "reply",
+      "note",
+    ]);
+    expect(track.querySelector("legend")).toBeNull();
+  });
+});
