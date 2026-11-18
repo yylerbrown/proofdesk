@@ -49,7 +49,7 @@
       <% for (const ticket of tickets) { %>
       <tr>
         <td><a href="/tickets/<%= ticket.key %>"><%= ticket.key %></a></td>
-        <td class="user-text"><%= ticket.title %></td>
+        <td class="user-text" title="<%= ticket.title %>"><%= ticket.title %></td>
         <td><%- include("status-badge", { status: ticket.status }) %></td>
         <td><%= ticket.owner_name ?? "Unassigned" %></td>
         <td><%= ticket.waiting %></td>
