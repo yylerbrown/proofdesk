@@ -3,40 +3,42 @@
 Every step here is the owner's to run. Nothing in the repository creates accounts, disks,
 secrets or machines.
 
-The app `support-desk-demo` runs the **public demo** at `https://support-desk-demo.fly.dev`:
-`DEMO=on`, set in `fly.toml`, so it offers the three demo people, sample tickets and no
-GitHub sign-in. The settings are in `fly.toml`: one machine, always on, in the `sjc` region,
-with the disk `support_desk_data` at `/data` for the SQLite file.
+There are two apps, both in the `sjc` region, each with one machine, always on, and its own disk
+named `support_desk_data` at `/data` for the SQLite file:
 
-The real site, with GitHub sign-in, would be a **second app with its own disk**. A database
-records whether it is for the demo or for real tickets, and the server refuses to start on the
-wrong one, so the two can never share a disk.
+| App                 | Address                             | Settings             | What it is                                                                               |
+| ------------------- | ----------------------------------- | -------------------- | ---------------------------------------------------------------------------------------- |
+| `support-desk-demo` | `https://support-desk-demo.fly.dev` | `fly.toml`           | The public demo: `DEMO=on`, the three demo people and sample tickets, no GitHub sign-in. |
+| `proofdesk`         | `https://proofdesk.fly.dev`         | `fly.proofdesk.toml` | The real site, with GitHub sign-in.                                                      |
 
-## The demo app's disk
+A database records whether it is for the demo or for real tickets, and the server refuses to
+start on the wrong one, so the two can never share a disk.
+
+## The disks
 
 Made once, already done:
 
 ```sh
 fly volumes create support_desk_data --app support-desk-demo --region sjc --size 1
+fly volumes create support_desk_data --app proofdesk --region sjc --size 1
 ```
 
-## A second app for the real site
+## The real site's sign-in
 
-Not made yet. It needs its own app name, its own copy of `fly.toml` without `DEMO`, and its
-own disk (the same command as above, with its app name). Then:
+Done once, already done:
 
 1. **A GitHub OAuth app for it**, separate from the local one, because the callback address
    differs:
-   - Homepage URL: `https://<app name>.fly.dev`
-   - Authorization callback URL: `https://<app name>.fly.dev/api/auth/callback/github`
+   - Homepage URL: `https://proofdesk.fly.dev`
+   - Authorization callback URL: `https://proofdesk.fly.dev/api/auth/callback/github`
 2. **The secrets.** Generate a new secret for production; do not reuse the local one. Set
    `ADMIN_GITHUB_IDS` to the GitHub user numbers of the admins (and `TEAM_GITHUB_IDS` for team
    members). A number can be read at `https://api.github.com/users/<user name>`.
 
    ```sh
-   fly secrets set --app <app name> \
+   fly secrets set --app proofdesk \
      BETTER_AUTH_SECRET="$(openssl rand -base64 32)" \
-     BETTER_AUTH_URL=https://<app name>.fly.dev \
+     BETTER_AUTH_URL=https://proofdesk.fly.dev \
      GITHUB_CLIENT_ID=<from the OAuth app> \
      GITHUB_CLIENT_SECRET=<from the OAuth app> \
      ADMIN_GITHUB_IDS=<numbers>
@@ -45,7 +47,8 @@ own disk (the same command as above, with its app name). Then:
    The server refuses to start in production without the four sign-in settings, or with an
    address that does not start with `https://`.
 
-The rest of this guide names the demo app; use the second app's name for the real site.
+The commands below name the demo app; for the real site use `--app proofdesk`, and deploy it with
+`--config fly.proofdesk.toml`.
 
 ## Deploy
 
@@ -53,11 +56,12 @@ By hand, from the project folder:
 
 ```sh
 fly deploy --app support-desk-demo
+fly deploy --config fly.proofdesk.toml
 ```
 
 Or from GitHub: create a deploy token with `fly tokens create deploy --app support-desk-demo`,
 save it as the repository secret `FLY_API_TOKEN`, and run the **Deploy** workflow from the
-Actions tab. It never runs on its own.
+Actions tab. It never runs on its own, and it deploys the demo (`fly.toml`) only.
 
 With one machine and one disk, each deploy has a few seconds of downtime.
 

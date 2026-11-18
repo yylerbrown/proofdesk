@@ -305,8 +305,8 @@ unless another is named):
 
 ## Deploying
 
-The demo runs on Fly.io: one machine, always on, with a disk for the SQLite file. The real site
-with GitHub sign-in would be a second app with its own disk. The settings are in `fly.toml` and every step is in `docs/DEPLOY.md`. The **Deploy** workflow runs only
+The demo runs on Fly.io: one machine, always on, with a disk for the SQLite file. The real site,
+`proofdesk`, with GitHub sign-in, is a second app with its own disk (`fly.proofdesk.toml`). The settings are in `fly.toml` and every step is in `docs/DEPLOY.md`. The **Deploy** workflow runs only
 when started by hand.
 
 ## Tests and checks
