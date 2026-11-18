@@ -1,0 +1,41 @@
+# Fly.io configuration for the hosted copy. Nothing in the repository runs it: the owner
+# deploys by hand (see docs/DEPLOY.md) or with the manual workflow in
+# .github/workflows/deploy.yml.
+
+app = "support-desk-demo"
+primary_region = "sea"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "3000"
+  DATABASE_PATH = "/data/app.db"
+  # Where Fly's proxy puts the visitor's address. Used for rate limits. See docs/DEPLOY.md:
+  # this must be checked on the first deploy.
+  CLIENT_IP_HEADER = "fly-client-ip"
+
+# The disk that holds the database. Create it once with: fly volumes create support_desk_data
+[[mounts]]
+  source = "support_desk_data"
+  destination = "/data"
+
+# One machine, always on: SQLite lives on its disk, so there is exactly one copy.
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
+    path = "/api/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

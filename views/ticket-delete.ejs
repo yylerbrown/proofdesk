@@ -1,0 +1,19 @@
+<%- include("header") %>
+<h1>Delete <%= ticket.key %> permanently?</h1>
+<p><strong><%= ticket.title %></strong></p>
+
+<p>This removes the title, the description, the link, the check, the conversation and the whole history of this ticket. It cannot be undone. Only the number <%= ticket.key %>, the time and your account id are kept, so that the number is never used again.</p>
+<p>It does not reach backups, the host's snapshots of the disk until they expire, or anything already sent elsewhere.</p>
+
+<form method="post" action="/tickets/<%= ticket.key %>/delete">
+  <label>
+    Type <%= ticket.key %> to confirm
+    <input type="text" name="confirm" autocomplete="off" required <% if (error) { %>aria-invalid="true"<% } %> />
+    <% if (error) { %><small><%= error %></small><% } %>
+  </label>
+  <div role="group">
+    <a href="/tickets/<%= ticket.key %>" role="button" class="secondary">Keep ticket</a>
+    <button type="submit">Delete permanently</button>
+  </div>
+</form>
+<%- include("footer") %>

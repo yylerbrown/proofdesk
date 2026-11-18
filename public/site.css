@@ -1,0 +1,19 @@
+/* Text typed by a customer keeps its line breaks, and a long word cannot widen the page. */
+.user-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* The sign-out button sits inside a line of small text, so it stays small and inline. */
+.sign-out {
+  display: inline;
+  width: auto;
+  padding: 0.1rem 0.5rem;
+  margin: 0 0 0 0.5rem;
+  font-size: inherit;
+}
+
+/* An internal note is set apart, so it is never mistaken for a reply the customer sees. */
+.entry.note {
+  border-left: 4px solid var(--pico-del-color);
+}
