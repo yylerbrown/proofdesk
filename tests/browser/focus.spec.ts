@@ -3,8 +3,8 @@ import { expect, test, type Page } from "@playwright/test";
 // Where keyboard focus goes, in a real browser. After an action the saved line at the top has
 // focus, so a screen reader reads it and the next Tab goes on from there; a reply that lands on
 // #conversation keeps its place; a search puts focus back in the search box. A control reached
-// with Shift+Tab is never left under the sticky header. Escape closes the Resolve panel and
-// returns focus to it, and the More menu opens in view.
+// with Shift+Tab is never left under the sticky header. Escape closes the Resolve and Reopen
+// panels and returns focus to them, and the More menu opens in view.
 
 async function signIn(page: Page, person: string) {
   await page.goto("/sign-in");
@@ -57,6 +57,9 @@ test("focus starts from the saved line, the conversation or the search box", asy
     await page.getByRole("button", { name: "Search", exact: true }).click();
     await expect(page).toHaveURL(/q=saved/);
     await expect(search).toBeFocused();
+    // The cursor sits after the old words, so typing adds to them in every browser.
+    await page.keyboard.type(" here");
+    await expect(search).toHaveValue("saved line here");
   });
 
   await test.step("a plain visit leaves focus where the browser puts it", async () => {
@@ -65,7 +68,9 @@ test("focus starts from the saved line, the conversation or the search box", asy
   });
 });
 
-test("the team's ticket page: Shift+Tab, Escape on Resolve and More", async ({ page }) => {
+test("the team's ticket page: Shift+Tab, Escape on Resolve and Reopen, and More", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await signIn(page, "Customer One");
   await page.goto("/tickets/new");
@@ -140,5 +145,22 @@ test("the team's ticket page: Shift+Tab, Escape on Resolve and More", async ({ p
       .evaluate((header) => header.getBoundingClientRect().bottom);
     expect(menuTop).toBeGreaterThanOrEqual(headerBottom);
     await expect(menu.locator(":is(a, button)").last()).toBeInViewport({ ratio: 1 });
+  });
+
+  await test.step("Escape closes Reopen and puts focus back on it", async () => {
+    await page.keyboard.press("Escape");
+    const resolve = page.locator("details.resolve");
+    await resolve.locator("summary").click();
+    await resolve.locator('button[type="submit"]').click();
+    await expect(page.locator('main > p[role="status"]')).toBeVisible();
+    const reopen = page.locator("details.reopen");
+    const summary = reopen.locator("summary");
+    await summary.focus();
+    await page.keyboard.press("Enter");
+    await expect(reopen).toHaveAttribute("open", "");
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Escape");
+    await expect(reopen).not.toHaveAttribute("open");
+    await expect(summary).toBeFocused();
   });
 });

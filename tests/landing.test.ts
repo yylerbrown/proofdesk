@@ -1,6 +1,11 @@
 import { parse } from "node-html-parser";
 import { describe, expect, it } from "vitest";
-import { focusLanding, type Focusable, type Landing } from "../src/browser/landing.js";
+import {
+  focusLanding,
+  type Focusable,
+  type Landing,
+  type SearchBox,
+} from "../src/browser/landing.js";
 import { admin, buildTestApp } from "./helpers.js";
 
 // Where focus starts when a page opens just after an action: on the saved or refused line at the
@@ -22,6 +27,20 @@ function fakeElement() {
   return { element, attributes, focusCalls };
 }
 
+/** A stand-in search box holding some words, which records where its cursor was put. */
+function fakeSearchBox(value: string) {
+  const { element, focusCalls } = fakeElement();
+  const selections: [number, number][] = [];
+  const box: SearchBox = {
+    ...element,
+    value,
+    setSelectionRange: (start, end) => {
+      selections.push([start, end]);
+    },
+  };
+  return { box, focusCalls, selections };
+}
+
 function landing(parts: Partial<Landing>): Landing {
   return { hash: "", focusTaken: false, message: null, searchBox: null, ...parts };
 }
@@ -36,16 +55,17 @@ describe("the landing script", () => {
 
   it("prefers the saved line to the search box", () => {
     const message = fakeElement();
-    const search = fakeElement();
-    focusLanding(landing({ message: message.element, searchBox: search.element }));
+    const search = fakeSearchBox("printer");
+    focusLanding(landing({ message: message.element, searchBox: search.box }));
     expect(message.focusCalls.length).toBe(1);
     expect(search.focusCalls.length).toBe(0);
   });
 
-  it("puts focus back in the search box after a search", () => {
-    const search = fakeElement();
-    expect(focusLanding(landing({ searchBox: search.element }))).toBe(search.element);
+  it("puts focus back in the search box after a search, with the cursor after the words", () => {
+    const search = fakeSearchBox("printer");
+    expect(focusLanding(landing({ searchBox: search.box }))).toBe(search.box);
     expect(search.focusCalls).toEqual([{ preventScroll: true }]);
+    expect(search.selections).toEqual([[7, 7]]);
   });
 
   it("leaves focus alone when the address names a part of the page", () => {

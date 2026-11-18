@@ -99,7 +99,9 @@ if (typeof document !== "undefined") {
       });
     }
   }
-  for (const panel of document.querySelectorAll<HTMLDetailsElement>("details.resolve")) {
+  for (const panel of document.querySelectorAll<HTMLDetailsElement>(
+    "details.resolve, details.reopen",
+  )) {
     const button = panel.querySelector("summary");
     if (button !== null) closeOnEscape(panel as unknown as Menu, button);
   }

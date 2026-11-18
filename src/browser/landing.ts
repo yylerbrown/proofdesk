@@ -3,7 +3,8 @@
 // After a save or a refusal the page opens with one line at the top of the content, such as
 // "You own this ticket, and it is in progress." This script moves focus to that line, so a
 // screen reader reads it and the next Tab goes on from there, not from the top of the page.
-// After a search, focus goes back to the search box instead, ready for the next words.
+// After a search, focus goes back to the search box instead, with the cursor after the words
+// already there, so the next typing adds to them in every browser.
 //
 // Focus is left alone when the address names a part of the page, such as #conversation, or
 // when the page has already put focus on a box with something to fix.
@@ -12,6 +13,12 @@
 export type Focusable = {
   setAttribute(name: string, value: string): void;
   focus(options: { preventScroll: boolean }): void;
+};
+
+/** The search box: it takes focus, and its cursor can be moved. */
+export type SearchBox = Focusable & {
+  value: string;
+  setSelectionRange(start: number, end: number): void;
 };
 
 /** What this code reads from the page as it opens. */
@@ -23,7 +30,7 @@ export type Landing = {
   /** The saved or refused line at the top of the content, if there is one. */
   message: Focusable | null;
   /** The list's search box when the address holds a search, otherwise null. */
-  searchBox: Focusable | null;
+  searchBox: SearchBox | null;
 };
 
 /** Moves focus to where the page should start. Returns what it focused, or null. */
@@ -37,6 +44,9 @@ export function focusLanding(landing: Landing): Focusable | null {
   }
   if (landing.searchBox !== null) {
     landing.searchBox.focus({ preventScroll: true });
+    // Without this, one browser puts the cursor before the old words and another selects them.
+    const end = landing.searchBox.value.length;
+    landing.searchBox.setSelectionRange(end, end);
     return landing.searchBox;
   }
   return null;
