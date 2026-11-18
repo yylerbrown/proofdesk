@@ -103,6 +103,10 @@ describe("the demo's ask", () => {
       ready_at: null,
     });
   });
+
+  it("leaves no styles behind for the removed sample fix", () => {
+    expect(fs.readFileSync("public/site.css", "utf8")).not.toContain("sample-fix");
+  });
 });
 
 describe("the header on a phone", () => {
