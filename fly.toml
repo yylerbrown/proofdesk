@@ -23,6 +23,9 @@ primary_region = "sjc"
   DEMO = "on"
   # Where GitHub sign-in with roles runs, named on the demo's welcome page.
   REAL_SITE_URL = "https://proofdesk.fly.dev"
+  # The demo's own address, given in the commands a visitor pastes into an assistant. Fly's
+  # proxy ends HTTPS, so a request reaches the server over plain http and cannot tell.
+  PUBLIC_URL = "https://support-desk-demo.fly.dev"
 
 # The disk that holds the database. Create it once with: fly volumes create support_desk_data
 [[mounts]]

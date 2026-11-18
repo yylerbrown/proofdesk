@@ -5,6 +5,7 @@ import { parse } from "node-html-parser";
 import request from "supertest";
 import type { Express } from "express";
 import { afterEach, describe, expect, it } from "vitest";
+import { LIST_PAGE_SIZE } from "../src/server/tickets/service.js";
 import {
   admin,
   as,
@@ -95,6 +96,46 @@ describe("what a connection can reach", () => {
     const key = await issue(app);
     expect((await asAgent(app, key).get("/api/tickets")).body).toEqual([]);
     expect((await asAgent(app, key).get("/api/tickets/SUP-1")).status).toBe(404);
+  });
+
+  it("its own tickets behind 101 newer ones, a full page at a time", async () => {
+    const { app, db } = buildTestApp();
+    await as(app, customerOne).post("/api/tickets").send(valid);
+    const key = await issue(app);
+    await handToAgent(app, "SUP-1", key);
+    // 101 newer open tickets that are not its own: more than a page.
+    const now = new Date().toISOString();
+    const insert = db.prepare(
+      "INSERT INTO tickets (title, description, created_by, created_at, updated_at) VALUES ('t', 'd', 'dev-customer-1', ?, ?)",
+    );
+    for (let i = 0; i < LIST_PAGE_SIZE + 1; i++) insert.run(now, now);
+    const alone = await asAgent(app, key).get("/api/tickets");
+    expect(alone.body.map((t: { key: string }) => t.key)).toEqual(["SUP-1"]);
+    expect(alone.headers.link).toBeUndefined();
+
+    // Then every newer one but the newest is handed to it too: 101 of its own, with the
+    // newest ticket someone else's. The first page is full and names the next.
+    const { id: connectionId } = db.prepare("SELECT id FROM agent_connections").get() as {
+      id: number;
+    };
+    const start = db.prepare(
+      "UPDATE tickets SET status = 'in_progress', owner_id = 'dev-admin-1' WHERE id = ?",
+    );
+    const hand = db.prepare(
+      "INSERT INTO ticket_agent_handoffs (ticket_id, connection_id, granted_by, granted_at) VALUES (?, ?, 'dev-admin-1', ?)",
+    );
+    for (let id = 2; id <= LIST_PAGE_SIZE + 1; id++) {
+      start.run(id);
+      hand.run(id, connectionId, now);
+    }
+    const first = await asAgent(app, key).get("/api/tickets");
+    expect(first.body).toHaveLength(LIST_PAGE_SIZE);
+    expect(first.body[0].key).toBe(`SUP-${LIST_PAGE_SIZE + 1}`);
+    const next = /<([^>]+)>; rel="next"/.exec(first.headers.link ?? "")?.[1];
+    expect(next).toMatch(/^\/api\/tickets\?cursor=/);
+    const second = await asAgent(app, key).get(next!);
+    expect(second.body.map((t: { key: string }) => t.key)).toEqual(["SUP-1"]);
+    expect(second.headers.link).toBeUndefined();
   });
 });
 

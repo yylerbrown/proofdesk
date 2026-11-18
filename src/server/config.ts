@@ -35,6 +35,8 @@ const schema = z.object({
   REAL_SITE_URL: z.url({ protocol: /^https$/ }).optional(),
   // The repository's https address, for the "Source and setup" link to its README.
   SOURCE_URL: z.url({ protocol: /^https$/ }).optional(),
+  // The address people and assistants reach this server at, given in the commands to paste.
+  PUBLIC_URL: z.url({ protocol: /^https?$/ }).optional(),
 });
 
 const SIGN_IN_NAMES = [
@@ -70,6 +72,8 @@ export type Config = {
   realSiteUrl: string | undefined;
   /** The repository's https address, for a link to its README. Optional. */
   sourceUrl: string | undefined;
+  /** The address people and assistants reach this server at. Optional. */
+  publicUrl: string | undefined;
   /**
    * A header that the host's proxy sets to the visitor's address, or undefined to use the
    * address of the connection. Behind a proxy the connection always comes from the proxy.
@@ -99,6 +103,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     DEMO_URL: env.DEMO_URL || undefined,
     REAL_SITE_URL: env.REAL_SITE_URL || undefined,
     SOURCE_URL: env.SOURCE_URL || undefined,
+    PUBLIC_URL: env.PUBLIC_URL || undefined,
   });
   if (!result.success) {
     const details = result.error.issues
@@ -164,6 +169,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     demoUrl: data.DEMO === "on" ? undefined : data.DEMO_URL,
     realSiteUrl: data.DEMO === "on" ? data.REAL_SITE_URL : undefined,
     sourceUrl: data.SOURCE_URL?.replace(/\/+$/, ""),
+    publicUrl: data.PUBLIC_URL?.replace(/\/+$/, ""),
     clientIpHeader: data.CLIENT_IP_HEADER,
     teamGithubIds: data.TEAM_GITHUB_IDS,
     adminGithubIds: data.ADMIN_GITHUB_IDS,

@@ -734,21 +734,26 @@ export function createTicketService(
      */
     listTickets(filter: TicketListFilter, actor: Actor, pageNumber = 1): Ticket[] {
       const page = { limit: LIST_PAGE_SIZE, offset: (pageNumber - 1) * LIST_PAGE_SIZE };
-      const view = (rows: repository.TicketRow[]) => {
-        if (isHandedAgent(actor)) {
-          const handed = repository.handedTicketIds(db, actor.connection!.id);
-          return rows.filter((row) => handed.includes(row.id)).map((row) => toTicket(row, actor));
-        }
-        if (!isDemoAgent(actor)) return rows.map((row) => toTicket(row, actor));
-        const seeded = demoTicketIds();
-        return rows.filter((row) => seeded.includes(row.id)).map((row) => toTicket(row, actor));
-      };
+      const view = (rows: repository.TicketRow[]) => rows.map((row) => toTicket(row, actor));
       if (filter === "archived") {
         requirePermission(actor, "list_archived");
         return view(repository.listArchivedTickets(db, page));
       }
       const status = filter === "all" ? null : filter;
-      if (can(actor, "list_all")) return view(repository.listAllTickets(db, status, page));
+      if (can(actor, "list_all")) {
+        // An assistant lists only its own tickets: the ones handed to its connection, or on
+        // the demo the sample made for assistants. They are picked in SQL before the page is
+        // cut, so newer tickets never push them off a page.
+        if (isHandedAgent(actor)) {
+          const handed = repository.handedTicketIds(db, actor.connection!.id);
+          return view(repository.listTicketsAmong(db, handed, status, page));
+        }
+        if (isDemoAgent(actor)) {
+          return view(repository.listTicketsAmong(db, demoTicketIds(), status, page));
+        }
+        return view(repository.listAllTickets(db, status, page));
+      }
+      // An assistant files no tickets, so for one this list is empty.
       return view(repository.listTicketsFiledBy(db, actor.id, status, page));
     },
 
