@@ -81,6 +81,22 @@ export const DEMO_BUDGET: Budget = { tickets: 200, entriesPerTicket: 50, eventsP
 export const LIST_PAGE_SIZE = 100;
 export const THREAD_LIMIT = 200;
 
+// The kinds of history entry a customer may see. Any other kind, including one added later,
+// stays hidden from customers until it is added here on purpose. "note_added" is left out.
+const CUSTOMER_EVENT_TYPES = new Set([
+  "created",
+  "status_changed",
+  "edited",
+  "owner_changed",
+  "check_agreed",
+  "reply_added",
+  "change_linked",
+  "ready_for_customer",
+  "customer_answered",
+  "archived",
+  "restored",
+]);
+
 // The fields of a ticket that is not waiting for the customer's answer.
 const noQuestion = { ready_at: null, ready_token: null };
 
@@ -386,10 +402,12 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
      */
     agreeCheck(key: string, input: unknown, actor: Actor): Ticket {
       const { agreed_check } = parse(agreeCheckSchema, input);
-      const agreed = agreed_check === "" ? null : agreed_check;
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "agree_check", before);
+        // The same words as the customer's are not a tighter check: keep none.
+        const agreed =
+          agreed_check === "" || agreed_check === before.fix_check ? null : agreed_check;
         requireNotArchived(key, before);
         if (before.agreed_check === agreed) return before; // nothing changes
         const now = new Date().toISOString();
@@ -559,6 +577,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
         requirePermission(actor, "archive", before);
         if (before.archived_at !== null) return before; // already archived
         const now = new Date().toISOString();
+        withdrawQuestion(before);
         repository.updateTicketArchived(db, before.id, now, now);
         logEvent({
           ticketId: before.id,
@@ -568,7 +587,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
           data: {},
           now,
         });
-        return { ...before, archived_at: now, updated_at: now };
+        return { ...before, archived_at: now, ...noQuestion, updated_at: now };
       })();
       return toTicket(row);
     },
@@ -599,7 +618,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
       const row = requireRow(key, actor);
       const events = repository.listEvents(db, row.id, THREAD_LIMIT).map(toEvent);
       if (can(actor, "read_notes", row)) return events;
-      return events.filter((event) => event.type !== "note_added");
+      return events.filter((event) => CUSTOMER_EVENT_TYPES.has(event.type));
     },
 
     /**
@@ -669,6 +688,11 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
       // The ticket is gone from the database now. Whether its old text has also left the
       // files on disk depends on the checkpoint, which reports it.
       return { filesCleaned: repository.flushDeletedContent(db) };
+    },
+
+    /** True when there are no tickets at all, archived ones included. */
+    hasNoTickets(): boolean {
+      return repository.countTickets(db) === 0;
     },
 
     /** What this actor may do to this ticket, for a page to decide which controls to show. */
