@@ -39,8 +39,8 @@ export function openSite(config: Config, log: LogLine, sayMigrations = true): Si
     // With GitHub sign-in and no admin in the settings, nobody can choose who is on the team.
     if (config.signIn !== null && config.adminGithubIds.length === 0) {
       console.warn(
-        "No admin is named in ADMIN_GITHUB_IDS, so nobody can open the People page. " +
-          "Set it to at least one GitHub user number.",
+        "No admin is named in ADMIN_GITHUB_IDS. " +
+          "Set it to at least one GitHub user number, so the site always has an admin.",
       );
     }
     // createApp checks the database's purpose first, so the demo is only seeded into a demo

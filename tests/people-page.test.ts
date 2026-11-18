@@ -148,6 +148,20 @@ describe("the People page for an admin", () => {
     expect(res.text).not.toContain("Invalid input");
   });
 
+  it("asks for a person and a role when a hand-made request is not a form", async () => {
+    const { boss, db, sam } = await peopleApp();
+    const res = await boss
+      .post("/people")
+      .set("Content-Type", "application/json")
+      .send(JSON.stringify({ person: sam.id, role: "team" }));
+    expect(res.status).toBe(400);
+    expect(parse(res.text).querySelector("p.refused")?.text).toContain(
+      "Choose a person and a role.",
+    );
+    expect(res.text).not.toContain("Invalid input");
+    expect(storedRole(db, sam.id)).toBeNull();
+  });
+
   it("refuses a role that is not one of the three, and changes nothing", async () => {
     const { boss, db, sam } = await peopleApp();
     const res = await boss.post("/people").type("form").send({ person: sam.id, role: "owner" });
@@ -448,8 +462,8 @@ describe("starting a server", () => {
 
   it("warns in one line when GitHub sign-in names no admin", () => {
     expect(start({})).toEqual([
-      "No admin is named in ADMIN_GITHUB_IDS, so nobody can open the People page. " +
-        "Set it to at least one GitHub user number.",
+      "No admin is named in ADMIN_GITHUB_IDS. " +
+        "Set it to at least one GitHub user number, so the site always has an admin.",
     ]);
   });
 

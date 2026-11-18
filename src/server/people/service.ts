@@ -76,10 +76,13 @@ const DEV_NOTE =
 /** What changeRole did: the person's id, and whether their role changed. */
 export type RoleChange = { personId: string; changed: boolean };
 
-const changeSchema = z.object({
-  person: z.string("Choose a person.").min(1, "Choose a person.").max(200),
-  role: z.enum(ROLES, "Choose customer, team member or admin."),
-});
+const changeSchema = z.object(
+  {
+    person: z.string("Choose a person.").min(1, "Choose a person.").max(200),
+    role: z.enum(ROLES, "Choose customer, team member or admin."),
+  },
+  "Choose a person and a role.",
+);
 
 /** Joins names as people write them: "A", "A and B", "A, B and C". */
 function listInWords(items: string[]): string {
