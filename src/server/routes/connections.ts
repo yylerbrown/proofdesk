@@ -61,8 +61,6 @@ export function connectionsRouter(
     const actor = signedIn(req);
     try {
       const { connection, key } = connections.create(req.body, actor);
-      // The page holds the key, which must never be kept in a browser's cache.
-      res.set("Cache-Control", "no-store");
       res.render("connection-created", {
         title: `Connection ${connection.name}`,
         connection,

@@ -215,19 +215,13 @@ describe("the demo's connections at its cap", () => {
 });
 
 describe("the page that shows a new key", () => {
-  it("is never kept by a browser, even for a demo visitor who is not signed in", async () => {
+  // A signed-in admin's page is never kept already, like every signed-in page.
+  it("is never kept by a demo visitor's browser, though the visitor is not signed in", async () => {
     const demo = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
     seedDemo(createTicketService(demo.db, demo.config.ticketPrefix));
     const shown = await visitor(demo.app).post("/demo/connection");
     expect(shown.text).toMatch(/value="pd_/);
     expect(shown.headers["cache-control"]).toBe("no-store");
-    const { app } = buildTestApp();
-    const issued = await admin(app)
-      .post("/connections")
-      .type("form")
-      .send({ name: "Helper", scopes: ["read_tickets"] });
-    expect(issued.text).toMatch(/value="pd_/);
-    expect(issued.headers["cache-control"]).toBe("no-store");
   });
 });
 
