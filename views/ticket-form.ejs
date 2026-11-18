@@ -3,6 +3,10 @@
   // The same form files a ticket and edits one. When editing, it posts to /tickets/KEY/edit.
   const editKey = action.endsWith("/edit") ? action.split("/")[2] : null;
   const fixCheckDescribedBy = errors.fix_check ? "fix_check-error fix_check-hint" : "fix_check-hint";
+  // After a refused submit, focus goes to the first box with a message, in form order, so a
+  // keyboard or screen reader user lands on what to fix.
+  const firstError = ["title", "description", "fix_check", "where_url"].find((name) => errors[name]);
+  const focusIf = (name) => (firstError === name ? "autofocus" : "");
 %>
 <nav aria-label="breadcrumb">
   <ul>
@@ -22,33 +26,35 @@
 
 <form method="post" action="<%= action %>">
   <% if (locals.formId) { %><input type="hidden" name="form" value="<%= formId %>" /><% } %>
+  <%# Each hint sits inside its label, so the box is named by the label words alone and the hint is read once, as its description. %>
   <label>
-    Title
-    <input type="text" name="title" value="<%= values.title %>" required <% if (errors.title) { %>aria-invalid="true" aria-describedby="title-error"<% } %> />
+    <span id="title-label">Title</span>
+    <small id="title-hint" class="hint">3 to 120 characters.</small>
+    <input type="text" name="title" value="<%= values.title %>" required aria-labelledby="title-label" <% if (errors.title) { %>aria-invalid="true" aria-describedby="title-error title-hint"<% } else { %>aria-describedby="title-hint"<% } %> <%= focusIf("title") %> />
   </label>
   <% if (errors.title) { %><small id="title-error"><%= errors.title.join(" ") %></small><% } %>
 
   <label>
     Description
-    <textarea name="description" rows="3" required <% if (errors.description) { %>aria-invalid="true" aria-describedby="description-error"<% } %>><%= values.description %></textarea>
+    <textarea name="description" rows="3" required <% if (errors.description) { %>aria-invalid="true" aria-describedby="description-error"<% } %> <%= focusIf("description") %>><%= values.description %></textarea>
   </label>
   <% if (errors.description) { %><small id="description-error"><%= errors.description.join(" ") %></small><% } %>
 
   <label>
-    How will we know it's fixed? (optional)
+    <span id="fix_check-label">How will we know it's fixed? (optional)</span>
     <small id="fix_check-hint" class="hint">One thing you can check yourself, like "I can sign in on my phone". The team asks you to confirm the fix against it.</small>
     <% if (locals.checkLocked) { %>
-    <textarea rows="3" readonly aria-describedby="fix_check-locked"><%= values.fix_check %></textarea>
+    <textarea rows="3" readonly aria-labelledby="fix_check-label" aria-describedby="fix_check-locked"><%= values.fix_check %></textarea>
     <small id="fix_check-locked">The customer's own words. Only they can change them; offer a clearer check on the ticket instead.</small>
     <% } else { %>
-    <textarea name="fix_check" rows="3" aria-describedby="<%= fixCheckDescribedBy %>" <% if (errors.fix_check) { %>aria-invalid="true"<% } %>><%= values.fix_check %></textarea>
+    <textarea name="fix_check" rows="3" aria-labelledby="fix_check-label" aria-describedby="<%= fixCheckDescribedBy %>" <% if (errors.fix_check) { %>aria-invalid="true"<% } %> <%= focusIf("fix_check") %>><%= values.fix_check %></textarea>
     <% } %>
   </label>
   <% if (errors.fix_check) { %><small id="fix_check-error"><%= errors.fix_check.join(" ") %></small><% } %>
 
   <label>
     Page where it happened (optional)
-    <input type="url" name="where_url" value="<%= values.where_url %>" <% if (errors.where_url) { %>aria-invalid="true" aria-describedby="where_url-error"<% } %> />
+    <input type="url" name="where_url" value="<%= values.where_url %>" <% if (errors.where_url) { %>aria-invalid="true" aria-describedby="where_url-error"<% } %> <%= focusIf("where_url") %> />
   </label>
   <% if (errors.where_url) { %><small id="where_url-error"><%= errors.where_url.join(" ") %></small><% } %>
 
