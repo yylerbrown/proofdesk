@@ -108,7 +108,13 @@ All routes are under `/api` and speak JSON. Errors look like
 `{ "error": { "code": "...", "message": "...", "hint": "...", "retry": false } }`: the hint says
 what to do next, `retry` says whether sending the same request again can work, and a validation
 error also lists `fields`. The routes are built from one table, `ACTIONS` in
-`src/server/api/actions.ts`. A ticket is addressed by its public key,
+`src/server/api/actions.ts`.
+
+A write sent with an `Idempotency-Key` header (any text up to 100 characters) is done once: a
+retry with the same key and request gets the first answer back and changes nothing, and the
+same key with a different request is refused. A refused write stores nothing. The list of
+tickets comes in pages of 100; when there may be more, a `Link` header names the next page
+(`rel="next"`), with an opaque `cursor` to pass back unchanged. A ticket is addressed by its public key,
 for example `SUP-42`. The prefix comes from `TICKET_PREFIX` (2 to 6 capital letters, default `SUP`).
 The prefix is chosen when the database is first created and is stored in it. The server
 refuses to start if `TICKET_PREFIX` later differs, because that would rename every ticket.

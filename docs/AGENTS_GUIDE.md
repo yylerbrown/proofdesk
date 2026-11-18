@@ -78,6 +78,12 @@ A tool works only if the connection's scopes allow it; otherwise it answers with
 so. Answering "Did this fix it?", resolving, owning a ticket, asking the customer, archiving,
 restoring, deleting and managing connections are not tools at all: they are for people.
 
+## Retries and pages
+
+Every tool that writes takes an optional `idempotency_key`. Send the same one when you retry,
+and the write is done only once. `list_tickets` answers `{ items, next_cursor }`; pass
+`next_cursor` back as `cursor` for the next page, until it is `null`.
+
 ## Limits
 
 About 120 writes per 10 minutes per connection, counted together across the API and the tools.

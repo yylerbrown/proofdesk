@@ -54,6 +54,8 @@ const HINTS: Record<string, string> = {
   not_in_progress: "Move the ticket to in_progress first.",
   not_waiting: "The team has not asked this question yet, or it was withdrawn.",
   question_changed: "Get the ticket again and answer with its current ready_token.",
+  idempotency_key_reused:
+    "Use a new idempotency key for a new request. Reuse a key only to retry the very same request.",
   budget_full: "The demo has no room for more of these. Nothing to retry.",
   too_many_requests: "Wait for the time in the Retry-After header, then send again.",
   bad_request: "The request could not be read. Send JSON with Content-Type: application/json.",
