@@ -4,7 +4,7 @@ import path from "node:path";
 import { parse } from "node-html-parser";
 import request from "supertest";
 import type { Express } from "express";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { openDatabase, type Db } from "../src/server/db.js";
 import { runMigrations } from "../src/server/migrate.js";
 import {
@@ -37,6 +37,7 @@ const SETTINGS: NotifySettings = {
   siteUrl: "https://desk.test/",
   demo: false,
   mailConfigured: true,
+  madeUpPeople: [],
 };
 
 /** Gives the made-up people of the development entrance an address, as signing in would. */
@@ -184,7 +185,7 @@ async function fullLife(app: Express, db: Db, settings: NotifySettings = SETTING
   await step(
     admin(app)
       .post("/api/tickets/SUP-2/resolve")
-      .send({ reason: "duplicate", duplicate_of: "SUP-1", note: `Team only. ${NOTE_MARKER}` }),
+      .send({ reason: "duplicate", duplicate_of: "SUP-1", note: "Same printer as SUP-1." }),
   );
   await step(
     as(app, customerTwo).post("/api/tickets/SUP-2/reopen").send({ reason: "Still empty today." }),
@@ -241,6 +242,8 @@ describe("notices from a full ticket life", () => {
     expect(no.body.split("\n").at(-1)).toBe("You got this email because you own this ticket.");
     const resolved = allNotices(db).find((n) => n.kind === "resolved_by_team")!;
     expect(resolved.body).toContain("The reason: Duplicate of SUP-1.");
+    // The note with a resolution is public: the ticket page shows it to the customer too.
+    expect(resolved.body).toContain('"Same printer as SUP-1."');
     expect(resolved.body).toContain("you can reopen it");
   });
 });
@@ -388,7 +391,117 @@ describe("who sees which notices", () => {
     expect(noticesForViewer(db, 1, customerTwo)).toEqual([]);
     expect(noticesForViewer(db, 1, teamActor).length).toBe(6);
     expect(noticesForViewer(db, 1, adminActor).length).toBe(6);
+    // No page is handed anyone's address, not even the team's.
+    for (const viewer of [customerOne, teamActor, adminActor]) {
+      for (const notice of noticesForViewer(db, 1, viewer))
+        expect(notice).not.toHaveProperty("address");
+    }
     const assistant = { id: "connection-1", kind: "agent", role: "team", name: "Helper" } as const;
     expect(noticesForViewer(db, 1, assistant)).toEqual([]);
+  });
+});
+
+describe("the words a notice quotes", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("quotes the public reply, never a note written by the same person at the same moment", async () => {
+    const { app, db } = buildTestApp();
+    giveAddresses(db);
+    await ok(
+      as(app, customerOne)
+        .post("/api/tickets")
+        .send({ title: "Printer jams", description: "On page two." }),
+      201,
+    );
+    await ok(as(app, teamActor).post("/api/tickets/SUP-1/take-and-start"));
+    // The reply and the note share the same author and the same timestamp, so only the kind
+    // of entry tells them apart.
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-03-01T10:00:00.000Z") });
+    await ok(
+      as(app, teamActor)
+        .post("/api/tickets/SUP-1/entries")
+        .send({ kind: "reply", body: "Public words." }),
+      201,
+    );
+    await ok(
+      as(app, teamActor)
+        .post("/api/tickets/SUP-1/entries")
+        .send({ kind: "note", body: `Private words. ${NOTE_MARKER}` }),
+      201,
+    );
+    collectNotices(db, SETTINGS);
+    expect(summary(db)).toEqual(["SUP-1 dev-customer-1 team_replied"]);
+    const [reply] = allNotices(db) as [Row];
+    expect(reply.body).toContain('"Public words."');
+    expect(reply.body).not.toContain(NOTE_MARKER);
+  });
+});
+
+describe("who hears about a reply", () => {
+  it("tells the owner when the person who filed replies, whatever their role", async () => {
+    const { app, db } = buildTestApp();
+    giveAddresses(db);
+    // A team member files a ticket, and the admin owns it.
+    await ok(
+      as(app, teamActor)
+        .post("/api/tickets")
+        .send({ title: "Laptop is slow", description: "Very slow." }),
+      201,
+    );
+    await ok(admin(app).post("/api/tickets/SUP-1/take-and-start"));
+    await ok(
+      as(app, teamActor)
+        .post("/api/tickets/SUP-1/entries")
+        .send({ kind: "reply", body: "Still slow." }),
+      201,
+    );
+    await ok(
+      admin(app).post("/api/tickets/SUP-1/entries").send({ kind: "reply", body: "Looking." }),
+      201,
+    );
+    collectNotices(db, SETTINGS);
+    expect(summary(db)).toEqual([
+      "SUP-1 dev-admin-1 customer_replied",
+      "SUP-1 dev-team-1 team_replied",
+    ]);
+  });
+});
+
+describe("a hand-off from someone with no stored name", () => {
+  it("says a teammate handed it on, never the customer", async () => {
+    const { app, db } = buildTestApp();
+    // Only the new owner has signed in.
+    db.prepare(
+      `INSERT INTO "user" (id, name, email, "emailVerified", "createdAt", "updatedAt")
+       VALUES ('dev-admin-1', 'Admin', 'dev-admin-1@example.com', 1, '2026-01-01', '2026-01-01')`,
+    ).run();
+    await ok(
+      as(app, customerOne)
+        .post("/api/tickets")
+        .send({ title: "Hand me on", description: "Please." }),
+      201,
+    );
+    await ok(as(app, teamActor).post("/api/tickets/SUP-1/take-and-start"));
+    await ok(
+      as(app, teamActor)
+        .post("/api/tickets/SUP-1/hand-off")
+        .send({ to: adminActor.id, expected_owner: teamActor.id }),
+    );
+    collectNotices(db, SETTINGS);
+    const [handed] = allNotices(db) as [Row];
+    expect(handed.kind).toBe("handed_to_you");
+    expect(handed.body).toContain('A teammate handed ticket SUP-1, "Hand me on" to you.');
+  });
+});
+
+describe("an address that is not verified", () => {
+  it("is not written to", async () => {
+    const { app, db } = buildTestApp();
+    giveAddresses(db);
+    db.prepare(`UPDATE "user" SET "emailVerified" = 0 WHERE id = 'dev-customer-1'`).run();
+    await fullLife(app, db);
+    expect(summary(db).filter((line) => line.includes("dev-customer-1"))).toEqual([]);
   });
 });

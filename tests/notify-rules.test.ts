@@ -30,7 +30,16 @@ const EXPECTED: Record<string, Audience[]> = {
   agent_handoff_ended: [],
   archived: [],
   restored: [],
+  // Written once the owner or an admin can reopen a team resolution. Nobody is told for now:
+  // telling the customer that a ticket they heard was resolved is open again is a later call.
+  reopened_by_team: [],
 };
+
+/**
+ * Kinds decided here before the ticket service writes them, so this table and the change
+ * that adds the kind can merge in either order. Each one leaves this list once it is written.
+ */
+const DECIDED_AHEAD = ["reopened_by_team"];
 
 const SERVICE = path.join(__dirname, "..", "src", "server", "tickets", "service.ts");
 
@@ -57,7 +66,7 @@ function fullFacts(type: string, overrides: Partial<EventFacts> = {}): EventFact
     data: { fixed: false, comment: "Still broken" },
     customerId: "customer-1",
     ownerId: "owner-1",
-    replyAuthorRole: "team",
+    replyByFiler: false,
     ...overrides,
   };
 }
@@ -69,7 +78,13 @@ describe("the list of who is told", () => {
     expect(found).toContain("created");
     expect(found).toContain("note_added");
     expect(found).toContain("agent_handed");
-    expect(found).toEqual(Object.keys(EXPECTED).sort());
+    const decided = Object.keys(EXPECTED);
+    // Every kind the service writes has been decided.
+    expect(found.filter((type) => !decided.includes(type))).toEqual([]);
+    // And the table names nothing else, except the kinds decided ahead of the service.
+    expect(
+      decided.filter((type) => !found.includes(type) && !DECIDED_AHEAD.includes(type)),
+    ).toEqual([]);
   });
 
   it("is the only place events are written from", () => {
@@ -103,8 +118,8 @@ describe("the list of who is told", () => {
   it.each(Object.entries(EXPECTED).filter(([, who]) => who.length === 0))(
     "tells nobody about %s, whatever the facts",
     (type) => {
-      for (const replyAuthorRole of ["team", "customer", null] as const) {
-        expect(noticesFor(fullFacts(type, { replyAuthorRole }))).toEqual([]);
+      for (const replyByFiler of [false, true, null]) {
+        expect(noticesFor(fullFacts(type, { replyByFiler }))).toEqual([]);
       }
     },
   );
@@ -113,15 +128,15 @@ describe("the list of who is told", () => {
 describe("the rules every notice keeps", () => {
   it("never tells anyone about an assistant's work", () => {
     for (const type of Object.keys(EXPECTED)) {
-      for (const replyAuthorRole of ["team", "customer"] as const) {
-        expect(noticesFor(fullFacts(type, { actorKind: "agent", replyAuthorRole }))).toEqual([]);
+      for (const replyByFiler of [false, true]) {
+        expect(noticesFor(fullFacts(type, { actorKind: "agent", replyByFiler }))).toEqual([]);
       }
     }
   });
 
   it("never tells anyone about their own action", () => {
-    const asCustomer = { actorId: "customer-1", replyAuthorRole: "customer" as const };
-    const asOwner = { actorId: "owner-1", replyAuthorRole: "team" as const };
+    const asCustomer = { actorId: "customer-1", replyByFiler: true };
+    const asOwner = { actorId: "owner-1", replyByFiler: false };
     for (const type of Object.keys(EXPECTED)) {
       for (const notice of noticesFor(fullFacts(type, asCustomer))) {
         expect(notice.recipientId).not.toBe("customer-1");
@@ -145,17 +160,14 @@ describe("the rules every notice keeps", () => {
   });
 
   it("sends a team reply to the customer and a customer's reply to the owner", () => {
-    expect(noticesFor(fullFacts("reply_added", { replyAuthorRole: "team" }))).toEqual([
-      { recipientId: "customer-1", kind: "team_replied", audience: "customer" },
-    ]);
-    expect(noticesFor(fullFacts("reply_added", { replyAuthorRole: "admin" }))).toEqual([
+    expect(noticesFor(fullFacts("reply_added", { replyByFiler: false }))).toEqual([
       { recipientId: "customer-1", kind: "team_replied", audience: "customer" },
     ]);
     expect(
-      noticesFor(fullFacts("reply_added", { actorId: "customer-1", replyAuthorRole: "customer" })),
+      noticesFor(fullFacts("reply_added", { actorId: "customer-1", replyByFiler: true })),
     ).toEqual([{ recipientId: "owner-1", kind: "customer_replied", audience: "owner" }]);
     // No public reply found: nothing, rather than a guess.
-    expect(noticesFor(fullFacts("reply_added", { replyAuthorRole: null }))).toEqual([]);
+    expect(noticesFor(fullFacts("reply_added", { replyByFiler: null }))).toEqual([]);
   });
 
   it("tells the owner about a No, and nobody about a Yes", () => {

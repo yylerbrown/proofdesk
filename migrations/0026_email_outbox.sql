@@ -39,6 +39,8 @@ END;
 
 -- The id of the last history event the notifier has read. Exactly one row. It starts at the
 -- newest event already stored, so a database from before notices sends nothing about the past.
+-- A fresh database starts at 0. The demo seeds its samples after the migrations, so on a fresh
+-- demo the samples' history is collected too: their notices show as not sent, like any others.
 CREATE TABLE email_outbox_cursor (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   last_event_id INTEGER NOT NULL

@@ -1,4 +1,3 @@
-import type { Role } from "../actor.js";
 import type { Db } from "../db.js";
 
 // The SQL for email notices. Every statement here is a fixed string.
@@ -67,7 +66,7 @@ export function lastOwnerChangeData(db: Db, ticketId: number, eventId: number): 
 }
 
 /** A public reply, by who wrote it. */
-export type PublicReply = { body: string; author_role: Role; author_name: string };
+export type PublicReply = { body: string; author_name: string };
 
 /**
  * The public reply that a reply_added event recorded: same ticket, same author, same moment.
@@ -76,7 +75,7 @@ export type PublicReply = { body: string; author_role: Role; author_name: string
 export function publicReplyOf(db: Db, event: EventRow): PublicReply | undefined {
   return db
     .prepare(
-      `SELECT body, author_role, author_name FROM ticket_entries
+      `SELECT body, author_name FROM ticket_entries
        WHERE ticket_id = ? AND author = ? AND created_at = ? AND kind = 'reply'
        ORDER BY id DESC LIMIT 1`,
     )
@@ -84,12 +83,14 @@ export function publicReplyOf(db: Db, event: EventRow): PublicReply | undefined 
 }
 
 /**
- * A signed-in person's name and email address, from the sign-in library's table of people.
- * Undefined for anyone who has never signed in, such as the made-up people and assistants.
+ * A signed-in person's name and verified email address, from the sign-in library's table of
+ * people. Undefined for anyone who has never signed in, such as the made-up people and
+ * assistants. Sign-in already refuses an address that is not verified; the query says so too.
  */
 export function personOf(db: Db, id: string): { name: string; email: string } | undefined {
-  return db.prepare('SELECT name, email FROM "user" WHERE id = ?').get(id) as
-    { name: string; email: string } | undefined;
+  return db
+    .prepare('SELECT name, email FROM "user" WHERE id = ? AND "emailVerified" = 1')
+    .get(id) as { name: string; email: string } | undefined;
 }
 
 /** One stored notice. */

@@ -21,7 +21,7 @@ export type NoticeInput = {
   recipientName: string;
   /** Who did it, by display name. */
   actorName: string;
-  /** For a reply, a No or a reopen: the public words the customer or team wrote. */
+  /** For a reply, a No, a reopen or a resolution: the public words the customer or team wrote. */
   publicText?: string | null;
   /** For "Did this fix it?": the page where the customer can check the fix. */
   tryUrl?: string | null;
@@ -72,11 +72,11 @@ function whatHappened(input: NoticeInput, title: string, link: string): string[]
       return [`${who} replied on ${about}:`, "", quoted];
     case "resolved_by_team": {
       const reason = input.resolvedReason ? ` The reason: ${oneLine(input.resolvedReason)}.` : "";
-      return [
-        `${who} resolved ${about}.${reason}`,
-        "",
-        "If it is still happening, you can reopen it from the ticket.",
-      ];
+      const lines = [`${who} resolved ${about}.${reason}`];
+      // The team's note with a resolution is public: the ticket page shows it to the customer.
+      if (input.publicText) lines.push("", quoted);
+      lines.push("", "If it is still happening, you can reopen it from the ticket.");
+      return lines;
     }
     case "handed_to_you":
       return [`${who} handed ${about} to you. It is yours now.`];
