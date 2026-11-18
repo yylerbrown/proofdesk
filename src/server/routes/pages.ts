@@ -259,10 +259,13 @@ export function pagesRouter(service: TicketService): Router {
     const entries = service.listEntries(ticket.key, actor);
     const events = service.listEvents(ticket.key, actor);
     const names = service.peopleNames(events.map((event) => event.actor));
+    // A person's role beside their name, as in the conversation, since the name is theirs to set.
+    const roles = service.peopleRoles(events.map((event) => event.actor));
     const history = events.map((event) => ({
       when: event.created_at,
       what: describeEvent(event),
       who: describeActor(event, names),
+      role: event.actor_kind === "agent" ? null : (roles.get(event.actor) ?? null),
     }));
     const allowed = service.allowedActions(ticket, actor);
     const sampleFix =

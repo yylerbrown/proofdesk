@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { DEMO_ACTORS, DEV_ACTORS, type Actor } from "../actor.js";
+import { DEMO_ACTORS, DEV_ACTORS, type Actor, type Role } from "../actor.js";
 import type { Db } from "../db.js";
 import { demoNotReady, HttpError, ValidationError } from "../errors.js";
 import { can, type Action } from "../permissions.js";
@@ -294,7 +294,11 @@ function doneWhen(row: { fix_check: string | null; agreed_check: string | null }
 }
 
 /** What the service needs to know from outside the database: who can own a ticket. */
-export type ServiceOptions = { teamMembers?: () => { id: string; name: string }[] };
+export type ServiceOptions = {
+  teamMembers?: () => { id: string; name: string }[];
+  /** Each person's role now, by id; without it, only the made-up people's roles are known. */
+  peopleRoles?: (ids: string[]) => Map<string, Role>;
+};
 
 export function createTicketService(
   db: Db,
@@ -1380,6 +1384,16 @@ export function createTicketService(
      * people of the entrance. An id that is neither, such as the "anonymous" of the first
      * tickets, is not in the map.
      */
+    /** Each person's role now, to show beside a name read live. */
+    peopleRoles(ids: string[]): Map<string, Role> {
+      if (options.peopleRoles) return options.peopleRoles(ids);
+      const roles = new Map<string, Role>();
+      for (const person of [...DEV_ACTORS, ...DEMO_ACTORS]) {
+        if (ids.includes(person.id)) roles.set(person.id, person.role);
+      }
+      return roles;
+    },
+
     peopleNames(ids: string[]): Map<string, string> {
       const names = repository.userNames(db, ids);
       for (const person of [...DEV_ACTORS, ...DEMO_ACTORS]) {

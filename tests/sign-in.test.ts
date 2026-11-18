@@ -419,3 +419,23 @@ describe("the limit on filing tickets", () => {
     expect((await as(app, customerOne).post("/api/tickets").send(valid)).status).toBe(201);
   });
 });
+
+describe("the ticket's history", () => {
+  it("shows each person's role beside their name, so a chosen name cannot pass as the team", async () => {
+    const { app, db } = buildSignInApp();
+    const customer = await signedInBrowser(db, "5005", "Proofdesk Support");
+    const team = await signedInBrowser(db, "2002", "Bo Team");
+    await visitor(app).post("/api/tickets").set("Cookie", customer.cookie).send(valid);
+    await visitor(app).post("/api/tickets/SUP-1/take").set("Cookie", team.cookie);
+    const page = await request(app).get("/tickets/SUP-1").set("Cookie", team.cookie);
+    const rows = parse(page.text)
+      .querySelectorAll("details.history tbody tr")
+      .map((row) => row.querySelectorAll("td")[2]!);
+    const who = rows.map((cell) => [
+      cell.text.replace(cell.querySelector(".role-label")?.text ?? "", "").trim(),
+      cell.querySelector(".role-label")?.text,
+    ]);
+    expect(who).toContainEqual(["Proofdesk Support", "customer"]);
+    expect(who).toContainEqual(["Bo Team", "team"]);
+  });
+});
