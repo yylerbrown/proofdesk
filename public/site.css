@@ -462,6 +462,17 @@ header nav .viewer strong {
     font-size: var(--pd-text-xs);
     white-space: normal;
   }
+  /*
+   * The People link is the one plain text link left in the phone header, so it gets a full
+   * 44-pixel tap. Its negative margin lets the tap reach into the row's padding, so the header
+   * keeps its height.
+   */
+  .site-header nav li.people-link a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin-block: -6px;
+  }
   .site-header .sign-out button {
     min-height: 44px;
     font-size: var(--pd-text-xs);
@@ -718,6 +729,30 @@ button.secondary.large {
 }
 form.inline {
   margin: 0;
+}
+/* The People page: a role choice and its Save button on one line, wrapping on a phone. */
+form.role-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pd-space-2);
+  align-items: center;
+}
+form.role-choice > *,
+form.role-choice select {
+  margin: 0;
+}
+form.role-choice select {
+  min-width: 9.5rem;
+}
+table.people .person-email {
+  color: var(--pd-muted);
+  overflow-wrap: anywhere;
+}
+@media (max-width: 639px) {
+  table.people th:nth-child(2),
+  table.people td:nth-child(2) {
+    display: none;
+  }
 }
 
 /* ---------- 5. Status badge ---------- */
