@@ -3,7 +3,7 @@ import request from "supertest";
 import type { Express } from "express";
 import { describe, expect, it } from "vitest";
 import { TOOL_ACTIONS } from "../src/server/mcp.js";
-import { AGENT_SCOPES } from "../src/server/permissions.js";
+import { AGENT_SCOPES, CAPABILITIES, can } from "../src/server/permissions.js";
 import {
   admin,
   adminActor,
@@ -39,8 +39,11 @@ const reopen = (app: Express, who: Actor, body: object = why) =>
 
 const reread = async (app: Express) => (await admin(app).get("/api/tickets/SUP-1")).body;
 
+// Found by where the form posts, so the test does not depend on how the page names it.
 const offersReopen = async (app: Express, who: Actor) =>
-  parse((await as(app, who).get("/tickets/SUP-1")).text).querySelector("#reopen") !== null;
+  parse((await as(app, who).get("/tickets/SUP-1")).text).querySelector(
+    'form[action="/tickets/SUP-1/reopen"]',
+  ) !== null;
 
 describe("the team reopening a ticket the team resolved", () => {
   it("is open to its owner: back in progress with them, and the history says who and why", async () => {
@@ -60,16 +63,18 @@ describe("the team reopening a ticket the team resolved", () => {
     // The customer sees the entry in the history. Nothing is posted as a reply to them.
     const events = (await as(app, customerOne).get("/api/tickets/SUP-1/events")).body as {
       type: string;
-      actor_name: string;
+      actor: string;
       data: object;
     }[];
     expect(events.at(-1)).toMatchObject({
       type: "reopened_by_team",
+      actor: teamActor.id,
       data: { reason: why.reason, to: "in_progress" },
     });
     expect((await admin(app).get("/api/tickets/SUP-1/entries")).body).toHaveLength(entriesBefore);
     const page = (await as(app, customerOne).get("/tickets/SUP-1")).text;
     expect(page).toContain(`Reopened by the team: ${why.reason}`);
+    expect(page).toContain("Team Member");
   });
 
   it("needs a reason, as the customer's reopen does", async () => {
@@ -91,6 +96,14 @@ describe("the team reopening a ticket the team resolved", () => {
     await admin(second).post("/api/tickets/SUP-1/resolve").send({ reason: "cannot_reproduce" });
     expect((await reopen(second, adminActor)).status).toBe(200);
     expect(await reread(second)).toMatchObject({ status: "new", owner_name: null });
+
+    // On an unowned team-resolved ticket, the refusal to a team member names no owner.
+    await admin(second).post("/api/tickets/SUP-1/resolve").send({ reason: "cannot_reproduce" });
+    const refused = await reopen(second, teamActor);
+    expect(refused.status).toBe(403);
+    expect(refused.body.error.message).toBe(
+      "Only an admin can reopen ticket SUP-1: it has no owner.",
+    );
   });
 
   it("is refused to a team member who does not own the ticket", async () => {
@@ -99,6 +112,9 @@ describe("the team reopening a ticket the team resolved", () => {
     const res = await reopen(app, teamActor);
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe("not_owner");
+    expect(res.body.error.message).toBe(
+      "Only Admin, who owns ticket SUP-1, or an admin can reopen it.",
+    );
     // Who may reopen is checked before the reason, so an empty form gets the same refusal.
     expect((await reopen(app, teamActor, {})).body.error.code).toBe("not_owner");
     expect((await reread(app)).status).toBe("resolved");
@@ -111,11 +127,23 @@ describe("the team reopening a ticket the team resolved", () => {
       .type("form")
       .send({ name: "Helper", scopes: [...AGENT_SCOPES] });
     const key = parse(issued.text).querySelector("input.key")!.getAttribute("value")!;
+    // Resolving ends any hand-off, so through the API the assistant cannot even see the ticket.
     const res = await request(app)
       .post("/api/tickets/SUP-1/reopen")
       .set("Authorization", `Bearer ${key}`)
       .send(why);
-    expect(res.status).toBeGreaterThanOrEqual(403);
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("ticket_not_found");
+    // And reopening is a people-only action, whatever scopes an assistant holds.
+    const assistant: Actor = {
+      id: "agent:1",
+      kind: "agent",
+      role: "team",
+      name: "Helper",
+      scopes: [...AGENT_SCOPES],
+    };
+    expect(CAPABILITIES.reopen.agent).toBe("people_only");
+    expect(can(assistant, "reopen", { created_by: customerOne.id, archived_at: null })).toBe(false);
     expect(TOOL_ACTIONS.map((row) => row.name)).not.toContain("reopen");
     expect((await reread(app)).status).toBe("resolved");
   });
@@ -126,6 +154,20 @@ describe("the team reopening a ticket the team resolved", () => {
     expect((await reopen(app, customerOne, { reason: "It jams again." })).status).toBe(200);
     const events = (await admin(app).get("/api/tickets/SUP-1/events")).body as { type: string }[];
     expect(events.at(-1)!.type).toBe("reopened");
+  });
+});
+
+describe("changing the status of a resolved ticket", () => {
+  it("is refused, and the refusal points to reopening", async () => {
+    const { app } = await teamResolved();
+    const res = await as(app, teamActor)
+      .patch("/api/tickets/SUP-1")
+      .send({ status: "in_progress" });
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("only_filer_reopens");
+    expect(res.body.error.message).toBe(
+      "Ticket SUP-1 is resolved. A resolved ticket moves only by reopening it.",
+    );
   });
 });
 

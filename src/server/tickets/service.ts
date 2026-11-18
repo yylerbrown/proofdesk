@@ -868,7 +868,7 @@ export function createTicketService(
           throw new HttpError(
             409,
             "only_filer_reopens",
-            `Ticket ${key} is resolved. Reopen it instead, if you may.`,
+            `Ticket ${key} is resolved. A resolved ticket moves only by reopening it.`,
           );
         }
         if (status === "new") {
@@ -1272,7 +1272,9 @@ export function createTicketService(
             throw new HttpError(
               403,
               "not_owner",
-              `Only ${before.owner_name ?? "its owner"}, who owns ticket ${key}, or an admin can reopen it.`,
+              before.owner_name === null
+                ? `Only an admin can reopen ticket ${key}: it has no owner.`
+                : `Only ${before.owner_name}, who owns ticket ${key}, or an admin can reopen it.`,
             );
           }
         }
