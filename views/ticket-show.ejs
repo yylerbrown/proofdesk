@@ -311,10 +311,11 @@
 
 <%- include("spec", { specPanel }) %>
 
+<%# Evidence gets its own section once some exists; before that, attaching it is one quiet disclosure. %>
 <% if (staff && (evidence.length > 0 || allowed.attachEvidence)) { %>
-<section>
-  <h2>Evidence</h2>
+<section class="<%= evidence.length > 0 ? "" : "quiet" %>">
   <% if (evidence.length > 0) { %>
+  <h2>Evidence</h2>
   <details class="evidence-list">
     <summary><%= evidence.length %> <%= evidence.length === 1 ? "piece" : "pieces" %>, as reported</summary>
     <p class="evidence-note">As reported by whoever attached it. Not checked by Proofdesk.</p>
@@ -365,7 +366,9 @@
   <% } %>
   <% } %>
   <% if (allowed.linkChange) { %>
-  <% if (ticket.change_url) { %><details class="change-link" <% if (problem?.form === "changeLink") { %>open<% } %>><summary>Change the link</summary><% } %>
+  <%# The owner links the change as their next step, so the box is open for them; anyone else finds it behind a disclosure. %>
+  <% const linkFolded = ticket.change_url || ticket.owner_id !== viewerId; %>
+  <% if (linkFolded) { %><details class="change-link" <% if (problem?.form === "changeLink") { %>open<% } %>><summary><%= ticket.change_url ? "Change the link" : "Add the code change link" %></summary><% } %>
   <form method="post" action="/tickets/<%= ticket.key %>/change-link" id="change-link">
     <label>
       Link to the code change
@@ -374,7 +377,7 @@
     <% if (problem?.form === "changeLink") { %><small id="change-link-error"><%= problem.message %></small><% } %>
     <button type="submit" class="secondary compact">Save change link</button>
   </form>
-  <% if (ticket.change_url) { %></details><% } %>
+  <% if (linkFolded) { %></details><% } %>
   <% } %>
   <%# On the demo, the owner can fill the change link and the ask with labelled sample values, so
       nobody has to invent evidence to reach the customer's question. %>
