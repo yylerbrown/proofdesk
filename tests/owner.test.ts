@@ -91,10 +91,10 @@ describe("a named human owner", () => {
     });
     expect((await admin(app).get("/api/tickets/SUP-1")).body.owner_name).toBe("Admin");
 
-    // Started work does not go back to New, so it cannot be released that way either.
+    // Sending it back to New is the way to let go of started work: it leaves with no owner.
     const back = await admin(app).patch("/api/tickets/SUP-1").send({ status: "new" });
-    expect(back.body.error.code).toBe("cannot_return_to_new");
-    expect((await admin(app).get("/api/tickets/SUP-1")).body.owner_name).toBe("Admin");
+    expect(back.status).toBe(200);
+    expect(back.body).toMatchObject({ status: "new", owner_id: null, owner_name: null });
   });
 
   it("has the database refuse an in-progress ticket without an owner, whatever the code does", async () => {
@@ -142,7 +142,9 @@ describe("the owner on the ticket page", () => {
     const { app } = await setup();
     const unowned = await as(app, teamActor).get("/tickets/SUP-1");
     expect(unowned.text).toContain("<p>Unassigned</p>");
-    expect(unowned.text).toContain("Take this ticket");
+    // Taking is part of In Progress and of the next action at the top, so More does not repeat it.
+    expect(unowned.text).toContain("Take ticket and start work");
+    expect(unowned.text).not.toContain("Take this ticket");
 
     const taken = await as(app, teamActor).post("/tickets/SUP-1/take");
     expect(taken.status).toBe(303);

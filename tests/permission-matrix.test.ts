@@ -200,6 +200,19 @@ const TABLE: Record<string, Row> = {
     handedAgent: whileHanded(NO),
     ...outsiders,
   },
+  // The same action sending an In Progress ticket back to New, with no owner: its owner or an
+  // admin. Asking for New when it is already New changes nothing, for anyone on the team. A
+  // resolved ticket moves only by reopening it.
+  change_status_to_new: {
+    filer: [NO, NO, NO, NO, NO, NO, HIDDEN],
+    owner: [OK, OK, OK, OK, NOT_NOW, NOT_NOW, NOT_NOW],
+    teamNotOwner: [OK, OK, NO, NO, REFUSED, REFUSED, REFUSED],
+    demoTeam: [OK, OK, NO, NO, REFUSED, REFUSED, REFUSED],
+    admin: [OK, OK, OK, OK, NOT_NOW, NOT_NOW, NOT_NOW],
+    preview: all(NO),
+    handedAgent: whileHanded(NO),
+    ...outsiders,
+  },
   // The customer edits their own ticket and the team edits any, but never the customer's check.
   edit_ticket: {
     filer: [OK, OK, OK, OK, OK, OK, HIDDEN],
@@ -624,6 +637,7 @@ function callFor(action: string, template: Template, demo: boolean): Call {
     },
     get_ticket: { method: "get", path: at },
     change_status: { method: "patch", path: at, body: { status: "in_progress" } },
+    change_status_to_new: { method: "patch", path: at, body: { status: "new" } },
     edit_ticket: {
       method: "put",
       path: at,
@@ -742,8 +756,13 @@ describe("who may do what, in every ticket state", () => {
   }, BUILD_TIME_LIMIT);
 
   it("has a row for every action in the product's action table", () => {
-    // Every action, and the archived list, which is the list action with a filter.
-    const names = [...ACTIONS.map((action) => action.name), "list_archived"];
+    // Every action, the archived list, which is the list action with a filter, and the status
+    // change back to New, which is the status action with another status.
+    const names = [
+      ...ACTIONS.map((action) => action.name),
+      "list_archived",
+      "change_status_to_new",
+    ];
     expect(Object.keys(TABLE).sort()).toEqual(names.sort());
     for (const [action, row] of Object.entries(TABLE)) {
       for (const who of WHO) expect(row[who], `${action} / ${who}`).toHaveLength(STATES.length);

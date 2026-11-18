@@ -16,8 +16,8 @@ import {
 } from "./helpers.js";
 
 // The minimum features, as a grader meets them: a ticket starts New, one action owns it and
-// starts work, and Resolved is never a dead end. Under the status, one short line says the way
-// on from here, or who can move the status when this viewer cannot.
+// starts work, and Resolved is never a dead end. The status is one row of the three statuses,
+// and when this viewer cannot press one, one short line says who can.
 
 const valid = {
   title: "Printer jams",
@@ -64,28 +64,32 @@ describe("a new ticket", () => {
 });
 
 describe("where Resolved comes from", () => {
-  it("is said to the team at every step, with the way to get there", async () => {
+  it("is offered to the team at every step, with the customer's Yes as the next action", async () => {
     const { app } = await filed();
-    expect(rule(await page(app, teamActor))).toBe("Start work, then ask the customer to verify.");
-    await as(app, teamActor).post("/api/tickets/SUP-1/take");
-    expect(rule(await page(app, teamActor))).toBe("Start work, then ask the customer to verify.");
-    await as(app, teamActor).patch("/api/tickets/SUP-1").send({ status: "in_progress" });
+    const fresh = await page(app, teamActor);
+    expect(fresh.querySelector(".next-action button")?.text).toBe("Take ticket and start work");
+    expect(fresh.querySelector(".status-control details.resolve summary")?.text).toBe("Resolved");
+    expect(rule(fresh)).toBeUndefined();
+    await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
 
-    // In progress, with no change link: the line's link leads to the working ask form, whose
-    // boxes are all optional, never to a greyed button.
+    // In progress: the next action asks the customer in one press. The details are optional,
+    // behind a closed disclosure of their own, and never a greyed button.
     const owner = await page(app, teamActor);
-    expect(rule(owner)).toBe(
-      "The customer's Yes moves it to Resolved. To tell them what you tried, add details first.",
-    );
-    expect(owner.querySelector(".status-rule a")?.getAttribute("href")).toBe("#ask");
-    expect(owner.querySelector("#ask")?.tagName).toBe("FORM");
-    expect(owner.querySelector("#ask button[type=submit]")?.hasAttribute("disabled")).toBe(false);
+    expect(owner.querySelector(".next-action button")?.text).toBe("Ask the customer to verify");
+    const details = owner.querySelector("details#ask")!;
+    expect(details.hasAttribute("open")).toBe(false);
+    expect(details.querySelector("summary")?.text).toBe("Ask with details (optional)");
+    expect(details.querySelector("button[type=submit]")?.hasAttribute("disabled")).toBe(false);
     expect(owner.querySelector("#ask-blocked-why")).toBeNull();
+    expect(owner.querySelector(".status-control details.resolve summary")?.text).toBe("Resolved");
 
-    expect(rule(await page(app, adminActor))).toBe(
+    // An admin may resolve it with a reason too, but only its owner asks the customer.
+    const byAdmin = await page(app, adminActor);
+    expect(byAdmin.querySelector(".status-control details.resolve")).not.toBeNull();
+    expect(byAdmin.querySelector("#ask-blocked-why")?.text).toBe(
       "Only Team Member can ask the customer to verify.",
     );
-    expect(rule(await page(app, customerOne))).toBeUndefined();
+    expect((await page(app, customerOne)).querySelector(".status-control")).toBeNull();
   });
 
   it("does not tell the read-only admin preview to take a ticket it cannot take", async () => {
@@ -99,7 +103,7 @@ describe("where Resolved comes from", () => {
     }[];
     const unowned = tickets.find((t) => t.status === "new" && t.owner_name === null)!;
     const html = parse((await preview.get(`/tickets/${unowned.key}`)).text);
-    expect(rule(html)).toBe("The team takes the ticket and asks the customer to verify.");
+    expect(rule(html)).toBe("The preview is read-only.");
     expect(html.querySelector("main")!.text).not.toMatch(/Take the ticket|Start work/);
   });
 
@@ -131,11 +135,10 @@ describe("where Resolved comes from", () => {
       .send({ try_url: "https://example.com/print", tried: "Printed.", result: "No jam." });
 
     const team = await page(app, teamActor);
-    const status = team.querySelectorAll("aside section").find((s) => s.text.includes("Status"))!;
-    expect(status.querySelector("p")?.text).toBe(
+    expect(team.querySelector("hgroup .meta")?.text).toContain(
       "In Progress, waiting for the customer who filed this ticket",
     );
-    expect(rule(team)).toBe("The customer's Yes moves it to Resolved.");
+    expect(rule(team)).toBe("Waiting for the customer who filed this ticket.");
 
     const customer = await page(app, customerOne);
     expect(customer.querySelector("main")!.text).toContain("In Progress, waiting for you");

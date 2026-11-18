@@ -82,7 +82,6 @@ const HINTS: Record<string, string> = {
     "A resolved ticket moves only by reopening it (POST .../reopen): the customer who filed it can, and so can its owner or an admin when the team resolved it.",
   customer_confirmed:
     "The customer confirmed this fix with their Yes, so only they can reopen it. Reply on the ticket if it needs more work.",
-  cannot_return_to_new: "Started work stays in progress. Hand the ticket to someone else instead.",
   not_owner: "Only the ticket's owner can do this. Ask them, or have it handed to you.",
   no_owner:
     "Nobody owns this ticket, so there is nothing to release. Take it (POST .../take) to work on it.",
