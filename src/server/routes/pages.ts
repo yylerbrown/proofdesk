@@ -50,6 +50,8 @@ const SAMPLE_FIX = {
   change_url: "https://example.com/demo-sample-fix",
   tried: "Demo sample value: I followed the customer's steps on the page to try.",
   result: "Demo sample value: it worked as the customer's check describes.",
+  // Asked again after the customer's No, the owner says what changed since.
+  response: "Demo sample value: I changed what the customer said still failed, and tried it again.",
 };
 
 /** The sample a demo visitor files when they start the ticket workflow. Made up, like the demo. */
@@ -303,6 +305,7 @@ export function pagesRouter(service: TicketService): Router {
               try_url: ticket.try_url ?? ticket.where_url ?? "https://example.com/demo-sample-page",
               tried: SAMPLE_FIX.tried,
               result: SAMPLE_FIX.result,
+              response: SAMPLE_FIX.response,
             }
           : null,
       recordedRun: service.recordedRunKey() === ticket.key,
