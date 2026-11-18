@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TICKET_STATUSES, type TicketStatus } from "../tickets/schemas.js";
-import type { TicketEvent } from "../tickets/service.js";
+import type { Role } from "../actor.js";
+import type { Ticket, TicketEvent } from "../tickets/service.js";
 
 // Small functions that turn stored values into the words shown on a page.
 
@@ -19,6 +20,37 @@ const timeFormat = new Intl.DateTimeFormat("en-GB", {
 /** Turns a stored time such as "2026-11-17T19:56:00.000Z" into "17 Nov 2026, 19:56 UTC". */
 export function formatTime(iso: string): string {
   return `${timeFormat.format(new Date(iso))} UTC`;
+}
+
+const relativeFormat = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+
+// Each unit, and how many seconds it holds. The largest that fits is used.
+const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
+  ["year", 365 * 24 * 3600],
+  ["month", 30 * 24 * 3600],
+  ["week", 7 * 24 * 3600],
+  ["day", 24 * 3600],
+  ["hour", 3600],
+  ["minute", 60],
+];
+
+/** How long ago a stored time was, in plain words: "3 hours ago", "yesterday", "just now". */
+export function timeAgo(iso: string, now: Date = new Date()): string {
+  const seconds = Math.round((now.getTime() - new Date(iso).getTime()) / 1000);
+  for (const [unit, size] of UNITS) {
+    if (seconds >= size) return relativeFormat.format(-Math.floor(seconds / size), unit);
+  }
+  return "just now";
+}
+
+/**
+ * Who has to act next on a ticket, as the viewer should read it. Once the team has asked
+ * "Did this fix it?" the customer does. A resolved ticket waits on nobody.
+ */
+export function waitingOn(ticket: Ticket, viewer: Role): string {
+  if (ticket.status === "resolved") return "Nobody";
+  if (ticket.ready_at !== null) return viewer === "customer" ? "You" : "Customer";
+  return viewer === "customer" ? "Support team" : "Team";
 }
 
 const statusChangeSchema = z.object({
@@ -83,7 +115,12 @@ export function describeEvent(event: TicketEvent): string {
   return event.type;
 }
 
-/** Who wrote a history entry. An agent is always marked, so it is never taken for a person. */
-export function describeActor(event: TicketEvent): string {
-  return event.actor_kind === "agent" ? `${event.actor} (agent)` : event.actor;
+/**
+ * Who wrote a history entry, by display name. An AI agent is always marked, so it is never
+ * taken for a person. The names of demo people already say "Demo".
+ */
+export function describeActor(event: TicketEvent, names: Map<string, string>): string {
+  const name =
+    names.get(event.actor) ?? (event.actor_kind === "agent" ? event.actor : "Unknown person");
+  return event.actor_kind === "agent" ? `${name} (AI agent)` : name;
 }

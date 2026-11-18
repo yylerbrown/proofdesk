@@ -3,7 +3,15 @@ import type { Actor } from "../actor.js";
 import { signedIn } from "../actor.js";
 import { HttpError, ValidationError } from "../errors.js";
 import { can } from "../permissions.js";
-import { describeActor, describeEvent, formatTime, STATUS_LABELS } from "../pages/format.js";
+import {
+  describeActor,
+  describeEvent,
+  formatTime,
+  STATUS_LABELS,
+  timeAgo,
+  waitingOn,
+} from "../pages/format.js";
+import { rememberSaved, takeSaved, type SavedKey } from "../pages/saved.js";
 import { listQuerySchema, TICKET_STATUSES } from "../tickets/schemas.js";
 import { LIST_PAGE_SIZE, type Ticket, type TicketService } from "../tickets/service.js";
 import { parse } from "../validation.js";
@@ -12,7 +20,7 @@ import { parse } from "../validation.js";
 // send the answer. The answer is HTML built from a template in views/.
 
 // Passed to every ticket template so it can show labels and times.
-const helpers = { statusLabels: STATUS_LABELS, statuses: TICKET_STATUSES, formatTime };
+const helpers = { statusLabels: STATUS_LABELS, statuses: TICKET_STATUSES, formatTime, timeAgo };
 
 // What the reply form holds: the kind chosen, the text typed, and a message if it was refused.
 type EntryForm = { kind: string; body: string; error?: string };
@@ -24,6 +32,15 @@ type Problem = {
   comment: string;
 };
 type TicketAction = (key: string, input: unknown, actor: Actor) => Ticket;
+
+// What each ticket-page form says it saved. The answer form says one thing or the other.
+const FORM_SAVED: Record<Problem["form"], (input: unknown) => SavedKey> = {
+  agreedCheck: () => "check",
+  changeLink: () => "link",
+  ready: () => "ready",
+  answer: (input) =>
+    (input as Record<string, unknown> | undefined)?.fixed === "yes" ? "fixed" : "notFixed",
+};
 const emptyEntry: EntryForm = { kind: "reply", body: "" };
 
 const emptyForm = { title: "", description: "", where_url: "", fix_check: "" };
@@ -34,6 +51,9 @@ const newForm = { title: "New ticket", action: "/tickets", submitLabel: "File ti
 function editForm(key: string) {
   return { title: `Edit ${key}`, action: `/tickets/${key}/edit`, submitLabel: "Save changes" };
 }
+
+// The heading of each list, for the page title.
+const FILTER_TITLES = { ...STATUS_LABELS, all: "All", archived: "Archived" };
 
 function asText(value: unknown): string {
   return typeof value === "string" ? value : "";
@@ -52,6 +72,12 @@ function readTicketForm(body: Record<string, unknown> | undefined): typeof empty
 export function pagesRouter(service: TicketService): Router {
   const router = Router();
 
+  // A page opened just after a save says what was saved.
+  router.use((req, res, next) => {
+    if (req.method === "GET") res.locals.saved = takeSaved(req, res);
+    next();
+  });
+
   /** Renders the ticket page: the ticket, its conversation, its history and its controls. */
   function showTicket(
     req: Request,
@@ -63,15 +89,17 @@ export function pagesRouter(service: TicketService): Router {
     const actor = signedIn(req);
     const ticket = service.getTicket(req.params.key as string, actor);
     const entries = service.listEntries(ticket.key, actor);
-    const history = service.listEvents(ticket.key, actor).map((event) => ({
+    const events = service.listEvents(ticket.key, actor);
+    const names = service.peopleNames(events.map((event) => event.actor));
+    const history = events.map((event) => ({
       when: event.created_at,
       what: describeEvent(event),
-      who: describeActor(event),
+      who: describeActor(event, names),
     }));
     const allowed = service.allowedActions(ticket, actor);
     res.status(status).render("ticket-show", {
       ...helpers,
-      title: ticket.key,
+      title: `${ticket.key}: ${ticket.title}`,
       ticket,
       entries,
       history,
@@ -91,6 +119,7 @@ export function pagesRouter(service: TicketService): Router {
       const actor = signedIn(req);
       try {
         const ticket = run(req.params.key as string, req.body, actor);
+        rememberSaved(res, FORM_SAVED[form](req.body));
         res.redirect(303, `/tickets/${ticket.key}`);
       } catch (err) {
         if (!(err instanceof ValidationError)) throw err;
@@ -116,9 +145,10 @@ export function pagesRouter(service: TicketService): Router {
     const tickets = service.listTickets(current, actor, pageNumber);
     res.render("ticket-list", {
       ...helpers,
-      title: "Tickets",
+      title: current === "all" ? "Tickets" : `${FILTER_TITLES[current]} tickets`,
       current,
-      tickets,
+      tickets: tickets.map((ticket) => ({ ...ticket, waiting: waitingOn(ticket, actor.role) })),
+      viewerRole: actor.role,
       // A full page means there may be older tickets on the next one.
       nextPage: tickets.length === LIST_PAGE_SIZE ? pageNumber + 1 : null,
       showArchivedFilter: can(actor, "list_archived"),
@@ -142,6 +172,7 @@ export function pagesRouter(service: TicketService): Router {
         actor,
       );
       // 303 makes the browser fetch the ticket page with GET, so a refresh cannot file it twice.
+      rememberSaved(res, "filed");
       res.redirect(303, `/tickets/${ticket.key}`);
     } catch (err) {
       if (!(err instanceof ValidationError)) throw err;
@@ -160,7 +191,8 @@ export function pagesRouter(service: TicketService): Router {
     const entry = { kind: asText(req.body?.kind) || "reply", body: asText(req.body?.body) };
     try {
       const ticket = service.getTicket(req.params.key, actor);
-      service.addEntry(req.params.key, entry, actor);
+      const added = service.addEntry(req.params.key, entry, actor);
+      rememberSaved(res, added.kind === "note" ? "note" : "reply");
       res.redirect(303, `/tickets/${ticket.key}#conversation`);
     } catch (err) {
       if (!(err instanceof ValidationError)) throw err;
@@ -198,6 +230,7 @@ export function pagesRouter(service: TicketService): Router {
         { ...values, where_url: values.where_url === "" ? undefined : values.where_url },
         actor,
       );
+      rememberSaved(res, "edited");
       res.redirect(303, `/tickets/${ticket.key}`);
     } catch (err) {
       if (!(err instanceof ValidationError)) throw err;
@@ -229,6 +262,7 @@ export function pagesRouter(service: TicketService): Router {
   router.post("/tickets/:key/archive", (req, res) => {
     const actor = signedIn(req);
     service.archiveTicket(req.params.key, actor);
+    rememberSaved(res, "archived");
     // Back to the list: for a customer an archived ticket has no page any more.
     res.redirect(303, "/tickets");
   });
@@ -267,23 +301,28 @@ export function pagesRouter(service: TicketService): Router {
 
   router.post("/tickets/:key/take", (req, res) => {
     const ticket = service.takeTicket(req.params.key, signedIn(req));
+    rememberSaved(res, "taken");
     res.redirect(303, `/tickets/${ticket.key}`);
   });
 
   router.post("/tickets/:key/release", (req, res) => {
     const ticket = service.releaseTicket(req.params.key, signedIn(req));
+    rememberSaved(res, "released");
     res.redirect(303, `/tickets/${ticket.key}`);
   });
 
   router.post("/tickets/:key/restore", (req, res) => {
     const actor = signedIn(req);
     const ticket = service.restoreTicket(req.params.key, actor);
+    rememberSaved(res, "restored");
     res.redirect(303, `/tickets/${ticket.key}`);
   });
 
   router.post("/tickets/:key/status", (req, res) => {
     const actor = signedIn(req);
+    const before = service.getTicket(req.params.key, actor).status;
     const ticket = service.changeStatus(req.params.key, req.body, actor);
+    if (ticket.status !== before) rememberSaved(res, "status");
     res.redirect(303, `/tickets/${ticket.key}`);
   });
 

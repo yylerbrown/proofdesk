@@ -82,19 +82,22 @@ export function findTicket(db: Db, id: number): TicketRow | undefined {
 /** Which slice of a long list to read: at most `limit` rows, after skipping `offset`. */
 export type Page = { limit: number; offset: number };
 
-/** Every ticket that is not archived, newest first. Pass a status to get only that status. */
+/**
+ * Every ticket that is not archived: open ones first, newest first, then resolved ones.
+ * Pass a status to get only that status.
+ */
 export function listAllTickets(db: Db, status: TicketStatus | null, page: Page): TicketRow[] {
   return db
     .prepare(
       `SELECT * FROM tickets
        WHERE archived_at IS NULL AND (@status IS NULL OR status = @status)
-       ORDER BY id DESC LIMIT @limit OFFSET @offset`,
+       ORDER BY status = 'resolved', id DESC LIMIT @limit OFFSET @offset`,
     )
     .all({ status, ...page }) as TicketRow[];
 }
 
 /**
- * The tickets one person filed that are not archived, newest first. There is no way to ask
+ * The tickets one person filed that are not archived, in the same order as above. There is no way to ask
  * it for everyone's tickets, so a mistake in a caller cannot show a customer other people's
  * tickets. created_by is a plain condition, so the index on it is used.
  */
@@ -109,7 +112,7 @@ export function listTicketsFiledBy(
       `SELECT * FROM tickets
        WHERE created_by = @createdBy AND archived_at IS NULL
          AND (@status IS NULL OR status = @status)
-       ORDER BY id DESC LIMIT @limit OFFSET @offset`,
+       ORDER BY status = 'resolved', id DESC LIMIT @limit OFFSET @offset`,
     )
     .all({ createdBy, status, ...page }) as TicketRow[];
 }
@@ -343,4 +346,15 @@ export function listEntries(
        ) ORDER BY id ASC`,
     )
     .all({ ticketId, includeNotes: includeNotes ? 1 : 0, limit }) as EntryRow[];
+}
+
+/** The names of the people who signed in with GitHub, for the ids given that have one. */
+export function userNames(db: Db, ids: string[]): Map<string, string> {
+  const names = new Map<string, string>();
+  const find = db.prepare('SELECT name FROM "user" WHERE id = ?');
+  for (const id of new Set(ids)) {
+    const row = find.get(id) as { name: string } | undefined;
+    if (row !== undefined) names.set(id, row.name);
+  }
+  return names;
 }

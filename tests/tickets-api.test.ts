@@ -168,7 +168,8 @@ describe("GET /api/tickets", () => {
     ["new", ["SUP-1"]],
     ["in_progress", ["SUP-2"]],
     ["resolved", ["SUP-3"]],
-    ["all", ["SUP-3", "SUP-2", "SUP-1"]],
+    // Open tickets first, newest first; resolved ones after them.
+    ["all", ["SUP-2", "SUP-1", "SUP-3"]],
   ])("filters by status=%s", async (status, expectedKeys) => {
     const app = await makeTickets();
     const res = await admin(app).get("/api/tickets").query({ status });

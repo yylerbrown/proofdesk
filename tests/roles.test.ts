@@ -7,6 +7,7 @@ import {
   visitor,
   customerOne,
   customerTwo,
+  signedInLine,
   teamActor,
 } from "./helpers.js";
 
@@ -306,7 +307,7 @@ describe("the sign-in page and the development entrance", () => {
     const page = await visitor(app).get("/sign-in");
     expect(page.status).toBe(200);
     expect(page.text).toContain("Development entrance");
-    expect(page.text).toContain("Customer One (customer)");
+    expect(page.text).toContain("View as Customer One");
 
     const res = await visitor(app).post("/sign-in/dev").type("form").send({ id: customerOne.id });
     expect(res.status).toBe(303);
@@ -327,7 +328,7 @@ describe("the sign-in page and the development entrance", () => {
   it("shows who is signed in and signs out", async () => {
     const { app } = buildTestApp();
     const page = await as(app, teamActor).get("/tickets");
-    expect(page.text).toContain("Signed in as Team Member (team)");
+    expect(page.text).toContain(signedInLine("Team Member", "team"));
     const res = await as(app, teamActor).post("/sign-out");
     expect(res.status).toBe(303);
     expect(String(res.headers["set-cookie"])).toContain(`${DEV_COOKIE}=;`);

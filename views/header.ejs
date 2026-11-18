@@ -18,6 +18,12 @@
         <ul>
           <li><a href="/tickets">Tickets</a></li>
           <li><a href="/tickets/new" role="button">New ticket</a></li>
+          <li class="viewer">Signed in as <strong><%= viewer.name %></strong> <small class="role-label"><%= viewer.role %></small></li>
+          <li>
+            <form method="post" action="/sign-out" class="sign-out">
+              <button type="submit" class="outline secondary">Sign out</button>
+            </form>
+          </li>
         </ul>
         <% } %>
       </nav>
@@ -26,8 +32,6 @@
       <% if (demo) { %>
       <p><mark>Demo: sample data, shared with everyone who visits.</mark></p>
       <% } %>
-      <% if (viewer) { %>
-      <form method="post" action="/sign-out">
-        <small>Signed in as <%= viewer.name %> (<%= viewer.role %>). <button type="submit" class="outline secondary sign-out">Sign out</button></small>
-      </form>
+      <% if (locals.saved) { %>
+      <p role="status" class="saved"><%= locals.saved %></p>
       <% } %>

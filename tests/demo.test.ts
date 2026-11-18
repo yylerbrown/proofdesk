@@ -50,7 +50,7 @@ describe("the demo entrance", () => {
   it("says it is a demo, offers the three demo people and no one else", async () => {
     const { app } = buildDemo();
     const page = await visitor(app).get("/sign-in");
-    expect(page.text).toContain("<strong>Demo.</strong>");
+    expect(page.text).toContain("Try the demo");
     expect(page.text).toContain("Do not type anything private here.");
     for (const person of DEMO_ACTORS) expect(page.text).toContain(person.name);
     expect(page.text).not.toContain("Customer One");
@@ -167,7 +167,7 @@ describe("a demo server started in production", () => {
     const built = buildTestApp({ NODE_ENV: "production", DEMO: "on", ...noSignIn() });
     const res = await request(built.app).get("/sign-in");
     expect(res.status).toBe(200);
-    expect(res.text).toContain("<strong>Demo.</strong>");
+    expect(res.text).toContain("Try the demo");
   });
 });
 

@@ -55,6 +55,11 @@ export const teamActor = person("dev-team-1");
 export const customerOne = person("dev-customer-1");
 export const customerTwo = person("dev-customer-2");
 
+/** The header line that says who is signed in: their name, then their role as a label. */
+export function signedInLine(name: string, role: string): string {
+  return `Signed in as <strong>${name}</strong> <small class="role-label">${role}</small>`;
+}
+
 /** What a browser sends with a request made from one of this site's own pages. */
 export const FROM_THIS_SITE = { "Sec-Fetch-Site": "same-origin" };
 
