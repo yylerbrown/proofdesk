@@ -168,7 +168,8 @@ function nextStep(
     if (!allowed.linkChange) return null;
     return {
       label: "Add the code change link",
-      href: "#change-link",
+      // The field itself, so following the link puts the cursor in it.
+      href: "#change-url",
       note: "Next: link the code change, then ask the customer to verify.",
     };
   }
