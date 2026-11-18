@@ -74,16 +74,13 @@ export function countLiveDemo(db: Db, now: string): number {
   return row.n;
 }
 
-/**
- * Revokes this many live demo connections, those used longest ago first. One never used
- * counts from when it was issued.
- */
-export function revokeLeastRecentlyUsedDemo(db: Db, now: string, count: number): void {
+/** Revokes this many live demo connections, those issued first. */
+export function revokeOldestDemo(db: Db, now: string, count: number): void {
   db.prepare(
     `UPDATE agent_connections SET revoked_at = ?
      WHERE id IN (SELECT id FROM agent_connections
                   WHERE demo = 1 AND revoked_at IS NULL AND expires_at > ?
-                  ORDER BY COALESCE(last_used_at, created_at), id
+                  ORDER BY created_at, id
                   LIMIT ?)`,
   ).run(now, now, count);
 }

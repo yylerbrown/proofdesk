@@ -127,18 +127,15 @@ export function createConnectionService(db: Db) {
      * A visitor's own short-lived connection to the public demo. No admin issues it: anyone
      * on the demo's welcome page may ask. It sees only the sample tickets and what it writes
      * itself, it expires within a day, and only so many may be live at once. At that cap the
-     * live one used longest ago is ended to make room, so a few addresses holding every
-     * connection cannot turn the next visitor away.
+     * live one issued first is ended to make room. Using a key does not keep it, so nobody
+     * can choose whose key the next one ends: pushing out a visitor's key takes a new
+     * connection for every live one issued before it.
      */
     issueDemo() {
       const now = new Date();
       const live = repository.countLiveDemo(db, now.toISOString());
       if (live >= DEMO_CONNECTION_LIMIT) {
-        repository.revokeLeastRecentlyUsedDemo(
-          db,
-          now.toISOString(),
-          live - DEMO_CONNECTION_LIMIT + 1,
-        );
+        repository.revokeOldestDemo(db, now.toISOString(), live - DEMO_CONNECTION_LIMIT + 1);
       }
       // What ended connections did is forgotten, so however many visitors come and go, the
       // demo keeps the trails of at most its live connections.

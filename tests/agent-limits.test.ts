@@ -175,22 +175,36 @@ describe("the demo's connections at its cap", () => {
     ]);
   });
 
-  it("make room by ending the one used longest ago, so a new visitor is never turned away", () => {
+  it("make room by ending the one issued first, however recently it was used", () => {
     const { db } = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
     const connections = createConnectionService(db);
     vi.useFakeTimers({ toFake: ["Date"] });
+    // This one has expired by the time the demo is full: it is neither counted nor ended.
+    vi.setSystemTime(new Date("2026-11-17T09:00:00.000Z"));
+    connections.issueDemo();
     vi.setSystemTime(new Date("2026-11-18T10:00:00.000Z"));
-    const keys = Array.from({ length: DEMO_CONNECTION_LIMIT }, () => connections.issueDemo().key);
-    // Every connection is used later except the second, so the first, though issued first,
-    // is not the one used longest ago.
+    const first = connections.issueDemo().key;
+    vi.setSystemTime(new Date("2026-11-18T10:30:00.000Z"));
+    const idle = connections.issueDemo().key;
+    const others = Array.from(
+      { length: DEMO_CONNECTION_LIMIT - 2 },
+      () => connections.issueDemo().key,
+    );
+    // Every key but one is used, the first last of all: using a key does not keep it, so
+    // holders keeping theirs busy cannot choose whose key a new one ends.
     vi.setSystemTime(new Date("2026-11-18T11:00:00.000Z"));
-    keys.filter((_, i) => i !== 1).forEach((key) => connections.authenticate(key));
+    others.forEach((key) => connections.authenticate(key));
+    vi.setSystemTime(new Date("2026-11-18T11:30:00.000Z"));
+    connections.record(connections.authenticate(first)!, read("get_ticket"));
 
     vi.setSystemTime(new Date("2026-11-18T12:00:00.000Z"));
     const newest = connections.issueDemo().key;
-    expect(connections.authenticate(newest)).not.toBeNull();
-    expect(connections.authenticate(keys[1]!)).toBeNull();
-    expect(connections.authenticate(keys[0]!)).not.toBeNull();
+    expect(connections.authenticate(first)).toBeNull();
+    // The ended one's trail goes with it.
+    expect(trails(db)).toEqual([]);
+    for (const key of [idle, others[0]!, newest]) {
+      expect(connections.authenticate(key)).not.toBeNull();
+    }
     const live = db
       .prepare(
         "SELECT COUNT(*) AS n FROM agent_connections WHERE demo = 1 AND revoked_at IS NULL AND expires_at > ?",

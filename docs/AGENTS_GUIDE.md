@@ -54,9 +54,9 @@ Over MCP, the server's instructions and each tool's description say the same.
 
 Click **Get a demo connection** on the welcome page. You get your own key, for a day, and the
 command to connect Claude Code. When the demo holds as many connections as it can, a new one ends
-the connection used longest ago, so a key left idle may stop working sooner. Your assistant sees
-only the sample tickets and what it writes itself. Start with the ticket named "Sample for your
-AI assistant".
+the one issued first, so a key may stop working before its day is up. Your assistant sees only
+the sample tickets and what it writes itself. Start with the ticket named "Sample for your AI
+assistant".
 
 ## The one path
 
