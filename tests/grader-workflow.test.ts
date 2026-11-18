@@ -84,6 +84,48 @@ describe("the demo's sample fix", () => {
     expect(ticket.ready_at).toBeNull();
   });
 
+  it("after the customer's No, also fills what changed, so the second ask can be sent as it is", async () => {
+    const { asDemo } = await demoInProgress();
+    const team = asDemo("demo-team");
+    await team.post("/tickets/SUP-2/sample-fix").set(FROM_THIS_SITE);
+    const fields = (html: string) => {
+      const form = parse(html).querySelector("form#ask")!;
+      const values: Record<string, string> = {};
+      for (const box of form.querySelectorAll("input[name], textarea[name]")) {
+        if (box.getAttribute("type") === "checkbox") continue;
+        values[box.getAttribute("name")!] = box.getAttribute("value") ?? box.text;
+      }
+      return values;
+    };
+    const first = fields((await asDemo("demo-team").get("/tickets/SUP-2?sample=1")).text);
+    expect(
+      (
+        await asDemo("demo-team")
+          .post("/tickets/SUP-2/ready")
+          .set(FROM_THIS_SITE)
+          .type("form")
+          .send(first)
+      ).status,
+    ).toBe(303);
+    const token = (await asDemo("demo-customer").get("/api/tickets/SUP-2")).body.ready_token;
+    await asDemo("demo-customer")
+      .post("/tickets/SUP-2/answer")
+      .set(FROM_THIS_SITE)
+      .type("form")
+      .send({ fixed: "no", comment: "Still February.", ready_token: token });
+
+    await asDemo("demo-team").post("/tickets/SUP-2/sample-fix").set(FROM_THIS_SITE);
+    const again = fields((await asDemo("demo-team").get("/tickets/SUP-2?sample=1")).text);
+    expect(again.response).toMatch(/^Demo sample value: /);
+    const sent = await asDemo("demo-team")
+      .post("/tickets/SUP-2/ready")
+      .set(FROM_THIS_SITE)
+      .type("form")
+      .send(again);
+    expect(sent.status).toBe(303);
+    expect((await asDemo("demo-team").get("/api/tickets/SUP-2")).body.ready_at).not.toBeNull();
+  });
+
   it("is not offered, and not open, outside the demo or to anyone but the owner", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
