@@ -85,13 +85,9 @@ export type TicketListFilter = (typeof TICKET_LIST_FILTERS)[number];
 export const listQuerySchema = z.object({
   status: z.enum(TICKET_LIST_FILTERS).optional(),
   page: z.coerce.number().int().min(1).max(100000).optional(),
-  cursor: z
-    .string()
-    .max(100)
-    .optional()
-    .meta({
-      description: "Where the previous page ended, as given by its next_cursor or Link header.",
-    }),
+  cursor: z.string().max(100).optional().meta({
+    description: "Where the previous page ended, as given by its next_cursor or Link header.",
+  }),
 });
 
 /** A cursor names the next page. It is opaque to callers: pass back what you were given. */
