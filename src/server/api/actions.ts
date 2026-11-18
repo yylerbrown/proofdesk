@@ -357,13 +357,22 @@ export const ACTIONS: ApiAction[] = [
     method: "post",
     path: "/tickets/:key/notes",
     summary:
-      "Add an internal note for the team. The customer never sees it. Suggested wording for the customer goes here; a person decides whether to publish it. Send blocked: true when you are blocked, saying what blocks you in the first line.",
+      "Add an internal note for the team. The customer never sees it. Wording you suggest for the customer goes here with suggested_reply: true; a person decides whether to publish it. Send blocked: true when you are blocked, saying what blocks you in the first line.",
     needs: "note",
     body: noteSchema,
     status: 201,
     run: ({ service, actor, key, body }) => {
       const note = parse(noteSchema, body);
-      return service.addEntry(key, { kind: "note", body: note.body, blocked: note.blocked }, actor);
+      return service.addEntry(
+        key,
+        {
+          kind: "note",
+          body: note.body,
+          blocked: note.blocked,
+          suggested_reply: note.suggested_reply,
+        },
+        actor,
+      );
     },
   },
   {
@@ -426,11 +435,7 @@ export const ACTIONS: ApiAction[] = [
     status: 201,
     run: ({ service, actor, key, body }) => {
       const { message } = parse(verificationRequestSchema, body);
-      return service.addEntry(
-        key,
-        { kind: "note", body: `Asks the owner to review the evidence: ${message}` },
-        actor,
-      );
+      return service.requestReview(key, message, actor);
     },
   },
   {

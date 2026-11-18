@@ -483,7 +483,11 @@ export type EntryRow = {
   based_on?: number | null;
   /** 1 when an assistant's note says it is blocked. */
   blocked?: number;
+  /** What a note is for: an ordinary note, a suggested reply, or a request for review. */
+  purpose?: NotePurpose;
 };
+
+export type NotePurpose = "note" | "suggested_reply" | "review_request";
 
 export type NewEntry = Omit<EntryRow, "id">;
 
@@ -538,11 +542,17 @@ export function insertEntry(db: Db, entry: NewEntry): EntryRow {
   const result = db
     .prepare(
       `INSERT INTO ticket_entries
-       (ticket_id, kind, body, author, author_kind, author_role, author_name, created_at, based_on, blocked)
-     VALUES (@ticket_id, @kind, @body, @author, @author_kind, @author_role, @author_name, @created_at, @based_on, @blocked)`,
+       (ticket_id, kind, body, author, author_kind, author_role, author_name, created_at, based_on, blocked, purpose)
+     VALUES (@ticket_id, @kind, @body, @author, @author_kind, @author_role, @author_name, @created_at, @based_on, @blocked, @purpose)`,
     )
-    .run({ based_on: null, blocked: 0, ...entry });
-  return { id: Number(result.lastInsertRowid), based_on: null, blocked: 0, ...entry };
+    .run({ based_on: null, blocked: 0, purpose: "note", ...entry });
+  return {
+    id: Number(result.lastInsertRowid),
+    based_on: null,
+    blocked: 0,
+    purpose: "note",
+    ...entry,
+  };
 }
 
 /** For each of these tickets, the latest note an agent wrote on it, if it says it is blocked. */

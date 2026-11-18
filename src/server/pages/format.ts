@@ -126,6 +126,7 @@ export function describeEvent(event: TicketEvent): string {
   if (event.type === "spec_accepted") return "Test spec accepted";
   if (event.type === "spec_discarded") return "Test spec discarded";
   if (event.type === "note_added") return "Internal note added";
+  if (event.type === "review_requested") return "Review of the evidence requested";
   if (event.type === "reopened") return "Reopened by the customer: still happening";
   if (event.type === "agent_handed" || event.type === "agent_handoff_ended") {
     const handoff = z

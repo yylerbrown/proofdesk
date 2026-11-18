@@ -111,6 +111,8 @@ export type TicketEntry = {
   created_at: string;
   /** For a reply published from an internal note: that note's id. Shown to the team only. */
   based_on: number | null;
+  /** What a note is for: an ordinary note, a suggested reply, or a request for review. */
+  purpose: repository.NotePurpose;
 };
 
 /** One piece of evidence, as reported. Proofdesk verifies none of it. */
@@ -478,6 +480,67 @@ export function createTicketService(
     return spec;
   }
 
+  /** Writes a reply or a note, with its purpose and its history entry, together. */
+  function writeEntry(
+    key: string,
+    entry: { kind: "reply" | "note"; body: string; based_on?: number; blocked?: boolean },
+    purpose: repository.NotePurpose,
+    actor: Actor,
+  ): TicketEntry {
+    const row = db.transaction(() => {
+      const ticket = requireRow(key, actor);
+      requirePermission(actor, entry.kind === "note" ? "note" : "reply", ticket);
+      requireNotArchived(key, ticket);
+      requireRoom(
+        () => repository.countRows(db, "ticket_entries", ticket.id),
+        budget.entriesPerTicket,
+        "replies on this ticket",
+      );
+      const now = new Date().toISOString();
+      // Publishing from a note: it must be a note on this same ticket, published as a reply.
+      if (entry.based_on !== undefined) {
+        const source = repository
+          .listEntries(db, ticket.id, true, THREAD_LIMIT)
+          .find((e) => e.id === entry.based_on);
+        if (entry.kind !== "reply" || source === undefined || source.kind !== "note") {
+          throw new ValidationError("A reply can be based only on a note on this ticket.", {
+            based_on: ["A reply can be based only on a note on this ticket."],
+          });
+        }
+      }
+      const saved = repository.insertEntry(db, {
+        ticket_id: ticket.id,
+        kind: entry.kind,
+        body: entry.body,
+        based_on: entry.based_on ?? null,
+        // Only an assistant marks its note as blocked; the flag means nothing on anything else.
+        blocked: actor.kind === "agent" && entry.kind === "note" && entry.blocked === true ? 1 : 0,
+        purpose,
+        author: actor.id,
+        author_kind: actor.kind,
+        author_role: actor.role,
+        author_name: actor.name,
+        created_at: now,
+      });
+      logEvent({
+        ticketId: ticket.id,
+        actor: actor.id,
+        actorKind: actor.kind,
+        context: agentContext(actor),
+        type:
+          purpose === "review_request"
+            ? "review_requested"
+            : entry.kind === "note"
+              ? "note_added"
+              : "reply_added",
+        data: {},
+        now,
+      });
+      return saved;
+    })();
+    return toEntry(row);
+  }
+
   function toEntry(row: repository.EntryRow): TicketEntry {
     return {
       id: row.id,
@@ -489,6 +552,7 @@ export function createTicketService(
       author_name: row.author_name,
       created_at: row.created_at,
       based_on: row.based_on ?? null,
+      purpose: row.purpose ?? "note",
     };
   }
 
@@ -1521,10 +1585,18 @@ export function createTicketService(
       const ticket = requireRow(key, actor);
       // A raw report is for the team. The customer sees the summary, link and stages.
       const forTeam = can(actor, "read_notes", ticket);
+      const customer = actor.kind === "person" && actor.role === "customer";
+      // An assistant's evidence reaches the customer only once the owner has asked them, having
+      // reviewed it. A scenario number means nothing to them until the team accepts the spec.
+      const asked =
+        ticket.ready_at !== null || repository.latestAnswer(db, ticket.id) !== undefined;
+      const specAccepted = repository.findActiveSpec(db, ticket.id)?.state === "accepted";
       const evidence = repository
         .listEvidence(db, ticket.id, THREAD_LIMIT)
         .map(toEvidence)
-        .map((item) => (forTeam ? item : { ...item, report: null }));
+        .filter((item) => !customer || asked || item.reported_by.kind !== "agent")
+        .map((item) => (forTeam ? item : { ...item, report: null }))
+        .map((item) => (customer && !specAccepted ? { ...item, scenario: null } : item));
       // No sample ticket comes with evidence, so a demo connection sees only its own.
       return isDemoAgent(actor) ? evidence.filter((e) => e.reported_by.id === actor.id) : evidence;
     },
@@ -1535,53 +1607,25 @@ export function createTicketService(
      */
     addEntry(key: string, input: unknown, actor: Actor): TicketEntry {
       const entry = parse(addEntrySchema, input);
-      const row = db.transaction(() => {
-        const ticket = requireRow(key, actor);
-        requirePermission(actor, entry.kind === "note" ? "note" : "reply", ticket);
-        requireNotArchived(key, ticket);
-        requireRoom(
-          () => repository.countRows(db, "ticket_entries", ticket.id),
-          budget.entriesPerTicket,
-          "replies on this ticket",
-        );
-        const now = new Date().toISOString();
-        // Publishing from a note: it must be a note on this same ticket, published as a reply.
-        if (entry.based_on !== undefined) {
-          const source = repository
-            .listEntries(db, ticket.id, true, THREAD_LIMIT)
-            .find((e) => e.id === entry.based_on);
-          if (entry.kind !== "reply" || source === undefined || source.kind !== "note") {
-            throw new ValidationError("A reply can be based only on a note on this ticket.", {
-              based_on: ["A reply can be based only on a note on this ticket."],
-            });
-          }
-        }
-        const saved = repository.insertEntry(db, {
-          ticket_id: ticket.id,
-          kind: entry.kind,
-          body: entry.body,
-          based_on: entry.based_on ?? null,
-          // Only an assistant marks its note as blocked; the flag means nothing on anything else.
-          blocked:
-            actor.kind === "agent" && entry.kind === "note" && entry.blocked === true ? 1 : 0,
-          author: actor.id,
-          author_kind: actor.kind,
-          author_role: actor.role,
-          author_name: actor.name,
-          created_at: now,
-        });
-        logEvent({
-          ticketId: ticket.id,
-          actor: actor.id,
-          actorKind: actor.kind,
-          context: agentContext(actor),
-          type: entry.kind === "note" ? "note_added" : "reply_added",
-          data: {},
-          now,
-        });
-        return saved;
-      })();
-      return toEntry(row);
+      // Only an assistant's note can be a suggested reply; on anything else the flag means nothing.
+      const purpose =
+        actor.kind === "agent" && entry.kind === "note" && entry.suggested_reply === true
+          ? "suggested_reply"
+          : "note";
+      return writeEntry(key, entry, purpose, actor);
+    },
+
+    /**
+     * An assistant asks the ticket's owner to review its evidence: an internal note of its own
+     * kind, with its own history entry. It never contacts the customer.
+     */
+    requestReview(key: string, message: string, actor: Actor): TicketEntry {
+      return writeEntry(
+        key,
+        { kind: "note", body: `Asks the owner to review the evidence: ${message}` },
+        "review_request",
+        actor,
+      );
     },
 
     /**
