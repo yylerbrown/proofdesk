@@ -30,13 +30,22 @@ export function createAuth(db: Db, signIn: SignInConfig, clientIpHeader: string 
     // account to an existing person when both show the same verified email address. Roles
     // are decided by the GitHub account, so that would let a different account inherit
     // someone's role.
-    // The GitHub access token is only needed during sign-in. It is kept encrypted with the
-    // secret, so a copy of the database does not hand out working GitHub tokens.
+    // GitHub's tokens are needed only during sign-in, and the account hooks below keep none
+    // of them. Encryption with the secret stays on as a second guard, should one ever be
+    // written.
     account: { accountLinking: { enabled: false }, encryptOAuthTokens: true },
     // A session ends seven days after sign-in, however much it is used. By default the
     // library would extend a session in use once a day, so one used every week never ended.
     session: { expiresIn: 7 * 24 * 60 * 60, disableSessionRefresh: true },
     databaseHooks: {
+      // GitHub's tokens are used once, to read who the person is, and the app never calls
+      // GitHub after that. So no account row keeps them, and a copy of the database hands out
+      // no GitHub token. The library updates the account row at every sign-in, so a token an
+      // earlier version stored goes at that person's next sign-in.
+      account: {
+        create: { before: async () => withoutTokens() },
+        update: { before: async () => withoutTokens() },
+      },
       user: {
         create: {
           // A person is created only with an email address GitHub has verified. Each address
@@ -68,6 +77,11 @@ export function createAuth(db: Db, signIn: SignInConfig, clientIpHeader: string 
 }
 
 export type Auth = ReturnType<typeof createAuth>;
+
+/** What an account hook writes over GitHub's tokens, in place of what the library would. */
+function withoutTokens() {
+  return { data: { accessToken: null, refreshToken: null, idToken: null } };
+}
 
 /** The most characters of a GitHub display name that are kept. */
 const NAME_LIMIT = 100;

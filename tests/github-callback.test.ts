@@ -18,7 +18,13 @@ beforeAll(() => {
     const json = (body: unknown) =>
       new Response(JSON.stringify(body), { headers: { "content-type": "application/json" } });
     if (url.startsWith("https://github.com/login/oauth/access_token")) {
-      return json({ access_token: "made-up-token", token_type: "bearer", scope: "user:email" });
+      // GitHub also gives a refresh token when its tokens are set to expire.
+      return json({
+        access_token: "made-up-token",
+        refresh_token: "made-up-refresh-token",
+        token_type: "bearer",
+        scope: "user:email",
+      });
     }
     const { id, login, name, email, verified = true } = githubUser;
     if (url === "https://api.github.com/user") {
@@ -157,6 +163,30 @@ describe("the whole GitHub sign-in", () => {
     expect((await signInThroughGithub(app, quiet)).signedInAs).toBe("quiet-one (customer)");
   });
 
+  it("keeps none of GitHub's tokens, at the first sign-in or a later one", async () => {
+    const { app, db } = buildGithubApp();
+    for (const signIn of ["first", "second"]) {
+      expect((await signInThroughGithub(app, ada)).signedInAs, signIn).toBe("Ada Admin (admin)");
+      const kept = db.prepare(`SELECT "accessToken", "refreshToken", "idToken" FROM "account"`);
+      expect(kept.all(), signIn).toEqual([
+        { accessToken: null, refreshToken: null, idToken: null },
+      ]);
+    }
+  });
+
+  it("drops a GitHub token that an earlier version stored, at the person's next sign-in", async () => {
+    const { app, db } = buildGithubApp();
+    await signInThroughGithub(app, ada);
+    db.prepare(
+      `UPDATE "account" SET "accessToken" = 'stored-earlier', "refreshToken" = 'too'`,
+    ).run();
+    await signInThroughGithub(app, ada);
+    expect(db.prepare(`SELECT "accessToken", "refreshToken" FROM "account"`).get()).toEqual({
+      accessToken: null,
+      refreshToken: null,
+    });
+  });
+
   it("returns to the page that was asked for, and never to another site", async () => {
     const { app } = buildGithubApp();
     const back = await signInThroughGithub(app, ada, "/tickets/SUP-7");
@@ -197,7 +227,7 @@ describe("the whole GitHub sign-in", () => {
 });
 
 describe("the session cookie in production", () => {
-  it("is Secure and HttpOnly, and the GitHub token is not stored as it came", async () => {
+  it("is Secure and HttpOnly, and GitHub's tokens are not kept", async () => {
     const { app, db } = buildTestApp({
       ...PRODUCTION_SIGN_IN_ENV,
       NODE_ENV: "production",
@@ -217,11 +247,10 @@ describe("the session cookie in production", () => {
     expect(session).toContain("Secure");
     expect(session).toContain("HttpOnly");
 
-    const stored = db.prepare(`SELECT "accessToken" FROM "account"`).get() as {
-      accessToken: string;
-    };
-    expect(stored.accessToken).not.toBe("made-up-token");
-    expect(stored.accessToken).not.toContain("made-up-token");
+    expect(db.prepare(`SELECT "accessToken", "refreshToken" FROM "account"`).get()).toEqual({
+      accessToken: null,
+      refreshToken: null,
+    });
   });
 });
 
