@@ -60,12 +60,12 @@ describe("ticket list page", () => {
     expect(res.text).not.toContain('href="/tickets" aria-current="page"');
   });
 
-  it("returns an HTML 400 page for an unknown status", async () => {
+  it("shows the whole list for an unknown status, not an error page", async () => {
     const { app } = buildTestApp();
     const res = await admin(app).get("/tickets?status=done");
-    expect(res.status).toBe(400);
-    expect(res.headers["content-type"]).toMatch(/html/);
-    expect(res.text).toContain("That request did not work");
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('href="/tickets" aria-current="page"');
+    expect(res.text).not.toContain("That request did not work");
   });
 });
 

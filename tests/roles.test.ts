@@ -206,9 +206,10 @@ describe("a customer", () => {
   it("cannot see the archived list", async () => {
     const { app } = await twoCustomers();
     expect((await as(app, customerOne).get("/api/tickets?status=archived")).status).toBe(403);
+    // The page shows their own list instead, as after switching role on the Archived tab.
     const page = await as(app, customerOne).get("/tickets?status=archived");
-    expect(page.status).toBe(403);
-    expect(page.headers["content-type"]).toMatch(/html/);
+    expect(page.status).toBe(200);
+    expect(page.text).not.toContain("status=archived");
     expect((await as(app, customerOne).get("/tickets")).text).not.toContain("status=archived");
     // Still nothing after one of their own is archived.
     await as(app, customerOne).post("/api/tickets/SUP-1/archive");
