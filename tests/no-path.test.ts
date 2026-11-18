@@ -21,9 +21,11 @@ async function ask(app: Express): Promise<string> {
   await team
     .put("/api/tickets/SUP-1/change-link")
     .send({ change_url: "https://example.com/change/1" });
-  const ready = await team
-    .post("/api/tickets/SUP-1/ready")
-    .send({ try_url: "https://example.com/print" });
+  const ready = await team.post("/api/tickets/SUP-1/ready").send({
+    try_url: "https://example.com/print",
+    tried: "I printed ten pages.",
+    result: "No jam.",
+  });
   return ready.body.ready_token as string;
 }
 
@@ -73,9 +75,12 @@ describe("after the customer says No", () => {
     const { app } = buildTestApp();
     await saidNo(app);
     const token = (
-      await as(app, teamActor)
-        .post("/api/tickets/SUP-1/ready")
-        .send({ try_url: "https://example.com/print" })
+      await as(app, teamActor).post("/api/tickets/SUP-1/ready").send({
+        try_url: "https://example.com/print",
+        tried: "I printed ten pages, double-sided.",
+        result: "No jam.",
+        response: "Fixed double-sided printing too.",
+      })
     ).body.ready_token;
     expect(
       parse((await as(app, teamActor).get("/tickets/SUP-1")).text).querySelector(

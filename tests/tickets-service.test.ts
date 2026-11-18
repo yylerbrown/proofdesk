@@ -246,6 +246,7 @@ describe("ticket service returns what is stored", () => {
       "agent_id",
       "agreed_check",
       "archived_at",
+      "ask",
       "change_url",
       "created_at",
       "created_by",

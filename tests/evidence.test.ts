@@ -179,7 +179,9 @@ describe("evidence on the ticket page", () => {
     await admin(app)
       .put("/api/tickets/SUP-1/change-link")
       .send({ change_url: "https://example.com/c" });
-    await admin(app).post("/api/tickets/SUP-1/ready").send({ try_url: "https://example.com/t" });
+    await admin(app)
+      .post("/api/tickets/SUP-1/ready")
+      .send({ try_url: "https://example.com/t", tried: "I printed ten pages.", result: "No jam." });
     const box = parse((await as(app, customerOne).get("/tickets/SUP-1")).text).querySelector(
       "#did-this-fix-it",
     );

@@ -48,11 +48,23 @@ export type WaitingOn = "team" | "customer" | "nobody";
 /** The customer's latest answer to "Did this fix it?": yes or no, when, and their words for a no. */
 export type CustomerAnswer = { fixed: boolean; at: string; comment: string | null };
 
+/** What the owner recorded when they asked the customer. Present only while the question is open. */
+export type Ask = {
+  asked_at: string;
+  try_url: string | null;
+  tried: string | null;
+  result: string | null;
+  response_to_no: string | null;
+  evidence_ids: number[];
+};
+
 export type Ticket = {
   done_when: DoneWhen;
   waiting_on: WaitingOn;
   /** The customer's latest answer, or null if they have not answered yet. */
   customer_answer: CustomerAnswer | null;
+  /** What the owner recorded when asking the customer, while the question is open. */
+  ask: Ask | null;
   key: string;
   title: string;
   description: string;
@@ -309,6 +321,18 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
         row.status === "resolved" ? "nobody" : row.ready_at !== null ? "customer" : "team",
       // A demo connection sees no visitor's words, and a customer's comment is a visitor's.
       customer_answer: isDemoAgent(actor) ? null : (repository.latestAnswer(db, row.id) ?? null),
+      // A demo connection sees no visitor's words, and the owner's record is a visitor's.
+      ask:
+        row.ready_at === null || isDemoAgent(actor)
+          ? null
+          : {
+              asked_at: row.ready_at,
+              try_url: row.try_url,
+              tried: row.ready_tried,
+              result: row.ready_result,
+              response_to_no: row.ready_response,
+              evidence_ids: row.ready_evidence ? (JSON.parse(row.ready_evidence) as number[]) : [],
+            },
       key: buildKey(prefix, row.id),
       title: row.title,
       description: row.description,
@@ -741,11 +765,19 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
      * has an owner) and have its change link.
      */
     markReady(key: string, input: unknown, actor: Actor): Ticket {
-      const { try_url } = parse(markReadySchema, input);
+      const { try_url, tried, result, response, evidence_ids } = parse(markReadySchema, input);
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "mark_ready", before);
         requireNotArchived(key, before);
+        // Only the ticket's current owner asks the customer, after trying it themselves.
+        if (before.owner_id !== actor.id) {
+          throw new HttpError(
+            403,
+            "not_owner",
+            `Only ${before.owner_name ?? "the ticket's owner"}, who owns ticket ${key}, asks the customer.`,
+          );
+        }
         if (before.status !== "in_progress") {
           throw new HttpError(409, "not_in_progress", `Move ticket ${key} to In Progress first.`);
         }
@@ -754,19 +786,45 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
         }
         // Already waiting for an answer: asking again changes nothing and writes nothing.
         if (before.ready_at !== null) return before;
+        // After a No, the next question must say what changed since.
+        const last = repository.latestAnswer(db, before.id);
+        if (last !== undefined && !last.fixed && !response) {
+          throw new ValidationError("Say what changed since the customer said it still fails.", {
+            response: ["Say what changed since the customer said it still fails."],
+          });
+        }
+        // The evidence relied on must be this ticket's own.
+        const own = new Set(repository.listEvidence(db, before.id, THREAD_LIMIT).map((e) => e.id));
+        const evidenceIds = evidence_ids ?? [];
+        if (evidenceIds.some((id) => !own.has(id))) {
+          throw new ValidationError("Choose evidence attached to this ticket.", {
+            evidence_ids: ["Choose evidence attached to this ticket."],
+          });
+        }
+        const ask = { tryUrl: try_url, tried, result, response: response || null, evidenceIds };
         const now = new Date().toISOString();
         const token = randomUUID();
-        repository.updateReady(db, before.id, try_url, token, now);
+        repository.updateReady(db, before.id, ask, token, now);
         logEvent({
           ticketId: before.id,
           actor: actor.id,
           actorKind: actor.kind,
           context: agentContext(actor),
           type: "ready_for_customer",
-          data: { try_url },
+          data: { try_url, tried, result, response: ask.response, evidence_ids: evidenceIds },
           now,
         });
-        return { ...before, try_url, ready_at: now, ready_token: token, updated_at: now };
+        return {
+          ...before,
+          try_url,
+          ready_tried: tried,
+          ready_result: result,
+          ready_response: ask.response,
+          ready_evidence: JSON.stringify(evidenceIds),
+          ready_at: now,
+          ready_token: token,
+          updated_at: now,
+        };
       })();
       return toTicket(row, actor);
     },
@@ -1361,6 +1419,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
         markReady:
           !archived &&
           can(actor, "mark_ready", ticket) &&
+          ticket.owner_id === actor.id &&
           ticket.status === "in_progress" &&
           ticket.change_url !== null &&
           ticket.ready_at === null,

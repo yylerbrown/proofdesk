@@ -105,6 +105,12 @@ test("a customer files a ticket, the team works it, and only the customer resolv
 
   await test.step("the team member asks the customer to check", async () => {
     await team.getByRole("textbox", { name: "Page on the live site to try" }).fill(tryUrl);
+    await team
+      .getByRole("textbox", { name: "What did you try?" })
+      .fill("Exported the report as CSV.");
+    await team
+      .getByRole("textbox", { name: "What happened?" })
+      .fill("The file downloaded with every row.");
     await team.getByRole("button", { name: "Ask the customer" }).click();
     await expect(savedMessage(team)).toContainText("asked to check the fix");
   });
@@ -149,7 +155,17 @@ test("a customer files a ticket, the team works it, and only the customer resolv
 
   await test.step("the team member asks again and the customer answers Yes", async () => {
     await team.goto(`/tickets/${key}`);
-    await team.getByRole("textbox", { name: "Page on the live site to try" }).fill(tryUrl);
+    // The page to try is filled in from the last question; after a No, the owner says what changed.
+    await expect(team.getByRole("textbox", { name: "Page on the live site to try" })).toHaveValue(
+      tryUrl,
+    );
+    await team
+      .getByRole("textbox", { name: "What did you try?" })
+      .fill("Exported it again, from the same page.");
+    await team.getByRole("textbox", { name: "What happened?" }).fill("The file has every row now.");
+    await team
+      .getByRole("textbox", { name: "What changed since the customer said it still fails?" })
+      .fill("Empty exports are fixed too.");
     await team.getByRole("button", { name: "Ask the customer" }).click();
     await expect(savedMessage(team)).toContainText("asked to check the fix");
 

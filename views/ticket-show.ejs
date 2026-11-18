@@ -63,6 +63,20 @@
 <article id="did-this-fix-it">
   <h2>Did this fix it?</h2>
   <p>The team says it is fixed. Please check it<% if (ticket.try_url) { %> here: <a href="<%= ticket.try_url %>" rel="noopener noreferrer nofollow" class="user-text"><%= ticket.try_url %></a><% } %>.</p>
+  <% if (ticket.ask) { %>
+  <% if (ticket.ask.response_to_no) { %>
+  <p>What changed since you said it still fails:</p>
+  <blockquote class="user-text"><%= ticket.ask.response_to_no %></blockquote>
+  <% } %>
+  <% if (ticket.ask.tried) { %>
+  <p><%= ticket.owner_name ?? "The team" %> tried:</p>
+  <blockquote class="user-text"><%= ticket.ask.tried %></blockquote>
+  <% } %>
+  <% if (ticket.ask.result) { %>
+  <p>What happened:</p>
+  <blockquote class="user-text"><%= ticket.ask.result %></blockquote>
+  <% } %>
+  <% } %>
   <% if (ticket.agreed_check) { %>
   <p>Agreed check:</p>
   <blockquote class="user-text"><%= ticket.agreed_check %></blockquote>
@@ -221,14 +235,40 @@
   </form>
   <% } %>
   <% if (allowed.markReady) { %>
-  <form method="post" action="/tickets/<%= ticket.key %>/ready">
+  <% const asked = problem?.form === "ready" ? (problem.values ?? {}) : {}; %>
+  <form method="post" action="/tickets/<%= ticket.key %>/ready" class="ask">
+    <p><small>Try it yourself against the customer's check before you ask.</small></p>
     <label>
       Page on the live site to try
-      <input type="url" name="try_url" required <% if (problem?.form === "ready") { %>aria-invalid="true" aria-describedby="ready-error"<% } %> />
-      <% if (problem?.form === "ready") { %><small id="ready-error"><%= problem.message %></small><% } %>
+      <input type="url" name="try_url" required value="<%= asked.try_url ?? ticket.try_url ?? "" %>" />
     </label>
+    <label>
+      What did you try?
+      <textarea name="tried" rows="2" required><%= asked.tried ?? "" %></textarea>
+    </label>
+    <label>
+      What happened?
+      <textarea name="result" rows="2" required><%= asked.result ?? "" %></textarea>
+    </label>
+    <% if (ticket.customer_answer && !ticket.customer_answer.fixed) { %>
+    <label>
+      What changed since the customer said it still fails?
+      <textarea name="response" rows="2" required><%= asked.response ?? "" %></textarea>
+    </label>
+    <% } %>
+    <% if (evidence.length > 0) { %>
+    <fieldset>
+      <legend>Evidence you relied on</legend>
+      <% for (const item of evidence) { %>
+      <label><input type="checkbox" name="evidence_ids" value="<%= item.id %>" /> <span class="user-text"><%= item.summary %></span></label>
+      <% } %>
+    </fieldset>
+    <% } %>
+    <% if (problem?.form === "ready") { %><p><small id="ready-error" role="alert"><%= problem.message %></small></p><% } %>
     <button type="submit" class="compact">Ask the customer</button>
   </form>
+  <% } else if (askBlocked) { %>
+  <p class="ask-blocked"><button type="button" class="compact" disabled aria-describedby="ask-blocked-why">Ask the customer</button> <small id="ask-blocked-why"><%= askBlocked %></small></p>
   <% } %>
 </section>
 <% } %>

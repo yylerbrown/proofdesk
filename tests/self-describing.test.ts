@@ -149,7 +149,9 @@ describe("real answers", () => {
       "link_change",
       await admin(app).put(`${t}/change-link`).send({ change_url: "https://example.com/c" }),
     );
-    const ready = await admin(app).post(`${t}/ready`).send({ try_url: "https://example.com/t" });
+    const ready = await admin(app)
+      .post(`${t}/ready`)
+      .send({ try_url: "https://example.com/t", tried: "I printed ten pages.", result: "No jam." });
     expectShape("mark_ready", ready);
     expectShape(
       "answer",

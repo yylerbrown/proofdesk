@@ -20,7 +20,7 @@ async function waiting() {
   await team.put("/api/tickets/SUP-1/change-link").send({ change_url: "https://example.com/c/1" });
   const ready = await team
     .post("/api/tickets/SUP-1/ready")
-    .send({ try_url: "https://example.com/t" });
+    .send({ try_url: "https://example.com/t", tried: "I printed ten pages.", result: "No jam." });
   return { ...built, token: ready.body.ready_token as string };
 }
 

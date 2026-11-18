@@ -255,7 +255,9 @@ describe("the spec on the ticket page", () => {
     // Ask the customer, so the box appears.
     const team = as(app, teamActor);
     await team.put("/api/tickets/SUP-1/change-link").send({ change_url: "https://e.com/c/1" });
-    await team.post("/api/tickets/SUP-1/ready").send({ try_url: "https://e.com/try" });
+    await team
+      .post("/api/tickets/SUP-1/ready")
+      .send({ try_url: "https://e.com/try", tried: "I printed ten pages.", result: "No jam." });
     const box = parse((await as(app, customerOne).get("/tickets/SUP-1")).text).querySelector(
       "#did-this-fix-it",
     )!;

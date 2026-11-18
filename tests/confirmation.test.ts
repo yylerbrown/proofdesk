@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { admin, as, buildTestApp, customerOne, customerTwo, teamActor } from "./helpers.js";
 
 const change = { change_url: "https://example.com/change/7" };
-const tryIt = { try_url: "https://example.com/print" };
+const tryIt = {
+  try_url: "https://example.com/print",
+  tried: "I printed ten pages.",
+  result: "No jam.",
+};
 
 /** Customer one's SUP-1, taken by the team, in progress, with an agreed check. */
 async function setup() {
