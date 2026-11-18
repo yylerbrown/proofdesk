@@ -9,7 +9,8 @@ A customer support desk where the customer says how they will know it is fixed, 
 ## Standing rules
 
 - A code change is linked to a ticket by pasting its link, which works with every Git host. Nothing in the desk is specific to one host except the agent run, and the README says so.
-- The assistant that builds a change never merges, never pushes to `main` and never deploys. A pull request merges only when its CI checks pass. During this build, under the owner's standing instruction, a separate coordinating assistant merged green pull requests and deployed the demo and the real site. The owner set the direction and checked the product as it grew. Reviews came from other AI sessions, and no human reviewer read the pull requests.
+- The assistant that builds a change never merges, never pushes to `main` and never deploys. A pull request merges only when its CI checks pass.
+- In this build the project skeleton, seven commits on 17 November, went straight to `main` with no pull request, and every later change came through one. Under the owner's standing instruction, a separate coordinating assistant merged pull requests whose CI checks had passed, using the owner's GitHub account, and deployed the demo and the real site. Not every merge waited for CI. Pull request #1 was merged while its restarted checks were still running, and they passed two minutes later. GitHub Actions stopped starting jobs at 17:01 UTC on 18 November, so the pull requests merged while it was stopped, starting with #96, had no CI run on their final commit. The owner set the direction and priorities, made the design calls, and gave feedback on the live product as it grew. Reviews came from other AI sessions, including another vendor's models, and no human reviewer read the pull requests.
 - Nothing is ever attributed to an AI agent that an AI agent did not do.
 
 ## Who uses it
