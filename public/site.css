@@ -463,7 +463,7 @@ header nav .viewer strong {
     white-space: normal;
   }
   .site-header .sign-out button {
-    min-height: 32px;
+    min-height: 44px;
     font-size: var(--pd-text-xs);
     white-space: nowrap;
   }
@@ -581,7 +581,10 @@ input[type="submit"],
     transform var(--pd-ease);
 }
 /* Pressed: the button settles by one pixel. */
-:is(button, [type="submit"], [type="button"], [role="button"]):active:not(:disabled) {
+:is(button, [type="submit"], [type="button"], [role="button"]):active:not(
+    :disabled,
+    [aria-disabled="true"]
+  ) {
   transform: translateY(1px);
 }
 @media (max-width: 639px) {
@@ -615,7 +618,11 @@ input[type="submit"],
  * Not yet possible: a flat grey with muted words, at full strength, instead of Pico's half-faded
  * black. The reason sits beside or under it (muted on subtle: 5.86).
  */
-:is(button, [type="submit"], [type="button"], [role="button"]):is(:disabled, [disabled]) {
+:is(button, [type="submit"], [type="button"], [role="button"]):is(
+  :disabled,
+  [disabled],
+  [aria-disabled="true"]
+) {
   border-color: var(--pd-border);
   background-color: var(--pd-subtle);
   color: var(--pd-muted);
@@ -1641,6 +1648,8 @@ article.entry > p {
 .ticket-panel select {
   display: block;
   width: auto;
+  /* A long choice is cut short inside the box instead of pushing it past the card's edge. */
+  max-width: 100%;
 }
 .ticket-panel label {
   margin-bottom: var(--pd-space-2);
@@ -1768,6 +1777,13 @@ p.saved {
   -webkit-mask: url("/assets/github-mark.svg") center / contain no-repeat;
   mask: url("/assets/github-mark.svg") center / contain no-repeat;
 }
+/* In forced colours the browser would paint the fill as the button's background, hiding it. */
+@media (forced-colors: active) {
+  .github-mark {
+    background-color: ButtonText;
+    forced-color-adjust: none;
+  }
+}
 .welcome .github-reads {
   margin-top: var(--pd-space-2);
   color: var(--pd-muted);
@@ -1807,7 +1823,9 @@ p.saved {
   grid-row: 1 / span 2;
   align-self: center;
   color: var(--pd-muted);
+  /* The arrow is decoration: the empty text after the slash keeps screen readers quiet. */
   content: "\2192";
+  content: "\2192" / "";
   transition:
     transform var(--pd-ease-move),
     color var(--pd-ease);
@@ -2067,6 +2085,21 @@ button.copy {
     min-height: 44px;
     padding-inline: 16px;
   }
+  /* The list's filter chips, the reply's "Who sees it" choices and the role menu's choices. */
+  :is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"]) li a,
+  fieldset:has(input[value="note"]) label,
+  .switch-role ul button.link,
+  .switch-role ul button.link:is(:hover, :active) {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  /* "Back to all tickets": the words stay small, the row around them is the tap area. */
+  .back a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
 }
 .spec-prompt pre {
   margin-bottom: var(--pd-space-3);
@@ -2322,6 +2355,10 @@ dl.run-facts dd {
     display: inline-block;
     margin-block: -12px;
     padding-block: 12px;
+  }
+  /* When the links wrap, each row's tap area ends where the next one starts. */
+  .invite-actions {
+    row-gap: 24px;
   }
 }
 
