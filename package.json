@@ -1,5 +1,5 @@
 {
-  "name": "support-desk",
+  "name": "proofdesk",
   "version": "0.1.0",
   "scripts": {
     "predev": "npm run build:browser",
