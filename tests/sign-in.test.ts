@@ -1,3 +1,4 @@
+import { Agent, type IncomingMessage } from "node:http";
 import { betterAuth } from "better-auth";
 import { getMigrations } from "better-auth/db/migration";
 import { testUtils } from "better-auth/plugins";
@@ -13,8 +14,11 @@ import {
   adminActor,
   as,
   buildTestApp,
+  closeServers,
   customerOne,
   customerTwo,
+  FROM_THIS_SITE,
+  listenLocally,
   SIGN_IN_ENV,
   signedInLine,
   visitor,
@@ -267,13 +271,29 @@ describe("the sign-in library's own routes", () => {
 
   it("refuse a body somewhat over the app's 100 KB limit, and keep none of it", async () => {
     const { app, db } = buildSignInApp();
-    // About 150 KB, sent where the library would keep it with the sign-in it starts.
-    const big = { provider: "github", additionalData: { padding: "x".repeat(150 * 1024) } };
-    for (const path of ["/api/auth/sign-in/social", "/api/auth/callback/github"]) {
-      const res = await visitor(app).post(path).send(big);
-      expect(res.status).toBe(404);
+    // The 404 can go out before the body has finished arriving. On a connection kept open,
+    // as a browser keeps it, the server then takes in the rest and throws it away unread.
+    // So this test keeps its connections open, and its server up until every body is in:
+    // closing either one early would cut the upload off halfway.
+    const server = await listenLocally(app);
+    const keepOpen = new Agent({ keepAlive: true });
+    const bodiesIn: Promise<void>[] = [];
+    server.on("request", (req: IncomingMessage) => {
+      bodiesIn.push(new Promise((done) => req.once("close", () => done())));
+    });
+    try {
+      // About 150 KB, sent where the library would keep it with the sign-in it starts.
+      const big = { provider: "github", additionalData: { padding: "x".repeat(150 * 1024) } };
+      for (const path of ["/api/auth/sign-in/social", "/api/auth/callback/github"]) {
+        const res = await request(server).post(path).agent(keepOpen).set(FROM_THIS_SITE).send(big);
+        expect(res.status).toBe(404);
+      }
+      expect(db.prepare(`SELECT COUNT(*) AS n FROM "verification"`).get()).toEqual({ n: 0 });
+    } finally {
+      await Promise.all(bodiesIn);
+      keepOpen.destroy();
+      await closeServers([server]);
     }
-    expect(db.prepare(`SELECT COUNT(*) AS n FROM "verification"`).get()).toEqual({ n: 0 });
   });
 });
 
