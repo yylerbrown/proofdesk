@@ -1,8 +1,6 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { parse } from "node-html-parser";
-import request from "supertest";
 import type { Express } from "express";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { openDatabase, type Db } from "../src/server/db.js";
@@ -20,15 +18,13 @@ import {
   buildTestApp,
   customerOne,
   customerTwo,
-  handToAgent,
   teamActor,
 } from "./helpers.js";
+import { fullLife as lifeOf, giveAddresses, NOTE_MARKER, ok } from "./notify-life.js";
 
 // Email notices worked out from the ticket history. The one failure that would really hurt is
 // a customer emailed the text of an internal note, so every note here carries a marker that is
 // looked for in every notice.
-
-const NOTE_MARKER = "INTERNAL-ONLY-7731";
 
 const MIGRATIONS = path.join(__dirname, "..", "migrations");
 
@@ -39,17 +35,6 @@ const SETTINGS: NotifySettings = {
   mailConfigured: true,
   madeUpPeople: [],
 };
-
-/** Gives the made-up people of the development entrance an address, as signing in would. */
-function giveAddresses(db: Db) {
-  const insert = db.prepare(
-    `INSERT INTO "user" (id, name, email, "emailVerified", "createdAt", "updatedAt")
-     VALUES (?, ?, ?, 1, '2026-01-01', '2026-01-01')`,
-  );
-  for (const person of [customerOne, customerTwo, teamActor, adminActor]) {
-    insert.run(person.id, person.name, `${person.id}@example.com`);
-  }
-}
 
 type Row = {
   ticket_id: number;
@@ -71,125 +56,9 @@ function summary(db: Db): string[] {
   return allNotices(db).map((n) => `SUP-${n.ticket_id} ${n.recipient_id} ${n.kind}`);
 }
 
-async function ok(res: request.Response | Promise<request.Response>, status = 200) {
-  const done = await res;
-  expect(done.status, done.text).toBe(status);
-  return done;
-}
-
-async function issueKey(app: Express): Promise<string> {
-  const res = await admin(app)
-    .post("/connections")
-    .type("form")
-    .send({ name: "Helper", scopes: ["read_tickets", "attach_evidence", "write_notes"] });
-  return parse(res.text).querySelector("input.key")!.getAttribute("value")!;
-}
-
-/**
- * A full ticket life, collecting after every step as the server will. On SUP-1: filed, taken,
- * a team reply, an internal note, an assistant's evidence and note, the customer asked, a No,
- * a hand-off, a reply from the customer, asked again, a Yes. On SUP-2: a team resolution, then
- * a reopen.
- */
-async function fullLife(app: Express, db: Db, settings: NotifySettings = SETTINGS) {
-  const step = async (res: Promise<request.Response>, status = 200) => {
-    const done = await ok(res, status);
-    collectNotices(db, settings);
-    return done;
-  };
-  await step(
-    as(app, customerOne)
-      .post("/api/tickets")
-      .send({ title: "Printer jams", description: "On page two.", fix_check: "Ten pages print" }),
-    201,
-  );
-  await step(as(app, teamActor).post("/api/tickets/SUP-1/take-and-start"));
-  await step(
-    as(app, teamActor)
-      .post("/api/tickets/SUP-1/entries")
-      .send({ kind: "reply", body: "Looking at it now." }),
-    201,
-  );
-  await step(
-    as(app, teamActor)
-      .post("/api/tickets/SUP-1/entries")
-      .send({ kind: "note", body: `Customer seems upset. ${NOTE_MARKER}` }),
-    201,
-  );
-  const key = await issueKey(app);
-  await handToAgent(app, "SUP-1", key);
-  collectNotices(db, settings);
-  const agent = (path: string) => request(app).post(path).set("Authorization", `Bearer ${key}`);
-  await step(
-    agent("/api/tickets/SUP-1/evidence").send({
-      kind: "test",
-      summary: "A test prints ten pages",
-      link: "https://example.com/pr/7",
-      result: "passed",
-    }),
-    201,
-  );
-  await step(
-    agent("/api/tickets/SUP-1/notes").send({ body: `Root cause found. ${NOTE_MARKER}` }),
-    201,
-  );
-  await step(
-    as(app, teamActor)
-      .put("/api/tickets/SUP-1/change-link")
-      .send({ change_url: "https://example.com/change/1" }),
-  );
-  const first = await step(
-    as(app, teamActor)
-      .post("/api/tickets/SUP-1/ready")
-      .send({ try_url: "https://example.com/try", tried: "Printed ten.", result: "No jam." }),
-  );
-  await step(
-    as(app, customerOne).post("/api/tickets/SUP-1/answer").send({
-      fixed: "no",
-      comment: "It jammed on page nine.",
-      ready_token: first.body.ready_token,
-    }),
-  );
-  await step(
-    as(app, teamActor)
-      .post("/api/tickets/SUP-1/hand-off")
-      .send({ to: adminActor.id, expected_owner: teamActor.id }),
-  );
-  await step(
-    as(app, customerOne)
-      .post("/api/tickets/SUP-1/entries")
-      .send({ kind: "reply", body: "It is the thick paper." }),
-    201,
-  );
-  const second = await step(
-    admin(app).post("/api/tickets/SUP-1/ready").send({
-      try_url: "https://example.com/try",
-      tried: "Printed ten on thick paper.",
-      result: "No jam.",
-      response: "The thick paper tray is fixed now.",
-    }),
-  );
-  await step(
-    as(app, customerOne)
-      .post("/api/tickets/SUP-1/answer")
-      .send({ fixed: "yes", ready_token: second.body.ready_token }),
-  );
-
-  await step(
-    as(app, customerTwo)
-      .post("/api/tickets")
-      .send({ title: "Export is empty", description: "The file has no rows." }),
-    201,
-  );
-  await step(admin(app).post("/api/tickets/SUP-2/take-and-start"));
-  await step(
-    admin(app)
-      .post("/api/tickets/SUP-2/resolve")
-      .send({ reason: "duplicate", duplicate_of: "SUP-1", note: "Same printer as SUP-1." }),
-  );
-  await step(
-    as(app, customerTwo).post("/api/tickets/SUP-2/reopen").send({ reason: "Still empty today." }),
-  );
+/** The full ticket life, collecting with these settings after every step. */
+function fullLife(app: Express, db: Db, settings: NotifySettings = SETTINGS) {
+  return lifeOf(app, () => collectNotices(db, settings));
 }
 
 describe("notices from a full ticket life", () => {
@@ -497,11 +366,19 @@ describe("a hand-off from someone with no stored name", () => {
 });
 
 describe("an address that is not verified", () => {
-  it("is not written to", async () => {
+  it("is never sent to: its notices are kept as not sent, saying why", async () => {
     const { app, db } = buildTestApp();
     giveAddresses(db);
     db.prepare(`UPDATE "user" SET "emailVerified" = 0 WHERE id = 'dev-customer-1'`).run();
     await fullLife(app, db);
-    expect(summary(db).filter((line) => line.includes("dev-customer-1"))).toEqual([]);
+    const theirs = allNotices(db).filter((n) => n.recipient_id === "dev-customer-1");
+    expect(theirs.length).toBe(3);
+    for (const notice of theirs) {
+      expect(notice.state).toBe("not_sent");
+      expect(notice.not_sent_reason).toBe(NOT_SENT_REASONS.unverified);
+    }
+    // Everyone else's are still pending.
+    const others = allNotices(db).filter((n) => n.recipient_id !== "dev-customer-1");
+    expect(others.every((n) => n.state === "pending")).toBe(true);
   });
 });

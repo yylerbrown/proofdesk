@@ -17,6 +17,7 @@ describe("loadConfig", () => {
       clientIpHeader: undefined,
       teamGithubIds: [],
       adminGithubIds: [],
+      mail: null,
     });
   });
 
