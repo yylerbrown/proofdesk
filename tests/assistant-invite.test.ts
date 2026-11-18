@@ -24,15 +24,13 @@ describe("the invitation to connect an assistant", () => {
   it("asks the team and the admin, says what an assistant does here, and never asks a customer", async () => {
     const { app } = buildTestApp();
     const team = (await list(app)).querySelector(".assistant-invite")!;
-    expect(team.querySelector("h2")?.text).toBe("Want to take things up a notch?");
-    expect(team.text).toContain("Connect your own AI assistant.");
+    expect(team.querySelector("strong")?.text).toBe("Want to take things up a notch?");
+    expect(team.text).toContain("Connect your own AI assistant:");
     expect(team.text).toContain("for a person to check");
-    expect(team.text).toContain("Proofdesk makes no AI calls of its own.");
+    expect(team.text).toContain("Proofdesk makes no AI calls itself.");
     // A team member cannot connect one, so they are told who can instead of shown a button.
     expect(team.querySelector("a[href='/connections']")).toBeNull();
-    expect(team.querySelector(".invite-who")?.text).toBe(
-      "Only an admin can connect an assistant. Ask one of your admins.",
-    );
+    expect(team.querySelector(".invite-who")?.text).toBe("Only an admin can connect an assistant.");
     expect(team.querySelector("a[href='/assistant-run']")?.text).toBe("See an assistant's work");
 
     const asAdmin = (await list(app, adminActor)).querySelector(".assistant-invite")!;

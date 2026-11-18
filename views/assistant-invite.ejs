@@ -1,21 +1,19 @@
-<%# The invitation to bring your own AI assistant, for the team only: it shows until an assistant is connected, then becomes one quiet line. "Not now" hides it in this browser. Proofdesk makes no AI calls itself. %>
+<%# The invitation to bring your own AI assistant, for the team only: a compact side offer beside the tickets, until an assistant is connected, then one quiet line. "Not now" hides it in this browser. Proofdesk makes no AI calls itself. %>
 <% if (invite && invite.connected > 0) { %>
 <p class="assistant-connected"><small><%= invite.connected %> <%= invite.connected === 1 ? "assistant" : "assistants" %> connected<% if (invite.manage) { %> · <a href="/connections">Manage connections</a><% } %> · <a href="/assistant-run">See an assistant's work</a></small></p>
 <% } else if (invite) { %>
-<section class="assistant-invite" aria-labelledby="assistant-invite-heading">
-  <h2 id="assistant-invite-heading">Want to take things up a notch?</h2>
-  <p>Connect your own AI assistant. Proofdesk is built to work with it: hand it a ticket, and it reproduces the problem, tests a fix and reports what it found here, for a person to check. Proofdesk makes no AI calls of its own.</p>
+<aside class="assistant-invite" aria-label="Connect your AI assistant">
+  <p><strong>Want to take things up a notch?</strong> Connect your own AI assistant<span class="invite-more">: it reproduces a ticket's problem, tests a fix and reports here, for a person to check. Proofdesk makes no AI calls itself</span>.</p>
   <div class="invite-actions">
     <% if (invite.connectUrl) { %>
-    <a href="<%= invite.connectUrl %>" role="button" class="compact">Connect your assistant</a>
+    <a href="<%= invite.connectUrl %>" class="invite-connect">Connect your assistant</a>
+    <% } else { %>
+    <span class="invite-who">Only an admin can connect an assistant.</span>
     <% } %>
-    <a href="/assistant-run" role="button" class="secondary outline compact">See an assistant's work</a>
+    <a href="/assistant-run">See an assistant's work</a>
     <form method="post" action="/assistant-invite/hide">
       <button type="submit" class="link">Not now</button>
     </form>
   </div>
-  <% if (!invite.connectUrl) { %>
-  <p class="invite-who"><small>Only an admin can connect an assistant. Ask one of your admins.</small></p>
-  <% } %>
-</section>
+</aside>
 <% } %>
