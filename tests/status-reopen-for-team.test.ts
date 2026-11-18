@@ -2,9 +2,9 @@ import { parse } from "node-html-parser";
 import { describe, expect, it, vi } from "vitest";
 import { as, admin, buildTestApp, customerOne, teamActor } from "./helpers.js";
 
-// The ticket page shows Reopen from the allowed actions, never from the viewer's role. Today
-// only the customer may reopen. This file lets the team reopen too, as a rule change might,
-// and checks that the page then offers the team a Reopen that works, with no other change.
+// The ticket page shows Reopen from the allowed actions, never from the viewer's role. The
+// real rule lets only the customer, the owner or an admin reopen. This file lets every team
+// member reopen, and checks that the page then offers the team a Reopen that works.
 
 vi.mock("../src/server/permissions.js", async (importOriginal) => {
   const real = await importOriginal<typeof import("../src/server/permissions.js")>();
@@ -66,7 +66,7 @@ describe("Reopen for whoever the rules allow", () => {
     const html = parse(refused.text);
     const reopen = html.querySelector("aside.ticket-panel details.reopen")!;
     expect(reopen.hasAttribute("open")).toBe(true);
-    expect(reopen.querySelector("#reopen-error")?.text).toMatch(/happening again/);
+    expect(reopen.querySelector("#reopen-error")?.text).toMatch(/reason for reopening/);
     expect(reopen.querySelector("textarea")?.getAttribute("aria-describedby")).toBe("reopen-error");
   });
 
