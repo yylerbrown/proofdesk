@@ -1,6 +1,5 @@
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { SIGN_IN_LIMIT } from "../src/server/limits.js";
 import { buildTestApp, PRODUCTION_SIGN_IN_ENV, SIGN_IN_ENV, visitor } from "./helpers.js";
 
 type TestApp = ReturnType<typeof buildTestApp>["app"];
@@ -173,18 +172,19 @@ describe("when looking up the session fails", () => {
 });
 
 describe("the sign-in library's own routes", () => {
-  it("refuse a sign-out or sign-in posted from another site", async () => {
+  it("are not there for a sign-out or sign-in posted from another site", async () => {
     const { app, db } = buildGithubApp();
     const { cookie } = await signInThroughGithub(app, ada);
     const foreign = { Origin: "https://evil.example", "Sec-Fetch-Site": "cross-site" };
     const out = await request(app).post("/api/auth/sign-out").set("Cookie", cookie).set(foreign);
-    expect(out.status).toBe(403);
+    expect(out.status).toBe(404);
     expect(db.prepare(`SELECT COUNT(*) AS n FROM "session"`).get()).toEqual({ n: 1 });
     const start = await request(app)
       .post("/api/auth/sign-in/social")
       .set(foreign)
       .send({ provider: "github" });
-    expect(start.status).toBe(403);
+    expect(start.status).toBe(404);
+    expect(db.prepare(`SELECT COUNT(*) AS n FROM "verification"`).get()).toEqual({ n: 0 });
   });
 
   it("refuse a GitHub return with a missing or wrong state, and sign nobody in", async () => {
@@ -195,12 +195,5 @@ describe("the sign-in library's own routes", () => {
       expect(String(back.headers["set-cookie"] ?? "")).not.toContain("session_token=");
     }
     expect(db.prepare(`SELECT COUNT(*) AS n FROM "session"`).get()).toEqual({ n: 0 });
-  });
-
-  it("allow only a few sign-in starts a minute when called directly", async () => {
-    const { app } = buildGithubApp();
-    const start = () => visitor(app).post("/api/auth/sign-in/social").send({ provider: "github" });
-    for (let i = 0; i < SIGN_IN_LIMIT; i++) expect((await start()).status).toBe(200);
-    expect((await start()).status).toBe(429);
   });
 });

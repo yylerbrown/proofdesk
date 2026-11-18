@@ -37,7 +37,9 @@ import { DEMO_CONNECTIONS_PER_HOUR, FILING_LIMIT, SIGN_IN_LIMIT, WRITE_LIMIT } f
 // run from source) and in dist/server (when run after a build).
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 // The largest request body the server reads, for JSON and for forms. A larger one is
-// refused with 413 before any of it is looked at. The biggest valid ticket is about 6 KB.
+// refused with 413 before it is parsed. The biggest valid ticket is about 6 KB. The sign-in
+// library reads no request body at all: the only request it is given is GitHub's return,
+// a GET, and every other address under /api/auth answers 404 before reading anything.
 const BODY_LIMIT = "100kb";
 
 const picoCssFile = path.join(rootDir, "node_modules/@picocss/pico/css/pico.min.css");
@@ -92,7 +94,6 @@ export function createApp(config: Config, db: Db): Express {
     legacyHeaders: false,
     // A real person is counted by their account. Demo visitors share three made-up
     // identities, so they are counted by address, like someone not signed in.
-    // req.actor is not set on the sign-in library's own routes, which run before it.
     keyGenerator: (req) =>
       req.actor && req.actor.demo !== true ? req.actor.id : ipKeyGenerator(clientAddress(req)),
     handler: (_req, _res, next) => {
@@ -127,24 +128,17 @@ export function createApp(config: Config, db: Db): Express {
     limit: WRITE_LIMIT,
     skip: (req) => req.method === "GET" || req.method === "HEAD",
   });
-  // The library's own sign-in routes get the same allowance as starting a GitHub sign-in.
-  const authLimit = rateLimit({
-    ...tooMany,
-    windowMs: 60 * 1000,
-    limit: SIGN_IN_LIMIT,
-    skip: (req) => req.method === "GET",
-  });
-
-  // GitHub sign-in, when its settings are present. The library answers everything under
-  // /api/auth itself: the return from GitHub, and its own session routes. It must be
-  // mounted before any body parser, because it reads the request body itself.
+  // GitHub sign-in, when its settings are present. Only GitHub's return reaches the sign-in
+  // library: GitHub sends the browser to /api/auth/callback/github once the person agrees.
+  // The app starts a sign-in, reads the session and signs out by calling the library itself,
+  // so the library's own API (which can rename a person, hand out their GitHub token or list
+  // their sessions) is never offered. The return is a GET, and the library reads no body then.
   const auth = config.signIn === null ? null : createAuth(db, config.signIn, config.clientIpHeader);
   if (auth !== null) {
-    // The same forged-request check and a sign-in limit as our own routes, in front of the
-    // library's own, which are mounted before everything else.
-    app.use("/api/auth", sameOriginOnly(config), authLimit);
-    app.all("/api/auth/*splat", toNodeHandler(auth));
+    app.get("/api/auth/callback/github", toNodeHandler(auth));
   }
+  // Everything else under /api/auth answers 404 at once, before any body is read.
+  app.use("/api/auth", notFoundHandler, errorHandler);
 
   app.use(cookieParser());
 

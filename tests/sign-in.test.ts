@@ -186,12 +186,6 @@ describe("starting a GitHub sign-in", () => {
     expect(String(res.headers["set-cookie"])).toContain("HttpOnly");
   });
 
-  it("lets the library answer under /api/auth", async () => {
-    const { app } = buildSignInApp();
-    const res = await request(app).get("/api/auth/ok");
-    expect(res.status).toBe(200);
-  });
-
   it("is not there when GitHub sign-in is not configured", async () => {
     const { app } = buildTestApp();
     expect((await request(app).get("/sign-in")).text).not.toContain('action="/sign-in/github"');
@@ -209,6 +203,58 @@ describe("starting a GitHub sign-in", () => {
     const res = await visitor(app).post("/sign-in/github");
     expect(res.status).toBe(429);
     expect(res.text).toContain("Too many requests.");
+  });
+});
+
+// The sign-in library's own API. The app never uses it: it starts a sign-in, reads the session
+// and signs out by calling the library directly. Each row is a route the library answers when
+// it is given all of /api/auth, sent the way the library expects it.
+const LIBRARY_ROUTES: [method: "get" | "post", path: string, body?: object][] = [
+  ["post", "/api/auth/update-user", { name: "Ada Admin" }],
+  ["post", "/api/auth/get-access-token", { providerId: "github" }],
+  ["get", "/api/auth/list-sessions"],
+  ["get", "/api/auth/get-session"],
+  ["post", "/api/auth/sign-in/social", { provider: "github" }],
+  ["get", "/api/auth/account-info"],
+  ["post", "/api/auth/change-email", { newEmail: "someone@example.com" }],
+  ["post", "/api/auth/revoke-sessions", {}],
+  ["post", "/api/auth/link-social", { provider: "github" }],
+  ["get", "/api/auth/list-accounts"],
+  ["get", "/api/auth/ok"],
+  ["get", "/api/auth/error"],
+];
+
+describe("the sign-in library's own routes", () => {
+  it.each(LIBRARY_ROUTES)(
+    "answer 404 to a signed-in customer and to a visitor: %s %s",
+    async (method, path, body) => {
+      const { app, db } = buildSignInApp();
+      const customer = await signedInBrowser(db, "5005", "Sam Customer");
+      for (const cookie of [customer.cookie, undefined]) {
+        const req = visitor(app)[method](path);
+        if (cookie !== undefined) req.set("Cookie", cookie);
+        const res = body === undefined ? await req : await req.send(body);
+        expect(res.status).toBe(404);
+        expect(res.body.error.code).toBe("not_found");
+        expect(res.headers["set-cookie"]).toBeUndefined();
+      }
+      // Nothing changed and nothing started: the name is the one GitHub gave, the customer is
+      // still signed in, and no sign-in is waiting for GitHub.
+      expect(db.prepare(`SELECT "name" FROM "user"`).all()).toEqual([{ name: "Sam Customer" }]);
+      expect(db.prepare(`SELECT COUNT(*) AS n FROM "session"`).get()).toEqual({ n: 1 });
+      expect(db.prepare(`SELECT COUNT(*) AS n FROM "verification"`).get()).toEqual({ n: 0 });
+    },
+  );
+
+  it("refuse a body somewhat over the app's 100 KB limit, and keep none of it", async () => {
+    const { app, db } = buildSignInApp();
+    // About 150 KB, sent where the library would keep it with the sign-in it starts.
+    const big = { provider: "github", additionalData: { padding: "x".repeat(150 * 1024) } };
+    for (const path of ["/api/auth/sign-in/social", "/api/auth/callback/github"]) {
+      const res = await visitor(app).post(path).send(big);
+      expect(res.status).toBe(404);
+    }
+    expect(db.prepare(`SELECT COUNT(*) AS n FROM "verification"`).get()).toEqual({ n: 0 });
   });
 });
 
