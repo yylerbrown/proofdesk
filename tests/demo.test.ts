@@ -199,3 +199,21 @@ function noSignIn() {
     GITHUB_CLIENT_SECRET: "",
   };
 }
+
+describe("the read-only admin preview's header", () => {
+  it("offers no New ticket, which the preview could not file, while the team still has it", async () => {
+    const { app } = buildDemo();
+    const header = async (id: string) =>
+      (await asDemo(app, id).get("/tickets")).text.split("</header>")[0]!;
+    expect(await header(demoAdmin.id)).not.toContain('href="/tickets/new"');
+    expect(await header(demoTeam.id)).toContain('href="/tickets/new"');
+    expect(
+      (
+        await asDemo(app, demoAdmin.id)
+          .post("/tickets")
+          .type("form")
+          .send({ title: "Test", description: "x" })
+      ).status,
+    ).toBe(403);
+  });
+});

@@ -102,3 +102,19 @@ describe("the More control", () => {
     expect(css).toMatch(/details\.more > summary \{[^}]*min-height: 44px/);
   });
 });
+
+describe("the small controls on a phone", () => {
+  it("are 44-pixel tap targets there, like More: History, the panel's disclosures and Copy", () => {
+    const css = fs.readFileSync("public/site.css", "utf8");
+    const phone = [...css.matchAll(/@media \(max-width: 639px\) \{([\s\S]*?)\n\}/g)].map(
+      (m) => m[1]!,
+    );
+    const rule = (selector: RegExp) =>
+      phone.some((block) =>
+        new RegExp(`${selector.source}[^{]*\\{[^}]*min-height: 44px`).test(block),
+      );
+    expect(rule(/details\.history > summary/)).toBe(true);
+    expect(rule(/\.ticket-panel details:not\(\.more\) > summary/)).toBe(true);
+    expect(rule(/button\.copy/)).toBe(true);
+  });
+});
