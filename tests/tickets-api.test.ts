@@ -90,6 +90,7 @@ describe("create and get", () => {
       change_url: null,
       try_url: null,
       ready_at: null,
+      ready_token: null,
     });
   });
 

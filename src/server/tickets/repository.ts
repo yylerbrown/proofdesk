@@ -22,6 +22,7 @@ export type TicketRow = {
   change_url: string | null;
   try_url: string | null;
   ready_at: string | null;
+  ready_token: string | null;
 };
 
 export type EventRow = {
@@ -173,11 +174,9 @@ export function updateTicketArchived(
  * question "Did this fix it?" is only asked about the ticket as it was when it was asked.
  */
 export function updateTicketStatus(db: Db, id: number, status: TicketStatus, now: string): void {
-  db.prepare("UPDATE tickets SET status = ?, ready_at = NULL, updated_at = ? WHERE id = ?").run(
-    status,
-    now,
-    id,
-  );
+  db.prepare(
+    "UPDATE tickets SET status = ?, ready_at = NULL, ready_token = NULL, updated_at = ? WHERE id = ?",
+  ).run(status, now, id);
 }
 
 export function updateChangeUrl(db: Db, id: number, changeUrl: string, now: string): void {
@@ -188,14 +187,16 @@ export function updateChangeUrl(db: Db, id: number, changeUrl: string, now: stri
   );
 }
 
-/** Starts the wait for the customer's answer, with the page they should try. */
-export function updateReady(db: Db, id: number, tryUrl: string, now: string): void {
-  db.prepare("UPDATE tickets SET try_url = ?, ready_at = ?, updated_at = ? WHERE id = ?").run(
-    tryUrl,
-    now,
-    now,
-    id,
-  );
+/** Starts the wait for the customer's answer, with the page to try and a fresh token. */
+export function updateReady(db: Db, id: number, tryUrl: string, token: string, now: string): void {
+  db.prepare(
+    "UPDATE tickets SET try_url = ?, ready_at = ?, ready_token = ?, updated_at = ? WHERE id = ?",
+  ).run(tryUrl, now, token, now, id);
+}
+
+/** Withdraws the question "Did this fix it?", because what it was about has changed. */
+export function clearReady(db: Db, id: number): void {
+  db.prepare("UPDATE tickets SET ready_at = NULL, ready_token = NULL WHERE id = ?").run(id);
 }
 
 export function insertEvent(db: Db, event: NewEvent): void {

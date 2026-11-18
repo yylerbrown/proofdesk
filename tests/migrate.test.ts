@@ -39,6 +39,7 @@ const ALL = [
   "0010_ticket_owner.sql",
   "0011_agreed_check.sql",
   "0012_confirmation.sql",
+  "0013_ready_token.sql",
 ];
 
 describe("runMigrations", () => {

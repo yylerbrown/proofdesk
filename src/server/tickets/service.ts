@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { Actor } from "../actor.js";
 import type { Db } from "../db.js";
 import { HttpError, ValidationError } from "../errors.js";
@@ -43,6 +44,7 @@ export type Ticket = {
   change_url: string | null;
   try_url: string | null;
   ready_at: string | null;
+  ready_token: string | null;
 };
 
 export type TicketEvent = {
@@ -68,6 +70,9 @@ export type TicketEntry = {
 };
 
 export type TicketService = ReturnType<typeof createTicketService>;
+
+// The fields of a ticket that is not waiting for the customer's answer.
+const noQuestion = { ready_at: null, ready_token: null };
 
 const PREFIX_META_KEY = "ticket_prefix";
 
@@ -114,6 +119,7 @@ export function createTicketService(db: Db, prefix: string) {
       change_url: row.change_url,
       try_url: row.try_url,
       ready_at: row.ready_at,
+      ready_token: row.ready_token,
     };
   }
 
@@ -194,6 +200,14 @@ export function createTicketService(db: Db, prefix: string) {
       now,
     });
     return { ...before, owner_id: ownerId, owner_name: ownerName, updated_at: now };
+  }
+
+  /**
+   * Withdraws the customer's question when what it was about changes: the ticket's text,
+   * the agreed check or the change link. Call it inside the transaction of that change.
+   */
+  function withdrawQuestion(before: repository.TicketRow): void {
+    if (before.ready_at !== null) repository.clearReady(db, before.id);
   }
 
   /** Throws 409 when the ticket is archived. Used before any change to its content. */
@@ -282,7 +296,7 @@ export function createTicketService(db: Db, prefix: string) {
           data: { from: before.status, to: status },
           now,
         });
-        return { ...before, status, ready_at: null, updated_at: now };
+        return { ...before, status, ready_at: null, ready_token: null, updated_at: now };
       })();
       return toTicket(row);
     },
@@ -312,6 +326,7 @@ export function createTicketService(db: Db, prefix: string) {
         }
         if (Object.keys(changes).length === 0) return before;
         const now = new Date().toISOString();
+        withdrawQuestion(before);
         repository.updateTicketText(
           db,
           before.id,
@@ -331,7 +346,7 @@ export function createTicketService(db: Db, prefix: string) {
           data: { changes },
           now,
         });
-        return { ...before, ...after, updated_at: now };
+        return { ...before, ...after, ...noQuestion, updated_at: now };
       })();
       return toTicket(row);
     },
@@ -349,6 +364,7 @@ export function createTicketService(db: Db, prefix: string) {
         requireNotArchived(key, before);
         if (before.agreed_check === agreed) return before; // nothing changes
         const now = new Date().toISOString();
+        withdrawQuestion(before);
         repository.updateAgreedCheck(db, before.id, agreed, now);
         repository.insertEvent(db, {
           ticketId: before.id,
@@ -358,7 +374,7 @@ export function createTicketService(db: Db, prefix: string) {
           data: { from: before.agreed_check, to: agreed },
           now,
         });
-        return { ...before, agreed_check: agreed, updated_at: now };
+        return { ...before, agreed_check: agreed, ...noQuestion, updated_at: now };
       })();
       return toTicket(row);
     },
@@ -372,6 +388,7 @@ export function createTicketService(db: Db, prefix: string) {
         requireNotArchived(key, before);
         if (before.change_url === change_url) return before;
         const now = new Date().toISOString();
+        withdrawQuestion(before);
         repository.updateChangeUrl(db, before.id, change_url, now);
         repository.insertEvent(db, {
           ticketId: before.id,
@@ -381,7 +398,7 @@ export function createTicketService(db: Db, prefix: string) {
           data: { from: before.change_url, to: change_url },
           now,
         });
-        return { ...before, change_url, updated_at: now };
+        return { ...before, change_url, ...noQuestion, updated_at: now };
       })();
       return toTicket(row);
     },
@@ -403,8 +420,11 @@ export function createTicketService(db: Db, prefix: string) {
         if (before.change_url === null) {
           throw new HttpError(409, "needs_change_link", `Add the change link to ${key} first.`);
         }
+        // Already waiting for an answer: asking again changes nothing and writes nothing.
+        if (before.ready_at !== null) return before;
         const now = new Date().toISOString();
-        repository.updateReady(db, before.id, try_url, now);
+        const token = randomUUID();
+        repository.updateReady(db, before.id, try_url, token, now);
         repository.insertEvent(db, {
           ticketId: before.id,
           actor: actor.id,
@@ -413,7 +433,7 @@ export function createTicketService(db: Db, prefix: string) {
           data: { try_url },
           now,
         });
-        return { ...before, try_url, ready_at: now, updated_at: now };
+        return { ...before, try_url, ready_at: now, ready_token: token, updated_at: now };
       })();
       return toTicket(row);
     },
@@ -423,7 +443,7 @@ export function createTicketService(db: Db, prefix: string) {
      * in progress with its owner, and the customer's comment goes into the conversation.
      */
     answer(key: string, input: unknown, actor: Actor): Ticket {
-      const { fixed, comment } = parse(answerSchema, input);
+      const { fixed, comment, ready_token } = parse(answerSchema, input);
       if (fixed === "no" && !comment) {
         throw new ValidationError("Say what is still wrong.", {
           comment: ["Say what is still wrong."],
@@ -435,6 +455,14 @@ export function createTicketService(db: Db, prefix: string) {
         requireNotArchived(key, before);
         if (before.ready_at === null) {
           throw new HttpError(409, "not_waiting", `Ticket ${key} is not waiting for an answer.`);
+        }
+        // The answer must be to the question the customer was shown, not an older one.
+        if (before.ready_token !== ready_token) {
+          throw new HttpError(
+            409,
+            "question_changed",
+            `The question on ticket ${key} has changed. Reload the ticket and answer again.`,
+          );
         }
         const now = new Date().toISOString();
         const status = fixed === "yes" ? "resolved" : "in_progress";
@@ -459,7 +487,7 @@ export function createTicketService(db: Db, prefix: string) {
           data: { fixed: fixed === "yes" },
           now,
         });
-        return { ...before, status, ready_at: null, updated_at: now } as repository.TicketRow;
+        return { ...before, status, ...noQuestion, updated_at: now } as repository.TicketRow;
       })();
       return toTicket(row);
     },

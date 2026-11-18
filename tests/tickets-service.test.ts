@@ -250,6 +250,7 @@ describe("ticket service returns what is stored", () => {
       "owner_id",
       "owner_name",
       "ready_at",
+      "ready_token",
       "status",
       "title",
       "try_url",
