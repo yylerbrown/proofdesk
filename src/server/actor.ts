@@ -17,8 +17,9 @@ declare global {
 }
 
 /**
- * The one place that decides who is acting. For now everyone is anonymous. A later step
- * will replace only this function, for example to read a sign-in or an API token.
+ * The one place that decides who is acting. For now everyone is anonymous. Sign-in will
+ * change this function. It will also have to change the service functions that only read
+ * (list, get, events), because today they take no actor and so cannot limit who sees what.
  */
 export const actorMiddleware: RequestHandler = (req, _res, next) => {
   req.actor = { id: "anonymous", kind: "person" };
