@@ -1561,6 +1561,9 @@ export function createTicketService(
           kind: entry.kind,
           body: entry.body,
           based_on: entry.based_on ?? null,
+          // Only an assistant marks its note as blocked; the flag means nothing on anything else.
+          blocked:
+            actor.kind === "agent" && entry.kind === "note" && entry.blocked === true ? 1 : 0,
           author: actor.id,
           author_kind: actor.kind,
           author_role: actor.role,
@@ -1579,6 +1582,25 @@ export function createTicketService(
         return saved;
       })();
       return toEntry(row);
+    },
+
+    /**
+     * For the team: the open tickets whose assistant last said it is blocked, each with the
+     * first line of that note. Nothing for anyone who may not read internal notes.
+     */
+    assistantBlocked(tickets: Ticket[], actor: Actor): Map<string, string> {
+      const ids = new Map<number, string>();
+      for (const ticket of tickets) {
+        if (ticket.status === "resolved" || !can(actor, "read_notes", ticket)) continue;
+        const id = parseKey(prefix, ticket.key);
+        if (id !== null) ids.set(id, ticket.key);
+      }
+      const blocked = new Map<string, string>();
+      for (const note of repository.blockedAgentNotes(db, [...ids.keys()])) {
+        const firstLine = note.body.split("\n")[0]!.trim().slice(0, 140);
+        blocked.set(ids.get(note.ticket_id)!, firstLine);
+      }
+      return blocked;
     },
 
     /** The conversation, oldest first. Internal notes only for those who may read them. */

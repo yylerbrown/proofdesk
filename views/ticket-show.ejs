@@ -212,6 +212,9 @@
 <% if (ticket.fix_check || ticket.agreed_check || allowed.agreeCheck) { %>
 <section>
   <h2>How will we know it's fixed?</h2>
+  <% if (assistantBlocked) { %>
+  <p class="assistant-blocked"><strong>Assistant blocked:</strong> <span class="user-text"><%= assistantBlocked %></span></p>
+  <% } %>
   <% if (ticket.agreed_check) { %>
   <p><strong>Team's interpretation</strong></p>
   <blockquote class="user-text"><%= ticket.agreed_check %></blockquote>
