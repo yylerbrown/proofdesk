@@ -250,6 +250,7 @@ describe("ticket service returns what is stored", () => {
       "created_at",
       "created_by",
       "description",
+      "done_when",
       "fix_check",
       "key",
       "owner_id",
@@ -260,6 +261,7 @@ describe("ticket service returns what is stored", () => {
       "title",
       "try_url",
       "updated_at",
+      "waiting_on",
       "where_url",
     ]);
   });
