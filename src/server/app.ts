@@ -30,6 +30,8 @@ import { assistantRunRouter } from "./routes/assistant-run.js";
 import { teamMembers } from "./team.js";
 import { guide, openApiDocument } from "./api/describe.js";
 import { siteAddress } from "./routes/connections.js";
+// The limits live in limits.ts, where the API's guide reads them too.
+import { DEMO_CONNECTIONS_PER_HOUR, FILING_LIMIT, SIGN_IN_LIMIT, WRITE_LIMIT } from "./limits.js";
 
 // The top folder of the project. It is two levels above this file, both in src/server (when
 // run from source) and in dist/server (when run after a build).
@@ -37,10 +39,6 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../.
 // The largest request body the server reads, for JSON and for forms. A larger one is
 // refused with 413 before any of it is looked at. The biggest valid ticket is about 6 KB.
 const BODY_LIMIT = "100kb";
-
-// The limits live in limits.ts, where the API's guide reads them too.
-import { DEMO_CONNECTIONS_PER_HOUR, FILING_LIMIT, SIGN_IN_LIMIT, WRITE_LIMIT } from "./limits.js";
-export { DEMO_CONNECTIONS_PER_HOUR, FILING_LIMIT, SIGN_IN_LIMIT, WRITE_LIMIT };
 
 const picoCssFile = path.join(rootDir, "node_modules/@picocss/pico/css/pico.min.css");
 

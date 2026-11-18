@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
-import { SIGN_IN_LIMIT } from "../src/server/app.js";
+import { SIGN_IN_LIMIT } from "../src/server/limits.js";
 import { loadConfig } from "../src/server/config.js";
 import { buildTestApp, visitor } from "./helpers.js";
 

@@ -3,7 +3,7 @@ import { getMigrations } from "better-auth/db/migration";
 import { testUtils } from "better-auth/plugins";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
-import { FILING_LIMIT, SIGN_IN_LIMIT } from "../src/server/app.js";
+import { FILING_LIMIT, SIGN_IN_LIMIT } from "../src/server/limits.js";
 import { createAuth } from "../src/server/auth.js";
 import { DEV_COOKIE } from "../src/server/actor.js";
 import {

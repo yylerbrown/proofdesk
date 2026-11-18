@@ -3,7 +3,7 @@ import type { Server } from "node:http";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { parse } from "node-html-parser";
 import request from "supertest";
-import { WRITE_LIMIT } from "../src/server/app.js";
+import { WRITE_LIMIT } from "../src/server/limits.js";
 import type { Express } from "express";
 import { afterEach, describe, expect, it } from "vitest";
 import { AGENT_SCOPES, CAPABILITIES } from "../src/server/permissions.js";

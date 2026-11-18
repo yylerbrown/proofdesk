@@ -65,8 +65,6 @@ export type ApiAction = {
   body?: z.ZodType;
   /** The status of a successful answer. */
   status?: number;
-  /** The page form that does the same thing, if there is one. */
-  page?: string;
   /** What a successful answer looks like. A test checks real answers against it. */
   output: z.ZodType;
   /** True for a list that comes in pages; its doors add how to get the next page. */
@@ -113,7 +111,6 @@ export const ACTIONS: ApiAction[] = [
     needs: "create",
     body: createTicketSchema,
     status: 201,
-    page: "POST /tickets",
     run: ({ service, actor, body }) => service.createTicket(body, actor),
   },
   {
@@ -139,7 +136,6 @@ export const ACTIONS: ApiAction[] = [
       "Start work: move a New ticket you own to in_progress. Nothing else moves the status this way; only the customer's yes resolves, and only the customer reopens.",
     needs: "change_status",
     body: changeStatusSchema,
-    page: "POST /tickets/:key/status",
     run: ({ service, actor, key, body }) => service.changeStatus(key, body, actor),
   },
   {
@@ -150,7 +146,6 @@ export const ACTIONS: ApiAction[] = [
     summary: "Replace the text of a ticket.",
     needs: "edit",
     body: createTicketSchema,
-    page: "POST /tickets/:key/edit",
     run: ({ service, actor, key, body }) => service.editTicket(key, body, actor),
   },
   {
@@ -162,7 +157,6 @@ export const ACTIONS: ApiAction[] = [
       "Set the team's interpretation of the customer's check. Empty removes it. The customer's own words never change.",
     needs: "agree_check",
     body: agreeCheckSchema,
-    page: "POST /tickets/:key/agreed-check",
     run: ({ service, actor, key, body }) => service.agreeCheck(key, body, actor),
   },
   {
@@ -173,7 +167,6 @@ export const ACTIONS: ApiAction[] = [
     summary:
       "The customer adopts the team's interpretation as their own check, in those exact words.",
     needs: "adopt_check",
-    page: "POST /tickets/:key/adopt-check",
     run: ({ service, actor, key }) => service.adoptCheck(key, actor),
   },
   {
@@ -184,7 +177,6 @@ export const ACTIONS: ApiAction[] = [
     summary: "Link the code change that should fix the ticket.",
     needs: "link_change",
     body: linkChangeSchema,
-    page: "POST /tickets/:key/change-link",
     run: ({ service, actor, key, body }) => service.linkChange(key, body, actor),
   },
   {
@@ -195,7 +187,6 @@ export const ACTIONS: ApiAction[] = [
     summary: 'Ask the customer "Did this fix it?", with a page on the live site to try.',
     needs: "mark_ready",
     body: markReadySchema,
-    page: "POST /tickets/:key/ready",
     run: ({ service, actor, key, body }) => service.markReady(key, body, actor),
   },
   {
@@ -205,7 +196,6 @@ export const ACTIONS: ApiAction[] = [
     path: "/tickets/:key/withdraw-question",
     summary: "The owner takes back the question the customer has not answered yet.",
     needs: "mark_ready",
-    page: "POST /tickets/:key/withdraw-question",
     run: ({ service, actor, key }) => service.withdrawQuestionAsked(key, actor),
   },
   {
@@ -217,7 +207,6 @@ export const ACTIONS: ApiAction[] = [
       'The customer answers "Did this fix it?". Yes resolves the ticket; no needs a comment.',
     needs: "answer",
     body: answerSchema,
-    page: "POST /tickets/:key/answer",
     run: ({ service, actor, key, body }) => service.answer(key, body, actor),
   },
   {
@@ -227,7 +216,6 @@ export const ACTIONS: ApiAction[] = [
     path: "/tickets/:key/take",
     summary: "Become the named owner of an unowned ticket.",
     needs: "take",
-    page: "POST /tickets/:key/take",
     run: ({ service, actor, key }) => service.takeTicket(key, actor),
   },
   {
@@ -237,7 +225,6 @@ export const ACTIONS: ApiAction[] = [
     summary: "Take an unowned New ticket and start work on it, in one step.",
     needs: ["take", "change_status"],
     output: ticketOutput,
-    page: "POST /tickets/:key/take-and-start",
     run: ({ service, actor, key }) => service.takeAndStart(key, actor),
   },
   {
@@ -249,7 +236,6 @@ export const ACTIONS: ApiAction[] = [
     needs: "reopen",
     body: reopenSchema,
     output: ticketOutput,
-    page: "POST /tickets/:key/reopen",
     run: ({ service, actor, key, body }) => service.reopen(key, body, actor),
   },
   {
@@ -261,7 +247,6 @@ export const ACTIONS: ApiAction[] = [
       "The owner, or an admin, hands the ticket to another team member. expected_owner must be the current owner.",
     needs: "hand_off",
     body: handOffSchema,
-    page: "POST /tickets/:key/hand-off",
     run: ({ service, actor, key, body }) => service.handOff(key, body, actor),
   },
   {
@@ -273,7 +258,6 @@ export const ACTIONS: ApiAction[] = [
       "The owner hands an in-progress ticket to one agent connection, which can then work on that ticket only.",
     needs: "hand_to_agent",
     body: giveToAgentSchema,
-    page: "POST /tickets/:key/agent",
     run: ({ service, actor, key, body }) => service.giveToAgent(key, body, actor),
   },
   {
@@ -283,7 +267,6 @@ export const ACTIONS: ApiAction[] = [
     path: "/tickets/:key/agent/end",
     summary: "The owner, or an admin, ends the agent's work on the ticket.",
     needs: "hand_to_agent",
-    page: "POST /tickets/:key/agent/end",
     run: ({ service, actor, key }) => service.endAgentWork(key, actor),
   },
   {
@@ -293,7 +276,6 @@ export const ACTIONS: ApiAction[] = [
     path: "/tickets/:key/release",
     summary: "The owner lets go of a New ticket, back to the inbox.",
     needs: "release",
-    page: "POST /tickets/:key/release",
     run: ({ service, actor, key }) => service.releaseTicket(key, actor),
   },
   {
@@ -303,7 +285,6 @@ export const ACTIONS: ApiAction[] = [
     path: "/tickets/:key/archive",
     summary: "Hide the ticket from the lists. Nothing is deleted.",
     needs: "archive",
-    page: "POST /tickets/:key/archive",
     run: ({ service, actor, key }) => service.archiveTicket(key, actor),
   },
   {
@@ -313,7 +294,6 @@ export const ACTIONS: ApiAction[] = [
     path: "/tickets/:key/restore",
     summary: "Bring an archived ticket back.",
     needs: "restore",
-    page: "POST /tickets/:key/restore",
     run: ({ service, actor, key }) => service.restoreTicket(key, actor),
   },
   {
@@ -324,7 +304,6 @@ export const ACTIONS: ApiAction[] = [
     summary: "Delete the ticket permanently. The body must repeat the key.",
     needs: "delete",
     body: deleteTicketSchema,
-    page: "POST /tickets/:key/delete",
     run: ({ service, actor, key, body }) => {
       const { filesCleaned } = service.deleteTicket(key, body, actor);
       return { deleted: true, files_cleaned: filesCleaned };
@@ -348,7 +327,6 @@ export const ACTIONS: ApiAction[] = [
     needs: ["reply", "note"],
     body: addEntrySchema,
     status: 201,
-    page: "POST /tickets/:key/entries",
     run: ({ service, actor, key, body }) => service.addEntry(key, body, actor),
   },
   {
@@ -420,7 +398,6 @@ export const ACTIONS: ApiAction[] = [
       'Accept the proposed test spec as the agreed way to test, or discard it: { "decision": "accept" } or "discard".',
     needs: "decide_spec",
     body: decideSpecSchema,
-    page: "POST /tickets/:key/spec/decision",
     run: ({ service, actor, key, body }) => service.decideSpec(key, body, actor),
   },
   {

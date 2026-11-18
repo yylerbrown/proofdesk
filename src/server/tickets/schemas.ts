@@ -23,7 +23,6 @@ export const createTicketSchema = z.object({
     .optional(),
   fix_check: z.string().trim().max(500, "Must be at most 500 characters.").optional(),
 });
-export type CreateTicketInput = z.infer<typeof createTicketSchema>;
 
 // Permanent deletion is confirmed by typing the ticket's key.
 export const deleteTicketSchema = z.object({

@@ -363,8 +363,7 @@ export function createTicketService(
    * The connection a ticket is handed to, as text: for an assistant, its own connection when the
    * ticket is handed to it; for the team, whoever has it; for a customer, nothing.
    */
-  function handedTo(row: repository.TicketRow, actor?: Actor): string | null {
-    if (actor === undefined) return row.agent_id;
+  function handedTo(row: repository.TicketRow, actor: Actor): string | null {
     if (actor.kind === "agent") {
       const own = actor.connection?.id;
       if (own === undefined) return null;
@@ -373,12 +372,12 @@ export function createTicketService(
     }
     if (actor.role === "customer") return null;
     const handoff = repository.activeHandoff(db, row.id);
-    return handoff === undefined ? row.agent_id : String(handoff.connection_id);
+    return handoff === undefined ? null : String(handoff.connection_id);
   }
 
   // Every public field is named here. A column added to the table later stays private
   // until someone adds it to this list on purpose.
-  function toTicket(row: repository.TicketRow, actor?: Actor): Ticket {
+  function toTicket(row: repository.TicketRow, actor: Actor): Ticket {
     if (isDemoAgent(actor)) {
       // The sample text as first written, whatever a visitor has changed since.
       const original = seededOrRefused().text[String(row.id)];
@@ -1873,7 +1872,6 @@ export function createTicketService(
       const archived = ticket.archived_at !== null;
       return {
         edit: !archived && can(actor, "edit", ticket),
-        changeStatus: !archived && can(actor, "change_status", ticket),
         archive: !archived && can(actor, "archive", ticket),
         restore: archived && can(actor, "restore", ticket),
         delete: can(actor, "delete", ticket),
