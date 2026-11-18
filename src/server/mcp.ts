@@ -11,6 +11,7 @@ import {
 import { z } from "zod";
 import type { Actor } from "./actor.js";
 import { ACTIONS, nextCursor, type ApiAction } from "./api/actions.js";
+import { MCP_INSTRUCTIONS } from "./api/describe.js";
 import type { ConnectionService } from "./connections/service.js";
 import { errorBody, HttpError } from "./errors.js";
 import { CAPABILITIES } from "./permissions.js";
@@ -57,7 +58,10 @@ function text(value: unknown) {
 
 /** Builds the MCP server for one request, acting as the agent the key belongs to. */
 function buildServer(service: TicketService, actor: Actor): McpServer {
-  const server = new McpServer({ name: "proofdesk", version: "1.0.0" });
+  const server = new McpServer(
+    { name: "proofdesk", version: "1.0.0" },
+    { instructions: MCP_INSTRUCTIONS },
+  );
   for (const row of TOOL_ACTIONS) {
     server.registerTool(
       row.name,

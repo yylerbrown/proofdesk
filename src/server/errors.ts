@@ -44,7 +44,7 @@ const HINTS: Record<string, string> = {
   cross_site_request:
     "Send the request from a page on this site. A program signs in with a connection key instead.",
   forbidden: "Your role may not do this. GET /api lists who may call each action.",
-  not_found: "Check the address. GET /api lists every action.",
+  not_found: "Check the address. GET /api is a guide to every action.",
   ticket_not_found: "Check the key. GET /api/tickets lists the tickets you may see.",
   ticket_deleted: "This ticket was deleted permanently. Its number is never used again.",
   ticket_archived: "Restore the ticket first, if your role may (POST .../restore).",
