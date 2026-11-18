@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SCENARIO_LIMIT } from "./spec.js";
 
 // Evidence that a ticket's check was met. Proofdesk stores it as reported and shows who
 // reported it; it verifies nothing. The original report is kept exactly as sent.
@@ -47,6 +48,9 @@ export const addEvidenceSchema = z.object({
     })
     .optional()
     .meta({ description: "The original report, for example the evidence.json of ops/prove." }),
+  scenario: z.number().int().min(1).max(SCENARIO_LIMIT).optional().meta({
+    description: "The number of the scenario in the ticket's test spec that this proves.",
+  }),
 });
 
 /** What a reader can honestly say about one stage of a test report. */
