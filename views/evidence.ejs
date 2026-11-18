@@ -1,4 +1,4 @@
-<%# Evidence, as reported. Nothing here is verified by Proofdesk, and it never looks like the customer's yes: no tick, no green. %>
+<%# Evidence, as reported. Nothing here is verified by Proofdesk, and it never looks like the customer's yes: no tick, no green. The page that includes it says once, above the list, that Proofdesk has not checked it. %>
 <%
   const kindLabels = { test: "Test", check_run: "Check run", change_link: "Change", note: "Note" };
   const stageWords = { failed: "failed", passed: "passed", unknown: "unknown" };
@@ -23,7 +23,7 @@
     <% if (item.revision || item.command || item.result) { %>
     <p><small><% if (item.revision) { %>Revision <code class="user-text"><%= item.revision %></code>. <% } %><% if (item.command) { %>Ran <code class="user-text"><%= item.command %></code>. <% } %><% if (item.result) { %>Result: <span class="user-text"><%= item.result %></span>.<% } %></small></p>
     <% } %>
-    <p><small>Reported by <%= item.reported_by.name %><% if (item.reported_by.kind === "agent") { %> (AI agent)<% } %>, <%- include("time", { iso: item.created_at }) %>. Not checked by Proofdesk.</small></p>
+    <p><small>Reported by <%= item.reported_by.name %><% if (item.reported_by.kind === "agent") { %> (AI agent)<% } %>, <%- include("time", { iso: item.created_at }) %>.</small></p>
   </li>
   <% } %>
 </ul>
