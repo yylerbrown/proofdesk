@@ -36,7 +36,8 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: "npx tsx src/server/index.ts",
+    // The pages load a small compiled browser script, so build it first.
+    command: "npm run build:browser && npx tsx src/server/index.ts",
     cwd: rootDir,
     url: `http://127.0.0.1:${port}/api/health`,
     // Never attach to a server that is already running: it would not have the empty

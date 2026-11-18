@@ -77,9 +77,9 @@ test("a customer files a ticket, the team works it, and only the customer resolv
 
     await team.getByRole("button", { name: "Take this ticket" }).click();
     await expect(savedMessage(team)).toContainText("You own this ticket now");
-    await expect(team.getByRole("main")).toContainText("owner Team Member");
+    await expect(team.getByRole("button", { name: "Take this ticket" })).toHaveCount(0);
 
-    await team.getByRole("combobox", { name: "Status" }).selectOption({ label: "In Progress" });
+    await team.getByRole("combobox", { name: "Change to" }).selectOption({ label: "In Progress" });
     await team.getByRole("button", { name: "Change status" }).click();
     await expect(savedMessage(team)).toContainText("Status changed");
     await expectTicketStatus(team, key, "In Progress");
@@ -134,10 +134,11 @@ test("a customer files a ticket, the team works it, and only the customer resolv
   await test.step("the ticket is back with the team member, with the customer's words", async () => {
     await team.goto(`/tickets/${key}`);
     await expectTicketStatus(team, key, "In Progress");
-    await expect(team.getByRole("main")).toContainText("owner Team Member");
     await expect(team.getByText(notFixedComment)).toBeVisible();
     await team.goto("/tickets");
-    await expect(listRow(team, key)).toContainText("Team");
+    // Still owned by the same team member, and waiting on the team again.
+    await expect(listRow(team, key)).toContainText("Team Member");
+    await expect(listRow(team, key)).not.toContainText("Customer");
   });
 
   await test.step("the team member asks again and the customer answers Yes", async () => {
