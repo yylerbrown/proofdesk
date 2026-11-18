@@ -65,6 +65,39 @@ describe("a role chosen on the People page", () => {
     expect(await handOffTo()).toEqual(["Ada Admin"]);
   });
 
+  it("changes the role shown beside their name in a ticket's history", async () => {
+    const { app, db } = buildPeopleApp();
+    const ada = await signedInPerson(db, "1001", "Ada Admin");
+    const boss = browserOf(app, ada.cookie);
+    const sam = await signedInPerson(db, "5005", "Sam Customer");
+    const di = await signedInPerson(db, "5006", "Di Customer");
+    const samBrowser = browserOf(app, sam.cookie);
+    const diBrowser = browserOf(app, di.cookie);
+    await diBrowser.post("/api/tickets").send(valid);
+    /** The role labels beside Sam's name in the history, as the customer sees it. */
+    const samLabels = async () => {
+      const page = await diBrowser.get("/tickets/SUP-1");
+      return parse(page.text)
+        .querySelectorAll("details tbody tr td:nth-child(3)")
+        .filter((cell) => cell.text.includes("Sam Customer"))
+        .map((cell) => cell.querySelector("small.role-label")?.text);
+    };
+
+    await setRole(boss, sam.id, "team");
+    expect((await samBrowser.post("/api/tickets/SUP-1/take")).status).toBe(200);
+    expect(await samLabels()).toEqual(["team"]);
+
+    const handed = await samBrowser
+      .post("/tickets/SUP-1/hand-off")
+      .type("form")
+      .send({ to: ada.id, expected_owner: sam.id });
+    expect(handed.status).toBe(303);
+    await setRole(boss, sam.id, "customer");
+    const labels = await samLabels();
+    expect(labels.length).toBeGreaterThan(0);
+    expect(labels.every((label) => label === "customer")).toBe(true);
+  });
+
   it("makes someone an admin who can then open the People page", async () => {
     const { app, db } = buildPeopleApp();
     const boss = browserOf(app, (await signedInPerson(db, "1001", "Ada Admin")).cookie);

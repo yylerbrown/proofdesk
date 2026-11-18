@@ -129,6 +129,6 @@ export function settingsRoleOf(config: Config, githubId: string | undefined): Ro
  * an admin chose on the People page, otherwise customer. It is asked on every request, so a
  * change applies on the person's next page with no restart.
  */
-export function roleOf(config: Config, githubId: string | undefined, chosen?: Role | null): Role {
+export function roleOf(config: Config, githubId: string | undefined, chosen: Role | null): Role {
   return settingsRoleOf(config, githubId) ?? chosen ?? "customer";
 }

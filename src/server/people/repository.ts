@@ -33,7 +33,9 @@ const PEOPLE = `SELECT u.id, u.name, u.email, u."createdAt" AS first_signed_in,
 
 /** Everyone who has signed in, in the order they first signed in. */
 export function listPeople(db: Db): PersonRow[] {
-  return db.prepare(`${PEOPLE} ORDER BY u."createdAt", u.id`).all() as PersonRow[];
+  // Two people can sign in within the same millisecond. The row number of the sign-in table
+  // grows with each new person, so it keeps them in the order they arrived.
+  return db.prepare(`${PEOPLE} ORDER BY u."createdAt", u.rowid`).all() as PersonRow[];
 }
 
 /** One person who has signed in, or undefined when there is nobody with that id. */
@@ -94,10 +96,16 @@ export function listChanges(db: Db): RoleChangeRow[] {
     .all() as RoleChangeRow[];
 }
 
-/** The numbers of the tickets a person owns that are not resolved yet, lowest first. */
-export function openTicketsOwnedBy(db: Db, personId: string): number[] {
+/**
+ * The tickets a person owns that are not resolved yet, lowest first, and whether each is
+ * archived. An archived ticket counts too: restored, it would still have this owner.
+ */
+export function openTicketsOwnedBy(db: Db, personId: string): { id: number; archived: boolean }[] {
   const rows = db
-    .prepare("SELECT id FROM tickets WHERE owner_id = ? AND status != 'resolved' ORDER BY id")
-    .all(personId) as { id: number }[];
-  return rows.map((row) => row.id);
+    .prepare(
+      `SELECT id, archived_at IS NOT NULL AS archived FROM tickets
+       WHERE owner_id = ? AND status != 'resolved' ORDER BY id`,
+    )
+    .all(personId) as { id: number; archived: number }[];
+  return rows.map((row) => ({ id: row.id, archived: row.archived === 1 }));
 }

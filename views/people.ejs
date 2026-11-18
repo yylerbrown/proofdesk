@@ -2,8 +2,8 @@
 <div class="column-wide">
 <h1>People</h1>
 <p>Everyone who has signed in. Choose who is on the support team. A change applies on their next page, with no restart.</p>
-<% if (!canChange) { %>
-<p class="role-note"><small>On the real site an admin changes roles here, and it applies at once. The demo admin changes nothing.</small></p>
+<% if (note) { %>
+<p class="role-note"><small><%= note %></small></p>
 <% } %>
 <ul class="role-lines">
   <% for (const role of roles) { %><li><small><%= roleLines[role] %></small></li><% } %>
@@ -21,8 +21,8 @@
       <% for (const person of people) { %>
       <tr>
         <%# The email address beside the name, since anyone can choose their display name. %>
-        <td class="user-text"><span class="person-name"><%= person.name %></span><br /><small class="person-email"><%= person.email ?? "Made up for the demo" %></small></td>
-        <td><% if (person.firstSignedIn) { %><%- include("time", { iso: person.firstSignedIn }) %><% } else { %>Never<% } %></td>
+        <td class="user-text"><span class="person-name"><%= person.name %></span><br /><small class="person-email"><%= person.email ?? madeUpLine %></small></td>
+        <td><% if (person.firstSignedIn) { %><%- include("time", { iso: person.firstSignedIn }) %><% } %></td>
         <td>
           <% if (person.locked) { %>
           <%= person.locked %><% if (person.locked === "You") { %>, <%= roleLabels[person.role] %><% } %>

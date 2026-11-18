@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DEMO_ACTORS, type Actor, type Role } from "../actor.js";
+import { entrancePeople, type Actor, type Role } from "../actor.js";
 import { roleOf, settingsRoleOf } from "../auth.js";
 import type { Config } from "../config.js";
 import type { Db } from "../db.js";
@@ -57,14 +57,27 @@ export type RoleChangeView = {
 export type PeoplePage = {
   people: PersonView[];
   changes: RoleChangeView[];
-  /** False for the read-only demo admin: every choice is shown and none can be made. */
+  /** False on the demo and the development entrance: every choice is shown and none can be made. */
   canChange: boolean;
+  /** Why nothing can be changed here, on the demo and the development entrance, or null. */
+  note: string | null;
+  /** What stands in for the email address of a made-up person, or null on the real site. */
+  madeUpLine: string | null;
   /** After a save, the one line that says what changed, or null. */
   changedLine: string | null;
 };
 
+/** What the People page says about the made-up people of the demo and the development entrance. */
+const DEMO_NOTE =
+  "On the real site an admin changes roles here, and it applies at once. The demo admin changes nothing.";
+const DEV_NOTE =
+  "These people are made up for development and keep their roles. People who sign in with GitHub appear here.";
+
+/** What changeRole did: the person's id, and whether their role changed. */
+export type RoleChange = { personId: string; changed: boolean };
+
 const changeSchema = z.object({
-  person: z.string().min(1, "Choose a person.").max(200),
+  person: z.string("Choose a person.").min(1, "Choose a person.").max(200),
   role: z.enum(ROLES, "Choose customer, team member or admin."),
 });
 
@@ -95,9 +108,9 @@ export function createPeopleService(db: Db, config: Config) {
     return roleOf(config, person.github_id ?? undefined, person.chosen_role);
   }
 
-  /** The demo's three made-up people, shown as they are, with nothing to change. */
-  function demoPeople(actor: Actor): PersonView[] {
-    return DEMO_ACTORS.map((person) => ({
+  /** The made-up people of the demo or the development entrance, shown as they are. */
+  function madeUpPeople(actor: Actor): PersonView[] {
+    return entrancePeople(config).map((person) => ({
       id: person.id,
       name: person.name,
       email: null,
@@ -111,8 +124,15 @@ export function createPeopleService(db: Db, config: Config) {
     /** The People page for this admin. With the id of someone just changed, says what changed. */
     page(actor: Actor, changedId?: string): PeoplePage {
       mayLook(actor);
-      if (config.demo) {
-        return { people: demoPeople(actor), changes: [], canChange: false, changedLine: null };
+      if (config.demo || config.devSignIn) {
+        return {
+          people: madeUpPeople(actor),
+          changes: [],
+          canChange: false,
+          note: config.demo ? DEMO_NOTE : DEV_NOTE,
+          madeUpLine: config.demo ? "Made up for the demo" : "Made up for development",
+          changedLine: null,
+        };
       }
       const people = repository.listPeople(db).map((person) => ({
         id: person.id,
@@ -133,6 +153,8 @@ export function createPeopleService(db: Db, config: Config) {
         people,
         changes,
         canChange: can(actor, "change_role"),
+        note: null,
+        madeUpLine: null,
         changedLine:
           changed === undefined
             ? null
@@ -141,13 +163,20 @@ export function createPeopleService(db: Db, config: Config) {
     },
 
     /**
-     * Gives a person a new role and records the change, as one step. Returns the person's id.
-     * A choice of the role they already have changes nothing and records nothing.
+     * Gives a person a new role and records the change, as one step. A choice of the role
+     * they already have changes nothing and records nothing, and says so.
      */
-    changeRole(actor: Actor, input: unknown): string {
+    changeRole(actor: Actor, input: unknown): RoleChange {
       mayLook(actor);
       if (!can(actor, "change_role")) {
         throw new HttpError(403, "forbidden", "The demo admin changes nothing.");
+      }
+      if (config.devSignIn) {
+        throw new HttpError(
+          403,
+          "forbidden",
+          "The made-up people of the development entrance keep their roles.",
+        );
       }
       const { person: personId, role } = parse(changeSchema, input);
       const person = repository.findPerson(db, personId);
@@ -172,17 +201,21 @@ export function createPeopleService(db: Db, config: Config) {
         );
       }
       const before = roleOfRow(person);
-      if (before === role) return person.id;
+      if (before === role) return { personId: person.id, changed: false };
       if (role === "customer") {
         const owned = repository.openTicketsOwnedBy(db, person.id);
         if (owned.length > 0) {
-          const keys = owned.map((id) => buildKey(config.ticketPrefix, id));
+          const keys = owned.map((ticket) => buildKey(config.ticketPrefix, ticket.id));
           const them = owned.length === 1 ? "it" : "them";
-          throw new HttpError(
-            409,
-            "owns_tickets",
-            `${person.name} still owns ${listInWords(keys)}. Hand ${them} to someone else first.`,
-          );
+          let message = `${person.name} still owns ${listInWords(keys)}. Hand ${them} to someone else first.`;
+          // An archived ticket offers only Restore, so say that it comes first.
+          const archived = owned.filter((ticket) => ticket.archived);
+          if (archived.length > 0) {
+            const archivedKeys = archived.map((ticket) => buildKey(config.ticketPrefix, ticket.id));
+            const isAre = archived.length === 1 ? "is" : "are";
+            message += ` ${listInWords(archivedKeys)} ${isAre} archived: restore before handing on.`;
+          }
+          throw new HttpError(409, "owns_tickets", message);
         }
       }
       const now = new Date().toISOString();
@@ -198,7 +231,7 @@ export function createPeopleService(db: Db, config: Config) {
           now,
         });
       })();
-      return person.id;
+      return { personId: person.id, changed: true };
     },
   };
 }

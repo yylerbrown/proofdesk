@@ -98,17 +98,54 @@ describe("the People page for an admin", () => {
     expect(parse(res.text).querySelectorAll("table.people time")).toHaveLength(5);
   });
 
-  it("says what changed after a save, and records it in the history", async () => {
+  it("keeps the order of signing in when two people signed in in the same millisecond", async () => {
+    const { boss, db } = await peopleApp();
+    db.prepare(`UPDATE "user" SET "createdAt" = ?`).run("2026-01-01T00:00:00.000Z");
+    const res = await boss.get("/people");
+    expect(rowsOf(res.text).map((row) => row.name)).toEqual([
+      "Ada Admin",
+      "Max Admin",
+      "Bo Team",
+      "Sam Customer",
+      "Di Customer",
+    ]);
+  });
+
+  it("says what changed after a save, once, and records it in the history", async () => {
     const { boss, sam } = await peopleApp();
     const saved = await boss.post("/people").type("form").send({ person: sam.id, role: "team" });
     expect(saved.status).toBe(303);
-    const page = await boss.get(saved.headers.location!);
+    expect(saved.headers.location).toBe("/people");
+    const page = await boss.get("/people");
     expect(parse(page.text).querySelector("p.saved")?.text).toBe(
       "Sam Customer is now a team member.",
     );
     expect(parse(page.text).querySelector("ul.role-changes li span")?.text).toBe(
       "Ada Admin made Sam Customer a team member. Before: a customer.",
     );
+    // A reload, or a link to the page, says nothing more.
+    const reload = await boss.get("/people");
+    expect(parse(reload.text).querySelectorAll("p.saved")).toHaveLength(0);
+  });
+
+  it("says nothing changed when the role chosen is the one they have", async () => {
+    const { boss, sam } = await peopleApp();
+    const saved = await boss
+      .post("/people")
+      .type("form")
+      .send({ person: sam.id, role: "customer" });
+    expect(saved.status).toBe(303);
+    expect(([] as string[]).concat(saved.headers["set-cookie"] ?? []).join()).not.toContain(
+      "people_changed",
+    );
+  });
+
+  it("asks for a person when a hand-made request names nobody", async () => {
+    const { boss } = await peopleApp();
+    const res = await boss.post("/people").type("form").send({ role: "team" });
+    expect(res.status).toBe(400);
+    expect(parse(res.text).querySelector("p.refused")?.text).toContain("Choose a person.");
+    expect(res.text).not.toContain("Invalid input");
   });
 
   it("refuses a role that is not one of the three, and changes nothing", async () => {
@@ -190,6 +227,22 @@ describe("rows that cannot change", () => {
     );
     expect(storedRole(db, sam.id)).toBe("team");
     expect(changeCount(db)).toBe(1);
+  });
+
+  it("says when an owned ticket is archived, since it must be restored to hand it on", async () => {
+    const { app, boss, db, sam, di } = await peopleApp();
+    await boss.post("/people").type("form").send({ person: sam.id, role: "team" });
+    await browserOf(app, di.cookie).post("/api/tickets").send(valid);
+    expect((await browserOf(app, sam.cookie).post("/api/tickets/SUP-1/take")).status).toBe(200);
+    db.prepare("UPDATE tickets SET archived_at = ? WHERE id = 1").run(new Date().toISOString());
+
+    const res = await boss.post("/people").type("form").send({ person: sam.id, role: "customer" });
+    expect(res.status).toBe(409);
+    expect(parse(res.text).querySelector("p.refused")?.text).toBe(
+      "Sam Customer still owns SUP-1. Hand it to someone else first. " +
+        "SUP-1 is archived: restore before handing on.",
+    );
+    expect(storedRole(db, sam.id)).toBe("team");
   });
 
   it("refuses someone who never signed in here", async () => {
@@ -309,7 +362,13 @@ describe("on the demo", () => {
     ]);
     expect(rows.filter((row) => row.disabled === true)).toHaveLength(2);
     expect(rows[2]!.says).toBe("You, Admin");
+    expect(rows[0]!.email).toBe("Made up for the demo");
     expect(parse(res.text).querySelector("table.people button:not([disabled])")).toBeNull();
+    // Made-up people never signed in, so that cell is empty rather than "Never".
+    const firstSignedIn = parse(res.text)
+      .querySelectorAll("table.people tbody tr")
+      .map((row) => row.querySelectorAll("td")[1]!.text.trim());
+    expect(firstSignedIn).toEqual(["", "", ""]);
   });
 
   it("changes nothing for the demo admin", async () => {
@@ -327,6 +386,44 @@ describe("on the demo", () => {
   it.each(["demo-team", "demo-customer"])("refuses %s", async (id) => {
     const { browser } = demoAs(id);
     expect((await browser.get("/people")).status).toBe(403);
+  });
+});
+
+describe("on the development entrance", () => {
+  function devAs(id: string) {
+    const { app } = buildTestApp({ DEV_SIGN_IN: "on" });
+    return visitor(app).set("Cookie", `${DEV_COOKIE}=${id}`);
+  }
+
+  it("shows the made-up admin the made-up people, with every choice disabled", async () => {
+    const res = await devAs("dev-admin-1").get("/people");
+    expect(res.status).toBe(200);
+    expect(res.text).toContain(
+      "These people are made up for development and keep their roles. " +
+        "People who sign in with GitHub appear here.",
+    );
+    expect(res.text).not.toContain("Nobody has signed in with GitHub yet.");
+    const rows = rowsOf(res.text);
+    expect(rows.map((row) => row.name)).toEqual([
+      "Customer One",
+      "Customer Two",
+      "Team Member",
+      "Admin",
+    ]);
+    expect(rows[0]!.email).toBe("Made up for development");
+    expect(rows.filter((row) => row.disabled === true)).toHaveLength(3);
+    expect(parse(res.text).querySelector("table.people button:not([disabled])")).toBeNull();
+  });
+
+  it("changes nothing, and says so", async () => {
+    const res = await devAs("dev-admin-1")
+      .post("/people")
+      .type("form")
+      .send({ person: "dev-team-1", role: "customer" });
+    expect(res.status).toBe(403);
+    expect(parse(res.text).querySelector("p.refused")?.text).toBe(
+      "The made-up people of the development entrance keep their roles.",
+    );
   });
 });
 
