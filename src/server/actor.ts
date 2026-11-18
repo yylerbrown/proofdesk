@@ -114,8 +114,8 @@ export function actorMiddleware(
         headers: fromNodeHeaders(req.headers),
         returnHeaders: true,
       });
-      // The library extends a session that is in use and sends a fresh cookie for it.
-      // Pass that cookie on, or the browser's copy would run out while the session lives.
+      // When a session has ended, the library sends a cookie that clears the browser's copy.
+      // Pass it on, so the browser stops sending a cookie that no longer works.
       const cookies = found.headers.getSetCookie();
       if (cookies.length > 0) res.append("Set-Cookie", cookies);
       const session = found.response;

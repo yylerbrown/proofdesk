@@ -22,6 +22,9 @@ export function createAuth(db: Db, signIn: SignInConfig, clientIpHeader: string 
     // The GitHub access token is only needed during sign-in. It is kept encrypted with the
     // secret, so a copy of the database does not hand out working GitHub tokens.
     account: { accountLinking: { enabled: false }, encryptOAuthTokens: true },
+    // A session ends seven days after sign-in, however much it is used. By default the
+    // library would extend a session in use once a day, so one used every week never ended.
+    session: { expiresIn: 7 * 24 * 60 * 60, disableSessionRefresh: true },
     // The library's own rate limits count per visitor address. Behind a proxy it must read
     // that address from the header the proxy sets.
     advanced:

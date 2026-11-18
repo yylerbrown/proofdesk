@@ -101,18 +101,31 @@ describe("the whole GitHub sign-in", () => {
     }
   });
 
-  it("keeps the browser's cookie in step when the library extends a session in use", async () => {
+  it("ends a session seven days after sign-in, however recently it was used", async () => {
     const { app, db } = buildGithubApp();
-    const { cookie } = await signInThroughGithub(app, ada);
-    // Make the session look two days old, so the library extends it on the next request.
-    const twoDaysOld = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString();
-    db.prepare(`UPDATE "session" SET "expiresAt" = ?`).run(twoDaysOld);
+    const day = 24 * 60 * 60 * 1000;
+    const signedInAt = Date.now();
+    // Only the clock is faked, so the requests themselves run as usual.
+    vi.useFakeTimers({ toFake: ["Date"], now: signedInAt });
+    try {
+      const { cookie } = await signInThroughGithub(app, ada);
+      const openTickets = () => request(app).get("/tickets").set("Cookie", cookie);
+      // Used on the sixth day, and again a minute before the seventh is over.
+      for (const usedAt of [6 * day, 7 * day - 60 * 1000]) {
+        vi.setSystemTime(signedInAt + usedAt);
+        expect((await openTickets()).status).toBe(200);
+      }
 
-    const res = await request(app).get("/tickets").set("Cookie", cookie);
-    expect(res.status).toBe(200);
-    expect(String(res.headers["set-cookie"])).toContain("better-auth.session_token=");
-    const row = db.prepare(`SELECT "expiresAt" FROM "session"`).get() as { expiresAt: string };
-    expect(new Date(row.expiresAt).getTime()).toBeGreaterThan(new Date(twoDaysOld).getTime());
+      vi.setSystemTime(signedInAt + 7 * day + 60 * 1000);
+      const res = await openTickets();
+      expect(res.status).toBe(303);
+      expect(res.headers.location).toBe("/sign-in?next=%2Ftickets");
+      // The browser is told to drop its cookie, and the session is gone from the database.
+      expect(String(res.headers["set-cookie"])).toMatch(/better-auth\.session_token=;.*Max-Age=0/);
+      expect(db.prepare(`SELECT COUNT(*) AS n FROM "session"`).get()).toEqual({ n: 0 });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

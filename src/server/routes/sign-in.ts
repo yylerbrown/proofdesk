@@ -70,7 +70,8 @@ export function signInRouter(
     if (started.response.url === undefined) {
       throw new Error("The sign-in library did not return an address to go to.");
     }
-    // append, not set: the actor middleware may already have added a refreshed cookie.
+    // append, not set: the actor middleware may already have added a cookie that clears an
+    // ended session.
     res.append("Set-Cookie", started.headers.getSetCookie());
     res.redirect(303, started.response.url);
   });
