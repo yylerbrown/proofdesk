@@ -142,9 +142,48 @@ describe("the assistant's work, on its own page", () => {
         "/assistant-run/files/transcript.public.jsonl",
         "/assistant-run/files/sup4/total.js",
         "/assistant-run/files/sup4/total.test.js",
-        "/tickets/SUP-8",
       ]),
     );
+  });
+
+  it("never links a viewer to a ticket they cannot open, and opens it for them as the team", async () => {
+    const { app } = demo();
+    const viewers: [string, ReturnType<typeof visitor>][] = [
+      ["signed out", visitor(app)],
+      ...["demo-customer", "demo-team", "demo-admin"].map(
+        (id): [string, ReturnType<typeof visitor>] => [
+          id,
+          visitor(app).set("Cookie", `${DEV_COOKIE}=${id}`),
+        ],
+      ),
+    ];
+    for (const [who, browser] of viewers) {
+      const page = parse((await browser.get("/assistant-run")).text);
+      for (const href of page.querySelectorAll("main a").map((a) => a.getAttribute("href"))) {
+        if (!href?.startsWith("/tickets/")) continue;
+        expect((await browser.get(href)).status, `${who} ${href}`).toBe(200);
+      }
+    }
+    // A customer and a signed-out visitor get one press that opens it as the team member.
+    for (const browser of [
+      visitor(app),
+      visitor(app).set("Cookie", `${DEV_COOKIE}=demo-customer`),
+    ]) {
+      const form = parse((await browser.get("/assistant-run")).text).querySelector(
+        ".recorded-ticket form",
+      )!;
+      expect(form.querySelector("button")?.text).toBe("Open it as Demo Team Member");
+      const fields = Object.fromEntries(
+        form
+          .querySelectorAll("input")
+          .map((i) => [i.getAttribute("name"), i.getAttribute("value")]),
+      );
+      const sent = await visitor(app).post(form.getAttribute("action")!).type("form").send(fields);
+      expect(sent.headers.location).toBe("/tickets/SUP-8");
+      const cookie = sent.headers["set-cookie"] as unknown as string[];
+      const opened = await visitor(app).get("/tickets/SUP-8").set("Cookie", cookie);
+      expect(opened.status).toBe(200);
+    }
   });
 
   it("shows the exact command the run used, as the summary keeps it", async () => {

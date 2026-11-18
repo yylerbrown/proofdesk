@@ -25,8 +25,7 @@ async function asked() {
 /** Each quick button on a page: its words, what it fills, and the form it would send. */
 const quick = async (app: Express, who: typeof teamActor) =>
   parse((await as(app, who).get("/tickets/SUP-1")).text)
-    // The quick answers fill a box; the status row's buttons share their look, not their job.
-    .querySelectorAll("button.quick[data-fill]")
+    .querySelectorAll("button.quick")
     .map((button) => ({
       words: button.text,
       sends: [button.getAttribute("name"), button.getAttribute("value")],
