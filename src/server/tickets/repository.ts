@@ -509,6 +509,7 @@ export const TICKET_TABLES = [
   "idempotency_keys",
   "ticket_specs",
   "ticket_agent_handoffs",
+  "email_outbox",
 ];
 
 /**
