@@ -20,6 +20,49 @@ export type Action =
   | "mark_ready"
   | "answer";
 
+/**
+ * What an AI agent may be allowed to do, each named by the operation it permits. A connection
+ * holds some of these. Anything not listed here is for people only.
+ */
+export const AGENT_SCOPES = [
+  "read_tickets",
+  "write_notes",
+  "send_replies",
+  "link_changes",
+  "change_status",
+] as const;
+export type AgentScope = (typeof AGENT_SCOPES)[number];
+
+/** Which people may take an action, in plain words, and what an agent needs for it. */
+export type Capability = { people: string; agent: AgentScope | "people_only" };
+
+/**
+ * The capability table: every action, who among people may take it, and the scope an agent
+ * needs, or "people_only". can() below enforces it, the API's documentation shows it, and the
+ * tests are generated from it. Answering "Did this fix it?", owning a ticket, asking the
+ * customer, archiving, restoring and deleting stay with people, whatever an agent holds.
+ */
+export const CAPABILITIES: Record<Action, Capability> = {
+  create: { people: "Anyone signed in.", agent: "people_only" },
+  list_all: { people: "The team.", agent: "read_tickets" },
+  list_archived: { people: "The team.", agent: "people_only" },
+  read: { people: "The team, or the customer who filed it.", agent: "read_tickets" },
+  read_notes: { people: "The team.", agent: "read_tickets" },
+  edit: { people: "The team, or the customer who filed it.", agent: "people_only" },
+  change_status: { people: "The team. Never to resolved.", agent: "change_status" },
+  archive: { people: "The team, or the customer who filed it.", agent: "people_only" },
+  restore: { people: "The team.", agent: "people_only" },
+  delete: { people: "An admin.", agent: "people_only" },
+  reply: { people: "The team, or the customer who filed it.", agent: "send_replies" },
+  note: { people: "The team.", agent: "write_notes" },
+  take: { people: "A team member.", agent: "people_only" },
+  release: { people: "The team.", agent: "people_only" },
+  agree_check: { people: "The team.", agent: "people_only" },
+  link_change: { people: "The team.", agent: "link_changes" },
+  mark_ready: { people: "The team.", agent: "people_only" },
+  answer: { people: "Only the customer who filed it.", agent: "people_only" },
+};
+
 /** The two facts about a ticket that permissions depend on. */
 export type TicketFacts = {
   created_by: string | null;
@@ -45,6 +88,12 @@ const READ_ONLY_ACTIONS: Action[] = ["list_all", "list_archived", "read", "read_
 
 export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean {
   if (actor.readOnly === true && !READ_ONLY_ACTIONS.includes(action)) return false;
+  // An agent may do only what its connection's scopes name, and never a people-only action.
+  // Past this check it is held to the same rules as the team.
+  if (actor.kind === "agent") {
+    const needs = CAPABILITIES[action].agent;
+    if (needs === "people_only" || !(actor.scopes ?? []).includes(needs)) return false;
+  }
   // On the demo, tickets are never archived, restored or deleted, so one visitor cannot empty
   // the sample data for the next.
   if (

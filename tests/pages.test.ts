@@ -323,7 +323,12 @@ describe("pages and the JSON API keep their own error formats", () => {
     const api = await admin(app).get("/api/tickets");
     expect(api.status).toBe(500);
     expect(api.body).toEqual({
-      error: { code: "internal_error", message: "Internal server error." },
+      error: {
+        code: "internal_error",
+        message: "Internal server error.",
+        hint: expect.any(String),
+        retry: true,
+      },
     });
 
     const page = await admin(app).get("/tickets");
