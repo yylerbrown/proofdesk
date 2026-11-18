@@ -30,8 +30,12 @@ export function buildTestApp(env: NodeJS.ProcessEnv = {}) {
   opened.push({ db, dir });
   runMigrations(db);
   // Tests get in through the development entrance. Production refuses that entrance and
-  // requires the GitHub sign-in settings instead, so a production test app gets those.
-  const base = env.NODE_ENV === "production" ? PRODUCTION_SIGN_IN_ENV : { DEV_SIGN_IN: "on" };
+  // requires the GitHub sign-in settings instead, so a production test app gets those. A
+  // server with the GitHub settings refuses the entrance in every mode, so a test that gives
+  // those settings gets no entrance.
+  let base: NodeJS.ProcessEnv = { DEV_SIGN_IN: "on" };
+  if (env.NODE_ENV === "production") base = PRODUCTION_SIGN_IN_ENV;
+  else if (env.BETTER_AUTH_SECRET) base = {};
   const config = loadConfig({ ...base, ...env });
   return { app: createApp(config, db), db, config };
 }

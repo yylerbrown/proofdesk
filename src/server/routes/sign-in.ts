@@ -7,7 +7,8 @@ import { HttpError } from "../errors.js";
 
 // The sign-in page and its two ways in: GitHub, when its settings are present, and the
 // development entrance, when DEV_SIGN_IN is on. The configuration refuses the development
-// entrance in production.
+// entrance in production, and on any server with the GitHub settings, so the two never
+// appear together.
 /**
  * Where to go after signing in. Only an address on this site is accepted, such as
  * "/tickets/SUP-1". Anything else, for example "https://elsewhere" or "//elsewhere", falls

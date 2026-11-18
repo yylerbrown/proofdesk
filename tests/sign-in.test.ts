@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import { FILING_LIMIT, SIGN_IN_LIMIT } from "../src/server/limits.js";
 import { createAuth } from "../src/server/auth.js";
 import { DEV_COOKIE } from "../src/server/actor.js";
+import { loadConfig } from "../src/server/config.js";
 import {
   admin,
   adminActor,
@@ -80,6 +81,17 @@ describe("the team list on a ticket page", () => {
     // Two more people, and not one more query for them.
     expect(accountQueries()).toBe(few);
     prepare.mockRestore();
+  });
+});
+
+describe("the development entrance beside GitHub sign-in", () => {
+  // The entrance lets anyone pick who they are, the admin included, so a server that
+  // signs real people in through GitHub must never offer it, whatever its mode.
+  it.each(["development", "test"])("is refused in %s mode, with a clear message", (mode) => {
+    expect(() => loadConfig({ ...SIGN_IN_ENV, NODE_ENV: mode, DEV_SIGN_IN: "on" })).toThrow(
+      "Invalid environment configuration: DEV_SIGN_IN must not be on together with the " +
+        "GitHub sign-in settings. It lets anyone act as an admin.",
+    );
   });
 });
 
@@ -355,10 +367,12 @@ describe("requests forged from another site", () => {
   });
 
   it("compares Origin with the configured address, not with the Host header", async () => {
-    // SIGN_IN_ENV says this site is http://desk.test.
-    const { app } = buildTestApp({ ...SIGN_IN_ENV, DEV_SIGN_IN: "on" });
+    // SIGN_IN_ENV says this site is http://desk.test. The development entrance is never open
+    // beside GitHub sign-in, so an admin signed in through GitHub posts here.
+    const { app, db } = buildSignInApp();
+    const boss = await signedInBrowser(db, "1001", "Ada Admin");
     const post = (headers: Record<string, string>) =>
-      request(app).post("/api/tickets").set("Cookie", cookie).set(headers).send(valid);
+      request(app).post("/api/tickets").set("Cookie", boss.cookie).set(headers).send(valid);
 
     expect((await post({ Origin: "http://desk.test" })).status).toBe(201);
     // A Host header that agrees with a foreign Origin does not help.
