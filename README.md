@@ -156,7 +156,7 @@ Auth. Inputs are checked with zod.
 
 | Command                | What it runs                                                                                                                                                                    |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm test`             | Every unit and route test with vitest: 665 when this was written.                                                                                                               |
+| `npm test`             | Every unit and route test with vitest: 666 when this was written.                                                                                                               |
 | `npm run test:browser` | One real-browser journey with Playwright: a customer files, the team works it, No then Yes, and a second customer is refused. Run `npx playwright install chromium` once first. |
 | `npm run typecheck`    | TypeScript, strict.                                                                                                                                                             |
 | `npm run lint`         | ESLint.                                                                                                                                                                         |
