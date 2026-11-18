@@ -28,7 +28,7 @@ DEV_SIGN_IN=on npm run dev
 Open <http://localhost:3000> and pick one of four made-up people. No keys are needed. The demo
 mode, a production build, Docker and every setting are under [More ways to run](#more-ways-to-run).
 
-## The rubric, line by line
+## Try each feature in a minute
 
 Each one takes under a minute on the demo, starting from its welcome page.
 
@@ -68,24 +68,24 @@ Each one takes under a minute on the demo, starting from its welcome page.
 - Press: [Run it yourself](#run-it-yourself)
 - You should see: A copy running on your own machine.
 
-**Bonus: a live URL**
+**A live URL**
 
 - Press: The two links above
 - You should see: The demo, and the production site.
 
-**Bonus: SSO with roles and permissions**
+**SSO with roles and permissions**
 
 - Start as: The production site
 - Press: **Sign in with GitHub**
 - You should see: Signed in as a customer, a team member or an admin, as [Sign-in and roles](#sign-in-and-roles) explains. On the demo the three roles are offered by name, the admin as **Admin preview (read-only)**.
 
-**Bonus: AI features**
+**AI features**
 
 - Start as: The welcome page
 - Press: **Get a demo connection**, then paste the command into your own assistant, for example Claude Code
 - You should see: Your assistant, through MCP, reads a sample ticket and its check, proposes a test spec, writes notes and attaches evidence. **See an assistant's work**, also on the welcome page, shows one real run.
 
-**Bonus: creative extras**
+**Creative extras**
 
 - Start as: Any ticket
 - Press: **How will we know it's fixed?** on the form; **Did this fix it?** for the customer

@@ -79,7 +79,7 @@ describe("the README", () => {
     const list = readme.indexOf('src="docs/img/ticket-list.png"');
     const question = readme.indexOf('src="docs/img/did-this-fix-it.png"');
     expect(list).toBeLessThan(readme.indexOf("## Run it yourself"));
-    expect(question).toBeGreaterThan(readme.indexOf("**Bonus: creative extras**"));
+    expect(question).toBeGreaterThan(readme.indexOf("**Creative extras**"));
   });
 
   // A wide picture pushed the run steps far down the first screen, so each one has a width.

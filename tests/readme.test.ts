@@ -29,10 +29,18 @@ describe("the API reference's route table", () => {
   });
 });
 
-// The rubric list in the README names the exact buttons, links and filters a visitor presses.
+// The feature list in the README names the exact buttons, links and filters a visitor presses.
 // Each one must be on a page the demo actually shows, so the list cannot promise a label the
 // product does not have.
-describe("the README's rubric list", () => {
+describe("the README's feature list", () => {
+  // The README is written for someone trying the product, not for whoever marks it.
+  it("is headed for a visitor, and no heading speaks of a rubric or a grader", () => {
+    const readme = fs.readFileSync("README.md", "utf8");
+    const headings = [...readme.matchAll(/^(#{1,6} .+|\*\*[^*]+\*\*)$/gm)].map((m) => m[1]!);
+    expect(headings).toContain("## Try each feature in a minute");
+    expect(headings.filter((h) => /rubric|grader|bonus/i.test(h))).toEqual([]);
+  });
+
   it("names only labels the demo shows", async () => {
     const { parse } = await import("node-html-parser");
     const { DEV_COOKIE } = await import("../src/server/actor.js");
@@ -41,9 +49,9 @@ describe("the README's rubric list", () => {
     const { buildTestApp, SIGN_IN_ENV, visitor } = await import("./helpers.js");
 
     const readme = fs.readFileSync("README.md", "utf8");
-    const start = readme.indexOf("## The rubric");
+    const start = readme.indexOf("## Try each feature in a minute");
     const table = readme.slice(start, readme.indexOf("\n## ", start + 1));
-    // Each rubric line lists where to start and what to press; the bold words there are labels.
+    // Each feature lists where to start and what to press; the bold words there are labels.
     const labels = new Set<string>();
     for (const line of table.split("\n")) {
       if (!/^- (Start as|Press):/.test(line)) continue;
