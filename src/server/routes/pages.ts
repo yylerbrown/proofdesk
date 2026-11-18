@@ -14,7 +14,13 @@ import {
   reportFields,
   waitingOn,
 } from "../pages/format.js";
-import { fileOnce, newFormId, readFormId, sameText, ticketFiledWith } from "../pages/form-id.js";
+import {
+  fileOnce,
+  newFormId,
+  readFormId,
+  formMatchesTicket,
+  ticketFiledWith,
+} from "../pages/form-id.js";
 import { readListPageQuery } from "../pages/list-query.js";
 import { rememberSaved, takeProblem, takeSaved, type SavedKey } from "../pages/saved.js";
 import { RESOLVE_REASON_LABELS, TICKET_STATUSES } from "../tickets/schemas.js";
@@ -466,7 +472,7 @@ export function pagesRouter(service: TicketService): Router {
         // 303 makes the browser fetch the ticket page with GET, so a refresh cannot file it twice.
         rememberSaved(res, "filed");
         res.redirect(303, `/tickets/${ticket.key}`);
-      } else if (sameText(ticket, values)) {
+      } else if (formMatchesTicket(ticket, values)) {
         // The same form sent twice, for example after Back: open the ticket it filed.
         rememberSaved(res, "alreadyFiled");
         res.redirect(303, `/tickets/${ticket.key}`);

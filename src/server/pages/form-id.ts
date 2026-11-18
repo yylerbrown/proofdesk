@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import type { Actor } from "../actor.js";
+import { sameText } from "../tickets/schemas.js";
 import type { Ticket, TicketService } from "../tickets/service.js";
 
 // Each new ticket form carries a one-time id in its address, so going Back after filing and
@@ -62,15 +63,18 @@ export function ticketFiledWith(
   }
 }
 
-/** Whether a ticket holds the text a form sends, compared the way filing stores it. */
-export function sameText(
+/**
+ * Whether a ticket holds the text a form sends, compared the way filing stores it: trimmed,
+ * and with each line break the same whatever characters the browser sent for it.
+ */
+export function formMatchesTicket(
   ticket: Ticket,
   values: { title: string; description: string; where_url: string; fix_check: string },
 ): boolean {
   return (
     ticket.title === values.title.trim() &&
-    ticket.description === values.description.trim() &&
+    sameText(ticket.description, values.description.trim()) &&
     (ticket.where_url ?? "") === values.where_url.trim() &&
-    (ticket.fix_check ?? "") === values.fix_check.trim()
+    sameText(ticket.fix_check ?? "", values.fix_check.trim())
   );
 }
