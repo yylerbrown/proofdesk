@@ -177,4 +177,23 @@ describe("when asking is not possible yet", () => {
       parse((await as(app, customerOne).get("/tickets/SUP-1")).text).querySelector(".ask-blocked"),
     ).toBeNull();
   });
+
+  it("shows the reason, not the form, when the customer has not said how they will know", async () => {
+    const { app } = buildTestApp();
+    await as(app, customerOne)
+      .post("/api/tickets")
+      .send({ ...valid, fix_check: undefined });
+    await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
+    await as(app, teamActor)
+      .put("/api/tickets/SUP-1/change-link")
+      .send({ change_url: "https://example.com/c/1" });
+    const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
+    expect(page.querySelector("form.ask")).toBeNull();
+    expect(page.querySelector("#ask-blocked-why")?.text).toBe(
+      "The customer has not said how they will know it is fixed. Ask them in a reply.",
+    );
+    // The server refuses it too, so the page offers nothing that would fail.
+    const res = await as(app, teamActor).post("/api/tickets/SUP-1/ready").send(ask);
+    expect(res.body.error.code).toBe("needs_check");
+  });
 });
