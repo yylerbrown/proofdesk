@@ -47,6 +47,12 @@ curl -H "Authorization: Bearer <key>" "https://<your Proofdesk address>/api/tick
 connection may and may not do. `GET /api/openapi.json` is the full machine-readable description.
 Over MCP, the server's instructions and each tool's description say the same.
 
+## On the public demo
+
+Click **Get a demo connection** on the welcome page. You get your own key, for a day, and the
+command to connect Claude Code. Your assistant sees only the sample tickets and what it writes
+itself. Start with the ticket named "Sample for your AI assistant".
+
 ## The one path
 
 1. **Find work**: `list_tickets` with `status: "new"` or `"in_progress"`.

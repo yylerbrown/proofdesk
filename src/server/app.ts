@@ -37,8 +37,8 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../.
 const BODY_LIMIT = "100kb";
 
 // The limits live in limits.ts, where the API's guide reads them too.
-import { FILING_LIMIT, SIGN_IN_LIMIT, WRITE_LIMIT } from "./limits.js";
-export { FILING_LIMIT, SIGN_IN_LIMIT, WRITE_LIMIT };
+import { DEMO_CONNECTIONS_PER_HOUR, FILING_LIMIT, SIGN_IN_LIMIT, WRITE_LIMIT } from "./limits.js";
+export { DEMO_CONNECTIONS_PER_HOUR, FILING_LIMIT, SIGN_IN_LIMIT, WRITE_LIMIT };
 
 const picoCssFile = path.join(rootDir, "node_modules/@picocss/pico/css/pico.min.css");
 
@@ -110,6 +110,12 @@ export function createApp(config: Config, db: Db): Express {
     skipFailedRequests: true,
   });
   const signInLimit = rateLimit({ ...tooMany, windowMs: 60 * 1000, limit: SIGN_IN_LIMIT });
+  // A demo visitor may ask for a few assistant connections an hour, counted by address.
+  const demoConnectionLimit = rateLimit({
+    ...tooMany,
+    windowMs: 60 * 60 * 1000,
+    limit: DEMO_CONNECTIONS_PER_HOUR,
+  });
   // One allowance for every request that changes something, pages and API together.
   const writeLimit = rateLimit({
     ...tooMany,
@@ -185,10 +191,11 @@ export function createApp(config: Config, db: Db): Express {
   app.use(writeLimit);
   app.post("/tickets", filingLimit);
   app.post("/sign-in/github", signInLimit);
+  app.post("/demo/connection", demoConnectionLimit);
   app.use(express.urlencoded({ extended: false, limit: BODY_LIMIT }));
-  app.use(signInRouter(config, auth));
+  app.use(signInRouter(config, auth, () => tickets.hasDemoSeed()));
   app.use(pagesRouter(tickets));
-  app.use(connectionsRouter(connections, config));
+  app.use(connectionsRouter(connections, config, () => tickets.hasDemoSeed()));
   app.use(pageNotFoundHandler);
   app.use(pageErrorHandler);
 

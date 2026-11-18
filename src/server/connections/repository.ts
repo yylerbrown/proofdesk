@@ -64,6 +64,16 @@ export function listIssued(db: Db): ConnectionRow[] {
     .all() as ConnectionRow[];
 }
 
+/** How many demo connections can still be used right now. */
+export function countLiveDemo(db: Db, now: string): number {
+  const row = db
+    .prepare(
+      "SELECT COUNT(*) AS n FROM agent_connections WHERE demo = 1 AND revoked_at IS NULL AND expires_at > ?",
+    )
+    .get(now) as { n: number };
+  return row.n;
+}
+
 export function markRevoked(db: Db, id: number, now: string): void {
   db.prepare("UPDATE agent_connections SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL").run(
     now,

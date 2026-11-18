@@ -114,6 +114,17 @@ export type TicketEvidence = {
   created_at: string;
 };
 
+/** Where the demo's seeding record is kept in app_meta. */
+export const DEMO_SEED_KEY = "demo_seeded";
+
+/** What seeding wrote: the rows, and each sample ticket's text as first written. */
+export type DemoSeed = {
+  tickets: number[];
+  entries: number[];
+  events: number[];
+  text: Record<string, Partial<repository.TicketRow>>;
+};
+
 export type TicketService = ReturnType<typeof createTicketService>;
 
 /** Most rows the service will hold. Leave a field out for no limit. */
@@ -181,6 +192,15 @@ function pinPrefix(db: Db, prefix: string): void {
  * What an agent's history entry records beside its id: which connection, who issued it, and
  * the scopes it held at that moment. Null for a person.
  */
+/** The answer to anyone who tries to resolve a ticket by changing its status. */
+function needsCustomer(key: string): HttpError {
+  return new HttpError(
+    409,
+    "needs_customer",
+    `Only the customer resolves ticket ${key}, by answering "Did this fix it?".`,
+  );
+}
+
 function agentContext(actor: Actor): object | null {
   if (actor.kind !== "agent" || actor.connection === undefined) return null;
   return {
@@ -215,7 +235,40 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
 
   // Every public field is named here. A column added to the table later stays private
   // until someone adds it to this list on purpose.
-  function toTicket(row: repository.TicketRow): Ticket {
+  // ---- The demo's view for agents -------------------------------------------------------
+  // On the public demo, many visitors share the sample tickets, and each may connect their own
+  // assistant. An assistant must never read text another visitor wrote, or one visitor could
+  // plant instructions for another visitor's assistant. So a demo connection sees only the
+  // sample tickets, with their text as first written, and what that same connection wrote.
+
+  /** What seeding wrote, recorded when the demo was seeded, or null if it was not recorded. */
+  function demoSeed(): DemoSeed | null {
+    const value = repository.getMeta(db, DEMO_SEED_KEY);
+    return value === undefined ? null : (JSON.parse(value) as DemoSeed);
+  }
+
+  function isDemoAgent(actor: Actor | undefined): boolean {
+    return actor !== undefined && actor.kind === "agent" && actor.demo === true;
+  }
+
+  function seededOrRefused(): DemoSeed {
+    const seed = demoSeed();
+    if (seed === null) {
+      throw new HttpError(
+        503,
+        "demo_not_ready",
+        "This demo's sample data was seeded before agent connections existed. Reset the demo database.",
+      );
+    }
+    return seed;
+  }
+
+  function toTicket(row: repository.TicketRow, actor?: Actor): Ticket {
+    if (isDemoAgent(actor)) {
+      // The sample text as first written, whatever a visitor has changed since.
+      const original = seededOrRefused().text[String(row.id)];
+      if (original !== undefined) row = { ...row, ...original };
+    }
     return {
       done_when: doneWhen(row),
       waiting_on:
@@ -302,6 +355,9 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
    */
   function requireRow(key: string, actor: Actor): repository.TicketRow {
     const id = idFromKey(key);
+    if (isDemoAgent(actor) && !seededOrRefused().tickets.includes(id)) {
+      throw new HttpError(404, "ticket_not_found", `No ticket ${key}.`);
+    }
     const row = repository.findTicket(db, id);
     // The team is told a ticket was deleted on purpose. A customer gets the usual answer.
     if (row === undefined && can(actor, "list_all") && repository.wasDeleted(db, id)) {
@@ -404,7 +460,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
         });
         return repository.findTicket(db, id)!;
       })();
-      return toTicket(row);
+      return toTicket(row, actor);
     },
 
     /**
@@ -414,17 +470,22 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
      */
     listTickets(filter: TicketListFilter, actor: Actor, pageNumber = 1): Ticket[] {
       const page = { limit: LIST_PAGE_SIZE, offset: (pageNumber - 1) * LIST_PAGE_SIZE };
+      const view = (rows: repository.TicketRow[]) => {
+        if (!isDemoAgent(actor)) return rows.map((row) => toTicket(row, actor));
+        const seeded = seededOrRefused().tickets;
+        return rows.filter((row) => seeded.includes(row.id)).map((row) => toTicket(row, actor));
+      };
       if (filter === "archived") {
         requirePermission(actor, "list_archived");
-        return repository.listArchivedTickets(db, page).map(toTicket);
+        return view(repository.listArchivedTickets(db, page));
       }
       const status = filter === "all" ? null : filter;
-      if (can(actor, "list_all")) return repository.listAllTickets(db, status, page).map(toTicket);
-      return repository.listTicketsFiledBy(db, actor.id, status, page).map(toTicket);
+      if (can(actor, "list_all")) return view(repository.listAllTickets(db, status, page));
+      return view(repository.listTicketsFiledBy(db, actor.id, status, page));
     },
 
     getTicket(key: string, actor: Actor): Ticket {
-      return toTicket(requireRow(key, actor));
+      return toTicket(requireRow(key, actor), actor);
     },
 
     /** Checks the input, then saves the new status and its event together. */
@@ -432,16 +493,15 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
       const { status } = parse(changeStatusSchema, input);
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
+        // An agent asking to resolve gets the real reason first, whatever its scopes: nobody
+        // resolves a ticket by changing its status.
+        if (actor.kind === "agent" && status === "resolved" && before.status !== "resolved") {
+          throw needsCustomer(key);
+        }
         requirePermission(actor, "change_status", before);
         requireNotArchived(key, before);
         if (before.status === status) return before; // nothing changes, so nothing is logged
-        if (status === "resolved") {
-          throw new HttpError(
-            409,
-            "needs_customer",
-            `Only the customer resolves ticket ${key}, by answering "Did this fix it?".`,
-          );
-        }
+        if (status === "resolved") throw needsCustomer(key);
         if (status === "in_progress" && before.owner_id === null) {
           throw new HttpError(
             409,
@@ -462,7 +522,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
         });
         return { ...before, status, ready_at: null, ready_token: null, updated_at: now };
       })();
-      return toTicket(row);
+      return toTicket(row, actor);
     },
 
     /**
@@ -513,7 +573,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
         });
         return { ...before, ...after, ...noQuestion, updated_at: now };
       })();
-      return toTicket(row);
+      return toTicket(row, actor);
     },
 
     /**
@@ -544,7 +604,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
         });
         return { ...before, agreed_check: agreed, ...noQuestion, updated_at: now };
       })();
-      return toTicket(row);
+      return toTicket(row, actor);
     },
 
     /** Records the link to the code change. Evidence, not proof that the ticket is fixed. */
@@ -569,7 +629,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
         });
         return { ...before, change_url, ...noQuestion, updated_at: now };
       })();
-      return toTicket(row);
+      return toTicket(row, actor);
     },
 
     /**
@@ -605,7 +665,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
         });
         return { ...before, try_url, ready_at: now, ready_token: token, updated_at: now };
       })();
-      return toTicket(row);
+      return toTicket(row, actor);
     },
 
     /**
@@ -660,7 +720,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
         });
         return { ...before, status, ...noQuestion, updated_at: now } as repository.TicketRow;
       })();
-      return toTicket(row);
+      return toTicket(row, actor);
     },
 
     /** Makes the actor the owner of the ticket, also when someone else owned it before. */
@@ -672,7 +732,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
         if (before.owner_id === actor.id) return before; // already theirs
         return setOwner(before, actor.id, actor.name, actor);
       })();
-      return toTicket(row);
+      return toTicket(row, actor);
     },
 
     /** Leaves the ticket without an owner. Not while it is in progress. */
@@ -691,7 +751,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
         }
         return setOwner(before, null, null, actor);
       })();
-      return toTicket(row);
+      return toTicket(row, actor);
     },
 
     /** Hides the ticket from the ordinary lists. Its row and its events are kept. */
@@ -714,7 +774,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
         });
         return { ...before, archived_at: now, ...noQuestion, updated_at: now };
       })();
-      return toTicket(row);
+      return toTicket(row, actor);
     },
 
     /** Brings an archived ticket back into the ordinary lists. Not for customers. */
@@ -736,7 +796,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
         });
         return { ...before, archived_at: null, updated_at: now };
       })();
-      return toTicket(row);
+      return toTicket(row, actor);
     },
 
     /** The history, oldest first. Someone who may not read notes does not see them added. */
@@ -755,7 +815,11 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
 
     listEvents(key: string, actor: Actor): TicketEvent[] {
       const row = requireRow(key, actor);
-      const events = repository.listEvents(db, row.id, THREAD_LIMIT).map(toEvent);
+      let events = repository.listEvents(db, row.id, THREAD_LIMIT).map(toEvent);
+      if (isDemoAgent(actor)) {
+        const seeded = seededOrRefused().events;
+        events = events.filter((event) => seeded.includes(event.id) || event.actor === actor.id);
+      }
       if (can(actor, "read_notes", row)) return events;
       return events.filter((event) => CUSTOMER_EVENT_TYPES.has(event.type));
     },
@@ -858,7 +922,9 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
     /** The evidence on a ticket, oldest first. Whoever may read the ticket may read it. */
     listEvidence(key: string, actor: Actor): TicketEvidence[] {
       const ticket = requireRow(key, actor);
-      return repository.listEvidence(db, ticket.id, THREAD_LIMIT).map(toEvidence);
+      const evidence = repository.listEvidence(db, ticket.id, THREAD_LIMIT).map(toEvidence);
+      // No sample ticket comes with evidence, so a demo connection sees only its own.
+      return isDemoAgent(actor) ? evidence.filter((e) => e.reported_by.id === actor.id) : evidence;
     },
 
     /**
@@ -905,7 +971,43 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
     listEntries(key: string, actor: Actor): TicketEntry[] {
       const row = requireRow(key, actor);
       const includeNotes = can(actor, "read_notes", row);
-      return repository.listEntries(db, row.id, includeNotes, THREAD_LIMIT).map(toEntry);
+      const entries = repository.listEntries(db, row.id, includeNotes, THREAD_LIMIT).map(toEntry);
+      if (!isDemoAgent(actor)) return entries;
+      const seeded = seededOrRefused().entries;
+      return entries.filter((entry) => seeded.includes(entry.id) || entry.author === actor.id);
+    },
+
+    /**
+     * Records what seeding wrote, so a demo connection can be shown only that. Called once,
+     * right after the demo's sample data is created on an empty database.
+     */
+    recordDemoSeed(): void {
+      const ids = (table: string) =>
+        (db.prepare(`SELECT id FROM ${table}`).all() as { id: number }[]).map((r) => r.id);
+      const text: DemoSeed["text"] = {};
+      for (const row of repository.listAllTickets(db, null, { limit: 1000, offset: 0 })) {
+        text[String(row.id)] = {
+          title: row.title,
+          description: row.description,
+          where_url: row.where_url,
+          fix_check: row.fix_check,
+          agreed_check: row.agreed_check,
+          change_url: row.change_url,
+          try_url: row.try_url,
+        };
+      }
+      const seed: DemoSeed = {
+        tickets: ids("tickets"),
+        entries: ids("ticket_entries"),
+        events: ids("ticket_events"),
+        text,
+      };
+      repository.insertMeta(db, DEMO_SEED_KEY, JSON.stringify(seed));
+    },
+
+    /** Whether the demo's seeding was recorded, which demo connections need. */
+    hasDemoSeed(): boolean {
+      return demoSeed() !== null;
     },
 
     /**
