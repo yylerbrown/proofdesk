@@ -325,7 +325,7 @@ describe("edit, archive and restore on the pages", () => {
 
     const page = await admin(app).get("/tickets/SUP-1");
     expect(page.text).not.toContain("This ticket was archived");
-    expect(page.text).toContain('action="/tickets/SUP-1/status"');
+    expect(page.text).toContain('action="/tickets/SUP-1/take"');
     expect(page.text).toContain("<td>Restored</td>");
     expect((await admin(app).get("/tickets")).text).toContain(original.title);
   });

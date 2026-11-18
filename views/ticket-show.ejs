@@ -48,6 +48,17 @@
   <p><strong>The customer confirmed it is fixed.</strong> <%- include("time", { iso: confirmed }) %></p>
 </article>
 <% } %>
+<% if (allowed.reopen) { %>
+<details id="reopen" <% if (problem?.form === "reopen") { %>open<% } %>>
+  <summary>Still happening?</summary>
+  <form method="post" action="/tickets/<%= ticket.key %>/reopen">
+    <label for="reopen-reason">What is happening again?</label>
+    <textarea id="reopen-reason" name="reason" rows="3" required <% if (problem?.form === "reopen") { %>aria-invalid="true" aria-describedby="reopen-error"<% } %>><%= problem?.form === "reopen" ? problem.comment : "" %></textarea>
+    <% if (problem?.form === "reopen") { %><small id="reopen-error"><%= problem.message %></small><% } %>
+    <button type="submit" class="secondary compact">Still happening, reopen</button>
+  </form>
+</details>
+<% } %>
 <% if (allowed.answer) { %>
 <article id="did-this-fix-it">
   <h2>Did this fix it?</h2>
@@ -93,29 +104,22 @@
 
 <aside class="ticket-panel" aria-label="Status, owner and the fix">
 <section>
-  <h2>Status</h2>
-  <p><%- include("status-badge", { status: ticket.status }) %></p>
-  <% if (allowed.changeStatus) { %>
-  <form method="post" action="/tickets/<%= ticket.key %>/status">
-    <label>
-      Change to
-      <select name="status">
-        <% for (const status of statuses) { if (status === "resolved" && ticket.status !== "resolved") continue; %>
-        <option value="<%= status %>" <% if (status === ticket.status) { %>selected<% } %>><%= statusLabels[status] %></option>
-        <% } %>
-      </select>
-    </label>
-    <button type="submit" class="compact">Change status</button>
-  </form>
-  <% } %>
-</section>
-
-<section>
   <h2>Owner</h2>
   <p><%= ticket.owner_name ?? "Unassigned" %></p>
+  <% if (allowed.takeAndStart) { %>
+  <form method="post" action="/tickets/<%= ticket.key %>/take-and-start">
+    <button type="submit" class="compact">Take and start work</button>
+  </form>
+  <% } %>
   <% if (allowed.take) { %>
   <form method="post" action="/tickets/<%= ticket.key %>/take">
-    <button type="submit" class="compact"><% if (ticket.owner_name) { %>Take over from <%= ticket.owner_name %><% } else { %>Take this ticket<% } %></button>
+    <button type="submit" class="<% if (allowed.takeAndStart) { %>secondary outline <% } %>compact"><% if (ticket.owner_name) { %>Take over from <%= ticket.owner_name %><% } else { %>Take this ticket<% } %></button>
+  </form>
+  <% } %>
+  <% if (allowed.start) { %>
+  <form method="post" action="/tickets/<%= ticket.key %>/status">
+    <input type="hidden" name="status" value="in_progress" />
+    <button type="submit" class="compact">Start work</button>
   </form>
   <% } %>
   <% if (allowed.release) { %>
@@ -123,6 +127,11 @@
     <button type="submit" class="link">Release it</button>
   </form>
   <% } %>
+</section>
+
+<section>
+  <h2>Status</h2>
+  <p><%- include("status-badge", { status: ticket.status }) %></p>
 </section>
 
 <% if (ticket.fix_check || ticket.agreed_check || allowed.agreeCheck) { %>

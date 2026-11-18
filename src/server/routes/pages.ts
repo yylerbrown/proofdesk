@@ -28,7 +28,7 @@ type EntryForm = { kind: string; body: string; error?: string };
 
 // A refused form on the ticket page: which one, the message, and a comment to keep.
 type Problem = {
-  form: "answer" | "agreedCheck" | "changeLink" | "ready" | "evidence";
+  form: "answer" | "agreedCheck" | "changeLink" | "ready" | "evidence" | "reopen";
   message: string;
   comment: string;
 };
@@ -40,6 +40,7 @@ const FORM_SAVED: Record<Problem["form"], (input: unknown) => SavedKey> = {
   changeLink: () => "link",
   ready: () => "ready",
   evidence: () => "evidence",
+  reopen: () => "reopened",
   answer: (input) =>
     (input as Record<string, unknown> | undefined)?.fixed === "yes" ? "fixed" : "notFixed",
 };
@@ -147,7 +148,7 @@ export function pagesRouter(service: TicketService): Router {
         showTicket(req, res, 400, emptyEntry, {
           form,
           message,
-          comment: asText(req.body?.comment),
+          comment: asText(req.body?.comment ?? req.body?.reason),
         });
       }
     };
@@ -318,6 +319,12 @@ export function pagesRouter(service: TicketService): Router {
   router.post("/tickets/:key/change-link", ticketForm("changeLink", service.linkChange));
   router.post("/tickets/:key/ready", ticketForm("ready", service.markReady));
   router.post("/tickets/:key/answer", ticketForm("answer", service.answer));
+  router.post("/tickets/:key/reopen", ticketForm("reopen", service.reopen));
+  router.post("/tickets/:key/take-and-start", (req, res) => {
+    const ticket = service.takeAndStart(req.params.key, signedIn(req));
+    rememberSaved(res, "started");
+    res.redirect(303, `/tickets/${ticket.key}`);
+  });
   // The team attaches evidence from the ticket page. An empty link means none.
   router.post(
     "/tickets/:key/evidence",

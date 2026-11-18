@@ -6,7 +6,7 @@ import request from "supertest";
 import { WRITE_LIMIT } from "../src/server/app.js";
 import type { Express } from "express";
 import { afterEach, describe, expect, it } from "vitest";
-import { CAPABILITIES } from "../src/server/permissions.js";
+import { AGENT_SCOPES, CAPABILITIES } from "../src/server/permissions.js";
 import { ACTIONS } from "../src/server/api/actions.js";
 import { admin, as, buildTestApp, customerOne, teamActor } from "./helpers.js";
 
@@ -139,9 +139,17 @@ describe("the one path: read, evidence, ask the owner", () => {
   it("refuses to resolve, with a clear message, and the customer's answer stays separate", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
-    const client = await connect(app, await issue(app, ["read_tickets", "change_status"]));
-    const refused = await call(client, "change_status", { key: "SUP-1", status: "resolved" });
-    expect(refused.isError).toBe(true);
+    const key = await issue(app, [...AGENT_SCOPES]);
+    const client = await connect(app, key);
+    // Changing the status is for people only, so it is not a tool at all.
+    await expect(
+      client.callTool({ name: "change_status", arguments: { key: "SUP-1", status: "resolved" } }),
+    ).rejects.toThrow(/Tool change_status not found/);
+    // Through the API, an agent asking to resolve is told the real reason first.
+    const refused = await request(app)
+      .patch("/api/tickets/SUP-1")
+      .set("Authorization", `Bearer ${key}`)
+      .send({ status: "resolved" });
     expect(refused.body.error.code).toBe("needs_customer");
     expect(refused.body.error.hint).toMatch(/Only the customer's answer resolves a ticket/);
     // A people-only action is not a tool at all: the SDK refuses the call as unknown.

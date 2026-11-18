@@ -68,7 +68,11 @@ describe("the tick", () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
     await resolveTicket(app, "SUP-1", customerOne);
-    await admin(app).patch("/api/tickets/SUP-1").send({ status: "in_progress" });
+    // Only the customer reopens, by saying it is still happening.
+    const reopened = await as(app, customerOne)
+      .post("/api/tickets/SUP-1/reopen")
+      .send({ reason: "It jams again." });
+    expect(reopened.status).toBe(200);
     expect(ticks(await ticketMain(app))).toHaveLength(0);
   });
 });

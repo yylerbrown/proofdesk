@@ -60,9 +60,13 @@ describe("from merged to confirmed", () => {
     expect(noLink.status).toBe(409);
     expect(noLink.body.error.code).toBe("needs_change_link");
 
-    await as(app, teamActor).patch("/api/tickets/SUP-1").send({ status: "new" });
-    await as(app, teamActor).put("/api/tickets/SUP-1/change-link").send(change);
-    const notInProgress = await as(app, teamActor).post("/api/tickets/SUP-1/ready").send(tryIt);
+    // A second ticket that was taken and linked but never started.
+    await as(app, customerOne)
+      .post("/api/tickets")
+      .send({ title: "Another one", description: "x" });
+    await as(app, teamActor).post("/api/tickets/SUP-2/take");
+    await as(app, teamActor).put("/api/tickets/SUP-2/change-link").send(change);
+    const notInProgress = await as(app, teamActor).post("/api/tickets/SUP-2/ready").send(tryIt);
     expect(notInProgress.status).toBe(409);
     expect(notInProgress.body.error.code).toBe("not_in_progress");
   });
@@ -155,15 +159,17 @@ describe("from merged to confirmed", () => {
     expect((await admin(app).get("/api/tickets/SUP-1")).body.status).toBe("in_progress");
   });
 
-  it("withdraws the question when the team changes the status", async () => {
+  it("refuses to move an asked ticket back to New, and keeps the question open", async () => {
     const { app } = await setup();
     const token = (await askCustomer(app)).body.ready_token as string;
-    await as(app, teamActor).patch("/api/tickets/SUP-1").send({ status: "new" });
-    expect((await admin(app).get("/api/tickets/SUP-1")).body.ready_at).toBeNull();
-    const late = await as(app, customerOne)
+    const back = await as(app, teamActor).patch("/api/tickets/SUP-1").send({ status: "new" });
+    expect(back.status).toBe(409);
+    expect(back.body.error.code).toBe("cannot_return_to_new");
+    expect((await admin(app).get("/api/tickets/SUP-1")).body.ready_token).toBe(token);
+    const answered = await as(app, customerOne)
       .post("/api/tickets/SUP-1/answer")
       .send({ fixed: "yes", ready_token: token });
-    expect(late.status).toBe(409);
+    expect(answered.status).toBe(200);
   });
 
   it("is the team's to start: a customer cannot add the link or ask themselves", async () => {

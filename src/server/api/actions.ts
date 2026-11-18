@@ -13,6 +13,7 @@ import {
   listQuerySchema,
   markReadySchema,
   pageOf,
+  reopenSchema,
   verificationRequestSchema,
 } from "../tickets/schemas.js";
 import { addEvidenceSchema } from "../tickets/evidence.js";
@@ -117,7 +118,7 @@ export const ACTIONS: ApiAction[] = [
     method: "patch",
     path: "/tickets/:key",
     summary:
-      "Change the status to new or in_progress. In progress needs an owner. Only the customer's yes resolves.",
+      "Start work: move a New ticket you own to in_progress. Nothing else moves the status this way; only the customer's yes resolves, and only the customer reopens.",
     needs: "change_status",
     body: changeStatusSchema,
     page: "POST /tickets/:key/status",
@@ -188,6 +189,28 @@ export const ACTIONS: ApiAction[] = [
     needs: "take",
     page: "POST /tickets/:key/take",
     run: ({ service, actor, key }) => service.takeTicket(key, actor),
+  },
+  {
+    name: "take_and_start",
+    method: "post",
+    path: "/tickets/:key/take-and-start",
+    summary: "Take an unowned New ticket and start work on it, in one step.",
+    needs: ["take", "change_status"],
+    output: ticketOutput,
+    page: "POST /tickets/:key/take-and-start",
+    run: ({ service, actor, key }) => service.takeAndStart(key, actor),
+  },
+  {
+    name: "reopen",
+    method: "post",
+    path: "/tickets/:key/reopen",
+    summary:
+      "The customer who filed a resolved ticket says it is still happening. It goes back to its owner.",
+    needs: "reopen",
+    body: reopenSchema,
+    output: ticketOutput,
+    page: "POST /tickets/:key/reopen",
+    run: ({ service, actor, key, body }) => service.reopen(key, body, actor),
   },
   {
     name: "release_ticket",

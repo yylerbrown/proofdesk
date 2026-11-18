@@ -160,6 +160,8 @@ const BODIES: Record<string, object> = {
   mark_ready: { try_url: "https://example.com/try" },
   answer: { fixed: "yes", ready_token: "x" },
   delete_ticket: { confirm: "SUP-1" },
+  change_status: { status: "in_progress" },
+  reopen: { reason: "It happens again." },
   decide_spec: { decision: "accept" },
 };
 
@@ -174,13 +176,16 @@ describe("the capability table on the JSON door", () => {
         "agree_check",
         "answer",
         "archive_ticket",
+        "change_status",
         "create_ticket",
         "decide_spec",
         "delete_ticket",
         "edit_ticket",
         "mark_ready",
         "release_ticket",
+        "reopen",
         "restore_ticket",
+        "take_and_start",
         "take_ticket",
       ].sort(),
     );

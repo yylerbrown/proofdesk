@@ -126,6 +126,7 @@ export function describeEvent(event: TicketEvent): string {
   if (event.type === "spec_accepted") return "Test spec accepted";
   if (event.type === "spec_discarded") return "Test spec discarded";
   if (event.type === "note_added") return "Internal note added";
+  if (event.type === "reopened") return "Reopened by the customer: still happening";
   if (event.type === "archived") return "Archived";
   if (event.type === "restored") return "Restored";
   return event.type;
