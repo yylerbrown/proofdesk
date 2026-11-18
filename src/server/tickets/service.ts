@@ -287,7 +287,7 @@ function needsCustomer(key: string): HttpError {
   return new HttpError(
     409,
     "needs_customer",
-    `A status change does not resolve ticket ${key}. The customer confirms a fix by answering "Did this fix it?", which its owner asks with "Ask the customer to verify"; its owner or an admin can also resolve it with a reason.`,
+    `A status change does not resolve ticket ${key}. The customer confirms a fix by answering "Did this fix it?", which its owner asks with "Ask the customer to verify"; the team can also resolve it with a reason.`,
   );
 }
 
@@ -1031,11 +1031,18 @@ export function createTicketService(
         const fields = parse(markReadySchema, input ?? {});
         requireNotArchived(key, before);
         // Only the ticket's current owner asks the customer.
+        if (before.owner_id === null) {
+          throw new HttpError(
+            403,
+            "not_owner",
+            `Nobody owns ticket ${key} yet. Take it and start work first.`,
+          );
+        }
         if (before.owner_id !== actor.id) {
           throw new HttpError(
             403,
             "not_owner",
-            `Only ${before.owner_name ?? "the ticket's owner"}, who owns ticket ${key}, can ask the customer to verify.`,
+            `Only ${before.owner_name}, who owns ticket ${key}, can ask the customer to verify.`,
           );
         }
         if (before.status !== "in_progress") {
@@ -1318,9 +1325,10 @@ export function createTicketService(
      * from the list. A team member may also resolve a ticket nobody owns yet; whoever resolves
      * an unowned ticket becomes its owner, with its own history entry, so a named person stands
      * behind the resolution and can reopen it. The ticket then shows as "Resolved by the team:
-     * <reason>" wherever the ticket does, apart from "Customer confirmed". An open question to the customer is withdrawn first, with
-     * its own history entry, and any assistant's work on the ticket ends. The customer who filed
-     * it can reopen it, as after their own Yes. An agent never resolves, by this or any door.
+     * <reason>" wherever the ticket does, apart from "Customer confirmed". An open question to
+     * the customer is withdrawn first, with its own history entry, and any assistant's work on
+     * the ticket ends. The customer who filed it can reopen it, as after their own Yes. An agent
+     * never resolves, by this or any door.
      */
     resolveWithReason(key: string, input: unknown, actor: Actor): Ticket {
       const row = db.transaction(() => {

@@ -56,6 +56,25 @@ describe("asking the customer to verify", () => {
     const other = await admin(app).post("/api/tickets/SUP-1/ready");
     expect([other.status, other.body.error.code]).toEqual([403, "not_owner"]);
   });
+
+  it("says plainly that nobody owns a New ticket yet, rather than naming an owner", async () => {
+    const { app } = buildTestApp();
+    await as(app, customerOne).post("/api/tickets").send(filed);
+    const res = await as(app, teamActor).post("/api/tickets/SUP-1/ready");
+    expect([res.status, res.body.error.code]).toEqual([403, "not_owner"]);
+    expect(res.body.error.message).toBe(
+      "Nobody owns ticket SUP-1 yet. Take it and start work first.",
+    );
+  });
+});
+
+describe("the refusal of Resolved from the status control", () => {
+  it("says the team can resolve with a reason, as its hint does", async () => {
+    const { app } = await inProgress();
+    const res = await admin(app).patch("/api/tickets/SUP-1").send({ status: "resolved" });
+    expect(res.body.error.code).toBe("needs_customer");
+    expect(res.body.error.message).toMatch(/the team can also resolve it with a reason\.$/);
+  });
 });
 
 describe("resolving a New ticket nobody owns", () => {
