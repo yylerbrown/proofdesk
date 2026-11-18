@@ -73,7 +73,29 @@ const httpLink = z
   .pipe(z.url({ protocol: /^https?$/, error: "Must be a link that starts with http or https." }));
 
 export const linkChangeSchema = z.object({ change_url: httpLink });
-export const markReadySchema = z.object({ try_url: httpLink });
+// Asking the customer: where to try it, what the owner tried there and what happened, their
+// response to the customer's last No (required after a No, checked by the service), and the
+// evidence they relied on. A form sends one checkbox as a text and several as a list.
+export const markReadySchema = z.object({
+  try_url: httpLink,
+  tried: z
+    .string()
+    .trim()
+    .min(1, "Say what you tried, against the customer's check.")
+    .max(2000, "Must be at most 2000 characters."),
+  result: z
+    .string()
+    .trim()
+    .min(1, "Say what happened when you tried it.")
+    .max(2000, "Must be at most 2000 characters."),
+  response: z.string().trim().max(2000, "Must be at most 2000 characters.").optional(),
+  evidence_ids: z
+    .preprocess(
+      (value) => (value === undefined || value === "" ? [] : [value].flat()),
+      z.array(z.coerce.number().int().positive()),
+    )
+    .optional(),
+});
 
 // The customer's answer. A "no" needs a comment, which the service checks.
 export const answerSchema = z.object({

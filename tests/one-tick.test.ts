@@ -29,7 +29,9 @@ async function markReady(app: Express) {
   await admin(app)
     .put("/api/tickets/SUP-1/change-link")
     .send({ change_url: "https://example.com/c" });
-  return admin(app).post("/api/tickets/SUP-1/ready").send({ try_url: "https://example.com/try" });
+  return admin(app)
+    .post("/api/tickets/SUP-1/ready")
+    .send({ try_url: "https://example.com/try", tried: "I printed ten pages.", result: "No jam." });
 }
 
 describe("the tick", () => {

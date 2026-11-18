@@ -1225,3 +1225,8 @@ textarea:focus {
 .customer-said-no {
   border-left: 4px solid var(--pico-del-color);
 }
+
+/* Asking the customer is offered greyed, with its reason, until it can be done. */
+.ask-blocked button[disabled] {
+  margin-right: 0.5rem;
+}

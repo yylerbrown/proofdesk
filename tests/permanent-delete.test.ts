@@ -238,7 +238,11 @@ describe("permanent deletion covers every column that holds text", () => {
     service.agreeCheck("SUP-1", { agreed_check: `A ${mark}` }, team);
     service.addEntry("SUP-1", { kind: "note", body: `N ${mark}` }, team);
     service.linkChange("SUP-1", { change_url: `https://example.com/change/${mark}` }, team);
-    const ready = service.markReady("SUP-1", { try_url: `https://example.com/try/${mark}` }, team);
+    const ready = service.markReady(
+      "SUP-1",
+      { try_url: `https://example.com/try/${mark}`, tried: `Tried ${mark}`, result: `Saw ${mark}` },
+      team,
+    );
     service.answer(
       "SUP-1",
       { fixed: "no", comment: `Still broken ${mark}`, ready_token: ready.ready_token },

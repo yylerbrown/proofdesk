@@ -62,7 +62,9 @@ describe("waiting_on", () => {
     await admin(app)
       .put("/api/tickets/SUP-1/change-link")
       .send({ change_url: "https://example.com/c" });
-    await admin(app).post("/api/tickets/SUP-1/ready").send({ try_url: "https://example.com/t" });
+    await admin(app)
+      .post("/api/tickets/SUP-1/ready")
+      .send({ try_url: "https://example.com/t", tried: "I printed ten pages.", result: "No jam." });
     expect((await admin(app).get("/api/tickets/SUP-1")).body.waiting_on).toBe("customer");
     const { app: other } = buildTestApp();
     await as(other, customerOne).post("/api/tickets").send(valid);

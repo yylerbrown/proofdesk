@@ -157,7 +157,11 @@ const BODIES: Record<string, object> = {
   create_ticket: valid,
   edit_ticket: valid,
   agree_check: { agreed_check: "Ten pages print" },
-  mark_ready: { try_url: "https://example.com/try" },
+  mark_ready: {
+    try_url: "https://example.com/try",
+    tried: "I printed ten pages.",
+    result: "No jam.",
+  },
   answer: { fixed: "yes", ready_token: "x" },
   delete_ticket: { confirm: "SUP-1" },
   change_status: { status: "in_progress" },

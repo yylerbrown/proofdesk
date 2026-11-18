@@ -31,7 +31,21 @@ type Problem = {
   form: "answer" | "agreedCheck" | "changeLink" | "ready" | "evidence" | "reopen";
   message: string;
   comment: string;
+  /** What was typed in the form, so it can be shown again. */
+  values?: Record<string, string>;
 };
+
+/** Why the team cannot ask the customer yet, in plain words, or null when that is not the question. */
+function askBlockedReason(ticket: Ticket, actor: Actor): string | null {
+  if (actor.role === "customer" || actor.readOnly || ticket.archived_at !== null) return null;
+  if (ticket.status === "resolved" || ticket.ready_at !== null) return null;
+  if (ticket.owner_id === null) return "Take the ticket first.";
+  if (ticket.owner_id !== actor.id)
+    return `Only ${ticket.owner_name}, who owns it, asks the customer.`;
+  if (ticket.status !== "in_progress") return "Start work first.";
+  if (ticket.change_url === null) return "Add the change link first.";
+  return null;
+}
 type TicketAction = (key: string, input: unknown, actor: Actor) => Ticket;
 
 // What each ticket-page form says it saved. The answer form says one thing or the other.
@@ -119,6 +133,7 @@ export function pagesRouter(service: TicketService): Router {
       title: `${ticket.key}: ${ticket.title}`,
       ticket,
       viewerRole: actor.role,
+      askBlocked: askBlockedReason(ticket, actor),
       entries,
       history,
       confirmed: confirmedAt(ticket, events),
@@ -145,10 +160,15 @@ export function pagesRouter(service: TicketService): Router {
       } catch (err) {
         if (!(err instanceof ValidationError)) throw err;
         const message = Object.values(err.fieldErrors).flat()[0] ?? err.message;
+        const values: Record<string, string> = {};
+        for (const [name, value] of Object.entries(req.body ?? {})) {
+          if (typeof value === "string") values[name] = value;
+        }
         showTicket(req, res, 400, emptyEntry, {
           form,
           message,
           comment: asText(req.body?.comment ?? req.body?.reason),
+          values,
         });
       }
     };

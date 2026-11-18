@@ -80,6 +80,7 @@ describe("create and get", () => {
       },
       waiting_on: "team",
       customer_answer: null,
+      ask: null,
       key: "SUP-1",
       title: "Cannot log in",
       description: "The page says my password is wrong.",

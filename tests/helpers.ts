@@ -90,7 +90,7 @@ export async function resolveTicket(app: Express, key: string, filedBy: Actor) {
     .send({ change_url: "https://example.com/change/1" });
   const ready = await admin(app)
     .post(`/api/tickets/${key}/ready`)
-    .send({ try_url: "https://example.com/try" });
+    .send({ try_url: "https://example.com/try", tried: "I printed ten pages.", result: "No jam." });
   const answered = await as(app, filedBy)
     .post(`/api/tickets/${key}/answer`)
     .send({ fixed: "yes", ready_token: ready.body.ready_token });

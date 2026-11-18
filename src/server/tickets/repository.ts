@@ -23,6 +23,10 @@ export type TicketRow = {
   try_url: string | null;
   ready_at: string | null;
   ready_token: string | null;
+  ready_tried: string | null;
+  ready_result: string | null;
+  ready_response: string | null;
+  ready_evidence: string | null; // JSON list of evidence ids
 };
 
 export type EventRow = {
@@ -201,10 +205,30 @@ export function updateChangeUrl(db: Db, id: number, changeUrl: string, now: stri
 }
 
 /** Starts the wait for the customer's answer, with the page to try and a fresh token. */
-export function updateReady(db: Db, id: number, tryUrl: string, token: string, now: string): void {
+/** What the owner records when asking the customer. */
+export type AskRecord = {
+  tryUrl: string;
+  tried: string;
+  result: string;
+  response: string | null;
+  evidenceIds: number[];
+};
+
+export function updateReady(db: Db, id: number, ask: AskRecord, token: string, now: string): void {
   db.prepare(
-    "UPDATE tickets SET try_url = ?, ready_at = ?, ready_token = ?, updated_at = ? WHERE id = ?",
-  ).run(tryUrl, now, token, now, id);
+    `UPDATE tickets SET try_url = ?, ready_tried = ?, ready_result = ?, ready_response = ?,
+       ready_evidence = ?, ready_at = ?, ready_token = ?, updated_at = ? WHERE id = ?`,
+  ).run(
+    ask.tryUrl,
+    ask.tried,
+    ask.result,
+    ask.response,
+    JSON.stringify(ask.evidenceIds),
+    now,
+    token,
+    now,
+    id,
+  );
 }
 
 /** Withdraws the question "Did this fix it?", because what it was about has changed. */
