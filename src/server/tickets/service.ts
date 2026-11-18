@@ -912,12 +912,13 @@ export function createTicketService(
         // The check is the customer's own words. The team edits the rest, never those.
         const isFiler = before.created_by === actor.id;
         if (!isFiler) after.fix_check = before.fix_check;
+        // Text saved before line breaks were stored plainly may still hold \r\n, and the team's
+        // copy of the check is that stored text: the same words with the same line breaks are
+        // not a change, so both sides are compared with plain line breaks.
+        const plain = (text: string | null) => text?.replace(/\r\n?/g, "\n") ?? null;
         const changes: Record<string, { from: string | null; to: string | null }> = {};
         for (const field of ["title", "description", "where_url", "fix_check"] as const) {
-          // Text saved before line breaks were stored plainly may still hold \r\n: the same
-          // words with the same line breaks are not a change.
-          const stored = before[field]?.replace(/\r\n?/g, "\n") ?? null;
-          if (stored !== after[field]) {
+          if (plain(before[field]) !== plain(after[field])) {
             changes[field] = { from: before[field], to: after[field] };
           }
         }

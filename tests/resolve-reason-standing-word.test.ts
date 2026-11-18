@@ -103,6 +103,29 @@ describe("saving an edit of text stored with old line endings", () => {
     const events = (await admin(app).get("/api/tickets/SUP-1/events")).body as { type: string }[];
     expect(events.map((event) => event.type)).not.toContain("edited");
   });
+
+  it("keeps the team's agreed check and the open question when the team saves the same text", async () => {
+    const { app, db } = await setup();
+    db.prepare("UPDATE tickets SET fix_check = ? WHERE id = 1").run("Ten pages print\r\nNo jam");
+    const agreed = await as(app, teamActor)
+      .put("/api/tickets/SUP-1/agreed-check")
+      .send({ agreed_check: "Ten pages print and none jams" });
+    expect(agreed.status).toBe(200);
+    await askCustomer(app);
+    const eventCount = async () =>
+      ((await admin(app).get("/api/tickets/SUP-1/events")).body as unknown[]).length;
+    const countBefore = await eventCount();
+    for (let save = 0; save < 2; save++) {
+      const res = await as(app, teamActor)
+        .put("/api/tickets/SUP-1")
+        .send({ title: filed.title, description: filed.description });
+      expect(res.status).toBe(200);
+    }
+    expect(await eventCount()).toBe(countBefore);
+    const ticket = (await admin(app).get("/api/tickets/SUP-1")).body;
+    expect(ticket.agreed_check).toBe("Ten pages print and none jams");
+    expect(ticket.ready_at).toEqual(expect.any(String));
+  });
 });
 
 describe("the read-only admin preview on a confirmation page", () => {
