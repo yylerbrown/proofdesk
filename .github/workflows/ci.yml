@@ -19,6 +19,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
+      - run: npm run format:check
       - run: npm test
       - run: npm run build
       - run: docker build --build-arg GIT_COMMIT=${{ github.sha }} -t support-desk:ci .
