@@ -1,4 +1,5 @@
 <%- include("header") %>
+<div class="column-wide">
 <h1>Agent connections</h1>
 <p>A connection lets one AI assistant work on tickets through the API, with only the permissions you choose. Its key is shown once. If a key is lost or leaked, revoke the connection and issue a new one.</p>
 
@@ -17,7 +18,7 @@
     <% if (form.errors.scopes) { %><small id="scopes-error"><%= form.errors.scopes.join(" ") %></small><% } %>
   </fieldset>
   <p><small>Never, whatever you choose: answer "Did this fix it?", resolve a ticket, own one, ask the customer, archive, restore, delete, or manage connections.</small></p>
-  <button type="submit" class="compact">Issue connection</button>
+  <button type="submit">Issue connection</button>
 </form>
 <% } %>
 
@@ -26,7 +27,7 @@
 <p class="empty">No connections yet.</p>
 <% } else { %>
 <div class="overflow-auto">
-  <table>
+  <table class="connections">
     <thead>
       <tr><th scope="col">Name</th><th scope="col">Key starts</th><th scope="col">May</th><th scope="col">Last used</th><th scope="col">State</th></tr>
     </thead>
@@ -40,7 +41,7 @@
         <td>
           <% if (c.revoked_at) { %>Revoked<% } else if (!canManage) { %>Active<% } else { %>
           <form method="post" action="/connections/<%= c.id %>/revoke" class="inline">
-            <button type="submit" class="danger compact">Revoke</button>
+            <button type="submit" class="danger">Revoke</button>
           </form>
           <% } %>
         </td>
@@ -50,4 +51,5 @@
   </table>
 </div>
 <% } %>
+</div>
 <%- include("footer") %>
