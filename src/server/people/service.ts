@@ -10,7 +10,8 @@ import { parse } from "../validation.js";
 import * as connectionsRepository from "../connections/repository.js";
 import { createAccountService } from "./account.js";
 import * as repository from "./repository.js";
-import { ROLE_LABELS } from "./words.js";
+import { roleNowOf } from "./role-now.js";
+import { endedWhenNotAdmin, ROLE_LABELS } from "./words.js";
 
 // The People page: an admin chooses who is on the team. The server settings come first and
 // cannot be changed here, nobody changes their own role, and someone who still owns open
@@ -240,7 +241,9 @@ export function createPeopleService(db: Db, config: Config) {
         repository.saveRole(db, person.id, role, now);
         // Only an admin issues assistant connections, so someone who stops being an admin
         // loses the ones they issued, in the same step. The key would stop working anyway.
-        if (before === "admin") connectionsRepository.revokeIssuedBy(db, person.id, now);
+        if (before === "admin") {
+          connectionsRepository.revokeIssuedBy(db, person.id, now, endedWhenNotAdmin(person.name));
+        }
         repository.recordChange(db, {
           personId: person.id,
           personName: person.name,
@@ -293,4 +296,28 @@ export function forgetRolesNamedInSettings(db: Db, config: Config): number {
     return forgotten;
   });
   return forget.immediate();
+}
+
+/**
+ * Ends every live assistant connection whose issuer is no longer an admin, in one step, with the
+ * reason the Connections page shows. Such a key is already refused when it signs in. This makes
+ * the Connections page and the list of connections a ticket can be handed to say the same. The
+ * People page ends them itself when it lowers a role, so this catches the server settings, which
+ * change only with a restart. Run it after forgetRolesNamedInSettings, once roles are settled.
+ * Demo connections are issued by the demo, not a person, and are left alone. Returns how many
+ * connections were ended.
+ */
+export function endConnectionsOfFormerAdmins(db: Db, config: Config): number {
+  const end = db.transaction((): number => {
+    const now = new Date().toISOString();
+    let ended = 0;
+    for (const issuerId of connectionsRepository.issuersOfLiveConnections(db)) {
+      if (roleNowOf(config, db, issuerId) === "admin") continue;
+      const issuer = repository.findPerson(db, issuerId);
+      const reason = endedWhenNotAdmin(issuer?.name);
+      ended += connectionsRepository.revokeIssuedBy(db, issuerId, now, reason);
+    }
+    return ended;
+  });
+  return end.immediate();
 }

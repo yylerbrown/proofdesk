@@ -61,6 +61,8 @@ export type Connection = {
   created_at: string;
   expires_at: string | null;
   revoked_at: string | null;
+  /** Why it ended, when a role change ended it, such as "Ended when Sam Helper stopped being an admin." */
+  revoked_reason: string | null;
   last_used_at: string | null;
 };
 
@@ -81,6 +83,7 @@ function toConnection(row: repository.ConnectionRow): Connection {
     created_at: row.created_at,
     expires_at: row.expires_at,
     revoked_at: row.revoked_at,
+    revoked_reason: row.revoked_reason,
     last_used_at: row.last_used_at,
   };
 }

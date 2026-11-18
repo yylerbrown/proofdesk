@@ -15,3 +15,13 @@ export function roleWordOf(actor: Actor): string {
   if (actor.readOnly === true) return `${ROLE_LABELS[actor.role]}, read-only`;
   return ROLE_LABELS[actor.role];
 }
+
+/**
+ * Why an assistant connection ended when the person who issued it stopped being an admin, as
+ * the Connections page shows it. Without a name, such as for a person who was deleted, it says
+ * who they were instead.
+ */
+export function endedWhenNotAdmin(issuerName: string | undefined): string {
+  const who = issuerName ?? "the person who issued it";
+  return `Ended when ${who} stopped being an admin.`;
+}
