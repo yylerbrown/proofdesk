@@ -167,6 +167,7 @@ export function pagesRouter(service: TicketService): Router {
       viewerRole: actor.role,
       viewerId: actor.id,
       askBlocked: askBlockedReason(ticket, actor),
+      assistantBlocked: service.assistantBlocked([ticket], actor).get(ticket.key) ?? null,
       demoNext: demoNext(ticket, actor),
       handOffTo: service.handOffCandidates(ticket),
       agentHelp: service.agentHelp(ticket),
@@ -220,6 +221,7 @@ export function pagesRouter(service: TicketService): Router {
     const current = status ?? "all";
     const pageNumber = page ?? 1;
     const tickets = service.listTickets(current, actor, pageNumber);
+    const blocked = service.assistantBlocked(tickets, actor);
     res.render("ticket-list", {
       ...helpers,
       title:
@@ -229,7 +231,13 @@ export function pagesRouter(service: TicketService): Router {
             ? "My tickets"
             : "All tickets",
       current,
-      tickets: tickets.map((ticket) => ({ ...ticket, waiting: waitingOn(ticket, actor.role) })),
+      tickets: tickets.map((ticket) => ({
+        ...ticket,
+        // An assistant that said it is blocked is what the team needs to see first.
+        waiting: blocked.has(ticket.key)
+          ? `Assistant blocked: ${blocked.get(ticket.key)}`
+          : waitingOn(ticket, actor.role),
+      })),
       viewerRole: actor.role,
       // A full page means there may be older tickets on the next one.
       nextPage: tickets.length === LIST_PAGE_SIZE ? pageNumber + 1 : null,

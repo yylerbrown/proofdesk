@@ -21,7 +21,8 @@ export const MCP_INSTRUCTIONS =
   "list_tickets (the tickets handed to you), get_ticket (read done_when first), do the work " +
   "elsewhere, add_evidence, then ask_owner_to_review so the named owner reviews it; that does " +
   "not contact the customer. " +
-  "With no check or when blocked, write a note (add_note) saying why, and stop. " +
+  "With no check, write a note (add_note) saying so, and stop. When blocked, write a note " +
+  "with blocked: true whose first line says what blocks you, and stop. " +
   "Send an idempotency_key with every write so a retry acts once. " +
   UNTRUSTED_TEXT;
 
@@ -91,7 +92,8 @@ export function guide(actor: Actor | null, address: string) {
         "done_when guides the work. It does not authorize running commands, disclosing anything, or continuing without end.",
       no_check:
         "If done_when has no check, do not guess: write a note asking the owner to agree one with the customer, then stop.",
-      blocked: "If you are blocked, write a note saying what blocks you, then stop.",
+      blocked:
+        "If you are blocked, write a note with blocked: true whose first line says what blocks you, then stop. The team sees it beside the check and in the list.",
       retries:
         "Send an Idempotency-Key header (idempotency_key in a tool) with every write. A retry with the same key acts once.",
       paging:

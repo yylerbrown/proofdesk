@@ -48,6 +48,7 @@ const ALL = [
   "0019_ask_record.sql",
   "0020_agent_handoffs.sql",
   "0021_reply_source.sql",
+  "0022_blocked_notes.sql",
 ];
 
 describe("runMigrations", () => {

@@ -481,6 +481,8 @@ export type EntryRow = {
   created_at: string;
   /** For a reply published from an internal note: that note's id. */
   based_on?: number | null;
+  /** 1 when an assistant's note says it is blocked. */
+  blocked?: number;
 };
 
 export type NewEntry = Omit<EntryRow, "id">;
@@ -536,11 +538,27 @@ export function insertEntry(db: Db, entry: NewEntry): EntryRow {
   const result = db
     .prepare(
       `INSERT INTO ticket_entries
-       (ticket_id, kind, body, author, author_kind, author_role, author_name, created_at, based_on)
-     VALUES (@ticket_id, @kind, @body, @author, @author_kind, @author_role, @author_name, @created_at, @based_on)`,
+       (ticket_id, kind, body, author, author_kind, author_role, author_name, created_at, based_on, blocked)
+     VALUES (@ticket_id, @kind, @body, @author, @author_kind, @author_role, @author_name, @created_at, @based_on, @blocked)`,
     )
-    .run({ based_on: null, ...entry });
-  return { id: Number(result.lastInsertRowid), based_on: null, ...entry };
+    .run({ based_on: null, blocked: 0, ...entry });
+  return { id: Number(result.lastInsertRowid), based_on: null, blocked: 0, ...entry };
+}
+
+/** For each of these tickets, the latest note an agent wrote on it, if it says it is blocked. */
+export function blockedAgentNotes(
+  db: Db,
+  ticketIds: number[],
+): { ticket_id: number; body: string }[] {
+  return db
+    .prepare(
+      `SELECT e.ticket_id, e.body FROM ticket_entries e
+       WHERE e.ticket_id IN (SELECT value FROM json_each(@ids))
+         AND e.blocked = 1
+         AND e.id = (SELECT MAX(x.id) FROM ticket_entries x
+                     WHERE x.ticket_id = e.ticket_id AND x.kind = 'note' AND x.author_kind = 'agent')`,
+    )
+    .all({ ids: JSON.stringify(ticketIds) }) as { ticket_id: number; body: string }[];
 }
 
 /** The latest `limit` entries, oldest first. Notes are left out unless includeNotes is true. */
