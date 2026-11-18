@@ -11,7 +11,8 @@
 %>
 <div class="welcome">
 <hgroup>
-  <h1>Proofdesk</h1>
+  <%# The real site's sign-in says what the page is for. The demo and a signed-in visitor get a welcome. %>
+  <h1><%= github && !viewer ? "Sign in to Proofdesk" : "Proofdesk" %></h1>
   <p>Tell us what went wrong, follow it while the team works on it, and say when it is fixed.</p>
 </hgroup>
 
@@ -24,10 +25,14 @@
 <% } %>
 
 <% if (github) { %>
+<% if (!viewer) { %>
 <form method="post" action="/sign-in/github">
   <input type="hidden" name="next" value="<%= next %>" />
-  <button type="submit">Sign in with GitHub</button>
+  <button type="submit" aria-describedby="github-reads"><span class="github-mark" aria-hidden="true"></span>Sign in with GitHub</button>
 </form>
+<%# True of the one permission the site asks GitHub for: reading email addresses. Name and picture are public. %>
+<p class="github-reads" id="github-reads"><small>Anyone with a GitHub account can sign in. Proofdesk reads your name, picture and email address, never your code.</small></p>
+<% } %>
 <% if (locals.demoUrl) { %>
 <p class="try-demo"><a href="<%= demoUrl %>">Try the demo without signing in</a></p>
 <% } %>
@@ -46,7 +51,7 @@
   <h2 id="entrance">Try the demo</h2>
   <p>The tickets are sample data, shared with everyone who visits. Do not type anything private here.</p>
   <% if (locals.realSiteUrl) { %>
-  <p class="real-site"><small>GitHub sign-in with roles runs on the real site: <a href="<%= realSiteUrl %>"><%= new URL(realSiteUrl).host %></a></small></p>
+  <p class="real-site"><small>On <a href="<%= realSiteUrl %>">the real site</a>, people sign in with GitHub.<% if (locals.sourceUrl) { %> <a href="<%= sourceUrl %>#sign-in-and-roles">How sign-in and roles work</a><% } %></small></p>
   <% } %>
   <% if (nextTicket) { %>
   <p class="next-ticket" id="next-ticket">Pick a role below to open <strong><%= nextTicket %></strong>.<% if (locals.walkthrough) { %> Try the ticket workflow files a new ticket instead.<% } %></p>

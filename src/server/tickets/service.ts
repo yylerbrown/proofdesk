@@ -16,6 +16,8 @@ import {
   answerSchema,
   linkChangeSchema,
   markReadySchema,
+  noteSchema,
+  verificationRequestSchema,
   createTicketSchema,
   giveToAgentSchema,
   handOffSchema,
@@ -33,6 +35,9 @@ import {
 // Routes and pages call these functions and nothing else. Input that comes from outside
 // arrives as "unknown" and is checked here, so no caller can skip the check. Every function
 // takes the actor and asks can() in permissions.ts, so no caller can skip that either.
+// Who is asking is checked before what they sent: find the ticket, check permission, then
+// check the input. Someone who may not act is refused plainly and learns nothing about the
+// input rules.
 
 /**
  * What "done" means on a ticket, first in every ticket the service returns, so an agent meets
@@ -616,6 +621,16 @@ export function createTicketService(
     return toEntry(row);
   }
 
+  /** Writes an assistant's request that the owner review its evidence, as a note of its own kind. */
+  function writeReviewRequest(key: string, message: string, actor: Actor): TicketEntry {
+    return writeEntry(
+      key,
+      { kind: "note", body: `Asks the owner to review the evidence: ${message}` },
+      "review_request",
+      actor,
+    );
+  }
+
   function toEntry(row: repository.EntryRow): TicketEntry {
     return {
       id: row.id,
@@ -829,15 +844,21 @@ export function createTicketService(
 
     /** Checks the input, then saves the new status and its event together. */
     changeStatus(key: string, input: unknown, actor: Actor): Ticket {
-      const { status } = parse(changeStatusSchema, input);
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         // An agent asking to resolve gets the real reason first, whatever its scopes: nobody
         // resolves a ticket by changing its status.
-        if (actor.kind === "agent" && status === "resolved" && before.status !== "resolved") {
+        const asked = changeStatusSchema.safeParse(input);
+        if (
+          actor.kind === "agent" &&
+          asked.success &&
+          asked.data.status === "resolved" &&
+          before.status !== "resolved"
+        ) {
           throw needsCustomer(key);
         }
         requirePermission(actor, "change_status", before);
+        const { status } = parse(changeStatusSchema, input);
         requireNotArchived(key, before);
         if (before.status === status) return before; // nothing changes, so nothing is logged
         if (status === "resolved") throw needsCustomer(key);
@@ -871,16 +892,16 @@ export function createTicketService(
      * its old and new value. If nothing changed, nothing is written.
      */
     editTicket(key: string, input: unknown, actor: Actor): Ticket {
-      const ticket = parse(createTicketSchema, input);
-      const after = {
-        title: ticket.title,
-        description: ticket.description,
-        where_url: ticket.where_url ?? null,
-        fix_check: ticket.fix_check || null,
-      };
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "edit", before);
+        const ticket = parse(createTicketSchema, input);
+        const after = {
+          title: ticket.title,
+          description: ticket.description,
+          where_url: ticket.where_url ?? null,
+          fix_check: ticket.fix_check || null,
+        };
         requireNotArchived(key, before);
         // The check is the customer's own words. The team edits the rest, never those.
         const isFiler = before.created_by === actor.id;
@@ -961,10 +982,10 @@ export function createTicketService(
      * The customer's own words in fix_check are never changed by this.
      */
     agreeCheck(key: string, input: unknown, actor: Actor): Ticket {
-      const { agreed_check } = parse(agreeCheckSchema, input);
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "agree_check", before);
+        const { agreed_check } = parse(agreeCheckSchema, input);
         // The same words as the customer's are not a tighter check: keep none.
         const agreed =
           agreed_check === "" || agreed_check === before.fix_check ? null : agreed_check;
@@ -981,10 +1002,10 @@ export function createTicketService(
 
     /** Records the link to the code change. Evidence, not proof that the ticket is fixed. */
     linkChange(key: string, input: unknown, actor: Actor): Ticket {
-      const { change_url } = parse(linkChangeSchema, input);
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "link_change", before);
+        const { change_url } = parse(linkChangeSchema, input);
         requireNotArchived(key, before);
         if (before.change_url === change_url) return before;
         const now = new Date().toISOString();
@@ -1002,10 +1023,10 @@ export function createTicketService(
      * has an owner) and have its change link.
      */
     markReady(key: string, input: unknown, actor: Actor): Ticket {
-      const { try_url, tried, result, response, evidence_ids } = parse(markReadySchema, input);
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "mark_ready", before);
+        const { try_url, tried, result, response, evidence_ids } = parse(markReadySchema, input);
         requireNotArchived(key, before);
         // Only the ticket's current owner asks the customer, after trying it themselves.
         if (before.owner_id !== actor.id) {
@@ -1117,15 +1138,15 @@ export function createTicketService(
      * in progress with its owner, and the customer's comment goes into the conversation.
      */
     answer(key: string, input: unknown, actor: Actor): Ticket {
-      const { fixed, comment, ready_token } = parse(answerSchema, input);
-      if (fixed === "no" && !comment) {
-        throw new ValidationError("Say what is still wrong.", {
-          comment: ["Say what is still wrong."],
-        });
-      }
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "answer", before);
+        const { fixed, comment, ready_token } = parse(answerSchema, input);
+        if (fixed === "no" && !comment) {
+          throw new ValidationError("Say what is still wrong.", {
+            comment: ["Say what is still wrong."],
+          });
+        }
         requireNotArchived(key, before);
         if (before.ready_at === null) {
           throw new HttpError(409, "not_waiting", `Ticket ${key} is not waiting for an answer.`);
@@ -1228,10 +1249,10 @@ export function createTicketService(
      * and their earlier Yes stays in the history.
      */
     reopen(key: string, input: unknown, actor: Actor): Ticket {
-      const { reason } = parse(reopenSchema, input);
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "reopen", before);
+        const { reason } = parse(reopenSchema, input);
         requireNotArchived(key, before);
         if (before.status !== "resolved") {
           throw new HttpError(
@@ -1272,18 +1293,18 @@ export function createTicketService(
      * it can reopen it, as after their own Yes. An agent never resolves, by this or any door.
      */
     resolveWithReason(key: string, input: unknown, actor: Actor): Ticket {
-      const { reason, note, duplicate_of } = parse(resolveSchema, input);
-      if (reason === "other" && !note) {
-        throw new ValidationError("Say why, for Other.", { note: ["Say why, for Other."] });
-      }
-      if (reason === "duplicate" && !duplicate_of) {
-        throw new ValidationError("Name the ticket this one duplicates.", {
-          duplicate_of: ["Name the ticket this one duplicates, such as SUP-3."],
-        });
-      }
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "resolve_with_reason", before);
+        const { reason, note, duplicate_of } = parse(resolveSchema, input);
+        if (reason === "other" && !note) {
+          throw new ValidationError("Say why, for Other.", { note: ["Say why, for Other."] });
+        }
+        if (reason === "duplicate" && !duplicate_of) {
+          throw new ValidationError("Name the ticket this one duplicates.", {
+            duplicate_of: ["Name the ticket this one duplicates, such as SUP-3."],
+          });
+        }
         requireNotArchived(key, before);
         if (before.owner_id !== actor.id && actor.role !== "admin") {
           throw new HttpError(
@@ -1351,10 +1372,10 @@ export function createTicketService(
      * open question to the customer is withdrawn: the new owner asks again.
      */
     handOff(key: string, input: unknown, actor: Actor): Ticket {
-      const { to, expected_owner } = parse(handOffSchema, input);
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "hand_off", before);
+        const { to, expected_owner } = parse(handOffSchema, input);
         requireNotArchived(key, before);
         if (before.status === "resolved") {
           throw new HttpError(409, "not_open", `Ticket ${key} is resolved.`);
@@ -1395,10 +1416,10 @@ export function createTicketService(
      * within its scopes. A ticket has at most one; handing it to another ends the first.
      */
     giveToAgent(key: string, input: unknown, actor: Actor): Ticket {
-      const { connection_id } = parse(giveToAgentSchema, input);
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "hand_to_agent", before);
+        const { connection_id } = parse(giveToAgentSchema, input);
         requireNotArchived(key, before);
         if (before.owner_id !== actor.id) {
           throw new HttpError(
@@ -1619,10 +1640,10 @@ export function createTicketService(
      * as reported. It never changes the ticket's status: only a person resolves one.
      */
     addEvidence(key: string, input: unknown, actor: Actor): TicketEvidence {
-      const evidence = parse(addEvidenceSchema, input);
       const row = db.transaction(() => {
         const ticket = requireRow(key, actor);
         requirePermission(actor, "attach_evidence", ticket);
+        const evidence = parse(addEvidenceSchema, input);
         requireNotArchived(key, ticket);
         requireRoom(
           () => repository.countRows(db, "ticket_evidence", ticket.id),
@@ -1699,6 +1720,12 @@ export function createTicketService(
      * says only that something was added. The text itself lives in the entry.
      */
     addEntry(key: string, input: unknown, actor: Actor): TicketEntry {
+      // Whether this is a reply or a note is in the input, so the caller must first be allowed
+      // at least one of them. writeEntry then checks the one they sent.
+      const ticket = requireRow(key, actor);
+      if (!can(actor, "reply", ticket) && !can(actor, "note", ticket)) {
+        throw new HttpError(403, "forbidden", "You are not allowed to do that.");
+      }
       const entry = parse(addEntrySchema, input);
       // Only an assistant's note can be a suggested reply; on anything else the flag means nothing.
       const purpose =
@@ -1708,17 +1735,34 @@ export function createTicketService(
       return writeEntry(key, entry, purpose, actor);
     },
 
+    /** Adds an internal note from the notes route and tool, checking the input after the caller. */
+    addNote(key: string, input: unknown, actor: Actor): TicketEntry {
+      requirePermission(actor, "note", requireRow(key, actor));
+      const note = parse(noteSchema, input);
+      // Only an assistant's note can be a suggested reply; on anything else the flag means nothing.
+      const purpose =
+        actor.kind === "agent" && note.suggested_reply === true ? "suggested_reply" : "note";
+      return writeEntry(
+        key,
+        { kind: "note", body: note.body, blocked: note.blocked },
+        purpose,
+        actor,
+      );
+    },
+
+    /** The API's door to requestReview below, checking the input after the caller. */
+    askOwnerToReview(key: string, input: unknown, actor: Actor): TicketEntry {
+      requirePermission(actor, "note", requireRow(key, actor));
+      const { message } = parse(verificationRequestSchema, input);
+      return writeReviewRequest(key, message, actor);
+    },
+
     /**
      * An assistant asks the ticket's owner to review its evidence: an internal note of its own
      * kind, with its own history entry. It never contacts the customer.
      */
     requestReview(key: string, message: string, actor: Actor): TicketEntry {
-      return writeEntry(
-        key,
-        { kind: "note", body: `Asks the owner to review the evidence: ${message}` },
-        "review_request",
-        actor,
-      );
+      return writeReviewRequest(key, message, actor);
     },
 
     /**
@@ -1831,10 +1875,10 @@ export function createTicketService(
      * cannot happen by a slip.
      */
     deleteTicket(key: string, input: unknown, actor: Actor): { filesCleaned: boolean } {
-      const { confirm } = parse(deleteTicketSchema, input);
       db.transaction(() => {
         const row = requireRow(key, actor);
         requirePermission(actor, "delete", row);
+        const { confirm } = parse(deleteTicketSchema, input);
         const exactKey = buildKey(prefix, row.id);
         if (confirm !== exactKey) {
           throw new ValidationError(`Type ${exactKey} to confirm.`, {
@@ -1863,10 +1907,10 @@ export function createTicketService(
      * "replaced". It is a suggestion until a person accepts it, and never changes the status.
      */
     proposeSpec(key: string, input: unknown, actor: Actor): TicketSpec {
-      const spec = parse(proposeSpecSchema, input);
       const row = db.transaction(() => {
         const ticket = requireRow(key, actor);
         requirePermission(actor, "propose_spec", ticket);
+        const spec = parse(proposeSpecSchema, input);
         requireNotArchived(key, ticket);
         requireRoom(
           () => repository.countSpecs(db, ticket.id),
@@ -1892,10 +1936,10 @@ export function createTicketService(
 
     /** A person on the team accepts the proposed spec as the agreed way to test, or discards it. */
     decideSpec(key: string, input: unknown, actor: Actor): TicketSpec {
-      const { decision } = parse(decideSpecSchema, input);
       const row = db.transaction(() => {
         const ticket = requireRow(key, actor);
         requirePermission(actor, "decide_spec", ticket);
+        const { decision } = parse(decideSpecSchema, input);
         requireNotArchived(key, ticket);
         const spec = repository.findActiveSpec(db, ticket.id);
         if (spec === undefined) {

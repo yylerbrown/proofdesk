@@ -386,7 +386,26 @@ header nav .viewer strong {
 .switch-role > summary::after {
   opacity: 0.8;
 }
-/* Its menu: a small popover, the one kind of thing that floats. */
+/*
+ * The menu is measured against the details element, so it is an inline block as wide as its
+ * button: as a plain inline box it can be 0px wide in WebKit, and the menu then shrinks to a
+ * 10px strip with the choices spilling out over the page. Pico gives a dropdown in a nav a
+ * negative bottom margin, which an inline block would obey: at phone width the button would then
+ * stick out of its row, so the margin is taken off.
+ */
+.site-header details.dropdown.switch-role {
+  display: inline-block;
+  margin-block: 0;
+}
+/*
+ * Pico lays an invisible layer over the whole page while the menu is open, which takes the next
+ * click. The menus script closes the menu on a click outside it, so the layer is not needed, and
+ * without it that click reaches what it was aimed at.
+ */
+.site-header details.dropdown.switch-role[open] > summary::before {
+  display: none;
+}
+/* Its menu: a small popover, the one kind of thing that floats, as wide as its button. */
 .site-header details.dropdown.switch-role > summary + ul {
   min-width: 100%;
   margin-top: 6px;
@@ -1697,6 +1716,21 @@ p.saved {
 .welcome section > p {
   color: var(--pd-muted);
 }
+/* GitHub's mark on its sign-in button, in the button's own text colour. */
+.github-mark {
+  display: inline-block;
+  width: 1.15em;
+  height: 1.15em;
+  margin-right: var(--pd-space-2);
+  vertical-align: -0.2em;
+  background-color: currentColor;
+  -webkit-mask: url("/assets/github-mark.svg") center / contain no-repeat;
+  mask: url("/assets/github-mark.svg") center / contain no-repeat;
+}
+.welcome .github-reads {
+  margin-top: var(--pd-space-2);
+  color: var(--pd-muted);
+}
 /* The made-up people: one bordered list, a row each, the whole row is the button. */
 .people {
   margin: 0 0 var(--pd-space-5);
@@ -1815,8 +1849,9 @@ textarea:focus-visible {
   box-shadow: none;
 }
 /*
- * A box with focus: its edge turns blue (5.51 on white) inside a soft blue halo, close to the box
- * rather than an outline floating 2px away. A refused box keeps its red edge and gets a red halo.
+ * A box with focus also turns its edge blue (5.51 on white) inside a soft blue halo, and keeps the
+ * 2px ring above: the edge and halo alone are too faint to find. A refused box keeps its red edge
+ * and gets a red halo, with the same ring.
  */
 input:not([type="checkbox"], [type="radio"]):focus,
 select:focus,
@@ -1825,7 +1860,6 @@ input:not([type="checkbox"], [type="radio"]):focus-visible,
 select:focus-visible,
 textarea:focus-visible {
   --pico-form-element-focus-color: var(--pd-focus-halo);
-  outline: none;
   border-color: var(--pd-focus);
   box-shadow: 0 0 0 3px var(--pd-focus-halo);
 }
