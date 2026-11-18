@@ -281,21 +281,6 @@ describe("when looking up the session fails", () => {
 });
 
 describe("the sign-in library's own routes", () => {
-  it("are not there for a sign-out or sign-in posted from another site", async () => {
-    const { app, db } = buildGithubApp();
-    const { cookie } = await signInThroughGithub(app, ada);
-    const foreign = { Origin: "https://evil.example", "Sec-Fetch-Site": "cross-site" };
-    const out = await request(app).post("/api/auth/sign-out").set("Cookie", cookie).set(foreign);
-    expect(out.status).toBe(404);
-    expect(db.prepare(`SELECT COUNT(*) AS n FROM "session"`).get()).toEqual({ n: 1 });
-    const start = await request(app)
-      .post("/api/auth/sign-in/social")
-      .set(foreign)
-      .send({ provider: "github" });
-    expect(start.status).toBe(404);
-    expect(db.prepare(`SELECT COUNT(*) AS n FROM "verification"`).get()).toEqual({ n: 0 });
-  });
-
   it("refuse a GitHub return with a missing or wrong state, and sign nobody in", async () => {
     const { app, db } = buildGithubApp();
     githubUser = ada;

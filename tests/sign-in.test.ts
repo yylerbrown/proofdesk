@@ -1,4 +1,5 @@
-import { Agent, type IncomingMessage } from "node:http";
+import http from "node:http";
+import type { AddressInfo } from "node:net";
 import { betterAuth } from "better-auth";
 import { getMigrations } from "better-auth/db/migration";
 import { testUtils } from "better-auth/plugins";
@@ -245,6 +246,8 @@ const LIBRARY_ROUTES: [method: "get" | "post", path: string, body?: object][] = 
   ["get", "/api/auth/list-accounts"],
   ["get", "/api/auth/ok"],
   ["get", "/api/auth/error"],
+  ["post", "/api/auth/sign-out", {}],
+  ["post", "/api/auth/callback/github", { provider: "github" }],
 ];
 
 describe("the sign-in library's own routes", () => {
@@ -284,29 +287,45 @@ describe("the sign-in library's own routes", () => {
     expect(res.headers["set-cookie"]).toBeUndefined();
   });
 
-  it("refuse a body somewhat over the app's 100 KB limit, and keep none of it", async () => {
-    const { app, db } = buildSignInApp();
-    // The 404 can go out before the body has finished arriving. On a connection kept open,
-    // as a browser keeps it, the server then takes in the rest and throws it away unread.
-    // So this test keeps its connections open, and its server up until every body is in:
-    // closing either one early would cut the upload off halfway.
+  // Each request says it carries 64 MB, and only its headers are sent. A server that read the
+  // body before answering would wait for it and never answer.
+  it.each([
+    ["POST", "/api/auth/sign-in/social", 404],
+    ["POST", "/api/auth/callback/github", 404],
+    // GitHub's return, which the library answers. With no sign-in under way, it sends the
+    // browser back to the sign-in page.
+    ["GET", "/api/auth/callback/github", 302],
+  ] as const)("answer %s %s before any of its body arrives", async (method, path, expected) => {
+    const { app } = buildSignInApp();
     const server = await listenLocally(app);
-    const keepOpen = new Agent({ keepAlive: true });
-    const bodiesIn: Promise<void>[] = [];
-    server.on("request", (req: IncomingMessage) => {
-      bodiesIn.push(new Promise((done) => req.once("close", () => done())));
-    });
     try {
-      // About 150 KB, sent where the library would keep it with the sign-in it starts.
-      const big = { provider: "github", additionalData: { padding: "x".repeat(150 * 1024) } };
-      for (const path of ["/api/auth/sign-in/social", "/api/auth/callback/github"]) {
-        const res = await request(server).post(path).agent(keepOpen).set(FROM_THIS_SITE).send(big);
-        expect(res.status).toBe(404);
-      }
-      expect(db.prepare(`SELECT COUNT(*) AS n FROM "verification"`).get()).toEqual({ n: 0 });
+      const { port } = server.address() as AddressInfo;
+      const status = await new Promise<number>((resolve, reject) => {
+        const req = http.request({
+          host: "127.0.0.1",
+          port,
+          method,
+          path,
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Length": String(64 * 1024 * 1024),
+            ...FROM_THIS_SITE,
+          },
+        });
+        req.on("response", (res) => {
+          res.resume();
+          resolve(res.statusCode ?? 0);
+          req.destroy();
+        });
+        req.on("error", reject);
+        req.setTimeout(4000, () => {
+          req.destroy();
+          reject(new Error(`No answer to ${method} ${path}: the server waited for the body.`));
+        });
+        req.flushHeaders();
+      });
+      expect(status).toBe(expected);
     } finally {
-      await Promise.all(bodiesIn);
-      keepOpen.destroy();
       await closeServers([server]);
     }
   });
