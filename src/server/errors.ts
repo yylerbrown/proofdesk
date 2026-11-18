@@ -59,6 +59,8 @@ const HINTS: Record<string, string> = {
   ticket_deleted: "This ticket was deleted permanently. Its number is never used again.",
   ticket_archived: "Restore the ticket first, if your role may (POST .../restore).",
   needs_owner: "Take the ticket first (POST .../take), then change the status.",
+  keeps_owner:
+    "Work has started, so the ticket keeps an owner. Hand it to a team member instead (POST .../hand-off).",
   needs_customer:
     "Only the customer's answer resolves a ticket. Its owner asks them with Ask the customer to verify on the ticket page, or POST /api/tickets/{key}/ready.",
   needs_change_link: "Link the change first (PUT .../change-link), then ask the customer.",
