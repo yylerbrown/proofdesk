@@ -63,13 +63,13 @@ describe("where Resolved comes from", () => {
   it("is said to the team at every step, with the way to get there", async () => {
     const { app } = await filed();
     expect(rule(await page(app, teamActor))).toBe(
-      "Resolved comes from the customer's Yes. Take the ticket, then ask the customer to verify.",
+      "Only the customer who filed this ticket can resolve it. Take the ticket, then ask the customer to verify.",
     );
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
 
     const owner = await page(app, teamActor);
     expect(rule(owner)).toBe(
-      "Resolved comes from the customer's Yes. When the fix is in, ask the customer to verify.",
+      "Only the customer who filed this ticket can resolve it. When the fix is in, ask the customer to verify.",
     );
     expect(owner.querySelector(".status-rule a")?.getAttribute("href")).toBe("#ask");
     // The link lands on the ask, shown greyed with what is missing until it can be done.
@@ -79,7 +79,7 @@ describe("where Resolved comes from", () => {
     );
 
     expect(rule(await page(app, adminActor))).toBe(
-      "Resolved comes from the customer's Yes. Only Team Member can ask the customer to verify.",
+      "Only the customer who filed this ticket can resolve it. Only Team Member can ask the customer to verify.",
     );
     expect(rule(await page(app, customerOne))).toBeUndefined();
   });
@@ -116,7 +116,9 @@ describe("where Resolved comes from", () => {
     expect(status.querySelector("p")?.text).toBe(
       "In Progress, waiting for the customer who filed this ticket",
     );
-    expect(rule(team)).toBe("Their Yes moves it to Resolved.");
+    expect(rule(team)).toBe(
+      "Only the customer who filed this ticket can resolve it. Their Yes moves it to Resolved.",
+    );
 
     const customer = await page(app, customerOne);
     expect(customer.querySelector("main")!.text).toContain("In Progress, waiting for you");
