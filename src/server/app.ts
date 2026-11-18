@@ -27,7 +27,7 @@ import { createConnectionService } from "./connections/service.js";
 import { connectionsRouter } from "./routes/connections.js";
 import { mcpEndpoint } from "./mcp.js";
 import { assistantRunRouter } from "./routes/assistant-run.js";
-import { teamMembers } from "./team.js";
+import { teamMembers } from "./team/service.js";
 import { guide, openApiDocument } from "./api/describe.js";
 import { siteAddress } from "./routes/connections.js";
 // The limits live in limits.ts, where the API's guide reads them too.

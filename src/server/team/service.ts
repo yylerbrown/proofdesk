@@ -1,7 +1,8 @@
-import { entrancePeople } from "./actor.js";
-import { githubIdOf, roleOf } from "./auth.js";
-import type { Config } from "./config.js";
-import type { Db } from "./db.js";
+import { entrancePeople } from "../actor.js";
+import { roleOf } from "../auth.js";
+import type { Config } from "../config.js";
+import type { Db } from "../db.js";
+import { listSignedInPeople } from "./repository.js";
 
 /** A person a ticket can be handed to. */
 export type TeamMember = { id: string; name: string };
@@ -16,8 +17,10 @@ export function teamMembers(config: Config, db: Db): () => TeamMember[] {
     const made = entrancePeople(config)
       .filter((person) => person.role !== "customer" && person.readOnly !== true)
       .map(({ id, name }) => ({ id, name }));
-    const users = db.prepare('SELECT id, name FROM "user" ORDER BY name').all() as TeamMember[];
-    const signedIn = users.filter((user) => roleOf(config, githubIdOf(db, user.id)) !== "customer");
+    // One query for everyone who has signed in, with their GitHub user numbers.
+    const signedIn = listSignedInPeople(db)
+      .filter((person) => roleOf(config, person.github_id ?? undefined) !== "customer")
+      .map(({ id, name }) => ({ id, name }));
     return [...made, ...signedIn];
   };
 }

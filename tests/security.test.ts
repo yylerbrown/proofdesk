@@ -228,8 +228,12 @@ describe("SQL injection", () => {
 // The services hold the rules and the repositories hold the SQL, so a rule is never hidden
 // in a query and a query is never written beside a rule.
 describe("where the SQL lives", () => {
-  it("the ticket and connection services run no SQL of their own", () => {
-    for (const file of ["src/server/tickets/service.ts", "src/server/connections/service.ts"]) {
+  it("the ticket, connection and team services run no SQL of their own", () => {
+    for (const file of [
+      "src/server/tickets/service.ts",
+      "src/server/connections/service.ts",
+      "src/server/team/service.ts",
+    ]) {
       expect(fs.readFileSync(file, "utf8"), file).not.toMatch(/\.prepare\(/);
     }
   });
