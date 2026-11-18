@@ -4,6 +4,7 @@ import { DEV_COOKIE, entrancePeople } from "../actor.js";
 import type { Auth } from "../auth.js";
 import type { Config } from "../config.js";
 import { HttpError } from "../errors.js";
+import { noticeForError, rememberSignInNotice, takeSignInNotice } from "../sign-in-notice.js";
 import { parseKey } from "../tickets/keys.js";
 
 // The sign-in page and its two ways in: GitHub, when its settings are present, and the
@@ -44,8 +45,11 @@ export function signInRouter(
   router.get("/sign-in", (req, res) => {
     const people = entrancePeople(config);
     const next = safeNext(req.query.next);
-    // The sign-in library returns here with "?error=..." when a GitHub sign-in fails.
-    const failed = req.query.error !== undefined;
+    // The sign-in library returns here with "?error=..." when a GitHub sign-in fails. Otherwise
+    // there may be a message kept for this page, after signing out or a session that ran out.
+    // Either way the kept message is used up, so it shows once.
+    const kept = takeSignInNotice(req, res);
+    const notice = noticeForError(req.query.error, config.signIn?.baseUrl) ?? kept;
     // On the demo, or for someone already signed in, this page welcomes rather than signs in.
     const welcoming = config.demo || req.actor !== null;
     res.render("sign-in", {
@@ -55,7 +59,7 @@ export function signInRouter(
       next,
       // When the visitor followed a link to one ticket, the page names it.
       nextTicket: ticketFromNext(next, config.ticketPrefix),
-      failed,
+      notice,
       demo: config.demo,
       // On the demo, the welcome page offers a visitor their own assistant connection.
       demoAgents: config.demo && demoReady(),
@@ -76,11 +80,16 @@ export function signInRouter(
     if (auth === null) {
       throw new HttpError(404, "not_found", "There is no page at this address.");
     }
+    const next = safeNext(req.body?.next);
+    // A failed return comes back to the sign-in page with the same next, so signing in again
+    // still opens the page the visitor wanted. The ticket list needs no next: it is the default.
+    const errorPage =
+      next === "/tickets" ? "/sign-in" : `/sign-in?next=${encodeURIComponent(next)}`;
     const started = await auth.api.signInSocial({
       body: {
         provider: "github",
-        callbackURL: safeNext(req.body?.next),
-        errorCallbackURL: "/sign-in",
+        callbackURL: next,
+        errorCallbackURL: errorPage,
       },
       returnHeaders: true,
     });
@@ -117,6 +126,10 @@ export function signInRouter(
 
   // Ends both kinds of sign-in. The library deletes the session row and clears its cookie.
   router.post("/sign-out", async (req, res) => {
+    // Only a GitHub sign-in gets the signed-out message: it is about GitHub accounts. The
+    // made-up people of the development entrance and the demo are never GitHub sign-ins.
+    const wasGithub =
+      req.actor !== null && !entrancePeople(config).some((person) => person.id === req.actor?.id);
     if (auth !== null) {
       const ended = await auth.api.signOut({
         headers: fromNodeHeaders(req.headers),
@@ -125,6 +138,7 @@ export function signInRouter(
       res.append("Set-Cookie", ended.headers.getSetCookie());
     }
     res.clearCookie(DEV_COOKIE);
+    if (auth !== null && wasGithub) rememberSignInNotice(res, "signedOut");
     res.redirect(303, "/sign-in");
   });
 
