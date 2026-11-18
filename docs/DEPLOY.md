@@ -69,9 +69,20 @@ With one machine and one disk, each deploy has a few seconds of downtime.
 
 ## Resetting the demo
 
+The demo resets itself (`src/server/demo-reset.ts`). Every 5 minutes it checks. Once its samples
+are more than 24 hours old and nobody has made a request for 15 minutes, it moves its database
+files aside in `/data`, named like `app.db.before-reseed-20261118-142501` (UTC), and serves a
+fresh database with the samples. If it is never quiet that long, it resets at 48 hours. The host's
+health checks do not count as requests. The three newest set-aside copies are kept and older ones
+are deleted. Visitors' tickets and demo assistant connections end with the reset. Each reset
+writes one line to the log; a reset that fails leaves the old data serving and is tried again at
+the next check. A demo started or redeployed with samples older than a day resets as it starts. The
+real site never resets.
+
 The demo adds its sample tickets only to an empty database, so new samples, and assistant
-connections on a database seeded by older code, appear only after a reset. Move the database
-files aside on the disk, then restart the machine; it starts on an empty database and seeds it:
+connections on a database seeded by older code, appear only after a reset. To force one now,
+move the database files aside on the disk, then restart the machine; it starts on an empty
+database and seeds it:
 
 ```sh
 fly ssh console --app support-desk-demo

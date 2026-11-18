@@ -23,7 +23,7 @@ function slowServer(drainMs = 2000) {
   const running = startServer({
     handler,
     port: 0,
-    db,
+    closeDatabase: () => db.close(),
     log: (line) => lines.push(line),
     exit: (code) => exits.push(code),
     drainMs,
@@ -118,7 +118,7 @@ describe("a port already in use", () => {
       startServer({
         handler: (_req, res) => res.end(),
         port,
-        db,
+        closeDatabase: () => db.close(),
         log: (line) => lines.push(line),
         exit: (code) => exited(code),
       });
