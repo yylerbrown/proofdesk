@@ -26,7 +26,7 @@
 
   <label>
     Description
-    <textarea name="description" rows="6" required <% if (errors.description) { %>aria-invalid="true" aria-describedby="description-error"<% } %>><%= values.description %></textarea>
+    <textarea name="description" rows="3" required <% if (errors.description) { %>aria-invalid="true" aria-describedby="description-error"<% } %>><%= values.description %></textarea>
   </label>
   <% if (errors.description) { %><small id="description-error"><%= errors.description.join(" ") %></small><% } %>
 
