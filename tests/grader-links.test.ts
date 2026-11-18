@@ -25,13 +25,26 @@ describe("the demo's welcome", () => {
     expect((await welcome(demo().app)).querySelector(".source-link")).toBeNull();
   });
 
-  it("says where GitHub sign-in with roles runs, linking the real site", async () => {
-    const html = await welcome(demo({ REAL_SITE_URL: "https://real.example.com" }).app);
-    expect(html.querySelector(".real-site")?.text).toBe(
-      "GitHub sign-in with roles runs on the real site: real.example.com",
+  it("says the real site signs people in with GitHub, linking it and the README's section", async () => {
+    const html = await welcome(
+      demo({
+        REAL_SITE_URL: "https://real.example.com",
+        SOURCE_URL: "https://code.example.com/team/desk",
+      }).app,
     );
-    expect(html.querySelector(".real-site a")?.getAttribute("href")).toBe(
-      "https://real.example.com",
+    expect(html.querySelector(".real-site")?.text).toBe(
+      "On the real site, people sign in with GitHub. How sign-in and roles work",
+    );
+    expect(
+      html.querySelectorAll(".real-site a").map((a) => [a.text, a.getAttribute("href")]),
+    ).toEqual([
+      ["the real site", "https://real.example.com"],
+      ["How sign-in and roles work", "https://code.example.com/team/desk#sign-in-and-roles"],
+    ]);
+    // Without a source address there is no README to point at, so the line ends there.
+    const noSource = await welcome(demo({ REAL_SITE_URL: "https://real.example.com" }).app);
+    expect(noSource.querySelector(".real-site")?.text).toBe(
+      "On the real site, people sign in with GitHub.",
     );
     // The real site itself does not point at itself.
     const real = buildTestApp({ ...SIGN_IN_ENV, REAL_SITE_URL: "https://real.example.com" });

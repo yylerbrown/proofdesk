@@ -172,7 +172,8 @@ describe("starting work", () => {
     expect(panel.querySelector("details.more form[action$='/take'] button")?.text).toBe(
       "Take this ticket",
     );
-    expect(panel.text).not.toContain("Start work\n");
+    // The panel's Start work takes the ticket too, so it is the same one step as the top.
+    expect(panel.querySelector("form[action$='/status']")).toBeNull();
     await as(app, teamActor).post("/api/tickets/SUP-1/take");
     const mine = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     expect(mine.querySelector(".next-action form[action$='/status'] button")?.text).toBe(
