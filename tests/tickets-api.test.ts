@@ -74,7 +74,7 @@ describe("create and get", () => {
     expect(res.status).toBe(201);
     expect(res.body).toEqual({
       done_when: {
-        agreed_check: null,
+        team_interpretation: null,
         customer_check: "I can open my account page.",
         guidance: expect.stringContaining("Only the customer can say this is fixed."),
       },

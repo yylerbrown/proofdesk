@@ -83,6 +83,14 @@ export function admin(app: Express) {
  * moves it to In Progress, adds the change link and asks; the person who filed it says yes.
  */
 export async function resolveTicket(app: Express, key: string, filedBy: Actor) {
+  // The customer is asked against their own check, so a ticket filed without one gets one
+  // from the customer first, as it would in use.
+  const filed = (await admin(app).get(`/api/tickets/${key}`)).body;
+  if (filed.fix_check === null) {
+    await as(app, filedBy)
+      .put(`/api/tickets/${key}`)
+      .send({ title: filed.title, description: filed.description, fix_check: "It works now" });
+  }
   await admin(app).post(`/api/tickets/${key}/take`);
   await admin(app).patch(`/api/tickets/${key}`).send({ status: "in_progress" });
   await admin(app)
@@ -140,4 +148,31 @@ export async function refusedBackToTicket(
   const reason = /<p role="alert" class="refused">([^<]*)<\/p>/.exec(page.text)?.[1];
   if (reason === undefined) throw new Error("The ticket page shows no reason");
   return reason;
+}
+
+/**
+ * Starts the app on a free port of 127.0.0.1, the address the tests' clients connect to, and
+ * waits until it listens. Listening on every address instead can pick a port that another
+ * program on the machine holds for 127.0.0.1, and a request would reach that program.
+ */
+export function listenLocally(app: Express): Promise<import("node:http").Server> {
+  return new Promise((resolve) => {
+    const server = app.listen(0, "127.0.0.1", () => resolve(server));
+  });
+}
+
+/**
+ * Closes test servers and every connection still open to them, and waits. A kept-alive
+ * connection must not outlive its server, or a later request could reach a closed one.
+ */
+export function closeServers(servers: import("node:http").Server[]): Promise<void[]> {
+  return Promise.all(
+    servers.splice(0).map(
+      (server) =>
+        new Promise<void>((done) => {
+          server.closeAllConnections();
+          server.close(() => done());
+        }),
+    ),
+  );
 }

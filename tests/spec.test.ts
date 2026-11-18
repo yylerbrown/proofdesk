@@ -13,8 +13,10 @@ import {
   admin,
   as,
   buildTestApp,
+  closeServers,
   customerOne,
   handToAgent,
+  listenLocally,
   teamActor,
   visitor,
 } from "./helpers.js";
@@ -26,7 +28,7 @@ const servers: Server[] = [];
 const clients: Client[] = [];
 afterEach(async () => {
   for (const client of clients.splice(0)) await client.close().catch(() => {});
-  for (const server of servers.splice(0)) server.close();
+  await closeServers(servers);
 });
 
 const valid = {
@@ -69,7 +71,7 @@ async function issue(app: Express): Promise<string> {
 
 async function connect(app: Express, given?: string): Promise<Client> {
   const key = given ?? (await issue(app));
-  const server = app.listen(0);
+  const server = await listenLocally(app);
   servers.push(server);
   const { port } = server.address() as AddressInfo;
   const client = new Client({ name: "test-assistant", version: "1.0.0" });

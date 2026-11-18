@@ -5,7 +5,16 @@ import type { Express } from "express";
 import { parse } from "node-html-parser";
 import request from "supertest";
 import { afterEach, describe, expect, it } from "vitest";
-import { admin, as, buildTestApp, customerOne, handToAgent, teamActor } from "./helpers.js";
+import {
+  admin,
+  as,
+  buildTestApp,
+  closeServers,
+  customerOne,
+  handToAgent,
+  listenLocally,
+  teamActor,
+} from "./helpers.js";
 
 // The activity trail: everything a connection asked for, done or refused, on both doors, and
 // the team's view of it. And the history names an agent by its connection.
@@ -15,7 +24,7 @@ const servers: Server[] = [];
 const clients: Client[] = [];
 afterEach(async () => {
   for (const client of clients.splice(0)) await client.close().catch(() => {});
-  for (const server of servers.splice(0)) server.close();
+  await closeServers(servers);
 });
 
 async function issue(app: Express, scopes: string[], name = "Night shift") {
@@ -29,7 +38,7 @@ async function issue(app: Express, scopes: string[], name = "Night shift") {
 }
 
 async function connect(app: Express, key: string) {
-  const server = app.listen(0);
+  const server = await listenLocally(app);
   servers.push(server);
   const { port } = server.address() as AddressInfo;
   const client = new Client({ name: "t", version: "1" });

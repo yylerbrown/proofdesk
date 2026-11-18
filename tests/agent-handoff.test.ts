@@ -5,7 +5,16 @@ import { parse } from "node-html-parser";
 import request from "supertest";
 import type { Express } from "express";
 import { afterEach, describe, expect, it } from "vitest";
-import { admin, as, buildTestApp, customerOne, handToAgent, teamActor } from "./helpers.js";
+import {
+  admin,
+  as,
+  buildTestApp,
+  closeServers,
+  customerOne,
+  handToAgent,
+  listenLocally,
+  teamActor,
+} from "./helpers.js";
 
 // An agent works only on the tickets an owner has handed to its connection, through every
 // door, and loses a ticket when it is handed on, the customer is asked, it is archived, the
@@ -20,7 +29,7 @@ const servers: Server[] = [];
 const clients: Client[] = [];
 afterEach(async () => {
   for (const client of clients.splice(0)) await client.close().catch(() => {});
-  for (const server of servers.splice(0)) server.close();
+  await closeServers(servers);
 });
 
 async function issue(app: Express, name = "Helper") {
@@ -64,7 +73,7 @@ describe("what a connection can reach", () => {
     expect((await agent.note("SUP-2")).status).toBe(404);
     expect((await agent.note("SUP-1")).status).toBe(201);
 
-    const server = app.listen(0);
+    const server = await listenLocally(app);
     servers.push(server);
     const { port } = server.address() as AddressInfo;
     const client = new Client({ name: "t", version: "1" });

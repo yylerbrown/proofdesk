@@ -272,7 +272,12 @@ export function pagesRouter(service: TicketService): Router {
       where_url: ticket.where_url ?? "",
       fix_check: ticket.fix_check ?? "",
     };
-    res.render("ticket-form", { ...editForm(ticket.key), values, errors: {} });
+    res.render("ticket-form", {
+      ...editForm(ticket.key),
+      values,
+      errors: {},
+      checkLocked: ticket.created_by !== actor.id,
+    });
   });
 
   router.post("/tickets/:key/edit", (req, res) => {
@@ -353,6 +358,11 @@ export function pagesRouter(service: TicketService): Router {
   router.post("/tickets/:key/ready", ticketForm("ready", service.markReady));
   router.post("/tickets/:key/answer", ticketForm("answer", service.answer));
   router.post("/tickets/:key/reopen", ticketForm("reopen", service.reopen));
+  router.post("/tickets/:key/adopt-check", (req, res) => {
+    const ticket = service.adoptCheck(req.params.key, signedIn(req));
+    rememberSaved(res, "adopted");
+    res.redirect(303, `/tickets/${ticket.key}`);
+  });
   router.post("/tickets/:key/withdraw-question", (req, res) => {
     const ticket = service.withdrawQuestionAsked(req.params.key, signedIn(req));
     rememberSaved(res, "withdrawn");

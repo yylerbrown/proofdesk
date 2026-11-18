@@ -181,6 +181,7 @@ describe("the capability table on the JSON door", () => {
   it("lists the people-only routes it checks", () => {
     expect(peopleOnlyRoutes.map((row) => row.name).sort()).toEqual(
       [
+        "adopt_check",
         "agree_check",
         "answer",
         "archive_ticket",

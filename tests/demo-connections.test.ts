@@ -10,7 +10,7 @@ import { DEMO_CONNECTIONS_PER_HOUR } from "../src/server/app.js";
 import { DEMO_CONNECTION_LIMIT } from "../src/server/connections/service.js";
 import { seedDemo } from "../src/server/demo.js";
 import { createTicketService } from "../src/server/tickets/service.js";
-import { buildTestApp, visitor } from "./helpers.js";
+import { buildTestApp, closeServers, listenLocally, visitor } from "./helpers.js";
 
 // A visitor's own demo connection: what it is given, and that it never reads what another
 // visitor or another connection wrote.
@@ -19,7 +19,7 @@ const servers: Server[] = [];
 const clients: Client[] = [];
 afterEach(async () => {
   for (const client of clients.splice(0)) await client.close().catch(() => {});
-  for (const server of servers.splice(0)) server.close();
+  await closeServers(servers);
 });
 
 function buildDemo(seed = true) {
@@ -44,7 +44,7 @@ const api = (app: Express, key: string) => ({
 });
 
 async function mcp(app: Express, key: string) {
-  const server = app.listen(0);
+  const server = await listenLocally(app);
   servers.push(server);
   const { port } = server.address() as AddressInfo;
   const client = new Client({ name: "visitor-assistant", version: "1.0.0" });

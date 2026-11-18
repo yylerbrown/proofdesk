@@ -8,7 +8,16 @@ import type { Express } from "express";
 import { afterEach, describe, expect, it } from "vitest";
 import { AGENT_SCOPES, CAPABILITIES } from "../src/server/permissions.js";
 import { ACTIONS } from "../src/server/api/actions.js";
-import { admin, as, buildTestApp, customerOne, handToAgent, teamActor } from "./helpers.js";
+import {
+  admin,
+  as,
+  buildTestApp,
+  closeServers,
+  customerOne,
+  handToAgent,
+  listenLocally,
+  teamActor,
+} from "./helpers.js";
 
 // The MCP endpoint, driven by the SDK's own client over HTTP, as an assistant would.
 
@@ -21,7 +30,7 @@ const servers: Server[] = [];
 const clients: Client[] = [];
 afterEach(async () => {
   for (const client of clients.splice(0)) await client.close().catch(() => {});
-  for (const server of servers.splice(0)) server.close();
+  await closeServers(servers);
 });
 
 async function issue(app: Express, scopes: string[], name = "Helper") {
@@ -31,7 +40,7 @@ async function issue(app: Express, scopes: string[], name = "Helper") {
 
 /** Starts the app on a free port and connects the SDK's client with this key. */
 async function connect(app: Express, key: string) {
-  const server = app.listen(0);
+  const server = await listenLocally(app);
   servers.push(server);
   const { port } = server.address() as AddressInfo;
   const client = new Client({ name: "test-assistant", version: "1.0.0" });
@@ -58,7 +67,7 @@ describe("connecting", () => {
     const page = parse((await admin(app).get("/connections")).text);
     await admin(app).post(page.querySelector("form[action$='/revoke']")!.getAttribute("action")!);
     await expect(connect(app, key)).rejects.toThrow();
-    const server = app.listen(0);
+    const server = await listenLocally(app);
     servers.push(server);
     const { port } = server.address() as AddressInfo;
     const bare = await fetch(`http://127.0.0.1:${port}/mcp`, {
