@@ -6,6 +6,7 @@ import type { Request, Response } from "express";
 
 export const SAVED_MESSAGES = {
   filed: "Ticket filed. The team will see it in their list.",
+  alreadyFiled: "You already filed this form, so nothing new was filed. This is that ticket.",
   edited: "Changes saved.",
   status: "Status changed.",
   reply: "Reply sent.",
