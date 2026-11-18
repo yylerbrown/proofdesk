@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Actor } from "../actor.js";
+import { DEMO_ACTORS, DEV_ACTORS, type Actor } from "../actor.js";
 import type { Db } from "../db.js";
 import { HttpError, ValidationError } from "../errors.js";
 import { can, type Action } from "../permissions.js";
@@ -614,6 +614,19 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
     },
 
     /** The history, oldest first. Someone who may not read notes does not see them added. */
+    /**
+     * The display name for each id that wrote history: a GitHub name, or one of the made-up
+     * people of the entrance. An id that is neither, such as the "anonymous" of the first
+     * tickets, is not in the map.
+     */
+    peopleNames(ids: string[]): Map<string, string> {
+      const names = repository.userNames(db, ids);
+      for (const person of [...DEV_ACTORS, ...DEMO_ACTORS]) {
+        if (ids.includes(person.id)) names.set(person.id, person.name);
+      }
+      return names;
+    },
+
     listEvents(key: string, actor: Actor): TicketEvent[] {
       const row = requireRow(key, actor);
       const events = repository.listEvents(db, row.id, THREAD_LIMIT).map(toEvent);

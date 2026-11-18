@@ -1,5 +1,18 @@
 <%- include("header") %>
-<h1>Sign in</h1>
+<%
+  // One thing to try as each kind of person, shown beside their button.
+  const tries = {
+    customer: "File a ticket, then follow it until the team asks whether it is fixed.",
+    team: "Take a ticket, write an internal note, and ask the customer to check the fix.",
+    admin: demo
+      ? "See every ticket and its full history. The demo admin changes nothing."
+      : "See every ticket, restore archived ones, and delete one permanently.",
+  };
+%>
+<hgroup>
+  <h1>Support Desk</h1>
+  <p>Tell us what went wrong, follow it while the team works on it, and say when it is fixed.</p>
+</hgroup>
 
 <% if (failed) { %>
 <p><mark>That sign-in did not work. Try again, or ask the support team if it keeps happening.</mark></p>
@@ -17,19 +30,26 @@
 <% } %>
 
 <% if (people.length > 0) { %>
-<article>
+<section aria-labelledby="entrance">
   <% if (demo) { %>
-  <p><strong>Demo.</strong> Look around as a customer, a team member or an admin. The tickets are sample data, shared with everyone who visits. The demo admin can see everything and change nothing. Do not type anything private here.</p>
+  <h2 id="entrance">Try the demo</h2>
+  <p>Look around as a customer, a team member or an admin. The tickets are sample data, shared with everyone who visits. Do not type anything private here.</p>
   <% } else { %>
-  <p><strong>Development entrance.</strong> These people are made up. Pick one to act as. This page is only offered when the server runs with DEV_SIGN_IN=on, which it refuses to do in production.</p>
+  <h2 id="entrance">Development entrance</h2>
+  <p>These people are made up. Pick one to act as. This is only offered when the server runs with DEV_SIGN_IN=on, which it refuses to do in production.</p>
   <% } %>
-  <% for (const person of people) { %>
-  <form method="post" action="/sign-in/dev">
-    <input type="hidden" name="id" value="<%= person.id %>" />
-    <input type="hidden" name="next" value="<%= next %>" />
-    <button type="submit" class="secondary"><%= person.name %> (<%= person.role %>)</button>
-  </form>
-  <% } %>
-</article>
+  <ul class="people">
+    <% for (const person of people) { %>
+    <li>
+      <form method="post" action="/sign-in/dev">
+        <input type="hidden" name="id" value="<%= person.id %>" />
+        <input type="hidden" name="next" value="<%= next %>" />
+        <button type="submit" class="secondary">View as <%= person.name %></button>
+      </form>
+      <small class="try"><%= tries[person.role] %></small>
+    </li>
+    <% } %>
+  </ul>
+</section>
 <% } %>
 <%- include("footer") %>
