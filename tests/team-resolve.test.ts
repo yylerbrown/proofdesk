@@ -31,7 +31,7 @@ const resolve = (app: Express, body: object, who = teamActor, key = "SUP-1") =>
   as(app, who).post(`/api/tickets/${key}/resolve`).send(body);
 
 describe("resolving with a reason", () => {
-  it("is open to the ticket's owner, and to an admin even on an unowned ticket", async () => {
+  it("is open to the ticket's owner, to a team member on an unowned ticket, and to an admin", async () => {
     const { app } = await setup();
     const res = await resolve(app, { reason: "wont_fix", note: "Works as designed." });
     expect(res.status).toBe(200);
@@ -43,13 +43,27 @@ describe("resolving with a reason", () => {
       note: "Works as designed.",
       resolved_by_name: "Team Member",
     });
+    // Nobody owns SUP-2: the team member resolves it without taking it first, and becomes its
+    // owner as part of resolving, in the history.
     const unowned = await resolve(app, { reason: "cannot_reproduce" }, undefined, "SUP-2");
-    expect(unowned.status).toBe(403);
-    const byAdmin = await admin(app).post("/api/tickets/SUP-2/resolve").send({
+    expect(unowned.status).toBe(200);
+    expect(unowned.body).toMatchObject({ status: "resolved", owner_name: "Team Member" });
+    const events = (await admin(app).get("/api/tickets/SUP-2/events")).body as { type: string }[];
+    expect(events.map((event) => event.type).slice(-2)).toEqual([
+      "owner_changed",
+      "resolved_by_team",
+    ]);
+    // An admin resolves a ticket someone else owns, which stays theirs.
+    await as(app, customerOne)
+      .post("/api/tickets")
+      .send({ ...valid, title: "Third" });
+    await as(app, teamActor).post("/api/tickets/SUP-3/take-and-start");
+    const byAdmin = await admin(app).post("/api/tickets/SUP-3/resolve").send({
       reason: "cannot_reproduce",
     });
     expect(byAdmin.status).toBe(200);
     expect(byAdmin.body.resolution.label).toBe("Resolved by the team: Cannot reproduce");
+    expect(byAdmin.body.owner_name).toBe("Team Member");
   });
 
   it("needs a reason, a note for Other, and an existing other ticket for a duplicate", async () => {
@@ -194,6 +208,7 @@ describe("how a team resolution shows", () => {
 describe("resolving with a reason on the page", () => {
   it("is a quiet disclosure for the owner and admins, never the primary button", async () => {
     const { app } = await setup();
+    await admin(app).post("/api/tickets/SUP-2/take");
     const owner = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     expect(owner.querySelector("details.resolve summary")?.text).toBe("Resolve");
     expect(owner.querySelector(".next-action")?.text).not.toContain("Resolve");

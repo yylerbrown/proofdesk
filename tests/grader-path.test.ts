@@ -66,30 +66,21 @@ describe("a new ticket", () => {
 describe("where Resolved comes from", () => {
   it("is said to the team at every step, with the way to get there", async () => {
     const { app } = await filed();
-    expect(rule(await page(app, teamActor))).toBe(
-      "Take the ticket, then ask the customer to verify.",
-    );
-    await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
+    expect(rule(await page(app, teamActor))).toBe("Start work, then ask the customer to verify.");
+    await as(app, teamActor).post("/api/tickets/SUP-1/take");
+    expect(rule(await page(app, teamActor))).toBe("Start work, then ask the customer to verify.");
+    await as(app, teamActor).patch("/api/tickets/SUP-1").send({ status: "in_progress" });
 
-    // While the change link is missing, the line names that step and leads to its field, so
-    // following it puts the cursor where the next thing is typed.
+    // In progress, with no change link: the line's link leads to the working ask form, whose
+    // boxes are all optional, never to a greyed button.
     const owner = await page(app, teamActor);
-    expect(rule(owner)).toBe("Next: add the link to the code change.");
-    expect(owner.querySelector(".status-rule a")?.getAttribute("href")).toBe("#change-url");
-    expect(owner.querySelector("input#change-url")?.getAttribute("name")).toBe("change_url");
-    // The ask further down still says what is missing, greyed until it can be done.
-    expect(owner.querySelector("#ask button")?.text).toBe("Ask the customer to verify");
-    expect(owner.querySelector("#ask-blocked-why")?.text).toBe(
-      "Add the link to the code change first.",
+    expect(rule(owner)).toBe(
+      "The customer's Yes moves it to Resolved. To tell them what you tried, add details first.",
     );
-
-    // With the link in, the line leads to the ask.
-    await as(app, teamActor)
-      .put("/api/tickets/SUP-1/change-link")
-      .send({ change_url: "https://example.com/c" });
-    const linked = await page(app, teamActor);
-    expect(rule(linked)).toBe("When the fix is in, ask the customer to verify.");
-    expect(linked.querySelector(".status-rule a")?.getAttribute("href")).toBe("#ask");
+    expect(owner.querySelector(".status-rule a")?.getAttribute("href")).toBe("#ask");
+    expect(owner.querySelector("#ask")?.tagName).toBe("FORM");
+    expect(owner.querySelector("#ask button[type=submit]")?.hasAttribute("disabled")).toBe(false);
+    expect(owner.querySelector("#ask-blocked-why")).toBeNull();
 
     expect(rule(await page(app, adminActor))).toBe(
       "Only Team Member can ask the customer to verify.",
@@ -129,14 +120,12 @@ describe("where Resolved comes from", () => {
   it("says who it waits for once asked, and that their Yes moves it to Resolved", async () => {
     const { app } = await filed();
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
-    await as(app, teamActor)
-      .put("/api/tickets/SUP-1/change-link")
-      .send({ change_url: "https://example.com/c" });
     const before = await page(app, teamActor);
-    // The page to try starts from where the customer said it happened, and is marked required.
+    // The page to try starts from where the customer said it happened, and is optional.
     const tryUrl = before.querySelector("#ask input[name=try_url]")!;
     expect(tryUrl.getAttribute("value")).toBe("https://example.com/print");
-    expect(tryUrl.parentNode!.text).toContain("Page on the live site to try (required)");
+    expect(tryUrl.parentNode!.text).toContain("Page on the live site to try (optional)");
+    expect(tryUrl.hasAttribute("required")).toBe(false);
     await as(app, teamActor)
       .post("/api/tickets/SUP-1/ready")
       .send({ try_url: "https://example.com/print", tried: "Printed.", result: "No jam." });
@@ -155,17 +144,15 @@ describe("where Resolved comes from", () => {
     expect(customer.querySelector("main")!.text).not.toContain("Waiting for the customer");
   });
 
-  it("names a missing check as the reason, not a hidden button", async () => {
+  it("does not hold the ask back when the customer gave no check", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne)
       .post("/api/tickets")
       .send({ title: "Printer jams", description: "It jams on page two." });
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
     const html = await page(app, teamActor);
-    expect(html.querySelector("#ask button[disabled]")?.text).toBe("Ask the customer to verify");
-    expect(html.querySelector("#ask-blocked-why")?.text).toBe(
-      "The customer has not said how they will know it is fixed. Ask them in a reply.",
-    );
+    expect(html.querySelector("button[disabled]")).toBeNull();
+    expect(html.querySelector("#ask-blocked-why")).toBeNull();
   });
 });
 

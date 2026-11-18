@@ -146,16 +146,17 @@ describe("the ticket page's quiet parts", () => {
     expect(await headings()).toContain("Evidence");
   });
 
-  it("opens the change link box for the owner, whose step it is, and folds it for anyone else", async () => {
+  it("folds the optional change link box for everyone, the owner too", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
-    const owner = await ticketPage(as(app, teamActor));
-    expect(owner.querySelector("form#change-link")?.closest("details")).toBeNull();
-    const other = await ticketPage(admin(app));
-    const folded = other.querySelector("form#change-link")?.closest("details");
-    expect(folded?.querySelector("summary")?.text).toBe("Add the code change link");
-    expect(folded?.hasAttribute("open")).toBe(false);
+    for (const viewer of [as(app, teamActor), admin(app)]) {
+      const folded = (await ticketPage(viewer))
+        .querySelector("form#change-link")
+        ?.closest("details");
+      expect(folded?.querySelector("summary")?.text).toBe("Add the code change link");
+      expect(folded?.hasAttribute("open")).toBe(false);
+    }
   });
 
   it("keeps the spec prompt to one line that opens to the command", async () => {

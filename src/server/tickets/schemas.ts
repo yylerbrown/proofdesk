@@ -4,6 +4,10 @@ import { ValidationError } from "../errors.js";
 export const TICKET_STATUSES = ["new", "in_progress", "resolved"] as const;
 export type TicketStatus = (typeof TICKET_STATUSES)[number];
 
+// A form sends an empty box for a field left blank; that means it was not given.
+const blankIsMissing = (value: unknown) =>
+  typeof value === "string" && value.trim() === "" ? undefined : value;
+
 // The messages are written for a person, because the ticket form shows them under each box.
 // A link that must be an http or https address, as for "Where did this happen?".
 export const httpLink = z
@@ -103,22 +107,24 @@ export const agreeCheckSchema = z.object({
 });
 
 export const linkChangeSchema = z.object({ change_url: httpLink });
-// Asking the customer: where to try it, what the owner tried there and what happened, their
-// response to the customer's last No (required after a No, checked by the service), and the
-// evidence they relied on. A form sends one checkbox as a text and several as a list.
+// Asking the customer "Did this fix it?". Every field is optional, and the customer sees each
+// one given: the page to try, what the owner tried there and what happened, what changed since
+// the customer's last No, and the evidence relied on. A form sends an empty box for a field left
+// blank, and one checkbox as a text and several as a list.
 export const markReadySchema = z.object({
-  try_url: httpLink,
-  tried: z
-    .string()
-    .trim()
-    .min(1, "Say what you tried, against the customer's check.")
-    .max(2000, "Must be at most 2000 characters."),
-  result: z
-    .string()
-    .trim()
-    .min(1, "Say what happened when you tried it.")
-    .max(2000, "Must be at most 2000 characters."),
-  response: z.string().trim().max(2000, "Must be at most 2000 characters.").optional(),
+  try_url: z.preprocess(blankIsMissing, httpLink.optional()),
+  tried: z.preprocess(
+    blankIsMissing,
+    z.string().trim().max(2000, "Must be at most 2000 characters.").optional(),
+  ),
+  result: z.preprocess(
+    blankIsMissing,
+    z.string().trim().max(2000, "Must be at most 2000 characters.").optional(),
+  ),
+  response: z.preprocess(
+    blankIsMissing,
+    z.string().trim().max(2000, "Must be at most 2000 characters.").optional(),
+  ),
   evidence_ids: z
     .preprocess(
       (value) => (value === undefined || value === "" ? [] : [value].flat()),
@@ -196,10 +202,6 @@ export const RESOLVE_REASON_LABELS: Record<ResolveReason, string> = {
   cannot_reproduce: "Cannot reproduce",
   other: "Other",
 };
-
-// A form sends an empty box for a field left blank; that means it was not given.
-const blankIsMissing = (value: unknown) =>
-  typeof value === "string" && value.trim() === "" ? undefined : value;
 
 // Resolving by the team: a reason from the list, the other ticket for a duplicate, and a note,
 // which "other" needs (checked by the service).

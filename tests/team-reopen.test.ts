@@ -93,15 +93,21 @@ describe("the team reopening a ticket the team resolved", () => {
     expect((await reopen(app, adminActor)).status).toBe(200);
     expect(await reread(app)).toMatchObject({ status: "in_progress", owner_name: "Team Member" });
 
-    const second = buildTestApp().app;
-    await as(second, customerOne).post("/api/tickets").send(valid);
-    await admin(second).post("/api/tickets/SUP-1/resolve").send({ reason: "cannot_reproduce" });
-    expect((await reopen(second, adminActor)).status).toBe(200);
-    expect(await reread(second)).toMatchObject({ status: "new", owner_name: null });
+    // Resolving an unowned ticket makes the resolver its owner, so an unowned team-resolved
+    // ticket comes only from data written before that rule: made here by clearing the owner.
+    const second = buildTestApp();
+    await as(second.app, customerOne).post("/api/tickets").send(valid);
+    const clearOwner = () =>
+      second.db.prepare("UPDATE tickets SET owner_id = NULL, owner_name = NULL").run();
+    await admin(second.app).post("/api/tickets/SUP-1/resolve").send({ reason: "cannot_reproduce" });
+    clearOwner();
+    expect((await reopen(second.app, adminActor)).status).toBe(200);
+    expect(await reread(second.app)).toMatchObject({ status: "new", owner_name: null });
 
     // On an unowned team-resolved ticket, the refusal to a team member names no owner.
-    await admin(second).post("/api/tickets/SUP-1/resolve").send({ reason: "cannot_reproduce" });
-    const refused = await reopen(second, teamActor);
+    await admin(second.app).post("/api/tickets/SUP-1/resolve").send({ reason: "cannot_reproduce" });
+    clearOwner();
+    const refused = await reopen(second.app, teamActor);
     expect(refused.status).toBe(403);
     expect(refused.body.error.message).toBe(
       "Only an admin can reopen ticket SUP-1: it has no owner.",

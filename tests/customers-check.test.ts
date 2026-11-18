@@ -118,27 +118,20 @@ describe("the customer's own changes", () => {
 });
 
 describe("a ticket with no check", () => {
-  it("can be filed, but not sent to the customer for confirmation", async () => {
+  it("can be filed and sent to the customer, who is simply asked whether it is fixed", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne)
       .post("/api/tickets")
       .send({ title: "Printer jams", description: "x" });
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
-    await as(app, teamActor)
-      .put("/api/tickets/SUP-1/change-link")
-      .send({ change_url: "https://example.com/c" });
-    const res = await as(app, teamActor)
-      .post("/api/tickets/SUP-1/ready")
-      .send({ try_url: "https://example.com/t", tried: "Printed.", result: "Fine." });
-    expect(res.status).toBe(409);
-    expect(res.body.error.code).toBe("needs_check");
-    // A team's check alone is not enough: the customer has not said it.
-    await as(app, teamActor)
-      .put("/api/tickets/SUP-1/agreed-check")
-      .send({ agreed_check: "Ten pages print" });
-    const still = await as(app, teamActor)
-      .post("/api/tickets/SUP-1/ready")
-      .send({ try_url: "https://example.com/t", tried: "Printed.", result: "Fine." });
-    expect(still.body.error.code).toBe("needs_check");
+    const res = await as(app, teamActor).post("/api/tickets/SUP-1/ready").send({});
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ fix_check: null, waiting_on: "customer" });
+    const box = parse((await as(app, customerOne).get("/tickets/SUP-1")).text).querySelector(
+      "#did-this-fix-it",
+    )!;
+    expect(box.querySelector("h2")?.text).toBe("Did this fix it?");
+    expect(box.text).not.toContain("In your words");
+    expect(box.querySelector("form[action='/tickets/SUP-1/answer']")).not.toBeNull();
   });
 });

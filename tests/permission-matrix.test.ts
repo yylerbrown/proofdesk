@@ -309,12 +309,13 @@ const TABLE: Record<string, Row> = {
     handedAgent: whileHanded(NO),
     ...outsiders,
   },
-  // The owner or an admin resolves a New or In Progress ticket with a reason. Never an agent.
+  // The owner or an admin resolves a New or In Progress ticket with a reason, and any team
+  // member resolves one nobody owns yet, becoming its owner. Never an agent.
   resolve_with_reason: {
     filer: [NO, NO, NO, NO, NO, NO, HIDDEN],
-    owner: [REFUSED, OK, OK, OK, NOT_NOW, NOT_NOW, NOT_NOW],
-    teamNotOwner: [REFUSED, NO, NO, NO, REFUSED, REFUSED, REFUSED],
-    demoTeam: [REFUSED, NO, NO, NO, REFUSED, REFUSED, REFUSED],
+    owner: [OK, OK, OK, OK, NOT_NOW, NOT_NOW, NOT_NOW],
+    teamNotOwner: [OK, NO, NO, NO, REFUSED, REFUSED, REFUSED],
+    demoTeam: [OK, NO, NO, NO, REFUSED, REFUSED, REFUSED],
     admin: [OK, OK, OK, OK, NOT_NOW, NOT_NOW, NOT_NOW],
     preview: all(NO),
     handedAgent: whileHanded(NO),

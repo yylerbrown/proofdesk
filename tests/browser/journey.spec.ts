@@ -1,8 +1,10 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
-// One journey, end to end, the way two people would walk it in two browsers: a customer
-// files a ticket with their own check, a team member owns and works it, the customer says
-// No once and Yes the second time. Then a second customer tries to open the ticket.
+// Two journeys, end to end, the way two people would walk them in two browsers. The short one is
+// the basics: a customer files a ticket, a team member takes it and asks the customer in one
+// press, and the customer answers Yes. The long one adds what is optional: the customer's own
+// check, a reply and a note, a change link, evidence and what the owner tried; the customer
+// says No once and Yes the second time. Then a second customer tries to open the ticket.
 //
 // Elements are found by role, label and visible words, never by CSS paths. The ticket key
 // is read from the address after filing and used from then on.
@@ -17,6 +19,7 @@ const note = "Cause: the export handler swallows a timeout. Only staff should re
 const notFixedComment = "The file downloads now, but it is empty.";
 const changeUrl = "https://git.example.test/support-desk/pull/42";
 const tryUrl = "https://desk.example.test/reports";
+const evidence = "Exported this month's report: 31 rows.";
 
 /** Opens a fresh browser context (its own cookies) and signs in as one made-up person. */
 async function signInAs(browser: Browser, person: string): Promise<Page> {
@@ -45,7 +48,45 @@ function savedMessage(page: Page) {
   return page.locator("p.saved[role=status]");
 }
 
-test("a customer files a ticket, the team works it, and only the customer resolves it", async ({
+test("the short path: file, take, ask the customer, and their Yes resolves it", async ({
+  browser,
+}) => {
+  const customer = await signInAs(browser, "Customer One");
+  const team = await signInAs(browser, "Team Member");
+
+  await customer.getByRole("button", { name: "New ticket" }).click();
+  await customer.getByLabel("Title").fill("The report page is blank");
+  await customer.getByLabel("Description").fill("The reports page shows nothing since Monday.");
+  await customer.getByRole("button", { name: "File ticket" }).click();
+  await expect(savedMessage(customer)).toContainText("Ticket filed");
+  const key = /\/tickets\/([A-Z]{2,6}-\d+)$/.exec(new URL(customer.url()).pathname)![1]!;
+
+  await team.goto(`/tickets/${key}`);
+  await team.getByRole("button", { name: "Take ticket and start work" }).click();
+  await expectTicketStatus(team, key, "In Progress");
+  // One press asks: nothing else is required, no change link and no customer check.
+  await team
+    .locator(".next-action")
+    .getByRole("button", { name: "Ask the customer to verify" })
+    .click();
+  await expect(savedMessage(team)).toContainText("asked to check the fix");
+
+  await customer.goto(`/tickets/${key}`);
+  const question = customer
+    .getByRole("article")
+    .filter({ has: customer.getByRole("heading", { name: "Did this fix it?" }) });
+  await question.getByRole("button", { name: "Yes, resolve ticket" }).click();
+  await expect(savedMessage(customer)).toContainText("The ticket is resolved");
+  await expectTicketStatus(customer, key, "Resolved");
+  // Only the customer's Yes reads as "Customer confirmed".
+  await team.goto(`/tickets/${key}`);
+  await expect(team.locator(".resolution-label")).toHaveText("Customer confirmed");
+
+  await customer.context().close();
+  await team.context().close();
+});
+
+test("the long path: a check, a change link and evidence, a No, then the customer's Yes", async ({
   browser,
 }) => {
   const customer = await signInAs(browser, "Customer One");
@@ -84,7 +125,7 @@ test("a customer files a ticket, the team works it, and only the customer resolv
     await expectTicketStatus(team, key, "In Progress");
   });
 
-  await test.step("the team member replies, adds an internal note and links the change", async () => {
+  await test.step("the team member replies, adds a note, links the change, attaches evidence", async () => {
     await team.getByRole("radio", { name: "Reply to the customer" }).check();
     await team.getByLabel("Your message").fill(reply);
     await team.getByRole("button", { name: "Send", exact: true }).click();
@@ -96,10 +137,17 @@ test("a customer files a ticket, the team works it, and only the customer resolv
     await expect(savedMessage(team)).toContainText("Internal note added");
     await expect(team.getByText(note)).toBeVisible();
 
+    // Both are optional, so each waits behind its own disclosure.
+    await team.locator("summary", { hasText: "Add the code change link" }).click();
     await team.getByRole("textbox", { name: "Link to the code change" }).fill(changeUrl);
     await team.getByRole("button", { name: "Save change link" }).click();
     await expect(savedMessage(team)).toContainText("Change link saved");
     await expect(team.getByRole("link", { name: changeUrl })).toBeVisible();
+
+    await team.locator("summary", { hasText: "Attach evidence" }).click();
+    await team.getByRole("textbox", { name: "What it shows" }).fill(evidence);
+    await team.getByRole("button", { name: "Attach evidence" }).click();
+    await expect(savedMessage(team)).toContainText("Evidence attached");
   });
 
   await test.step("the team member asks the customer to check", async () => {
@@ -110,10 +158,8 @@ test("a customer files a ticket, the team works it, and only the customer resolv
     await team
       .getByRole("textbox", { name: "What happened?" })
       .fill("The file downloaded with every row.");
-    await team
-      .locator("form#ask")
-      .getByRole("button", { name: "Ask the customer to verify" })
-      .click();
+    await team.getByRole("checkbox", { name: evidence }).check();
+    await team.locator("form#ask").getByRole("button", { name: "Ask with these details" }).click();
     await expect(savedMessage(team)).toContainText("asked to check the fix");
   });
 
@@ -131,6 +177,8 @@ test("a customer files a ticket, the team works it, and only the customer resolv
     await expect(question).toBeVisible();
     await expect(question.getByText(ticket.check)).toBeVisible();
     await expect(question.getByRole("link", { name: tryUrl })).toBeVisible();
+    await expect(question.getByText("Exported the report as CSV.")).toBeVisible();
+    await expect(question.getByText(evidence)).toBeVisible();
 
     await question.getByLabel("No, it is not fixed. What is still wrong?").fill(notFixedComment);
     await question.getByRole("button", { name: "No, send it back" }).click();
@@ -168,10 +216,7 @@ test("a customer files a ticket, the team works it, and only the customer resolv
     await team
       .getByRole("textbox", { name: "What changed since the customer said it still fails?" })
       .fill("Empty exports are fixed too.");
-    await team
-      .locator("form#ask")
-      .getByRole("button", { name: "Ask the customer to verify" })
-      .click();
+    await team.locator("form#ask").getByRole("button", { name: "Ask with these details" }).click();
     await expect(savedMessage(team)).toContainText("asked to check the fix");
 
     await customer.goto(`/tickets/${key}`);

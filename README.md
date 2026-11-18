@@ -54,7 +54,7 @@ Each one takes under a minute on the demo, starting from its welcome page.
 **Update status: to Resolved**
 
 - Start as: Demo Team Member, owning the ticket
-- Press: **Use sample fix** (or type any link and press **Save change link**), then **Ask the customer to verify**, then **View this ticket as the customer who filed it** and **Yes, resolve ticket**
+- Press: **Ask the customer to verify**, then **View this ticket as the customer who filed it** and **Yes, resolve ticket**
 - You should see: **Resolved**, and "Customer confirmed it is fixed." The owner can also resolve without the customer: press "Resolve" under Status and choose a reason, and the ticket then shows "Resolved by the team: <reason>" to everyone.
 
 **A working product**
@@ -281,7 +281,8 @@ code. The specification ([`docs/SPEC.md`](docs/SPEC.md)), the history of every s
 - **Last writer wins** for edits to a ticket and to the team's check. Only the customer's answer
   carries a version check, so an old page cannot answer a newer question.
 - **Email needs a mail server.** Notices are sent only once `SMTP_URL` and `MAIL_FROM` are set,
-  and nobody can turn them off for themselves yet.
+  and nobody can turn them off for themselves yet. Until then, and always on the demo, a ticket's
+  notices page (`/tickets/SUP-1/notices`) shows each one as not sent, with its exact words.
 - **Evidence is reported, not verified.** Proofdesk shows who reported it and checks none of it.
 - **One machine.** SQLite on one disk; rate-limit counts are in memory and reset on a restart.
   Several machines would need Postgres and a shared store for the rate limits.

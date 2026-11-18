@@ -170,16 +170,13 @@ describe("the ticket page's own forms after a refused submit", () => {
     expect(focused(parse(res.text))).toEqual(["reason"]);
   });
 
-  it("focuses the first empty box when asking the customer is refused", async () => {
+  it("focuses the box with the problem when asking the customer is refused", async () => {
     const { app } = await startedTicket();
-    await as(app, teamActor)
-      .put("/api/tickets/SUP-1/change-link")
-      .send({ change_url: "https://example.com/change/1" });
     const res = await as(app, teamActor)
       .post("/tickets/SUP-1/ready")
       .type("form")
-      .send({ try_url: "https://example.com/try", tried: "Printed.", result: "" });
+      .send({ try_url: "not a link", tried: "Printed.", result: "" });
     expect(res.status).toBe(400);
-    expect(focused(parse(res.text))).toEqual(["result"]);
+    expect(focused(parse(res.text))).toEqual(["try_url"]);
   });
 });
