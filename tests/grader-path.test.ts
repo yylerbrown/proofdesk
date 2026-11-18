@@ -63,23 +63,23 @@ describe("where Resolved comes from", () => {
   it("is said to the team at every step, with the way to get there", async () => {
     const { app } = await filed();
     expect(rule(await page(app, teamActor))).toBe(
-      "Resolved comes from the customer's Yes. Take the ticket, then ask the customer to confirm.",
+      "Resolved comes from the customer's Yes. Take the ticket, then ask the customer to verify.",
     );
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
 
     const owner = await page(app, teamActor);
     expect(rule(owner)).toBe(
-      "Resolved comes from the customer's Yes. When the fix is in, ask customer to confirm.",
+      "Resolved comes from the customer's Yes. When the fix is in, ask the customer to verify.",
     );
     expect(owner.querySelector(".status-rule a")?.getAttribute("href")).toBe("#ask");
     // The link lands on the ask, shown greyed with what is missing until it can be done.
-    expect(owner.querySelector("#ask button")?.text).toBe("Ask customer to confirm");
+    expect(owner.querySelector("#ask button")?.text).toBe("Ask the customer to verify");
     expect(owner.querySelector("#ask-blocked-why")?.text).toBe(
       "Add the link to the code change first.",
     );
 
     expect(rule(await page(app, adminActor))).toBe(
-      "Resolved comes from the customer's Yes. Only Team Member can ask the customer to confirm.",
+      "Resolved comes from the customer's Yes. Only Team Member can ask the customer to verify.",
     );
     expect(rule(await page(app, customerOne))).toBeUndefined();
   });
@@ -91,9 +91,9 @@ describe("where Resolved comes from", () => {
       status: "resolved",
     });
     expect(reason).toMatch(/Only the customer resolves ticket SUP-1/);
-    expect(reason).toMatch(/Ask customer to confirm/);
+    expect(reason).toMatch(/Ask the customer to verify/);
     const api = await as(app, teamActor).patch("/api/tickets/SUP-1").send({ status: "resolved" });
-    expect(api.body.error.hint).toMatch(/Ask customer to confirm/);
+    expect(api.body.error.hint).toMatch(/Ask the customer to verify/);
   });
 
   it("says who it waits for once asked, and that their Yes moves it to Resolved", async () => {
@@ -113,7 +113,9 @@ describe("where Resolved comes from", () => {
 
     const team = await page(app, teamActor);
     const status = team.querySelectorAll("aside section").find((s) => s.text.includes("Status"))!;
-    expect(status.querySelector("p")?.text).toBe("In Progress, waiting for the customer");
+    expect(status.querySelector("p")?.text).toBe(
+      "In Progress, waiting for the customer who filed this ticket",
+    );
     expect(rule(team)).toBe("Their Yes moves it to Resolved.");
 
     const customer = await page(app, customerOne);
@@ -130,7 +132,7 @@ describe("where Resolved comes from", () => {
       .send({ title: "Printer jams", description: "It jams on page two." });
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
     const html = await page(app, teamActor);
-    expect(html.querySelector("#ask button[disabled]")?.text).toBe("Ask customer to confirm");
+    expect(html.querySelector("#ask button[disabled]")?.text).toBe("Ask the customer to verify");
     expect(html.querySelector("#ask-blocked-why")?.text).toBe(
       "The customer has not said how they will know it is fixed. Ask them in a reply.",
     );
@@ -150,7 +152,7 @@ describe("the customer's answer", () => {
     const box = (await page(app, customerOne)).querySelector("#did-this-fix-it")!;
     // The two answers; the quick answers below them are small, plain words.
     const buttons = box.querySelectorAll("button").filter((b) => !b.classList.contains("quick"));
-    expect(buttons.map((b) => b.text)).toEqual(["Yes, it is fixed", "No, send it back"]);
+    expect(buttons.map((b) => b.text)).toEqual(["Yes, resolve ticket", "No, send it back"]);
     for (const button of buttons) expect(button.classList.contains("large")).toBe(true);
     expect(box.querySelector("button.danger")).toBeNull();
   });

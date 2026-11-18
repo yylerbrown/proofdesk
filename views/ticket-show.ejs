@@ -3,7 +3,7 @@
 
 <hgroup>
   <h1 class="user-text"><%= ticket.title %></h1>
-  <p class="meta"><%= ticket.key %> <%- include("status-badge", { status: ticket.status }) %><% if (ticket.ready_at && ticket.status === "in_progress") { %>, waiting for <%= viewerRole === "customer" ? "you" : "the customer" %><% } %> · <% if (ticket.owner_name) { %>Owner <%= ticket.owner_name %><% } else { %>Unassigned<% } %> · filed <%- include("time", { iso: ticket.created_at }) %></p>
+  <p class="meta"><%= ticket.key %> <%- include("status-badge", { status: ticket.status }) %><% if (ticket.ready_at && ticket.status === "in_progress") { %>, waiting for <%= viewerRole === "customer" ? "you" : "the customer who filed this ticket" %><% } %> · <% if (ticket.owner_name) { %>Owner <%= ticket.owner_name %><% } else { %>Unassigned<% } %> · filed <%- include("time", { iso: ticket.created_at }) %></p>
 </hgroup>
 <% const staff = viewerRole !== "customer"; %>
 
@@ -117,7 +117,7 @@
   <form method="post" action="/tickets/<%= ticket.key %>/answer">
     <input type="hidden" name="fixed" value="yes" />
     <input type="hidden" name="ready_token" value="<%= ticket.ready_token %>" />
-    <button type="submit" class="large">Yes, it is fixed</button>
+    <button type="submit" class="large">Yes, resolve ticket</button>
   </form>
   <form method="post" action="/tickets/<%= ticket.key %>/answer">
     <input type="hidden" name="fixed" value="no" />
@@ -217,10 +217,10 @@
 
 <section>
   <h2>Status</h2>
-  <p><%- include("status-badge", { status: ticket.status }) %><% if (ticket.ready_at && ticket.status === "in_progress") { %>, waiting for <%= viewerRole === "customer" ? "you" : "the customer" %><% } %></p>
+  <p><%- include("status-badge", { status: ticket.status }) %><% if (ticket.ready_at && ticket.status === "in_progress") { %>, waiting for <%= viewerRole === "customer" ? "you" : "the customer who filed this ticket" %><% } %></p>
   <%# Resolved is never a dead end: the team is told where it comes from and how to get there. %>
   <% if (viewerRole !== "customer" && !ticket.archived_at && ticket.status !== "resolved") { %>
-  <p class="status-rule"><small><% if (ticket.ready_at) { %>Their Yes moves it to Resolved.<% } else if (ticket.owner_id && ticket.owner_id === viewerId) { %>Resolved comes from the customer's Yes. When the fix is in, <a href="#ask">ask customer to confirm</a>.<% } else if (ticket.owner_id) { %>Resolved comes from the customer's Yes. Only <%= ticket.owner_name %> can ask the customer to confirm.<% } else { %>Resolved comes from the customer's Yes. Take the ticket, then ask the customer to confirm.<% } %></small></p>
+  <p class="status-rule"><small><% if (ticket.ready_at) { %>Their Yes moves it to Resolved.<% } else if (ticket.owner_id && ticket.owner_id === viewerId) { %>Resolved comes from the customer's Yes. When the fix is in, <a href="#ask">ask the customer to verify</a>.<% } else if (ticket.owner_id) { %>Resolved comes from the customer's Yes. Only <%= ticket.owner_name %> can ask the customer to verify.<% } else { %>Resolved comes from the customer's Yes. Take the ticket, then ask the customer to verify.<% } %></small></p>
   <% } %>
 </section>
 <% } %>
@@ -310,7 +310,7 @@
   <p>Change: <a href="<%= ticket.change_url %>" rel="noopener noreferrer nofollow" class="user-text"><%= ticket.change_url %></a></p>
   <% } %>
   <% if (ticket.ready_at) { %>
-  <p>Waiting for <%= viewerRole === "customer" ? "you" : "the customer" %> to check it, since <%- include("time", { iso: ticket.ready_at }) %>.</p>
+  <p>Waiting for <%= viewerRole === "customer" ? "you to check it" : "the customer who filed this ticket" %>, since <%- include("time", { iso: ticket.ready_at }) %>.</p>
   <% if (ticket.owner_id === viewerId) { %>
   <form method="post" action="/tickets/<%= ticket.key %>/withdraw-question">
     <button type="submit" class="secondary outline compact">Withdraw the question</button>
@@ -360,10 +360,10 @@
     </fieldset>
     <% } %>
     <% if (problem?.form === "ready") { %><p><small id="ready-error" role="alert"><%= problem.message %></small></p><% } %>
-    <button type="submit" class="compact" <% if (problem?.form === "ready") { %>aria-describedby="ready-error"<% } %>>Ask customer to confirm</button>
+    <button type="submit" class="compact" <% if (problem?.form === "ready") { %>aria-describedby="ready-error"<% } %>>Ask the customer to verify</button>
   </form>
   <% } else if (askBlocked) { %>
-  <p class="ask-blocked" id="ask"><button type="button" class="compact" disabled aria-describedby="ask-blocked-why">Ask customer to confirm</button> <small id="ask-blocked-why"><%= askBlocked %></small></p>
+  <p class="ask-blocked" id="ask"><button type="button" class="compact" disabled aria-describedby="ask-blocked-why">Ask the customer to verify</button> <small id="ask-blocked-why"><%= askBlocked %></small></p>
   <% } %>
 </section>
 <% } %>

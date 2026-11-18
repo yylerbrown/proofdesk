@@ -257,7 +257,7 @@ function needsCustomer(key: string): HttpError {
   return new HttpError(
     409,
     "needs_customer",
-    `Only the customer resolves ticket ${key}, by answering "Did this fix it?". Its owner asks them with "Ask customer to confirm".`,
+    `Only the customer resolves ticket ${key}, by answering "Did this fix it?". Its owner asks them with "Ask the customer to verify".`,
   );
 }
 
@@ -989,7 +989,7 @@ export function createTicketService(
           throw new HttpError(
             403,
             "not_owner",
-            `Only ${before.owner_name ?? "the ticket's owner"}, who owns ticket ${key}, can ask the customer to confirm.`,
+            `Only ${before.owner_name ?? "the ticket's owner"}, who owns ticket ${key}, can ask the customer to verify.`,
           );
         }
         if (before.status !== "in_progress") {
