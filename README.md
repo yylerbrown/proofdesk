@@ -55,8 +55,8 @@ the tools, the limits and a worked example.
 
 ## Run it yourself
 
-Check `node -v` first: Node 20 or newer (`.nvmrc` says 22). Older versions are refused by
-`npm ci`.
+Check `node -v` first: Node 22.14 or newer (`.nvmrc` says 22). Older versions are refused by
+`npm ci`, because a dependency needs it.
 
 **Development**, with four made-up people and no keys:
 
