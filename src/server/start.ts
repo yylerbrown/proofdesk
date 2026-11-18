@@ -5,7 +5,7 @@ import { openDatabase, type Db } from "./db.js";
 import { seedDemo } from "./demo.js";
 import type { LogLine } from "./http-basics.js";
 import { runMigrations } from "./migrate.js";
-import { forgetRolesNamedInSettings } from "./people/service.js";
+import { endConnectionsOfFormerAdmins, forgetRolesNamedInSettings } from "./people/service.js";
 import { checkPurposeBeforeMigrating } from "./purpose.js";
 import { createTicketService } from "./tickets/service.js";
 
@@ -47,6 +47,9 @@ export function openSite(config: Config, log: LogLine, sayMigrations = true): Si
     // A role chosen on the People page for someone the settings now name is forgotten, so it
     // cannot come back when the settings stop naming them.
     forgetRolesNamedInSettings(db, config);
+    // A connection whose issuer is no longer an admin is refused when it signs in. Ending it
+    // here, with its reason, keeps the Connections page and the hand-off list saying the same.
+    endConnectionsOfFormerAdmins(db, config);
     // createApp checks the database's purpose first, so the demo is only seeded into a demo
     // database. It logs one line per request.
     const app = createApp(config, db, { log });

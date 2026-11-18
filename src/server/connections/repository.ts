@@ -13,6 +13,8 @@ export type ConnectionRow = {
   created_at: string;
   expires_at: string | null;
   revoked_at: string | null;
+  /** Why it ended, when a role change ended it. Empty when an admin pressed Revoke. */
+  revoked_reason: string | null;
   last_used_at: string | null;
 };
 
@@ -142,17 +144,28 @@ export function markRevoked(db: Db, id: number, now: string): void {
 }
 
 /**
- * Revokes every live connection one person issued, at this time, and returns how many. Demo
- * connections are issued by the demo itself, never by a person, and are left alone.
+ * Revokes every live connection one person issued, at this time and for this reason, and
+ * returns how many. Demo connections are issued by the demo itself, never by a person, and are
+ * left alone.
  */
-export function revokeIssuedBy(db: Db, personId: string, now: string): number {
+export function revokeIssuedBy(db: Db, personId: string, now: string, reason: string): number {
   const result = db
     .prepare(
-      `UPDATE agent_connections SET revoked_at = ?
+      `UPDATE agent_connections SET revoked_at = ?, revoked_reason = ?
        WHERE issued_by = ? AND demo = 0 AND revoked_at IS NULL`,
     )
-    .run(now, personId);
+    .run(now, reason, personId);
   return result.changes;
+}
+
+/** The people who issued at least one connection that has not been revoked. Demo ones aside. */
+export function issuersOfLiveConnections(db: Db): string[] {
+  const rows = db
+    .prepare(
+      "SELECT DISTINCT issued_by FROM agent_connections WHERE demo = 0 AND revoked_at IS NULL",
+    )
+    .all() as { issued_by: string }[];
+  return rows.map((row) => row.issued_by);
 }
 
 /** How many connections one person issued that were revoked at exactly this time. */
