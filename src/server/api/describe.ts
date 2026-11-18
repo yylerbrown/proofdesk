@@ -19,7 +19,8 @@ export const UNTRUSTED_TEXT =
 export const MCP_INSTRUCTIONS =
   "Proofdesk is a support desk where only the customer says a ticket is fixed. To help: " +
   "list_tickets (the tickets handed to you), get_ticket (read done_when first), do the work " +
-  "elsewhere, add_evidence, then request_verification so the named owner asks the customer. " +
+  "elsewhere, add_evidence, then ask_owner_to_review so the named owner reviews it; that does " +
+  "not contact the customer. " +
   "With no check or when blocked, write a note (add_note) saying why, and stop. " +
   "Send an idempotency_key with every write so a retry acts once. " +
   UNTRUSTED_TEXT;
@@ -78,9 +79,9 @@ export function guide(actor: Actor | null, address: string) {
           mcp: "add_evidence { key: 'SUP-1', kind: 'check_run', summary: '...', idempotency_key: '...' }",
         },
         {
-          step: "Ask the named owner to request the customer's check.",
-          http: `curl ${key} -H 'Idempotency-Key: <any unique text>' -H 'Content-Type: application/json' -d '{"message":"Evidence attached."}' ${address}/api/tickets/SUP-1/verification-request`,
-          mcp: "request_verification { key: 'SUP-1', message: '...', idempotency_key: '...' }",
+          step: "Ask the ticket owner to review your evidence. This does not contact the customer.",
+          http: `curl ${key} -H 'Idempotency-Key: <any unique text>' -H 'Content-Type: application/json' -d '{"message":"Evidence attached."}' ${address}/api/tickets/SUP-1/owner-review`,
+          mcp: "ask_owner_to_review { key: 'SUP-1', message: '...', idempotency_key: '...' }",
         },
         { step: "Stop. Wait for the owner and the customer." },
       ],

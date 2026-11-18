@@ -30,6 +30,7 @@ import {
   specOutput,
   ticketOutput,
   ticketReadOutput,
+  ticketRowOutput,
 } from "./schemas.js";
 import { parse } from "../validation.js";
 
@@ -76,17 +77,31 @@ export type ApiAction = {
 export const ACTIONS: ApiAction[] = [
   {
     name: "list_tickets",
-    output: z.array(ticketOutput),
+    output: z.array(z.union([ticketOutput, ticketRowOutput])),
     method: "get",
     path: "/tickets",
     summary:
-      "List tickets: open ones newest first, then resolved ones. A customer sees only their own.",
+      "List tickets: open ones newest first, then resolved ones. A customer sees only their own. An assistant gets a short row per ticket handed to it; get_ticket reads one in full.",
     needs: "read",
     query: listQuerySchema,
     paged: true,
     run: ({ service, actor, query }) => {
       const { status, page, cursor } = parse(listQuerySchema, query);
-      return service.listTickets(status ?? "all", actor, cursor ? pageOf(cursor) : (page ?? 1));
+      const tickets = service.listTickets(
+        status ?? "all",
+        actor,
+        cursor ? pageOf(cursor) : (page ?? 1),
+      );
+      if (actor.kind !== "agent") return tickets;
+      return tickets.map((ticket) => ({
+        key: ticket.key,
+        title: ticket.title,
+        status: ticket.status,
+        waiting_on: ticket.waiting_on,
+        owner_name: ticket.owner_name,
+        customer_check: ticket.done_when.customer_check,
+        updated_at: ticket.updated_at,
+      }));
     },
   },
   {
@@ -398,12 +413,12 @@ export const ACTIONS: ApiAction[] = [
     run: ({ service, actor, key, body }) => service.decideSpec(key, body, actor),
   },
   {
-    name: "request_verification",
+    name: "ask_owner_to_review",
     output: entryOutput,
     method: "post",
-    path: "/tickets/:key/verification-request",
+    path: "/tickets/:key/owner-review",
     summary:
-      "Ask the ticket's named owner to request the customer's check, once evidence is attached. Written as an internal note; only the owner asks the customer, and only the customer answers.",
+      "Ask the ticket owner to review your evidence. This does not contact the customer: it is written as an internal note, the owner decides whether to ask the customer, and only the customer answers.",
     needs: "note",
     body: verificationRequestSchema,
     status: 201,
@@ -411,7 +426,7 @@ export const ACTIONS: ApiAction[] = [
       const { message } = parse(verificationRequestSchema, body);
       return service.addEntry(
         key,
-        { kind: "note", body: `Asks the owner to request the customer's check: ${message}` },
+        { kind: "note", body: `Asks the owner to review the evidence: ${message}` },
         actor,
       );
     },

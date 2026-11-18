@@ -66,7 +66,14 @@ function buildServer(
     { name: "proofdesk", version: "1.0.0" },
     { instructions: MCP_INSTRUCTIONS },
   );
-  for (const row of TOOL_ACTIONS) {
+  // Only the tools this connection may use: a tool its scopes forbid is not offered at all.
+  const scopes = actor.scopes ?? [];
+  const mayUse = (row: ApiAction) =>
+    [row.needs].flat().every((needed) => {
+      const scope = CAPABILITIES[needed].agent;
+      return scope !== "people_only" && scopes.includes(scope);
+    });
+  for (const row of TOOL_ACTIONS.filter(mayUse)) {
     server.registerTool(
       row.name,
       { description: `${row.summary} ${UNTRUSTED}`, inputSchema: inputSchema(row) },

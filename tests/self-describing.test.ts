@@ -3,6 +3,7 @@ import request from "supertest";
 import type { Express } from "express";
 import { describe, expect, it } from "vitest";
 import { ACTIONS } from "../src/server/api/actions.js";
+import { TOOL_ACTIONS } from "../src/server/mcp.js";
 import { admin, as, buildTestApp, customerOne } from "./helpers.js";
 
 // The API describes itself: a guide at GET /api and the machine-readable description at
@@ -31,7 +32,7 @@ describe("the guide at GET /api", () => {
       "list_tickets {}",
       "get_ticket { key: 'SUP-1' }",
       expect.stringMatching(/^add_evidence /),
-      expect.stringMatching(/^request_verification /),
+      expect.stringMatching(/^ask_owner_to_review /),
     ]);
     const evidenceCall = start_here.steps[3].http as string;
     expect(evidenceCall).toMatch(/Idempotency-Key/);
@@ -150,8 +151,8 @@ describe("real answers", () => {
       await admin(app).post(`${t}/spec/decision`).send({ decision: "accept" }),
     );
     expectShape(
-      "request_verification",
-      await admin(app).post(`${t}/verification-request`).send({ message: "Ready" }),
+      "ask_owner_to_review",
+      await admin(app).post(`${t}/owner-review`).send({ message: "Ready" }),
     );
     expectShape(
       "link_change",
@@ -190,5 +191,39 @@ describe("real answers", () => {
     expectShape("restore_ticket", await admin(app).post(`${t}/restore`));
     expectShape("delete_ticket", await admin(app).delete(t).send({ confirm: "SUP-1" }));
     expect([...checked].sort()).toEqual(ACTIONS.map((row) => row.name).sort());
+  });
+});
+
+describe("the guide's own addresses and tools", () => {
+  it("names only paths in the action table and tools an assistant can be given", async () => {
+    const { app } = buildTestApp();
+    const steps = (await request(app).get("/api")).body.start_here.steps as {
+      http?: string;
+      mcp?: string;
+    }[];
+    const patterns = ACTIONS.map(
+      (row) =>
+        new RegExp(`^${row.method.toUpperCase()} /api${row.path.replace(/:key/g, "[A-Z]+-\\d+")}$`),
+    );
+    let named = 0;
+    for (const step of steps) {
+      if (step.http !== undefined) {
+        const path = /https?:\/\/[^/\s]+(\/api\/[^\s'"?]*)/.exec(step.http)![1]!;
+        const method = step.http.includes(" -d ") ? "POST" : "GET";
+        expect(
+          patterns.some((p) => p.test(`${method} ${path}`)),
+          `${method} ${path}`,
+        ).toBe(true);
+        named += 1;
+      }
+      if (step.mcp !== undefined) {
+        const tool = step.mcp.split(" ")[0]!;
+        expect(
+          TOOL_ACTIONS.map((row) => row.name),
+          tool,
+        ).toContain(tool);
+      }
+    }
+    expect(named).toBeGreaterThanOrEqual(4);
   });
 });

@@ -385,7 +385,8 @@ export function createTicketService(
       change_url: row.change_url,
       try_url: row.try_url,
       ready_at: row.ready_at,
-      ready_token: row.ready_token,
+      // The token a customer's answer must carry. An assistant never answers, so never gets it.
+      ready_token: actor?.kind === "agent" ? null : row.ready_token,
     };
   }
 

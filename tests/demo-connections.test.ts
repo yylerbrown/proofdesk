@@ -196,3 +196,34 @@ describe("a demo connection asking to resolve", () => {
     expect(res.body.error.message).toMatch(/Only the customer resolves ticket SUP-4/);
   });
 });
+
+describe("the page that shows a demo key", () => {
+  it("leads back to the welcome page, which a demo visitor can open, not to Connections", async () => {
+    const { app } = buildDemo();
+    const html = parse(
+      (await visitor(app).post("/demo/connection").set("Sec-Fetch-Site", "same-origin")).text,
+    );
+    expect(html.querySelector("a[href='/sign-in']")?.text).toBe("Back to the welcome page");
+    expect(html.querySelector("main a[href='/connections']")).toBeNull();
+  });
+});
+
+describe("the token a customer's answer must carry", () => {
+  it("is never sent to an assistant, even on a sample the team has asked about", async () => {
+    const { app } = buildDemo();
+    const team = (method: "post" | "put", path: string, body: object = {}) =>
+      asDemo(app, "demo-team")[method](`/api/tickets/SUP-2${path}`).send(body);
+    await team("post", "/take-and-start");
+    await team("put", "/change-link", { change_url: "https://example.com/c" });
+    const asked = await team("post", "/ready", {
+      try_url: "https://example.com/t",
+      tried: "Opened the invoice.",
+      result: "It says March.",
+    });
+    expect(asked.body.ready_token).toMatch(/\S/);
+    const key = await getConnection(app);
+    const ticket = await api(app, key).get("/api/tickets/SUP-2");
+    expect(ticket.status).toBe(200);
+    expect(ticket.body.ready_token).toBeNull();
+  });
+});
