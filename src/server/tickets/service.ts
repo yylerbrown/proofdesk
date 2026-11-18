@@ -1529,7 +1529,10 @@ export function createTicketService(
           return JSON.parse(seen.response) as T;
         }
         const result = write();
-        const ticketId = ticketKey === "" ? null : parseKey(prefix, ticketKey);
+        // Filing a ticket has no key in its request, but its answer names the new ticket, so
+        // the saved answer is tied to it and goes when that ticket is deleted permanently.
+        const named = ticketKey !== "" ? ticketKey : (result as { key?: unknown } | null)?.key;
+        const ticketId = typeof named === "string" ? parseKey(prefix, named) : null;
         repository.saveIdempotency(db, {
           actor: actor.id,
           key: idempotencyKey,
@@ -1914,7 +1917,13 @@ export function createTicketService(
           ticket.owner_id === actor.id &&
           ticket.status === "in_progress" &&
           ticket.change_url !== null &&
+          ticket.fix_check !== null &&
           ticket.ready_at === null,
+        // The same rules as withdrawQuestionAsked.
+        withdrawQuestion:
+          can(actor, "mark_ready", ticket) &&
+          ticket.owner_id === actor.id &&
+          ticket.ready_at !== null,
         answer: !archived && can(actor, "answer", ticket) && ticket.ready_at !== null,
         reply: !archived && can(actor, "reply", ticket),
         note: !archived && can(actor, "note", ticket),
