@@ -44,6 +44,10 @@ the owner has named as team members or admins.
 
 ## Connect your own AI assistant
 
+Proofdesk gives your agent the customer's definition of "fixed", and gives the customer the
+final say on whether the fix worked. The customer's check is direction for the agent, not its
+acceptance test: a test can pass while the customer is still stuck.
+
 Proofdesk makes no AI calls of its own. A person's own assistant can work on tickets through an
 MCP endpoint, with only the permissions its connection allows. On the demo, choose **Get a demo
 connection** on the welcome page: you get your own key for a day, and the command to paste.
@@ -139,6 +143,12 @@ All of them are in `.env.example`, with comments.
    address and `BETTER_AUTH_SECRET` set to the output of `openssl rand -base64 32`.
 3. Set `DEV_SIGN_IN=off`. To make yourself an admin, put your GitHub user number (the `id` at
    `https://api.github.com/users/<your user name>`) in `ADMIN_GITHUB_IDS`.
+
+## What's next
+
+Each accepted scenario of a ticket's test spec gets a permanent id, such as `SUP-42/S1`, carried in
+the name of the test in the product's own repository, and the desk records only "Reported passing
+at commit <sha>"; the rest of the plan is in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## How it is built
 
