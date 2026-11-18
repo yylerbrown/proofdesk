@@ -1,6 +1,12 @@
 <%- include("header") %>
+<% if (connection.demo) { %>
+<h1>Your demo connection</h1>
+<p><strong>Copy the key now.</strong> It is shown only on this page. It stops working <%- include("time", { iso: connection.expires_at }) %>; you can get another from the welcome page.</p>
+<p>Your assistant sees only the sample tickets, as they were first written, and what it writes itself. It never sees what other visitors write, and they never see what it writes.</p>
+<% } else { %>
 <h1>Connection issued</h1>
 <p><strong>Copy the key now.</strong> It is shown only on this page. If it is lost, revoke the connection and issue a new one.</p>
+<% } %>
 
 <p>It may: <%= connection.scopes.map((s) => scopeLabels[s]).join("; ") %>.</p>
 

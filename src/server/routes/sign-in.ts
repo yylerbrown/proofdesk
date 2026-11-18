@@ -21,7 +21,11 @@ export function safeNext(value: unknown): string {
   return isLocalPath ? value : "/tickets";
 }
 
-export function signInRouter(config: Config, auth: Auth | null): Router {
+export function signInRouter(
+  config: Config,
+  auth: Auth | null,
+  demoReady: () => boolean = () => false,
+): Router {
   const router = Router();
 
   router.get("/sign-in", (req, res) => {
@@ -36,6 +40,8 @@ export function signInRouter(config: Config, auth: Auth | null): Router {
       next,
       failed,
       demo: config.demo,
+      // On the demo, the welcome page offers a visitor their own assistant connection.
+      demoAgents: config.demo && demoReady(),
     });
   });
 

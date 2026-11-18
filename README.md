@@ -72,6 +72,14 @@ so a demo can never hold a real account. Each database also records on its first
 DEMO=on DATABASE_PATH=./data/demo.db npm run dev
 ```
 
+On the demo, a visitor can also get **their own assistant connection** from the welcome page,
+with no sign-in: a key that lasts a day, may read the samples, write notes and attach evidence,
+and sees only the sample tickets, with their text as first written, and what it writes itself.
+It never sees what other visitors or other connections write, so nobody can plant instructions
+for someone else's assistant. One address may get 5 an hour, and 200 may be live at once. One
+sample ticket is made for an assistant to work on. A demo database seeded before this existed
+does not offer connections until it is reset.
+
 The sample data is shared by every visitor. To reset it, stop the server, delete its database
 file and start it again. Hosting the demo needs a second Fly.io app with its own disk; that is not
 set up.
