@@ -79,7 +79,7 @@ describe("the invitation to connect an assistant", () => {
     const as = (id: string) =>
       visitor(built.app).set("Cookie", `${DEV_COOKIE}=${id}`).get("/tickets");
     const team = parse((await as("demo-team")).text).querySelector(".assistant-invite")!;
-    expect(team.querySelector(".invite-actions a")?.getAttribute("href")).toBe("/sign-in");
+    expect(team.querySelector(".invite-actions a")?.getAttribute("href")).toBe("/sign-in#connect");
     expect(parse((await as("demo-customer")).text).querySelector(".assistant-invite")).toBeNull();
   });
 });

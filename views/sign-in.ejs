@@ -77,6 +77,8 @@
     </li>
     <% } %>
   </ul>
+  <%# Where "Connect your assistant" leads on the demo: this block, whether connections are on or off. %>
+  <div id="connect">
   <% if (demo && !locals.demoAgents) { %>
   <p class="notice">Assistant connections are off on this demo until its operator resets it.</p>
   <% } %>
@@ -87,7 +89,9 @@
   <form method="post" action="/demo/connection">
     <button type="submit" class="secondary">Get a demo connection</button>
   </form>
+  <p><small>A key is shown only once, on the page that makes it. Get a new one here at any time.</small></p>
   <% } %>
+  </div>
 </section>
 <% } %>
 </div>

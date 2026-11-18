@@ -286,3 +286,15 @@ describe("the token a customer's answer must carry", () => {
     expect(ticket.body.ready_token).toBeNull();
   });
 });
+
+describe("the key page's address, opened again", () => {
+  it("leads to the welcome page's place for getting a new key, since a key is shown once", async () => {
+    const { app } = buildDemo();
+    const again = await visitor(app).get("/demo/connection");
+    expect([again.status, again.headers.location]).toEqual([303, "/sign-in#connect"]);
+    const welcome = parse((await visitor(app).get("/sign-in")).text);
+    expect(welcome.querySelector("#connect")?.text).toContain("A key is shown only once");
+    // Not on the real site, which has no demo keys.
+    expect((await visitor(buildTestApp().app).get("/demo/connection")).status).toBe(404);
+  });
+});

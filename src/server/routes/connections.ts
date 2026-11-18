@@ -76,6 +76,13 @@ export function connectionsRouter(
     }
   });
 
+  // The key page is only ever the answer to getting a key: it is shown once. Opening its address
+  // again leads back to the welcome page's place for getting another.
+  router.get("/demo/connection", (_req, res) => {
+    if (!config.demo) throw new HttpError(404, "not_found", "There is no page at this address.");
+    res.redirect(303, "/sign-in#connect");
+  });
+
   // On the public demo, any visitor may get their own short-lived connection, from the
   // welcome page, without signing in.
   router.post("/demo/connection", (req, res) => {

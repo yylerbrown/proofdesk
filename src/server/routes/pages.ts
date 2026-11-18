@@ -114,7 +114,7 @@ const INVITE_HIDDEN_FOR = 365 * 24 * 60 * 60 * 1000;
  * the welcome page's own demo connection. Null for a team member, who cannot connect one.
  */
 function connectUrl(actor: Actor): string | null {
-  if (actor.demo === true) return "/sign-in";
+  if (actor.demo === true) return "/sign-in#connect";
   return can(actor, "manage_connections") ? "/connections" : null;
 }
 
@@ -297,15 +297,16 @@ export function pagesRouter(service: TicketService): Router {
       spec: service.getSpec(ticket.key, actor),
       canDecide: allowed.decideSpec,
     };
-    // One quiet line under the conversation suggesting the team ask an assistant for a spec:
-    // while there is none and the ticket is not already handed to an assistant.
+    // One quiet line under the conversation suggesting the team ask an assistant for a spec,
+    // while there is none.
+    // On the demo, a visitor's key reads only the sample made for assistants, so the line shows
+    // there and nowhere else. On the real site it shows while no assistant has the ticket.
     const specPrompt =
       !specPanel.spec &&
       ticket.archived_at === null &&
       ticket.status !== "resolved" &&
       can(actor, "list_all") &&
-      agentHelp.current === null &&
-      !agentHelp.demoSample
+      (actor.demo === true ? agentHelp.demoSample : agentHelp.current === null)
         ? {
             key: ticket.key,
             // Once an assistant is connected, the line need not say how to connect one.
