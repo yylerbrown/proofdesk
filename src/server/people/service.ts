@@ -7,6 +7,7 @@ import { HttpError } from "../errors.js";
 import { can } from "../permissions.js";
 import { buildKey } from "../tickets/keys.js";
 import { parse } from "../validation.js";
+import * as connectionsRepository from "../connections/repository.js";
 import { createAccountService } from "./account.js";
 import * as repository from "./repository.js";
 import { ROLE_LABELS } from "./words.js";
@@ -106,6 +107,20 @@ export function createPeopleService(db: Db, config: Config) {
     return roleOf(config, person.github_id ?? undefined, person.chosen_role);
   }
 
+  /**
+   * " Their 1 assistant connection was revoked.", when the person's last role change revoked
+   * their connections, otherwise nothing. Both are written with the same time, which links
+   * them. Read from the database, never from the browser.
+   */
+  function revokedWords(personId: string): string {
+    const changedAt = repository.lastChangeTimeOf(db, personId);
+    if (changedAt === undefined) return "";
+    const revoked = connectionsRepository.countRevokedAt(db, personId, changedAt);
+    if (revoked === 0) return "";
+    const noun = revoked === 1 ? "assistant connection was" : "assistant connections were";
+    return ` Their ${revoked} ${noun} revoked.`;
+  }
+
   /** The made-up people of the demo or the development entrance, shown as they are. */
   function madeUpPeople(actor: Actor): PersonView[] {
     return entrancePeople(config).map((person) => ({
@@ -159,7 +174,8 @@ export function createPeopleService(db: Db, config: Config) {
         changedLine:
           changed === undefined
             ? null
-            : `${changed.name} is now ${ROLE_IN_A_SENTENCE[changed.role]}.`,
+            : `${changed.name} is now ${ROLE_IN_A_SENTENCE[changed.role]}.` +
+              revokedWords(changed.id),
       };
     },
 
@@ -222,6 +238,9 @@ export function createPeopleService(db: Db, config: Config) {
       const now = new Date().toISOString();
       db.transaction(() => {
         repository.saveRole(db, person.id, role, now);
+        // Only an admin issues assistant connections, so someone who stops being an admin
+        // loses the ones they issued, in the same step. The key would stop working anyway.
+        if (before === "admin") connectionsRepository.revokeIssuedBy(db, person.id, now);
         repository.recordChange(db, {
           personId: person.id,
           personName: person.name,
@@ -238,3 +257,40 @@ export function createPeopleService(db: Db, config: Config) {
 }
 
 export type PeopleService = ReturnType<typeof createPeopleService>;
+
+/** Who the history of role changes names for a change the server settings made. */
+const SETTINGS_CHANGER = { id: "server-settings", name: "The server settings" };
+
+/**
+ * Forgets the roles chosen on the People page for people the server settings now name, in one
+ * step, and records one history line for each whose stored role differs. The settings already
+ * win while they name someone, and the People page cannot change such a person. Without this,
+ * a role chosen long ago would come back the day the settings stop naming them. The settings
+ * change only with a restart, so running this as the server starts is enough. Returns how many
+ * stored roles were forgotten.
+ */
+export function forgetRolesNamedInSettings(db: Db, config: Config): number {
+  const forget = db.transaction((): number => {
+    const now = new Date().toISOString();
+    let forgotten = 0;
+    for (const person of repository.listPeople(db)) {
+      if (person.chosen_role === null) continue;
+      const fromSettings = settingsRoleOf(config, person.github_id ?? undefined);
+      if (fromSettings === undefined) continue;
+      repository.forgetRole(db, person.id);
+      forgotten += 1;
+      if (person.chosen_role === fromSettings) continue;
+      repository.recordChange(db, {
+        personId: person.id,
+        personName: person.name,
+        changedBy: SETTINGS_CHANGER.id,
+        changedByName: SETTINGS_CHANGER.name,
+        from: person.chosen_role,
+        to: fromSettings,
+        now,
+      });
+    }
+    return forgotten;
+  });
+  return forget.immediate();
+}

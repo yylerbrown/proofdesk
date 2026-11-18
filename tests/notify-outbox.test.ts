@@ -3,11 +3,13 @@ import os from "node:os";
 import path from "node:path";
 import type { Express } from "express";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { DEV_ACTORS } from "../src/server/actor.js";
 import { openDatabase, type Db } from "../src/server/db.js";
 import { runMigrations } from "../src/server/migrate.js";
 import {
   collectNotices,
   NOT_SENT_REASONS,
+  NOTICES_PER_TICKET_PER_HOUR,
   noticesForViewer,
   type NotifySettings,
 } from "../src/server/notify/outbox.js";
@@ -34,6 +36,8 @@ const SETTINGS: NotifySettings = {
   demo: false,
   mailConfigured: true,
   madeUpPeople: [],
+  // The tests get in through the development entrance, whose made-up people keep their roles.
+  roleNow: (_db, id) => DEV_ACTORS.find((person) => person.id === id)?.role,
 };
 
 type Row = {
@@ -380,5 +384,67 @@ describe("an address that is not verified", () => {
     // Everyone else's are still pending.
     const others = allNotices(db).filter((n) => n.recipient_id !== "dev-customer-1");
     expect(others.every((n) => n.state === "pending")).toBe(true);
+  });
+});
+
+describe("many notices about one ticket to one person", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** A ticket owned by the team member, and the customer's replies on it, collected after each. */
+  async function replies(howMany: number, app: Express, db: Db) {
+    for (let i = 1; i <= howMany; i += 1) {
+      await ok(
+        as(app, customerOne)
+          .post("/api/tickets/SUP-1/entries")
+          .send({ kind: "reply", body: `More detail, part ${i}.` }),
+        201,
+      );
+      collectNotices(db, SETTINGS);
+    }
+  }
+
+  async function ownedTicket() {
+    const { app, db } = buildTestApp();
+    giveAddresses(db);
+    await ok(
+      as(app, customerOne).post("/api/tickets").send({ title: "Printer jams", description: "x" }),
+      201,
+    );
+    await ok(as(app, teamActor).post("/api/tickets/SUP-1/take-and-start"));
+    collectNotices(db, SETTINGS);
+    return { app, db };
+  }
+
+  function ownerReplies(db: Db): { state: string; not_sent_reason: string | null }[] {
+    return allNotices(db)
+      .filter((n) => n.recipient_id === teamActor.id && n.kind === "customer_replied")
+      .map(({ state, not_sent_reason }) => ({ state, not_sent_reason }));
+  }
+
+  it(`sends at most ${NOTICES_PER_TICKET_PER_HOUR} an hour, and keeps the rest as not sent`, async () => {
+    const { app, db } = await ownedTicket();
+    await replies(20, app, db);
+    const owner = ownerReplies(db);
+    expect(owner).toHaveLength(20);
+    const pending = owner.filter((n) => n.state === "pending");
+    const held = owner.filter((n) => n.state === "not_sent");
+    expect(pending).toHaveLength(NOTICES_PER_TICKET_PER_HOUR);
+    expect(held).toHaveLength(20 - NOTICES_PER_TICKET_PER_HOUR);
+    for (const notice of held) expect(notice.not_sent_reason).toBe(NOT_SENT_REASONS.tooMany);
+  });
+
+  it("sends again once the hour has passed, and never holds back a few honest replies", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-18T09:00:00.000Z"));
+    const { app, db } = await ownedTicket();
+    await replies(2, app, db);
+    expect(ownerReplies(db).map((n) => n.state)).toEqual(["pending", "pending"]);
+    await replies(NOTICES_PER_TICKET_PER_HOUR - 1, app, db);
+    expect(ownerReplies(db).at(-1)!.state).toBe("not_sent");
+    vi.setSystemTime(new Date("2026-11-18T10:01:00.000Z"));
+    await replies(1, app, db);
+    expect(ownerReplies(db).at(-1)!.state).toBe("pending");
   });
 });

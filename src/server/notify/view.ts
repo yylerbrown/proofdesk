@@ -11,6 +11,8 @@ const NOT_SENT_WORDS = new Map<string, string>([
   [NOT_SENT_REASONS.noMailServer, "Not sent: no mail server is set up on this site"],
   [NOT_SENT_REASONS.madeUp, "Not sent: this person is made up and has no address"],
   [NOT_SENT_REASONS.unverified, "Not sent: the address is not verified"],
+  [NOT_SENT_REASONS.switchedOff, "Not sent: they switched off email about their tickets"],
+  [NOT_SENT_REASONS.tooMany, "Not sent: too many notices about this ticket in an hour"],
 ]);
 
 const COUNT_WORDS = ["no", "one", "two", "three", "four", "five"];
