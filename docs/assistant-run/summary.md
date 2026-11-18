@@ -10,8 +10,17 @@
 2. Nothing else. SUP-4 was already owned by Demo Team Member and In Progress from the seed, and handed to every demo connection; the connection's `list_tickets` returned SUP-4 alone.
 
 ## How it was run
-From a new empty folder with a clean environment (HOME, PATH, USER, LANG and the key only):
-`claude -p --model opus --setting-sources project --no-session-persistence --mcp-config mcp-config.json --strict-mcp-config --settings '<sandbox on>' --allowedTools "mcp__proofdesk" "Write(./**)" "Edit(./**)" "Read(./**)" "Bash(node *)" --output-format stream-json --verbose "<prompt>"` (exact text in `run-command.sh`).
+From a new empty folder with a clean environment (HOME, PATH, USER, LANG and the key only), the key read from a private file into `PROOFDESK_KEY`, this exact command:
+
+```sh
+claude -p --model opus --setting-sources project --no-session-persistence \
+  --mcp-config mcp-config.json --strict-mcp-config \
+  --settings '{"sandbox":{"enabled":true,"autoAllowBashIfSandboxed":false,"allowUnsandboxedCommands":false},"permissions":{"deny":["Read(~/**)"]}}' \
+  --allowedTools "mcp__proofdesk" "Write(./**)" "Edit(./**)" "Read(./**)" "Bash(node *)" \
+  --output-format stream-json --verbose \
+  "Using Proofdesk, find the ticket that is ready for an assistant, read what the customer needs, actually do the check it describes as far as you can from here, attach what you found as evidence, propose a short test spec, and ask the owner to review. Do not claim anything you did not observe." \
+  < /dev/null
+```
 - File tools limited to the folder; only `node` commands allowed.
 - Claude Code's own sandbox switched on: no writes outside the folder, home folder unreadable, no network. Probes confirmed `curl`, `rm` and compound commands were refused.
 - The opening event shows one server and the nine Proofdesk tools the connection's scopes allow. One run, no coaching, no edits, no reruns.
