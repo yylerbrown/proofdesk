@@ -37,6 +37,8 @@
 <% } else if (specPanel.offerPrompt) { %>
 <div class="spec-prompt">
   <p><small>Want better results? Ask your assistant to spec this ticket. <a href="<%= specPanel.connectUrl %>">Connect your assistant</a></small></p>
-  <pre class="paste"><code>Using Proofdesk, write a test spec for <%= specPanel.key %></code></pre>
+  <% const specPrompt = `Using Proofdesk, write a test spec for ${specPanel.key}`; %>
+  <pre class="paste"><code><%= specPrompt %></code></pre>
+  <button type="button" class="copy secondary" data-copy="<%= specPrompt %>" hidden>Copy</button>
 </div>
 <% } %>
