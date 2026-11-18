@@ -14,7 +14,7 @@ describe("the name", () => {
   it("is Proofdesk in the header and in every page title", async () => {
     const { app } = buildTestApp();
     for (const address of ["/tickets", "/tickets/new"]) {
-      const html = parse((await admin(app).get(address)).text);
+      const html = parse((await admin(app).get(address).redirects(1)).text);
       expect(html.querySelector("header .brand")?.text.trim()).toBe("Proofdesk");
       expect(html.querySelector("title")?.text).toMatch(/ - Proofdesk$/);
     }

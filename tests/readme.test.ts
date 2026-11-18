@@ -64,7 +64,7 @@ describe("the README's rubric list", () => {
     const team = (path: string) => as("demo-team").post(`/api/tickets/${key}${path}`);
     const pages = [
       await visitor(demo.app).get("/sign-in"),
-      await as("demo-customer").get("/tickets/new?try=1"),
+      await as("demo-customer").get("/tickets/new?try=1").redirects(1),
       await as("demo-team").get("/tickets"),
       await as("demo-team").get(`/tickets/${key}`),
     ];

@@ -65,7 +65,9 @@ describe("the demo's welcome", () => {
     const html = parse((await visitor(app).get("/sign-in")).text);
     const started = await switchRole(app, "", html.querySelector("form.try-workflow")!);
     expect(started).toMatchObject({ status: 303, to: "/tickets/new?try=1", as: "demo-customer" });
-    const form = parse((await asDemo(app, "demo-customer").get("/tickets/new?try=1")).text);
+    const form = parse(
+      (await asDemo(app, "demo-customer").get("/tickets/new?try=1").redirects(1)).text,
+    );
     expect(form.querySelector("input[name=title]")?.getAttribute("value")).toBe(
       "The export button downloads an empty file",
     );
@@ -74,7 +76,7 @@ describe("the demo's welcome", () => {
 
   it("fills nothing in outside the demo", async () => {
     const { app } = buildTestApp();
-    const form = parse((await as(app, customerOne).get("/tickets/new?try=1")).text);
+    const form = parse((await as(app, customerOne).get("/tickets/new?try=1").redirects(1)).text);
     expect(form.querySelector("input[name=title]")?.getAttribute("value")).toBe("");
   });
 });
