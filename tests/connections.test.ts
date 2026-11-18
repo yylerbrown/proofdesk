@@ -39,7 +39,10 @@ describe("issuing a connection", () => {
     expect(list.text).toContain(`pd_${key.split("_")[1]}`);
     const rows = JSON.stringify(db.prepare("SELECT * FROM agent_connections").all());
     expect(rows).not.toContain(key);
-    expect(rows).not.toContain(key.split("_")[2]);
+    // The secret part follows "pd_" and the 8-character prefix. It may itself contain "_".
+    const secret = key.slice("pd_12345678_".length);
+    expect(secret).toHaveLength(32);
+    expect(rows).not.toContain(secret);
   });
 
   it("is for an admin only", async () => {
