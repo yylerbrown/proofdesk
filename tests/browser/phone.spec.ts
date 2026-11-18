@@ -5,7 +5,8 @@ import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 
 // The demo on a phone, measured in a real browser: the small controls are 44-pixel tap targets,
-// the assistant invite's links do not overlap, a select in the ticket's side panel stays inside
+// the role menu's chevron sits by its label, each ticket row stacks its title under the key and
+// status, the assistant invite's links do not overlap, a select in the ticket's side panel stays inside
 // its card, nothing scrolls sideways, and the demo strip fits its lines. The demo strip, the
 // invite and the role menu only exist when the server runs as the demo, so this file starts a
 // copy of the app with DEMO=on on its own port, and stops it at the end.
@@ -130,6 +131,62 @@ test("on a phone the small controls are 44-pixel tap targets", async ({ page }) 
     await expectTapTargets(page, ".back a");
     await expectTapTargets(page, 'fieldset:has(input[value="note"]) label');
   });
+
+  await test.step("small links among a form's controls: add details first, and Cancel", async () => {
+    await expectTapTargets(page, ".ticket-panel .status-rule a");
+    await page.goto("/tickets/new");
+    await expectTapTargets(page, ".form-actions > a");
+  });
+});
+
+test("on a phone the Switch role chevron sits right after its label", async ({ page }) => {
+  await signInAsTeam(page);
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/tickets");
+    // The chevron is drawn after the summary's words. Floated, it sits at the row's far end.
+    const chevron = await page
+      .locator("details.switch-role > summary")
+      .evaluate((summary) => getComputedStyle(summary, "::after").float);
+    expect(chevron, `at ${width}px`).toBe("none");
+  }
+});
+
+test("on a phone each ticket row puts the key and status on one line over the title", async ({
+  page,
+}) => {
+  await signInAsTeam(page);
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/tickets");
+    const rows = await page.locator("table.tickets tbody tr").evaluateAll((all) =>
+      all.map((row) => {
+        const [key, title, status] = [...row.querySelectorAll("td")].map((cell) =>
+          cell.getBoundingClientRect(),
+        );
+        const box = row.getBoundingClientRect();
+        return {
+          sameLine: Math.abs(key!.top - status!.top) < 4,
+          titleBelow: title!.top >= key!.bottom - 1,
+          titleShare: title!.width / box.width,
+        };
+      }),
+    );
+    expect(rows.length, `at ${width}px`).toBeGreaterThan(0);
+    for (const row of rows) {
+      expect(row.sameLine, `at ${width}px`).toBe(true);
+      expect(row.titleBelow, `at ${width}px`).toBe(true);
+      expect(row.titleShare, `at ${width}px`).toBeGreaterThan(0.85);
+    }
+    // The header row is not drawn, but a screen reader still has the column names.
+    await expect(page.getByRole("columnheader", { name: "Title" })).toHaveCount(1);
+    const headerHeight = await page
+      .locator("table.tickets thead")
+      .evaluate((head) => head.getBoundingClientRect().height);
+    expect(headerHeight).toBeLessThanOrEqual(1);
+  }
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect(page.getByRole("columnheader", { name: "Title" })).toBeVisible();
 });
 
 test("a select in the ticket's side panel stays inside its card", async ({ page }) => {

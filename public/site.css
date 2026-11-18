@@ -276,9 +276,19 @@ body > header.site-header {
     height: var(--pd-demo-strip-h);
     padding-block: 0;
   }
-  /* A link to a part of the page lands below the header, not under it. */
-  [id] {
-    scroll-margin-top: calc(var(--pd-header-h) + var(--pd-space-4));
+  /*
+   * Whatever the page scrolls to, a link to a part of the page or a control reached with Tab or
+   * Shift+Tab, lands below the header with a little room, never under it.
+   */
+  html {
+    --pd-header-stuck: var(--pd-header-h);
+    scroll-padding-top: calc(var(--pd-header-stuck) + var(--pd-space-4));
+  }
+}
+/* Up to 899px wide, who is signed in can wrap to a second row, so the header can be taller. */
+@media (min-width: 640px) and (max-width: 899px) {
+  html {
+    --pd-header-stuck: calc(var(--pd-header-h) + var(--pd-space-4));
   }
 }
 .site-header nav {
@@ -496,6 +506,14 @@ header nav .viewer strong {
     border-left: 0;
     text-decoration: underline;
     text-decoration-color: var(--pd-border-strong);
+  }
+  /* The chevron sits right after "Switch role", not at the far end of the wide row. */
+  .site-header details.dropdown.switch-role > summary::after {
+    display: inline-block;
+    float: none;
+    height: 1rem;
+    margin-inline-start: var(--pd-space-1);
+    vertical-align: -0.15em;
   }
 }
 /* The brand already goes to the list, so the Tickets link can go on the smallest phones. */
@@ -1727,6 +1745,13 @@ p.saved {
   font-size: var(--pd-text-sm);
   font-weight: var(--pd-weight-medium);
 }
+/*
+ * The page puts focus on the saved or refused line when it opens, so a screen reader reads it.
+ * The line is words, not a control, so it draws no focus ring.
+ */
+main > p:is([role="status"], [role="alert"])[tabindex="-1"]:focus {
+  outline: none;
+}
 
 /* ---------- The welcome page ---------- */
 
@@ -2104,6 +2129,17 @@ button.copy {
     align-items: center;
     min-height: 44px;
   }
+  /*
+   * Small links among a form's controls, such as Cancel beside "File ticket" and "add details
+   * first" under the status: invisible padding makes each a 44-pixel tap area, and the negative
+   * margin keeps the words and the lines around them where they were.
+   */
+  .form-actions > a,
+  .ticket-panel .status-rule a {
+    display: inline-block;
+    margin-block: -14px;
+    padding-block: 14px;
+  }
 }
 .spec-prompt pre {
   margin-bottom: var(--pd-space-3);
@@ -2163,6 +2199,13 @@ details.more {
   border-radius: var(--pd-radius-lg);
   background: var(--pd-surface);
   box-shadow: var(--pd-shadow);
+  /* When the menus script scrolls the menu into view, its shadow shows under it too. */
+  scroll-margin-bottom: var(--pd-space-4);
+}
+/* With no room under More, the menus script opens the menu upward, above the button. */
+.more-menu.opens-up {
+  top: auto;
+  bottom: calc(100% + 6px);
 }
 .more-menu form {
   margin: 0;
@@ -2405,4 +2448,51 @@ ol.first-steps {
 }
 ol.first-steps li {
   margin-bottom: var(--pd-space-2);
+}
+
+/*
+ * The ticket list on a phone: each row stacks. The key and the status share one small line and
+ * the title takes the full width under them, so a long title reads in two or three lines instead
+ * of five. The markup stays a table, so a screen reader still reads rows, cells and the column
+ * names; the header row is kept for it but not drawn, as the columns no longer line up.
+ */
+@media (max-width: 639px) {
+  table.tickets thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  table.tickets tbody tr {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: baseline;
+    gap: 2px var(--pd-space-3);
+    padding: 10px var(--pd-space-3);
+    border-bottom: var(--pd-hairline);
+  }
+  table.tickets tbody tr:last-child {
+    border-bottom: 0;
+  }
+  table.tickets tbody td,
+  .overflow-auto table.tickets tbody td:first-child,
+  table.tickets tbody td:nth-child(3) {
+    height: auto;
+    padding: 0;
+    border-bottom: 0;
+    font-size: var(--pd-text-sm);
+    text-align: left;
+  }
+  table.tickets tbody td.title-cell {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    font-size: var(--pd-text-md);
+    line-height: 1.35;
+  }
+  table.tickets tbody .resolution-label {
+    display: inline;
+    margin-left: var(--pd-space-2);
+  }
 }
