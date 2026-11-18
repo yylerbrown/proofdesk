@@ -23,6 +23,8 @@ import { checkDatabasePurpose } from "./purpose.js";
 import { sameOriginOnly } from "./same-origin.js";
 import { ticketsRouter } from "./routes/tickets.js";
 import { createTicketService, DEMO_BUDGET } from "./tickets/service.js";
+import { createConnectionService } from "./connections/service.js";
+import { connectionsRouter } from "./routes/connections.js";
 
 // The top folder of the project. It is two levels above this file, both in src/server (when
 // run from source) and in dist/server (when run after a build).
@@ -56,6 +58,7 @@ export function createApp(config: Config, db: Db): Express {
   // The demo has a hard budget of rows, so rate limits are not the only thing that stops it
   // growing. Real tickets have none.
   const tickets = createTicketService(db, config.ticketPrefix, config.demo ? DEMO_BUDGET : {});
+  const connections = createConnectionService(db);
 
   // Security headers on every answer. The content security policy lets a page load scripts
   // and styles only from this server, so a script written into a page cannot run.
@@ -136,13 +139,14 @@ export function createApp(config: Config, db: Db): Express {
 
   app.use(cookieParser());
 
-  // Decides who is acting. It is used twice below, once for the API and once for the
-  // pages, so that a failure inside it is answered in the right format for each.
+  // Decides who is acting on a page. The API has its own copy, which also accepts an
+  // agent's connection key, so that a failure inside each is answered in its own format.
   const actor = actorMiddleware(config, auth, db);
 
   // The JSON API. Its own handlers at the end turn every error inside it into JSON.
   const api = express.Router();
-  api.use(actor);
+  // The API also accepts an agent's connection key. The pages below do not.
+  api.use(actorMiddleware(config, auth, db, connections));
   api.use(sameOriginOnly(config));
   api.use(writeLimit);
   api.post("/tickets", filingLimit);
@@ -172,6 +176,7 @@ export function createApp(config: Config, db: Db): Express {
   app.use(express.urlencoded({ extended: false, limit: BODY_LIMIT }));
   app.use(signInRouter(config, auth));
   app.use(pagesRouter(tickets));
+  app.use(connectionsRouter(connections, config));
   app.use(pageNotFoundHandler);
   app.use(pageErrorHandler);
 

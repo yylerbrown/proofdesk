@@ -1,0 +1,16 @@
+<%- include("header") %>
+<h1>Connection issued</h1>
+<p><strong>Copy the key now.</strong> It is shown only on this page. If it is lost, revoke the connection and issue a new one.</p>
+
+<p>It may: <%= connection.scopes.map((s) => scopeLabels[s]).join("; ") %>.</p>
+
+<label>
+  Key for <span class="user-text"><%= connection.name %></span>
+  <input type="text" readonly value="<%= key %>" class="key" />
+</label>
+
+<p>An assistant that can run commands can call the API with it, for example:</p>
+<pre class="paste"><code>curl -H "Authorization: Bearer <%= key %>" <%= address %>/api/tickets?status=new</code></pre>
+
+<p><a href="/connections">Back to connections</a></p>
+<%- include("footer") %>

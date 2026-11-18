@@ -83,6 +83,7 @@ describe("confirmedAt", () => {
     type: "customer_answered",
     data: { fixed },
     created_at: at,
+    context: null,
   });
 
   it("counts only the latest answer, and only a yes", () => {

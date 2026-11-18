@@ -55,6 +55,8 @@ export type TicketEvent = {
   type: string;
   data: unknown;
   created_at: string;
+  /** For an agent's action: the connection, who issued it, its scopes and the ticket's owner. */
+  context: unknown;
 };
 
 /** One entry of the conversation on a ticket, as callers see it. */
@@ -121,6 +123,20 @@ function pinPrefix(db: Db, prefix: string): void {
   }
 }
 
+/**
+ * What an agent's history entry records beside its id: which connection, who issued it, and
+ * the scopes it held at that moment. Null for a person.
+ */
+function agentContext(actor: Actor): object | null {
+  if (actor.kind !== "agent" || actor.connection === undefined) return null;
+  return {
+    connection_id: actor.connection.id,
+    connection_name: actor.connection.name,
+    issued_by: actor.connection.issuedBy,
+    scopes: actor.scopes ?? [],
+  };
+}
+
 export function createTicketService(db: Db, prefix: string, budget: Budget = {}) {
   pinPrefix(db, prefix);
 
@@ -158,6 +174,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
       type: row.type,
       data: JSON.parse(row.data),
       created_at: row.created_at,
+      context: row.actor_context === null ? null : JSON.parse(row.actor_context),
     };
   }
 
@@ -221,6 +238,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
       ticketId: before.id,
       actor: actor.id,
       actorKind: actor.kind,
+      context: agentContext(actor),
       type: "owner_changed",
       data: { from: before.owner_name, to: ownerName },
       now,
@@ -250,7 +268,11 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
       budget.eventsPerTicket,
       "changes to this ticket",
     );
-    repository.insertEvent(db, event);
+    // An agent's action also records the ticket's human owner at that moment.
+    const context = event.context
+      ? { ...event.context, ticket_owner: repository.ownerOf(db, event.ticketId) }
+      : null;
+    repository.insertEvent(db, { ...event, context });
   }
 
   /** Throws 409 when the ticket is archived. Used before any change to its content. */
@@ -280,6 +302,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
           ticketId: id,
           actor: actor.id,
           actorKind: actor.kind,
+          context: agentContext(actor),
           type: "created",
           data: { status: "new" },
           now,
@@ -337,6 +360,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
           ticketId: before.id,
           actor: actor.id,
           actorKind: actor.kind,
+          context: agentContext(actor),
           type: "status_changed",
           data: { from: before.status, to: status },
           now,
@@ -387,6 +411,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
           ticketId: before.id,
           actor: actor.id,
           actorKind: actor.kind,
+          context: agentContext(actor),
           type: "edited",
           data: { changes },
           now,
@@ -417,6 +442,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
           ticketId: before.id,
           actor: actor.id,
           actorKind: actor.kind,
+          context: agentContext(actor),
           type: "check_agreed",
           data: { from: before.agreed_check, to: agreed },
           now,
@@ -441,6 +467,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
           ticketId: before.id,
           actor: actor.id,
           actorKind: actor.kind,
+          context: agentContext(actor),
           type: "change_linked",
           data: { from: before.change_url, to: change_url },
           now,
@@ -476,6 +503,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
           ticketId: before.id,
           actor: actor.id,
           actorKind: actor.kind,
+          context: agentContext(actor),
           type: "ready_for_customer",
           data: { try_url },
           now,
@@ -530,6 +558,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
           ticketId: before.id,
           actor: actor.id,
           actorKind: actor.kind,
+          context: agentContext(actor),
           type: "customer_answered",
           data: { fixed: fixed === "yes" },
           now,
@@ -583,6 +612,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
           ticketId: before.id,
           actor: actor.id,
           actorKind: actor.kind,
+          context: agentContext(actor),
           type: "archived",
           data: {},
           now,
@@ -604,6 +634,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
           ticketId: before.id,
           actor: actor.id,
           actorKind: actor.kind,
+          context: agentContext(actor),
           type: "restored",
           data: {},
           now,
@@ -664,6 +695,7 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
           ticketId: ticket.id,
           actor: actor.id,
           actorKind: actor.kind,
+          context: agentContext(actor),
           type: entry.kind === "note" ? "note_added" : "reply_added",
           data: {},
           now,

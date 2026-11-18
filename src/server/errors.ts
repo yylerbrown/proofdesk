@@ -38,8 +38,11 @@ type ShownError = {
 const HINTS: Record<string, string> = {
   validation_error: "Fix the fields named in `fields` and send again.",
   invalid_key: "Ticket keys look like SUP-42. Check the key and send again.",
-  not_signed_in: "Sign in first. GET /api says how.",
-  cross_site_request: "Send the request from this site, or from a program with no browser origin.",
+  not_signed_in: "Sign in first. A program sends a connection key: Authorization: Bearer <key>.",
+  invalid_connection_key:
+    "The key is wrong, revoked or expired. Keys are shown once: ask an admin to revoke this connection and issue a new one.",
+  cross_site_request:
+    "Send the request from a page on this site. A program signs in with a connection key instead.",
   forbidden: "Your role may not do this. GET /api lists who may call each action.",
   not_found: "Check the address. GET /api lists every action.",
   ticket_not_found: "Check the key. GET /api/tickets lists the tickets you may see.",
