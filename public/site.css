@@ -1954,6 +1954,15 @@ details.more {
 .ticket-panel details.more > summary::after {
   display: none;
 }
+/*
+ * The phone fixes at the end of this file make More a 44px tap target. From tablet width up it
+ * matches the 32px buttons beside it instead; on a phone the 44px stands.
+ */
+@media (min-width: 640px) {
+  .ticket-panel details.more > summary:not([role]) {
+    min-height: 0;
+  }
+}
 .ticket-panel details.more[open] > summary,
 .ticket-panel details.more > summary:hover {
   background: var(--pd-subtle);
