@@ -13,21 +13,26 @@
 
 /* ---------- 1. Base ---------- */
 
+/* Inter drawn thin and sharp, as on a native app, rather than the browser's heavier default. */
 body {
   letter-spacing: -0.009em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
+/* One frame for every page: the header and the content share its edges at every width. */
 .container {
   width: 100%;
   max-width: calc(var(--pd-page) + 2 * var(--pd-gutter));
   padding-inline: var(--pd-gutter);
 }
-@media (min-width: 768px) {
-  :root {
-    --pd-gutter: 32px;
-  }
-}
 main.container {
   padding-block: var(--pd-space-6) var(--pd-space-8);
+}
+@media (min-width: 1280px) {
+  main.container {
+    padding-top: 40px;
+  }
 }
 /* Long words and links anywhere in the page wrap instead of widening it. */
 main {
@@ -45,18 +50,27 @@ h6 {
 }
 h1 {
   --pico-font-size: var(--pd-text-xl);
-  --pico-line-height: 1.3;
-  letter-spacing: -0.018em;
+  --pico-line-height: 1.25;
+  letter-spacing: -0.021em;
 }
 h2 {
   --pico-font-size: var(--pd-text-lg);
-  --pico-line-height: 1.45;
-  letter-spacing: -0.013em;
+  --pico-line-height: 1.4;
+  letter-spacing: -0.014em;
 }
 h3,
 h4 {
   --pico-font-size: var(--pd-text-md);
   --pico-line-height: 1.45;
+  letter-spacing: -0.011em;
+}
+/* Links: text-coloured, with a thin underline set a little below the letters. */
+a {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+  transition:
+    color var(--pd-ease),
+    text-decoration-color var(--pd-ease);
 }
 b,
 strong {
@@ -67,10 +81,19 @@ small {
   font-size: var(--pd-text-sm);
   letter-spacing: -0.003em;
 }
+/*
+ * Times line up in their columns. Only times: Inter's tabular setting also widens the hyphen, so
+ * a key such as SUP-12 keeps the ordinary spacing.
+ */
 time,
-table td:first-child {
+details.history > summary {
   font-variant-numeric: tabular-nums;
 }
+/*
+ * Code: the system monospace a step smaller than the words around it. Inline code sits on a
+ * hairline chip; a block is one quiet panel, its padding set once (Pico pads both the block and
+ * the code inside it).
+ */
 code,
 kbd,
 pre {
@@ -79,22 +102,54 @@ pre {
   font-size: var(--pd-text-sm);
   border-radius: var(--pd-radius-sm);
 }
+:not(pre) > code,
+kbd {
+  padding: 1px 5px;
+  border: var(--pd-hairline);
+  background: var(--pd-subtle);
+  color: var(--pd-text);
+  font-size: 0.86em;
+  letter-spacing: 0;
+}
+pre {
+  margin-bottom: var(--pd-space-4);
+  padding: var(--pd-space-3) 14px;
+  border: var(--pd-hairline);
+  border-radius: var(--pd-radius);
+  background: var(--pd-subtle);
+  font-size: var(--pd-text-xs);
+  line-height: 1.6;
+  letter-spacing: 0;
+}
+pre > code {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: inherit;
+}
 /* The page title and the line under it: the key, the status and when it was filed. */
 hgroup {
   margin-bottom: var(--pd-space-5);
 }
 hgroup > h1 {
-  margin-bottom: var(--pd-space-1);
+  margin-bottom: 6px;
 }
 /* Pico sizes the last line of an hgroup itself, so this names it the same way to win. */
 hgroup > p:not(:first-child):last-child {
   color: var(--pd-muted);
   font-size: var(--pd-text-sm);
 }
+/* In the meta line the status keeps a little air on each side of its dot. */
+.meta .badge {
+  margin-inline: 2px 1px;
+  vertical-align: -1px;
+}
+/* A quotation of someone's words: set off by a short grey rule, not a box. */
 blockquote {
   margin: 0 0 var(--pd-space-4);
-  padding: 0;
+  padding: 0 0 0 var(--pd-space-3);
   border: 0;
+  border-left: 2px solid var(--pd-border);
   font-style: normal;
 }
 /* Quiet narrow columns for pages with one job: forms, confirmations, errors. */
@@ -108,11 +163,37 @@ main > form,
 .column-wide {
   max-width: 720px;
 }
-/* A plain notice: the words, on the subtle grey, without a highlighter. */
-.notice {
-  padding: var(--pd-space-2) var(--pd-space-3);
+/* A plain notice: the words, on the subtle grey with a hairline, without a highlighter. */
+.notice,
+.recorded-run {
+  padding: 10px 14px;
+  border: var(--pd-hairline);
   border-radius: var(--pd-radius);
   background: var(--pd-subtle);
+  font-size: var(--pd-text-sm);
+}
+/* Small explanations under a title or beside a control: muted, never body-black. */
+.list-note,
+.role-note,
+.status-rule,
+.agent-help,
+.initial-status,
+.try-steps,
+.real-site {
+  color: var(--pd-muted);
+  font-size: var(--pd-text-sm);
+}
+.list-note,
+.role-note {
+  max-width: var(--pd-measure);
+  margin-bottom: var(--pd-space-5);
+}
+hgroup + .list-note,
+h1 + .list-note {
+  margin-top: calc(-1 * var(--pd-space-2));
+}
+.list-note:has(+ .role-note) {
+  margin-bottom: var(--pd-space-2);
 }
 /* "Back to all tickets", and the breadcrumb of the form pages: small and muted. */
 .back,
@@ -148,11 +229,28 @@ nav[aria-label="breadcrumb"] ul li a {
 
 /* ---------- 2. Header ---------- */
 
-/* A light bar with one hairline under it. "New ticket" is its only filled button. */
+/*
+ * A light bar with one hairline under it. "New ticket" is its only filled button. From tablet
+ * width up it stays at the top while the page scrolls under it, slightly see-through.
+ */
 body > header.site-header {
   padding-block: 0;
   border-bottom: var(--pd-hairline);
   background: var(--pd-bg);
+}
+@media (min-width: 640px) {
+  body > header.site-header {
+    position: sticky;
+    z-index: 30;
+    top: 0;
+    background: var(--pd-header-bg);
+    -webkit-backdrop-filter: saturate(180%) blur(12px);
+    backdrop-filter: saturate(180%) blur(12px);
+  }
+  /* A link to a part of the page lands below the header, not under it. */
+  [id] {
+    scroll-margin-top: calc(var(--pd-header-h) + var(--pd-space-4));
+  }
 }
 .site-header nav {
   flex-wrap: wrap;
@@ -171,23 +269,40 @@ body > header.site-header {
 .site-header nav li {
   padding: 0;
 }
+/* Header links: muted words on a soft grey pill when the pointer is over them. */
 .site-header nav li :where(a, [role="link"]):not([role="button"]) {
   margin: 0;
-  padding: var(--pd-space-1) 0;
+  padding: 6px 10px;
+  border-radius: var(--pd-radius);
   color: var(--pd-muted);
   font-size: var(--pd-text-sm);
   font-weight: var(--pd-weight-medium);
+  text-decoration: none;
+  transition:
+    background-color var(--pd-ease),
+    color var(--pd-ease);
 }
 .site-header nav li :where(a, [role="link"]):not([role="button"]):hover {
+  background-color: var(--pd-subtle);
   color: var(--pd-text);
 }
-.site-header nav li a.brand {
+.site-header nav ul.links {
+  gap: var(--pd-space-1);
+}
+.site-header nav ul.links > li:last-child {
+  margin-left: var(--pd-space-2);
+}
+/* The brand sits exactly on the content edge, so it has no pill. */
+.site-header nav li a.brand,
+.site-header nav li a.brand:hover {
   display: inline-flex;
   align-items: center;
-  gap: var(--pd-space-2);
+  gap: 10px;
+  padding-inline: 0;
+  background: none;
   color: var(--pd-text);
   font-size: var(--pd-text-md);
-  letter-spacing: -0.009em;
+  letter-spacing: -0.015em;
   text-decoration: none;
 }
 .site-header .brand img {
@@ -200,6 +315,9 @@ body > header.site-header {
 .site-header nav li [role="button"] {
   margin: 0;
   padding: 6px 12px;
+}
+.site-header nav ul.account {
+  gap: var(--pd-space-1);
 }
 header nav .viewer {
   color: var(--pd-muted);
@@ -219,8 +337,56 @@ header nav .viewer strong {
 .sign-out {
   margin: 0;
 }
+/* Sign out: a header link like the others, its words on the content's right edge. */
 .site-header .sign-out button {
+  margin: 0 -10px 0 0;
+  padding: 6px 10px;
+  border-radius: var(--pd-radius);
+}
+.site-header .sign-out button:is(:hover, :active) {
+  background-color: var(--pd-subtle);
+  text-decoration: none;
+}
+/*
+ * Who is signed in, on the demo: Pico draws its dropdown as a form field. Here it is a quiet
+ * header control instead, a pill on hover, with Pico's small chevron after it.
+ */
+.site-header details.dropdown.switch-role > summary:not([role]) {
+  height: auto;
+  padding: 6px 10px;
+  border-color: transparent;
+  background-color: transparent;
+  color: var(--pd-muted);
+  line-height: 1.45;
+}
+.site-header details.dropdown.switch-role > summary:not([role]):is(:hover, :focus) {
+  border-color: transparent;
+  background-color: var(--pd-subtle);
+  box-shadow: none;
+}
+.site-header details.dropdown.switch-role[open] > summary:not([role]) {
+  background-color: var(--pd-subtle);
+}
+.site-header details.dropdown.switch-role > summary:not([role]):focus-visible {
+  outline: 2px solid var(--pd-focus);
+  outline-offset: 2px;
+}
+.switch-role > summary::after {
+  opacity: 0.8;
+}
+/* Its menu: a small popover, the one kind of thing that floats. */
+.site-header details.dropdown.switch-role > summary + ul {
+  min-width: 100%;
+  margin-top: 6px;
+  padding: var(--pd-space-1);
+  border: var(--pd-hairline);
+  border-radius: var(--pd-radius-lg);
+  background: var(--pd-surface);
+  box-shadow: var(--pd-shadow);
+}
+.site-header details.dropdown.switch-role > summary + ul li {
   margin: 0;
+  padding: 0;
 }
 /* On a phone: the brand and New ticket on the first row, who is signed in on a second. */
 @media (max-width: 639px) {
@@ -268,6 +434,21 @@ header nav .viewer strong {
     white-space: normal;
     line-height: 1.4;
   }
+  /* On the content's left edge, like the brand above it; Switch role may start a second line. */
+  .site-header details.dropdown.switch-role > summary:not([role]) {
+    margin-left: 0;
+    padding-inline: 0 4px;
+  }
+  .site-header details.dropdown.switch-role > summary:not([role]):is(:hover, :focus) {
+    background-color: transparent;
+  }
+  .site-header .switch-role .switch-label {
+    margin-left: var(--pd-space-1);
+    padding-left: 0;
+    border-left: 0;
+    text-decoration: underline;
+    text-decoration-color: var(--pd-border-strong);
+  }
 }
 /* The brand already goes to the list, so the Tickets link can go on the smallest phones. */
 @media (max-width: 419px) {
@@ -278,14 +459,30 @@ header nav .viewer strong {
 
 /* ---------- 3. Demo strip ---------- */
 
+/* A slim band above the header: a small dot, then the words, with a hairline under it. */
 .demo-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--pd-space-2);
   margin: 0;
-  padding: 6px var(--pd-gutter);
+  padding: 5px var(--pd-gutter);
+  border-bottom: var(--pd-hairline);
   background: var(--pd-subtle);
   color: var(--pd-muted);
   font-size: var(--pd-text-xs);
-  letter-spacing: 0;
+  font-weight: var(--pd-weight-medium);
+  line-height: 1.5;
+  letter-spacing: 0.005em;
   text-align: center;
+}
+.demo-strip::before {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pd-status-archived);
+  content: "";
 }
 
 /* ---------- 4. Buttons ---------- */
@@ -297,9 +494,11 @@ header nav .viewer strong {
 button,
 button[type="submit"],
 input[type="submit"],
+[type="button"],
 [role="button"] {
   width: auto;
   padding: 6px 12px;
+  border-radius: var(--pd-radius);
   box-shadow: none;
   font-size: var(--pd-text-sm);
   font-weight: var(--pd-weight-medium);
@@ -308,12 +507,18 @@ input[type="submit"],
   transition:
     background-color var(--pd-ease),
     color var(--pd-ease),
-    border-color var(--pd-ease);
+    border-color var(--pd-ease),
+    transform var(--pd-ease);
+}
+/* Pressed: the button settles by one pixel. */
+:is(button, [type="submit"], [type="button"], [role="button"]):active:not(:disabled) {
+  transform: translateY(1px);
 }
 @media (max-width: 639px) {
   button,
   button[type="submit"],
   input[type="submit"],
+  [type="button"],
   [role="button"] {
     min-height: 40px;
   }
@@ -322,16 +527,30 @@ input[type="submit"],
     align-items: center;
   }
 }
-/* Quiet: surface fill, a hairline edge, text colour; the subtle grey on hover. */
-:is(button, [type="submit"], [role="button"]):is(.secondary, .outline) {
-  border-color: var(--pd-border);
+/* Quiet: surface fill, a light edge, text colour; the subtle grey on hover. */
+:is(button, [type="submit"], [type="button"], [role="button"]):is(.secondary, .outline) {
+  border-color: var(--pd-control-border);
   background-color: var(--pd-surface);
   color: var(--pd-text);
 }
-:is(button, [type="submit"], [role="button"]):is(.secondary, .outline):is(:hover, :active) {
-  border-color: var(--pd-border-strong);
+:is(button, [type="submit"], [type="button"], [role="button"]):is(.secondary, .outline):is(
+    :hover,
+    :active
+  ) {
+  border-color: var(--pd-control-border);
   background-color: var(--pd-subtle);
   color: var(--pd-text);
+}
+/*
+ * Not yet possible: a flat grey with muted words, at full strength, instead of Pico's half-faded
+ * black. The reason sits beside or under it (muted on subtle: 5.86).
+ */
+:is(button, [type="submit"], [type="button"], [role="button"]):is(:disabled, [disabled]) {
+  border-color: var(--pd-border);
+  background-color: var(--pd-subtle);
+  color: var(--pd-muted);
+  opacity: 1;
+  cursor: not-allowed;
 }
 /* Text button: no fill and no edge, underlined on hover. */
 :is(button, [type="submit"], [role="button"]).link {
@@ -397,10 +616,19 @@ table button.danger:is(:hover, :active) {
     min-height: 32px;
   }
 }
-/* Only "Yes, it is fixed" is large. */
+/* Only the decisive buttons are large: "Yes, resolve ticket" and "Try the ticket workflow". */
 button.large {
-  padding: 10px 18px;
+  min-height: 40px;
+  padding: 9px 18px;
+  border-radius: var(--pd-radius);
   font-size: var(--pd-text-md);
+  letter-spacing: -0.011em;
+}
+/* Its quiet partner, "No, send it back", is a normal button. */
+button.secondary.large {
+  min-height: 0;
+  padding: 6px 12px;
+  font-size: var(--pd-text-sm);
 }
 /* Keep and the destructive button side by side, each as wide as its words. */
 .choice {
@@ -428,40 +656,57 @@ form.inline {
   line-height: 1.45;
   white-space: nowrap;
 }
+/*
+ * One family of small rings, drawn the same way: a 1.5px ring, a hair of space, then the fill.
+ * New is an empty ring, In Progress half full, Resolved full, Archived a square. Tell-apart in
+ * greyscale, and never a tick.
+ */
 .badge::before {
   flex: none;
+  box-sizing: border-box;
   width: var(--pd-badge-dot);
   height: var(--pd-badge-dot);
+  padding: 1.5px;
+  border: 1.5px solid currentColor;
   border-radius: 50%;
+  background-clip: content-box;
   content: "";
 }
 .status-new::before {
-  border: 1.5px solid var(--pd-badge-new);
+  border-color: var(--pd-badge-new);
 }
 .status-in_progress::before {
-  border: 1.5px solid var(--pd-badge-in_progress);
-  background: linear-gradient(90deg, var(--pd-badge-in_progress) 50%, transparent 50%);
+  border-color: var(--pd-badge-in_progress);
+  background-image: conic-gradient(var(--pd-badge-in_progress) 0 50%, transparent 50% 100%);
 }
 .status-resolved::before {
-  background: var(--pd-badge-resolved);
+  border-color: var(--pd-badge-resolved);
+  background-color: var(--pd-badge-resolved);
 }
 .status-archived::before {
-  border-radius: 2px;
-  background: var(--pd-badge-archived);
+  border-color: var(--pd-badge-archived);
+  border-radius: 3px;
+  background-color: var(--pd-badge-archived);
 }
 
 /* ---------- 6. Filter tabs ---------- */
 
+/*
+ * A row of small segments over the list. The one being shown is a white chip, text-coloured,
+ * with an edge strong enough to read as the choice (3.29 on the page); the others are muted and
+ * get the soft grey under the pointer. The row scrolls sideways on its own if it must; the page
+ * never does.
+ */
 nav[aria-label="Filter by status"] {
   display: block;
-  margin-bottom: 0;
+  margin-bottom: var(--pd-space-3);
   overflow-x: auto;
-  border-bottom: var(--pd-hairline);
 }
 nav[aria-label="Filter by status"] ul {
   display: flex;
-  gap: 20px;
+  gap: 2px;
   margin: 0;
+  padding: 0;
   white-space: nowrap;
 }
 nav[aria-label="Filter by status"] li {
@@ -470,20 +715,26 @@ nav[aria-label="Filter by status"] li {
 nav[aria-label="Filter by status"] li a {
   display: inline-block;
   margin: 0;
-  padding: var(--pd-space-2) 0 10px;
-  border-radius: 0;
+  padding: 5px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--pd-radius);
   color: var(--pd-muted);
   font-size: var(--pd-text-sm);
   font-weight: var(--pd-weight-medium);
   text-decoration: none;
+  transition:
+    background-color var(--pd-ease),
+    color var(--pd-ease);
 }
 nav[aria-label="Filter by status"] li a:hover {
+  background-color: var(--pd-subtle);
   color: var(--pd-text);
 }
-/* The filter being shown: text colour, with a 2px ink line under it. */
-nav[aria-label="Filter by status"] a[aria-current="page"] {
+nav[aria-label="Filter by status"] a[aria-current="page"],
+nav[aria-label="Filter by status"] a[aria-current="page"]:hover {
+  border-color: var(--pd-border-strong);
+  background-color: var(--pd-surface);
   color: var(--pd-text);
-  box-shadow: inset 0 -2px 0 var(--pd-ink);
 }
 
 /* ---------- 7. Tables and list rows ---------- */
@@ -504,20 +755,43 @@ thead td {
   font-weight: var(--pd-weight-medium);
   letter-spacing: 0;
 }
-table.tickets {
+/*
+ * The ticket list and the history are each one white card: a hairline, the large radius, a
+ * header row on the page grey, rows divided by hairlines, and no line under the last row.
+ */
+.overflow-auto:has(> table.tickets),
+details.history > .overflow-auto {
+  border: var(--pd-hairline);
+  border-radius: var(--pd-radius-lg);
+  background: var(--pd-surface);
+}
+.overflow-auto:has(> table.tickets) {
   margin-bottom: var(--pd-space-4);
 }
+:is(table.tickets, details.history table) {
+  margin: 0;
+}
+:is(table.tickets, details.history table) thead th {
+  padding-block: 9px;
+  background-color: var(--pd-bg);
+}
+:is(table.tickets, details.history table) tbody tr:last-child td {
+  border-bottom: 0;
+}
+:is(table.tickets, details.history table) :is(th, td):first-child {
+  padding-left: var(--pd-space-4);
+}
+:is(table.tickets, details.history table) :is(th, td):last-child {
+  padding-right: var(--pd-space-4);
+}
 table.tickets td {
+  height: 46px;
+  padding-block: 10px;
   color: var(--pd-muted);
   vertical-align: middle;
 }
-table.tickets th:first-child,
-table.tickets td:first-child {
-  padding-left: 0;
-}
 table.tickets th:last-child,
 table.tickets td:last-child {
-  padding-right: 0;
   text-align: right;
 }
 /* In the list only the title wraps; the key and the status stay on one line. */
@@ -529,10 +803,12 @@ table.tickets td.user-text {
   color: var(--pd-text);
   font-size: var(--pd-text-md);
   font-weight: var(--pd-weight-medium);
+  letter-spacing: -0.011em;
   white-space: pre-wrap;
 }
 table.tickets td:first-child a {
   color: var(--pd-muted);
+  font-weight: var(--pd-weight-medium);
   text-decoration: none;
 }
 table.tickets td:first-child a:hover {
@@ -584,6 +860,39 @@ table.tickets td.row-actions > * + * {
     white-space: nowrap;
   }
 }
+/*
+ * Wide windows: every column but the title has a set width, so the columns hold their places
+ * instead of drifting apart, and the title takes what is left. Who it waits on may wrap to a
+ * second line rather than be cut off.
+ */
+@media (min-width: 1100px) {
+  table.tickets {
+    table-layout: fixed;
+  }
+  table.tickets th:nth-child(1) {
+    width: 6.5rem;
+  }
+  table.tickets th:nth-child(3) {
+    width: 9rem;
+  }
+  table.tickets th:nth-child(4) {
+    width: 11.5rem;
+  }
+  table.tickets th:nth-child(5) {
+    width: 14rem;
+  }
+  table.tickets th:nth-child(6) {
+    width: 9rem;
+  }
+  table.tickets td:nth-child(4) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  table.tickets td:nth-child(5) {
+    line-height: 1.35;
+    white-space: normal;
+  }
+}
 /* On a phone: key, title and status. Owner, waiting and filed are on the ticket page. */
 @media (max-width: 639px) {
   table.tickets th:nth-child(n + 4):not(.row-actions),
@@ -592,11 +901,15 @@ table.tickets td.row-actions > * + * {
   }
   table.tickets th:nth-child(3),
   table.tickets td:nth-child(3) {
-    padding-right: 0;
+    padding-right: var(--pd-space-3);
     text-align: right;
+  }
+  .overflow-auto table.tickets :is(th, td):first-child {
+    padding-left: var(--pd-space-3);
   }
   table.tickets td.user-text {
     min-width: 0;
+    line-height: 1.4;
   }
   /* Row buttons wrap under each other rather than widening the row. */
   table.tickets td.row-actions {
@@ -632,13 +945,38 @@ label {
 label > :where(input, select, textarea) {
   margin-top: 6px;
 }
+/*
+ * Boxes: white, one 1px edge strong enough to find (3.44 on white), the control radius. The edge
+ * darkens under the pointer; with focus it turns blue with a soft blue halo.
+ */
 input:not([type="checkbox"], [type="radio"]),
 select,
 textarea {
   margin-bottom: 0;
+  border-radius: var(--pd-radius);
   font-size: var(--pd-text-md);
   font-weight: var(--pd-weight-regular);
   letter-spacing: -0.009em;
+  transition:
+    border-color var(--pd-ease),
+    box-shadow var(--pd-ease),
+    background-color var(--pd-ease);
+}
+textarea {
+  min-height: 5.5rem;
+  line-height: 1.55;
+  resize: vertical;
+}
+:is(input:not([type="checkbox"], [type="radio"]), select, textarea):not(
+    :focus,
+    [readonly],
+    [aria-invalid="true"]
+  ):hover {
+  border-color: var(--pd-muted);
+}
+input[readonly],
+textarea[readonly] {
+  background-color: var(--pd-subtle);
 }
 @media (max-width: 639px) {
   input:not([type="checkbox"], [type="radio"]),
@@ -662,6 +1000,20 @@ label small.hint {
   font-weight: var(--pd-weight-regular);
 }
 /*
+ * A refused field's message comes right after its label, so it is pulled up to sit 6px under the
+ * box, in red, with the usual space before the next field. Red on the page: 6.29.
+ */
+label:has(> [aria-invalid="true"]) {
+  margin-bottom: 6px;
+}
+label:has(> [aria-invalid="true"]) + small,
+label:has(> [aria-invalid="true"]) + p > small {
+  display: block;
+  margin: 0 0 20px;
+  color: var(--pd-danger);
+  font-size: var(--pd-text-sm);
+}
+/*
  * A refused box: red edge, and no icon inside it. The selector matches Pico's own, so it wins by
  * coming later; Pico's padding rule is marked important, so this one has to be too.
  */
@@ -678,12 +1030,17 @@ fieldset label {
   margin-bottom: var(--pd-space-2);
   font-weight: var(--pd-weight-regular);
 }
-/* Who sees it: one row of two choices, the legend inline before them. */
+/*
+ * Who sees it: two chips, Reply or Internal note, the legend before them, drawn like the list's
+ * filter. Each choice is still a real radio button: it covers its whole chip, invisible, so a
+ * click, a tap and the keyboard all work as before. The chosen chip is white with a grey edge (3.29);
+ * Internal note turns amber, as the note will (note text on amber: 6.43).
+ */
 fieldset:has(input[value="note"]) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--pd-space-2) 20px;
+  gap: var(--pd-space-1) 2px;
 }
 fieldset:has(input[value="note"]) legend {
   float: left;
@@ -693,10 +1050,59 @@ fieldset:has(input[value="note"]) legend {
   font-size: var(--pd-text-xs);
 }
 fieldset:has(input[value="note"]) label {
+  display: inline-flex;
+  position: relative;
+  align-items: center;
   margin: 0;
+  padding: 5px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--pd-radius);
+  color: var(--pd-muted);
+  font-size: var(--pd-text-sm);
+  font-weight: var(--pd-weight-medium);
+  cursor: pointer;
+  transition:
+    background-color var(--pd-ease),
+    border-color var(--pd-ease),
+    color var(--pd-ease);
+}
+fieldset:has(input[value="note"]) legend {
+  margin-right: 10px;
+}
+@supports selector(:has(*)) {
+  fieldset:has(input[value="note"]) input[type="radio"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    border: 0;
+    border-radius: var(--pd-radius);
+    opacity: 0;
+    cursor: pointer;
+    appearance: none;
+  }
+  fieldset:has(input[value="note"]) label:hover {
+    color: var(--pd-text);
+  }
+  fieldset:has(input[value="note"]) label:has(:checked) {
+    border-color: var(--pd-border-strong);
+    background: var(--pd-surface);
+    color: var(--pd-text);
+  }
+  fieldset:has(input[value="note"]) label:has(input[value="note"]:checked) {
+    border-color: var(--pd-note-bar);
+    background: var(--pd-note-bg);
+    color: var(--pd-note-text);
+  }
+  fieldset:has(input[value="note"]) label:has(:focus-visible) {
+    outline: 2px solid var(--pd-focus);
+    outline-offset: 2px;
+  }
 }
 /* Writing an internal note: the box turns amber, as the note will. */
 fieldset:has(input[value="note"]:checked) ~ label textarea {
+  border-color: var(--pd-note-bar);
   background-color: var(--pd-note-bg);
 }
 .form-actions {
@@ -707,6 +1113,17 @@ fieldset:has(input[value="note"]:checked) ~ label textarea {
 }
 .form-actions > * {
   margin: 0;
+}
+/* Cancel: a quiet text link the size of the button beside it. */
+.form-actions > a {
+  color: var(--pd-muted);
+  font-size: var(--pd-text-sm);
+  font-weight: var(--pd-weight-medium);
+  text-decoration: none;
+}
+.form-actions > a:hover {
+  color: var(--pd-text);
+  text-decoration: underline;
 }
 
 /* ---------- 9. Cards, the "Did this fix it?" box ---------- */
@@ -722,37 +1139,64 @@ article {
     padding: var(--pd-space-4);
   }
 }
-/* The answer box: the only 2px dark border on the page, holding the only decisive button. */
+/*
+ * The answer box: a white card with the page's one dark edge, holding the only decisive button.
+ * Inside, small muted labels over the quoted words, then Yes, then a hairline, then No.
+ */
 article#did-this-fix-it {
   margin-bottom: var(--pd-space-6);
-  border: 2px solid var(--pd-ink);
+  padding: 28px;
+  border: 1.5px solid var(--pd-ink);
+  border-radius: 12px;
   background: var(--pd-surface);
 }
+@media (max-width: 639px) {
+  article#did-this-fix-it {
+    padding: 20px var(--pd-space-4);
+  }
+}
 #did-this-fix-it h2 {
-  margin-bottom: var(--pd-space-2);
+  margin-bottom: 6px;
+  letter-spacing: -0.016em;
+}
+#did-this-fix-it > p:first-of-type {
+  margin-bottom: var(--pd-space-5);
+  color: var(--pd-muted);
+}
+#did-this-fix-it > p:first-of-type a {
+  color: var(--pd-text);
 }
 #did-this-fix-it > p:not(:first-of-type) {
-  margin-bottom: var(--pd-space-1);
+  margin-bottom: 6px;
   color: var(--pd-muted);
   font-size: var(--pd-text-xs);
-  font-weight: var(--pd-weight-semibold);
+  font-weight: var(--pd-weight-medium);
   letter-spacing: 0;
 }
 #did-this-fix-it blockquote {
-  font-size: var(--pd-text-lg);
+  margin-bottom: 20px;
   font-weight: var(--pd-weight-medium);
-  letter-spacing: -0.013em;
 }
 #did-this-fix-it form {
   margin: 0;
 }
-#did-this-fix-it form + form {
+/* Only between the box's own Yes and No forms: not between the quick answers inside it. */
+#did-this-fix-it > form + form {
   margin-top: var(--pd-space-5);
-  padding-top: var(--pd-space-4);
+  padding-top: var(--pd-space-5);
   border-top: var(--pd-hairline);
 }
 #did-this-fix-it form > button {
   margin: 0;
+}
+#did-this-fix-it > form:first-of-type {
+  margin-top: var(--pd-space-2);
+}
+#did-this-fix-it .quick-label {
+  margin-top: 20px;
+}
+#did-this-fix-it .quick-answers {
+  margin-bottom: 0;
 }
 @media (max-width: 639px) {
   #did-this-fix-it button.large {
@@ -815,7 +1259,7 @@ ul.evidence p:first-child {
 ul.evidence p:first-child strong {
   color: var(--pd-muted);
   font-size: var(--pd-text-sm);
-  font-weight: var(--pd-weight-semibold);
+  font-weight: var(--pd-weight-medium);
 }
 ul.evidence a {
   display: block;
@@ -873,57 +1317,88 @@ article.entry > header strong {
   font-weight: var(--pd-weight-semibold);
 }
 article.entry > header small {
+  margin-left: 2px;
   color: var(--pd-muted);
 }
 article.entry > p {
   margin-bottom: 0;
+  line-height: 1.6;
+}
+article.entry > p + p {
+  margin-top: var(--pd-space-2);
 }
 /* An internal note: amber, with an amber edge, and always labelled in words. */
 article.entry.note {
-  padding: var(--pd-space-3) var(--pd-space-4);
+  padding: 14px var(--pd-space-4);
   border-left: 2px solid var(--pd-note-bar);
-  border-radius: 0 var(--pd-radius) var(--pd-radius) 0;
+  border-radius: 0 var(--pd-radius-lg) var(--pd-radius-lg) 0;
   background: var(--pd-note-bg);
 }
 .entry .note-label {
   color: var(--pd-note-text);
   font-weight: var(--pd-weight-medium);
 }
-/* Written by an AI agent: a small tag after the name. */
+/* Written by an AI agent: a small tag after the name, on a hairline chip. */
 .tag {
-  margin-left: var(--pd-space-1);
-  padding: 1px 6px;
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border: var(--pd-hairline);
   border-radius: var(--pd-radius-sm);
-  background: var(--pd-subtle);
+  background: var(--pd-surface);
   color: var(--pd-muted);
   font-size: var(--pd-text-xs);
   font-weight: var(--pd-weight-medium);
+  line-height: 1.5;
   letter-spacing: 0;
+  vertical-align: 1px;
 }
 
 /* ---------- 13. History ---------- */
 
-/* Collapsed until opened. */
+/*
+ * Collapsed until opened. Every disclosure on the ticket page reads the same way: muted 13px
+ * words with Pico's small chevron right after them, text-coloured on hover.
+ */
 details.history {
   margin-top: var(--pd-space-6);
+  padding-top: var(--pd-space-4);
+  border-top: var(--pd-hairline);
+}
+details.history[open] > summary {
+  margin-bottom: var(--pd-space-3);
 }
 details.history > summary,
-.ticket-panel details > summary {
+details#reopen > summary,
+.ticket-panel details > summary,
+.ticket-thread details.publish > summary {
   display: inline-block;
   color: var(--pd-muted);
   font-size: var(--pd-text-sm);
   font-weight: var(--pd-weight-medium);
   line-height: 1.45;
+  transition: color var(--pd-ease);
 }
 details.history > summary:hover,
-.ticket-panel details > summary:hover {
+details#reopen > summary:hover,
+.ticket-panel details > summary:hover,
+.ticket-thread details.publish > summary:hover {
   color: var(--pd-text);
 }
 details.history > summary::after,
-.ticket-panel details > summary::after {
+details#reopen > summary::after,
+.ticket-panel details > summary::after,
+.ticket-thread details.publish > summary::after {
   display: inline-block;
   float: none;
+  width: 0.9rem;
+  margin-inline-start: 2px;
   vertical-align: middle;
+  opacity: 0.7;
+}
+details#reopen {
+  margin-bottom: var(--pd-space-5);
+  border-bottom: 0;
 }
 details.history td {
   vertical-align: top;
@@ -947,6 +1422,11 @@ details.history td:first-child {
   display: grid;
   gap: 0 var(--pd-space-7);
   grid-template-areas: "summary" "panel" "thread";
+}
+/* Reading text keeps a comfortable line length however wide the column grows. */
+.ticket-summary > :is(p, blockquote),
+article.entry > p {
+  max-width: var(--pd-measure);
 }
 .ticket-summary {
   grid-area: summary;
@@ -973,31 +1453,61 @@ details.history td:first-child {
 }
 @media (max-width: 899px) {
   .ticket-panel {
-    margin-bottom: var(--pd-space-5);
-    padding-top: var(--pd-space-5);
-    border-top: var(--pd-hairline);
+    margin-bottom: var(--pd-space-6);
   }
 }
+/*
+ * Two columns: the main column takes the frame's width less the panel and a fixed gap, so the
+ * two never drift apart on a wide window, and the panel's right edge meets the header's.
+ */
 @media (min-width: 900px) {
   .ticket-layout {
-    grid-template-columns: minmax(0, var(--pd-measure)) var(--pd-rail);
+    grid-template-columns: minmax(0, 1fr) var(--pd-rail);
     grid-template-rows: auto 1fr;
     grid-template-areas: "summary panel" "thread panel";
-    justify-content: space-between;
+    column-gap: 40px;
   }
   .ticket-panel {
     align-self: start;
   }
 }
+@media (min-width: 1280px) {
+  .ticket-layout {
+    column-gap: var(--pd-space-8);
+  }
+}
+/* The panel: one white card, its parts divided by hairlines, when it holds more than More. */
+.ticket-panel:has(> :not(details.more)) {
+  padding: var(--pd-space-4) 20px;
+  border: var(--pd-hairline);
+  border-radius: var(--pd-radius-lg);
+  background: var(--pd-surface);
+}
+.ticket-panel > * + * {
+  margin-top: var(--pd-space-4);
+  padding-top: var(--pd-space-4);
+  border-top: var(--pd-hairline);
+}
 .ticket-panel section {
-  margin-bottom: 20px;
+  margin-bottom: 0;
+}
+.ticket-panel > :last-child,
+.ticket-panel > * > :last-child {
+  margin-bottom: 0;
 }
 /* Each panel heading is a label: small, muted, over its value. */
 .ticket-panel h2 {
-  margin-bottom: 6px;
+  margin-bottom: var(--pd-space-2);
   color: var(--pd-muted);
   font-size: var(--pd-text-xs);
+  font-weight: var(--pd-weight-medium);
   letter-spacing: 0;
+}
+.ticket-panel blockquote {
+  font-weight: var(--pd-weight-medium);
+}
+.ticket-panel :is(.status-rule, .agent-help, .sample-fix small) {
+  font-size: var(--pd-text-sm);
 }
 .ticket-panel p,
 .ticket-panel blockquote {
@@ -1036,12 +1546,44 @@ details.history td:first-child {
 .ticket-panel .danger-zone p {
   margin-bottom: var(--pd-space-1);
 }
+/*
+ * Pico draws anything marked role="group" as a joined button bar stretched to full width. These
+ * groups are plain rows (or a stack) of separate buttons, so that look is taken off them.
+ */
+:is(.quick-answers, .danger-zone, .spec)[role="group"],
+.spec [role="group"] {
+  --pico-group-box-shadow: none;
+  --pico-group-box-shadow-focus-with-button: none;
+  --pico-group-box-shadow-focus-with-input: none;
+  width: auto;
+  box-shadow: none;
+}
+:is(.quick-answers, .danger-zone)[role="group"] > *,
+.spec [role="group"] > * {
+  flex: none;
+}
+.spec [role="group"] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pd-space-2);
+}
+.spec [role="group"] form {
+  margin: 0;
+}
+.danger-zone[role="group"] {
+  display: block;
+}
 
 /* ---------- 15. Empty states ---------- */
 
+/* Where the list would be: the same card, holding one quiet centred line. */
 .empty {
-  padding: var(--pd-space-7) 0;
+  padding: var(--pd-space-7) var(--pd-space-5);
+  border: var(--pd-hairline);
+  border-radius: var(--pd-radius-lg);
+  background: var(--pd-surface);
   color: var(--pd-muted);
+  text-align: center;
 }
 .empty a {
   color: var(--pd-text);
@@ -1052,17 +1594,19 @@ details.history td:first-child {
 /* What was just saved, shown at the top of the next page. No bar and no tick. */
 p.saved {
   display: inline-block;
-  margin-bottom: var(--pd-space-4);
-  padding: 6px 12px;
+  margin-bottom: var(--pd-space-5);
+  padding: 7px 12px;
+  border: var(--pd-hairline);
   border-radius: var(--pd-radius);
-  background: var(--pd-subtle);
+  background: var(--pd-surface);
   font-size: var(--pd-text-sm);
+  font-weight: var(--pd-weight-medium);
 }
 
 /* ---------- The welcome page ---------- */
 
 .welcome {
-  max-width: 420px;
+  max-width: 440px;
   margin: var(--pd-space-8) auto 0;
 }
 @media (max-width: 639px) {
@@ -1072,8 +1616,20 @@ p.saved {
 }
 .welcome h1 {
   --pico-font-size: var(--pd-text-2xl);
-  --pico-line-height: 1.25;
-  letter-spacing: -0.02em;
+  --pico-line-height: 1.2;
+  letter-spacing: -0.024em;
+}
+.welcome h2 {
+  margin-bottom: var(--pd-space-2);
+}
+.welcome h3 {
+  margin: var(--pd-space-6) 0 var(--pd-space-3);
+}
+.welcome .source-link {
+  font-size: var(--pd-text-sm);
+}
+.welcome .try-workflow {
+  margin-bottom: var(--pd-space-3);
 }
 .welcome hgroup > p:not(:first-child):last-child {
   color: var(--pd-muted);
@@ -1090,7 +1646,7 @@ p.saved {
 }
 /* The made-up people: one bordered list, a row each, the whole row is the button. */
 .people {
-  margin: 0;
+  margin: 0 0 var(--pd-space-5);
   padding: 0;
   border: var(--pd-hairline);
   border-radius: var(--pd-radius-lg);
@@ -1124,6 +1680,14 @@ p.saved {
   align-self: center;
   color: var(--pd-muted);
   content: "\2192";
+  transition:
+    transform var(--pd-ease-move),
+    color var(--pd-ease);
+}
+/* The arrow steps forward a little under the pointer. */
+.people li:hover::after {
+  color: var(--pd-text);
+  transform: translateX(2px);
 }
 .people form {
   grid-column: 1;
@@ -1197,18 +1761,46 @@ textarea:focus-visible {
   outline-offset: 2px;
   box-shadow: none;
 }
-/* Pico draws its own ring on a box with focus; the outline above replaces it. */
+/*
+ * A box with focus: its edge turns blue (5.51 on white) inside a soft blue halo, close to the box
+ * rather than an outline floating 2px away. A refused box keeps its red edge and gets a red halo.
+ */
 input:not([type="checkbox"], [type="radio"]):focus,
 select:focus,
-textarea:focus {
-  box-shadow: none;
+textarea:focus,
+input:not([type="checkbox"], [type="radio"]):focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  --pico-form-element-focus-color: var(--pd-focus-halo);
+  outline: none;
+  border-color: var(--pd-focus);
+  box-shadow: 0 0 0 3px var(--pd-focus-halo);
+}
+:is(input, select, textarea)[aria-invalid="true"]:is(:focus, :focus-visible) {
+  border-color: var(--pd-danger);
+  box-shadow: 0 0 0 3px var(--pd-danger-halo);
 }
 
 /* ---------- 18. Motion ---------- */
 
+/* A menu opens with a quick fade and a two-pixel drop; nothing else on the page moves. */
+@keyframes pd-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+details.more[open] > .more-menu,
+.site-header details.dropdown.switch-role[open] > summary + ul {
+  animation: pd-pop var(--pd-ease-move);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  * {
+  *,
+  *::before,
+  *::after {
     transition: none !important;
+    animation: none !important;
   }
 }
 
@@ -1237,21 +1829,43 @@ textarea:focus {
   margin-bottom: 0.25rem;
 }
 
-/* The customer's no, first on the ticket, until the team asks them again. */
-.customer-said-no {
-  border-left: 4px solid var(--pico-del-color);
+/* The customer's no, first on the ticket, until the team asks them again: a card with a red edge. */
+article.customer-said-no {
+  margin-bottom: var(--pd-space-6);
+  border-left: 2px solid var(--pd-danger);
+  border-radius: 0 var(--pd-radius-lg) var(--pd-radius-lg) 0;
+  background: var(--pd-surface);
+}
+.customer-said-no h2 {
+  margin-bottom: var(--pd-space-3);
+}
+.customer-said-no > p:last-child {
+  margin-bottom: 0;
 }
 
-/* Asking the customer is offered greyed, with its reason, until it can be done. */
+/*
+ * Asking the customer is offered greyed until it can be done, with its reason on the line under
+ * it rather than squeezed beside it.
+ */
+p.ask-blocked {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+}
 .ask-blocked button[disabled] {
-  margin-right: 0.5rem;
+  margin: 0;
+}
+.ask-blocked small {
+  color: var(--pd-muted);
 }
 
 /* Why a ticket action was refused, at the top of the ticket it came from. */
 .refused {
-  padding: 0.5rem 0.75rem;
-  border-left: 4px solid var(--pico-del-color);
-  background: var(--pico-card-sectioning-background-color);
+  padding: 10px 14px;
+  border-left: 2px solid var(--pd-danger);
+  border-radius: 0 var(--pd-radius) var(--pd-radius) 0;
+  background: var(--pd-danger-bg);
+  font-size: var(--pd-text-sm);
 }
 
 /* The demo's role switch: Pico's dropdown under "Signed in as", holding plain text buttons. */
@@ -1260,15 +1874,28 @@ textarea:focus {
 }
 .switch-role .switch-label {
   margin-left: var(--pd-space-2);
+  padding-left: var(--pd-space-2);
+  border-left: var(--pd-hairline);
   color: var(--pd-text);
-  text-decoration: underline;
+  font-weight: var(--pd-weight-medium);
 }
 .switch-role ul form {
   margin: 0;
 }
-.switch-role ul button.link {
+.switch-role ul button.link,
+.switch-role ul button.link:is(:hover, :active) {
   width: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: var(--pd-radius);
+  color: var(--pd-text);
+  font-size: var(--pd-text-sm);
   text-align: left;
+  text-decoration: none;
+}
+.switch-role ul button.link:is(:hover, :active) {
+  background-color: var(--pd-subtle);
 }
 
 /* The demo's walk-through: the first and strongest choice on the welcome page. */
@@ -1289,28 +1916,40 @@ textarea:focus {
 
 /* A Copy button beside a command, prompt or key meant to be pasted: small, under its text. */
 button.copy {
+  min-height: 0;
   margin: calc(-1 * var(--pd-space-2)) 0 var(--pd-space-4);
   padding: 2px 10px;
   font-size: var(--pd-text-xs);
 }
+.spec-prompt pre {
+  margin-bottom: var(--pd-space-3);
+}
+.spec-prompt > p {
+  font-size: var(--pd-text-sm);
+}
 
 /*
  * "More": the page's secondary actions in a small menu, a native details element, so it needs no
- * script and opens by keyboard. Calm and light, like a popover: a hairline and no elevation.
+ * script and opens by keyboard. A quiet button that opens a popover: a hairline, the large
+ * radius and the one soft shadow.
  */
 details.more {
   position: relative;
   margin-top: var(--pd-space-4);
+  margin-bottom: 0;
+  border-bottom: 0;
 }
 .ticket-panel details.more > summary {
   display: inline-block;
-  padding: 4px 12px;
-  border: 1px solid var(--pd-border);
+  padding: 5px 12px;
+  border: 1px solid var(--pd-control-border);
   border-radius: var(--pd-radius);
+  background: var(--pd-surface);
   color: var(--pd-text);
   font-size: var(--pd-text-sm);
   font-weight: var(--pd-weight-medium);
   list-style: none;
+  transition: background-color var(--pd-ease);
 }
 .ticket-panel details.more > summary::after {
   display: none;
@@ -1318,6 +1957,7 @@ details.more {
 .ticket-panel details.more[open] > summary,
 .ticket-panel details.more > summary:hover {
   background: var(--pd-subtle);
+  color: var(--pd-text);
 }
 .more-menu {
   position: absolute;
@@ -1325,7 +1965,7 @@ details.more {
   top: calc(100% + 6px);
   left: 0;
   min-width: 220px;
-  padding: var(--pd-space-2);
+  padding: var(--pd-space-1);
   border: var(--pd-hairline);
   border-radius: var(--pd-radius-lg);
   background: var(--pd-surface);
@@ -1334,25 +1974,35 @@ details.more {
 .more-menu form {
   margin: 0;
 }
-.more-menu button,
-.more-menu a {
+.more-menu :is(button, a, a[role="button"]),
+.more-menu :is(button, a, a[role="button"]):is(:hover, :active) {
   display: block;
   width: 100%;
+  min-height: 0;
   margin: 0;
-  padding: 6px 8px;
+  padding: 6px 10px;
   border: 0;
+  border-radius: var(--pd-radius);
   background: none;
+  color: var(--pd-text);
   font-size: var(--pd-text-sm);
   text-align: left;
+  text-decoration: none;
+  transform: none;
 }
-.more-menu button:hover,
-.more-menu a:hover {
+.more-menu :is(button, a, a[role="button"]):is(:hover, :active) {
   background: var(--pd-subtle);
 }
 .more-menu .danger-zone {
-  margin-top: 6px;
-  padding-top: 6px;
+  margin-top: var(--pd-space-1);
+  padding-top: var(--pd-space-1);
   border-top: var(--pd-hairline);
+}
+/* Archive and delete stay red in the menu, on the same grey when pointed at (red on it: 5.86). */
+.more-menu .danger-zone a.danger[role="button"],
+.more-menu .danger-zone a.danger[role="button"]:is(:hover, :active) {
+  margin: 0;
+  color: var(--pd-danger);
 }
 
 /* Quick answers and replies: a row of small quiet buttons, each one plain words. */
