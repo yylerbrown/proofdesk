@@ -18,6 +18,8 @@ async function issue(app: Express, scopes: string[], name = "Sam's assistant") {
   expect(res.status).toBe(200);
   const key = parse(res.text).querySelector("input.key")?.getAttribute("value");
   expect(key).toMatch(/^pd_[0-9a-f]{8}_/);
+  // The example command quotes the address, so a shell does not read its "?" as a pattern.
+  expect(parse(res.text).querySelector("pre.paste")?.text).toMatch(/"http[^"]+\?status=new"/);
   return key!;
 }
 
