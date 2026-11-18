@@ -164,3 +164,41 @@ export function getMeta(db: Db, key: string): string | undefined {
 export function insertMeta(db: Db, key: string, value: string): void {
   db.prepare("INSERT INTO app_meta (key, value) VALUES (?, ?)").run(key, value);
 }
+
+/**
+ * Every table other than tickets whose rows belong to one ticket, through a ticket_id
+ * column. Permanent deletion removes their rows. A test fails if a table with a ticket_id
+ * column is missing here, so a new table cannot be forgotten.
+ */
+export const TICKET_TABLES = ["ticket_events"];
+
+/**
+ * Removes a ticket and every row that belongs to it, and records that it was deleted.
+ * Call it inside a transaction. The marker goes in first, because the event log only lets
+ * the events of a listed ticket be removed.
+ */
+export function deleteTicketForever(db: Db, id: number, deletedBy: string, now: string): void {
+  db.prepare(
+    "INSERT INTO deleted_tickets (ticket_id, deleted_at, deleted_by) VALUES (?, ?, ?)",
+  ).run(id, now, deletedBy);
+  for (const table of TICKET_TABLES) {
+    // The table name comes from the fixed list above, never from a request.
+    db.prepare(`DELETE FROM ${table} WHERE ticket_id = ?`).run(id);
+  }
+  db.prepare("DELETE FROM tickets WHERE id = ?").run(id);
+}
+
+/** True when a ticket with this number was deleted permanently. */
+export function wasDeleted(db: Db, id: number): boolean {
+  return db.prepare("SELECT 1 FROM deleted_tickets WHERE ticket_id = ?").get(id) !== undefined;
+}
+
+/**
+ * Makes deleted content leave the files on disk now. Changes first go to a log file next
+ * to the database (the "-wal" file), and the old text stays there and in the main file
+ * until a checkpoint. TRUNCATE copies the log into the main file, where secure_delete has
+ * zeroed the deleted rows, and empties the log.
+ */
+export function flushDeletedContent(db: Db): void {
+  db.pragma("wal_checkpoint(TRUNCATE)");
+}

@@ -34,6 +34,7 @@ const ALL = [
   "0005_ticket_archive.sql",
   "0006_sign_in_tables.sql",
   "0007_tickets_created_by_index.sql",
+  "0008_permanent_delete.sql",
 ];
 
 describe("runMigrations", () => {
@@ -82,6 +83,33 @@ describe("runMigrations", () => {
     const db = memoryDb();
     expect(runMigrations(db, dir)).toEqual(["0001_a.sql"]);
     expect(db.prepare("SELECT COUNT(*) AS n FROM schema_migrations").get()).toEqual({ n: 2 });
+  });
+
+  it("rolls back a migration that leaves rows pointing at nothing", () => {
+    const dir = tempDir();
+    fs.writeFileSync(
+      path.join(dir, "0001_a.sql"),
+      `CREATE TABLE parent (id INTEGER PRIMARY KEY);
+       CREATE TABLE child (parent_id INTEGER REFERENCES parent (id));
+       INSERT INTO child (parent_id) VALUES (7);`,
+    );
+    const db = memoryDb();
+    expect(() => runMigrations(db, dir)).toThrow(
+      /0001_a.sql leaves rows that point at missing rows/,
+    );
+    expect(db.prepare("SELECT name FROM sqlite_master WHERE name = 'child'").get()).toBeUndefined();
+    // The checks are back on afterwards.
+    expect(db.pragma("foreign_keys", { simple: true })).toBe(1);
+  });
+
+  it("keeps the event log pointing at tickets after the tickets table is rebuilt", () => {
+    const db = memoryDb();
+    runMigrations(db);
+    const insertEvent = db.prepare(
+      `INSERT INTO ticket_events (ticket_id, actor, type, data, created_at)
+       VALUES (?, 'x', 'created', '{}', 'now')`,
+    );
+    expect(() => insertEvent.run(99)).toThrow(/FOREIGN KEY constraint failed/);
   });
 
   it("rolls back a failing migration and does not record it", () => {

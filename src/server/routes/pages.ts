@@ -145,6 +145,32 @@ export function pagesRouter(service: TicketService): Router {
     res.redirect(303, "/tickets");
   });
 
+  // Permanent deletion asks for the key to be typed, on a page of its own.
+  router.get("/tickets/:key/delete", (req, res) => {
+    const actor = signedIn(req);
+    const ticket = service.getTicket(req.params.key, actor);
+    if (!service.allowedActions(ticket, actor).delete) {
+      throw new HttpError(403, "forbidden", "You are not allowed to do that.");
+    }
+    res.render("ticket-delete", { title: `Delete ${ticket.key}`, ticket, error: null });
+  });
+
+  router.post("/tickets/:key/delete", (req, res) => {
+    const actor = signedIn(req);
+    try {
+      service.deleteTicket(req.params.key, req.body, actor);
+      res.redirect(303, "/tickets");
+    } catch (err) {
+      if (!(err instanceof ValidationError)) throw err;
+      const ticket = service.getTicket(req.params.key, actor);
+      res.status(400).render("ticket-delete", {
+        title: `Delete ${ticket.key}`,
+        ticket,
+        error: err.message,
+      });
+    }
+  });
+
   router.post("/tickets/:key/restore", (req, res) => {
     const actor = signedIn(req);
     const ticket = service.restoreTicket(req.params.key, actor);

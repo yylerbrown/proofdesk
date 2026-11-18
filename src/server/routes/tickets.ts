@@ -40,6 +40,12 @@ export function ticketsRouter(service: TicketService): Router {
     res.json(service.restoreTicket(req.params.key, signedIn(req)));
   });
 
+  // Permanent deletion. The body must repeat the key: { "confirm": "SUP-42" }.
+  router.delete("/tickets/:key", (req, res) => {
+    service.deleteTicket(req.params.key, req.body, signedIn(req));
+    res.status(204).end();
+  });
+
   router.get("/tickets/:key/events", (req, res) => {
     res.json(service.listEvents(req.params.key, signedIn(req)));
   });
