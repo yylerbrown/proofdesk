@@ -158,7 +158,7 @@ Asked for by the owner after the agent path worked: an optional test spec, draft
 Designed by an outside reviewer against this specification, the permission function and the service, and adopted by the owner. The spirit: simple, easy to get, and it just works. There are still three statuses and no new ones; whose turn it is comes from the owner, an open question and the latest answer.
 
 - **Intake is a shared inbox.** A new ticket is New and unassigned. A team member takes it and becomes its named owner. The owner or an admin can hand it directly to another team member. There is no dispatcher, routing or acceptance step.
-- **The status moves only by the workflow's own steps.** The owner starts work (New to In Progress; "Take ticket and start work" does both at once). Started work stays In Progress with its owner. Only the customer's Yes resolves. Only the customer who filed a resolved ticket can reopen it, with "Still happening, reopen" and a reason; it returns to its owner, or to the inbox if it has none, and the earlier Yes stays in the history. Agents never change a status.
+- **The status moves only by the workflow's own steps.** The owner starts work (New to In Progress; "Take ticket and start work" does both at once). Started work stays In Progress with its owner. The customer's Yes resolves it as "Customer confirmed"; since 18 Nov the owner or an admin can also resolve it with a reason, shown as "Resolved by the team: <reason>" (see that day's entry below). Only the customer who filed a resolved ticket can reopen it, with "Still happening, reopen" and a reason; it returns to its owner, or to the inbox if it has none, and the earlier Yes stays in the history. Agents never change a status.
 - **Only the current owner asks the customer,** after personally trying the delivered result against the customer's check, and the ask records what they tried, where, what happened and which evidence they relied on.
 - **An agent is a contributor, never an owner.** The owner may hand an in-progress ticket to one named connection; the agent sees only tickets handed to it, and loses access on revoke, transfer, ask or archive. The demo keeps its per-connection isolation instead. Agents do not send public replies: suggested wording arrives as an internal note, which a person may publish as their own reply.
 - **After a No** the owner keeps the ticket, the customer's comment is shown first, the team's list says "Customer says it still fails", and the next ask needs the owner's response to that No and a fresh check.
@@ -172,3 +172,14 @@ The workflow is built in this order: status commands and reopen; the owner-only 
 ### 2026-11-18: two corrections
 
 Two sentences above were corrected to say what happened. The opening line used to say this document was written before the features were built, and the standing rule on merging used to say a person reads every change before it merges. The standing rules now also say how this build was merged and reviewed, including the merges that did not wait for CI. Every outside review named in this document came from other AI sessions, including the one that proposed the ticket workflow the owner adopted. That workflow's central rule, that only the customer's Yes resolves a ticket, was the owner's and was in this document from the start.
+
+### 2026-11-18: the team may resolve with a reason
+
+The owner's call, asked whether the team should be able to resolve a ticket without the customer's Yes, labelled with a reason: "Yes, labelled".
+
+- **Who:** the ticket's owner, or an admin. Not a customer through this path (they confirm with Yes), and never an agent, on any door; no tool or scope offers it.
+- **When:** from New or In Progress. An open question to the customer is withdrawn first, with its own history entry.
+- **Why:** a reason from a short list: fixed but the customer has not replied, duplicate (naming the other ticket), won't fix, cannot reproduce, or other, which needs a note.
+- **How it shows:** the status stays Resolved, one of the three. Its label tells the two kinds apart everywhere, on the page for both roles, in the list, in history, in the JSON API and in the tools' read output: "Customer confirmed" only from the customer's Yes, otherwise "Resolved by the team: <reason>". The tick stays with the customer's Yes.
+- **After:** the customer sees the reason and can reopen the ticket, as after their own Yes.
+- **On the page:** a quiet "Resolve with a reason" under Status, never the primary button, which keeps following the customer-confirmation path.

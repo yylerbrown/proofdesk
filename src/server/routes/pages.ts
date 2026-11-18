@@ -14,7 +14,7 @@ import {
   waitingOn,
 } from "../pages/format.js";
 import { rememberSaved, takeProblem, takeSaved, type SavedKey } from "../pages/saved.js";
-import { listQuerySchema, TICKET_STATUSES } from "../tickets/schemas.js";
+import { listQuerySchema, RESOLVE_REASON_LABELS, TICKET_STATUSES } from "../tickets/schemas.js";
 import { LIST_PAGE_SIZE, type Ticket, type TicketService } from "../tickets/service.js";
 import { parse } from "../validation.js";
 
@@ -35,7 +35,15 @@ type EntryForm = { kind: string; body: string; error?: string };
 
 // A refused form on the ticket page: which one, the message, and a comment to keep.
 type Problem = {
-  form: "answer" | "agreedCheck" | "changeLink" | "ready" | "evidence" | "reopen" | "handOff";
+  form:
+    | "answer"
+    | "agreedCheck"
+    | "changeLink"
+    | "ready"
+    | "evidence"
+    | "reopen"
+    | "handOff"
+    | "resolve";
   message: string;
   comment: string;
   /** What was typed in the form, so it can be shown again. */
@@ -80,6 +88,20 @@ function demoNext(ticket: Ticket, actor: Actor) {
     return { switchTo: filer.id, label: "View this ticket as the customer who filed it" };
   }
   return null;
+}
+
+/** The ticket list's filters, as they stand in its address. */
+type ListFilters = { status: string; owner?: "me" | "none"; q?: string };
+
+/** The address of the ticket list with these filters, leaving out the ones at their default. */
+function listHref(filters: ListFilters, page?: number): string {
+  const params = new URLSearchParams();
+  if (filters.status !== "all") params.set("status", filters.status);
+  if (filters.owner) params.set("owner", filters.owner);
+  if (filters.q) params.set("q", filters.q);
+  if (page !== undefined) params.set("page", String(page));
+  const query = params.toString();
+  return query ? `/tickets?${query}` : "/tickets";
 }
 
 // A person who pressed "Not now" on the invitation to connect an assistant: kept in their
@@ -189,6 +211,7 @@ const FORM_SAVED: Record<Problem["form"], (input: unknown) => SavedKey> = {
   evidence: () => "evidence",
   reopen: () => "reopened",
   handOff: () => "handedOff",
+  resolve: () => "resolvedByTeam",
   answer: (input) =>
     (input as Record<string, unknown> | undefined)?.fixed === "yes" ? "fixed" : "notFixed",
 };
@@ -245,10 +268,13 @@ export function pagesRouter(service: TicketService): Router {
     const entries = service.listEntries(ticket.key, actor);
     const events = service.listEvents(ticket.key, actor);
     const names = service.peopleNames(events.map((event) => event.actor));
+    // A person's role beside their name, as in the conversation, since the name is theirs to set.
+    const roles = service.peopleRoles(events.map((event) => event.actor));
     const history = events.map((event) => ({
       when: event.created_at,
       what: describeEvent(event),
       who: describeActor(event, names),
+      role: event.actor_kind === "agent" ? null : (roles.get(event.actor) ?? null),
     }));
     const allowed = service.allowedActions(ticket, actor);
     const sampleFix =
@@ -318,6 +344,7 @@ export function pagesRouter(service: TicketService): Router {
       specPanel,
       specPrompt,
       allowed,
+      resolveReasons: RESOLVE_REASON_LABELS,
       entry: shownEntry,
       problem,
     });
@@ -358,10 +385,12 @@ export function pagesRouter(service: TicketService): Router {
 
   router.get("/tickets", (req, res) => {
     const actor = signedIn(req);
-    const { status, page } = parse(listQuerySchema, req.query);
+    const { status, page, owner, q } = parse(listQuerySchema, req.query);
     const current = status ?? "all";
     const pageNumber = page ?? 1;
-    const tickets = service.listTickets(current, actor, pageNumber);
+    const tickets = service.listTickets(current, actor, pageNumber, { owner, q });
+    // Every link on the list keeps the other filters, so a filtered view can be shared.
+    const filters: ListFilters = { status: current, owner, q };
     const signals = service.assistantSignals(tickets, actor);
     // The invitation to bring an assistant: for the team only, until one is connected. On the
     // demo every visitor gets their own connection, so it always invites.
@@ -392,7 +421,12 @@ export function pagesRouter(service: TicketService): Router {
       })),
       viewerRole: actor.role,
       // A full page means there may be older tickets on the next one.
-      nextPage: tickets.length === LIST_PAGE_SIZE ? pageNumber + 1 : null,
+      nextPage: tickets.length === LIST_PAGE_SIZE ? listHref(filters, pageNumber + 1) : null,
+      filters,
+      href: (change: Partial<ListFilters>) => listHref({ ...filters, ...change }),
+      // Who owns a ticket is the team's question; a customer's list is their own tickets.
+      ownerFilters: actor.role !== "customer",
+      narrowed: owner !== undefined || q !== undefined,
       showArchivedFilter: can(actor, "list_archived"),
       invite,
     });
@@ -584,6 +618,7 @@ export function pagesRouter(service: TicketService): Router {
   router.post("/tickets/:key/ready", ticketForm("ready", service.markReady));
   router.post("/tickets/:key/answer", ticketForm("answer", service.answer));
   router.post("/tickets/:key/reopen", ticketForm("reopen", service.reopen));
+  router.post("/tickets/:key/resolve", ticketForm("resolve", service.resolveWithReason));
   router.post("/tickets/:key/adopt-check", (req, res) => {
     const ticket = service.adoptCheck(req.params.key, signedIn(req));
     rememberSaved(res, "adopted");

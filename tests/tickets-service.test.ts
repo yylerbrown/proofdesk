@@ -259,6 +259,7 @@ describe("ticket service returns what is stored", () => {
       "owner_name",
       "ready_at",
       "ready_token",
+      "resolution",
       "status",
       "title",
       "try_url",
@@ -315,9 +316,15 @@ describe("a customer's list", () => {
 
     const listSql = seen.find((sql) => sql.includes("FROM tickets") && sql.includes("created_by"));
     expect(listSql).toBeDefined();
-    const plan = db
-      .prepare(`EXPLAIN QUERY PLAN ${listSql}`)
-      .all({ createdBy: customerOne.id, status: null, limit: 100, offset: 0 }) as {
+    const plan = db.prepare(`EXPLAIN QUERY PLAN ${listSql}`).all({
+      createdBy: customerOne.id,
+      status: null,
+      limit: 100,
+      offset: 0,
+      ownerId: null,
+      unassigned: 0,
+      search: null,
+    }) as {
       detail: string;
     }[];
     expect(plan.map((step) => step.detail).join(" | ")).toContain(

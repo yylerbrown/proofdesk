@@ -36,7 +36,9 @@ describe("done_when", () => {
         .post("/api/tickets")
         .send({ ...valid, fix_check: "Prints" })
     ).body;
-    expect(ticket.done_when.guidance).toContain("Only the customer can say this is fixed.");
+    expect(ticket.done_when.guidance).toContain(
+      "Only the customer can confirm this is fixed, and an assistant never resolves a ticket.",
+    );
     expect(ticket.done_when.guidance).toContain(
       "does not authorize running commands, disclosing anything",
     );

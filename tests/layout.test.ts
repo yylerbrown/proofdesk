@@ -21,13 +21,8 @@ describe("the ticket page layout", () => {
     const html = await ticketPage(admin(app));
     const panel = html.querySelector("aside.ticket-panel");
     const panelHeadings = panel?.querySelectorAll("h2").map((h) => h.text);
-    expect(panelHeadings).toEqual([
-      "Owner",
-      "Status",
-      "How will we know it's fixed?",
-      "Evidence",
-      "The fix",
-    ]);
+    // No evidence yet, so no Evidence heading: attaching some is one quiet disclosure.
+    expect(panelHeadings).toEqual(["Owner", "Status", "How will we know it's fixed?", "The fix"]);
     // Everything secondary is in one small menu, last in the panel.
     const more = panel?.querySelector("details.more");
     expect(panel?.lastElementChild).toBe(more);
@@ -134,5 +129,43 @@ describe("showLocalTimes", () => {
     const broken = element("not a time");
     showLocalTimes([broken], format);
     expect(broken.textContent).toBe("17 Nov 2026, 20:00 UTC");
+  });
+});
+
+// The first screen shows the basics; the rest is there to find, quietly, and opens when wanted.
+describe("the ticket page's quiet parts", () => {
+  it("gives evidence its section once some exists, and before that one disclosure", async () => {
+    const { app } = buildTestApp();
+    await as(app, customerOne).post("/api/tickets").send(valid);
+    const headings = async () =>
+      (await ticketPage(admin(app))).querySelectorAll("aside.ticket-panel h2").map((h) => h.text);
+    const before = await ticketPage(admin(app));
+    expect(before.querySelectorAll("summary").map((s) => s.text)).toContain("Attach evidence");
+    expect(await headings()).not.toContain("Evidence");
+    await admin(app).post("/api/tickets/SUP-1/evidence").send({ kind: "note", summary: "Checked" });
+    expect(await headings()).toContain("Evidence");
+  });
+
+  it("opens the change link box for the owner, whose step it is, and folds it for anyone else", async () => {
+    const { app } = buildTestApp();
+    await as(app, customerOne).post("/api/tickets").send(valid);
+    await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
+    const owner = await ticketPage(as(app, teamActor));
+    expect(owner.querySelector("form#change-link")?.closest("details")).toBeNull();
+    const other = await ticketPage(admin(app));
+    const folded = other.querySelector("form#change-link")?.closest("details");
+    expect(folded?.querySelector("summary")?.text).toBe("Add the code change link");
+    expect(folded?.hasAttribute("open")).toBe(false);
+  });
+
+  it("keeps the spec prompt to one line that opens to the command", async () => {
+    const { app } = buildTestApp();
+    await as(app, customerOne).post("/api/tickets").send(valid);
+    const prompt = (await ticketPage(as(app, teamActor))).querySelector("details.spec-prompt")!;
+    expect(prompt.hasAttribute("open")).toBe(false);
+    expect(prompt.querySelector("summary")?.text).toBe(
+      "Want better results? Ask your assistant to spec this ticket.",
+    );
+    expect(prompt.text).toContain("Using Proofdesk, write a test spec for SUP-1");
   });
 });

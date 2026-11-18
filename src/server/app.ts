@@ -25,9 +25,9 @@ import { ticketsRouter } from "./routes/tickets.js";
 import { createTicketService, DEMO_BUDGET } from "./tickets/service.js";
 import { createConnectionService } from "./connections/service.js";
 import { connectionsRouter } from "./routes/connections.js";
-import { mcpEndpoint } from "./mcp.js";
+import { mcpEndpoint, mcpErrorHandler } from "./mcp.js";
 import { assistantRunRouter } from "./routes/assistant-run.js";
-import { teamMembers } from "./team/service.js";
+import { peopleRoles, teamMembers } from "./team/service.js";
 import { guide, openApiDocument } from "./api/describe.js";
 import { siteAddress } from "./routes/connections.js";
 // The limits live in limits.ts, where the API's guide reads them too.
@@ -62,6 +62,7 @@ export function createApp(config: Config, db: Db): Express {
   // growing. Real tickets have none.
   const tickets = createTicketService(db, config.ticketPrefix, config.demo ? DEMO_BUDGET : {}, {
     teamMembers: teamMembers(config, db),
+    peopleRoles: peopleRoles(config, db),
   });
   const connections = createConnectionService(db);
 
@@ -172,6 +173,8 @@ export function createApp(config: Config, db: Db): Express {
 
   // The MCP endpoint for AI assistants: the same actions as tools, with a connection key.
   app.all("/mcp", ...mcpEndpoint(tickets, connections, writeLimit));
+  // Its errors are answered as JSON-RPC errors, before the pages' HTML error handler.
+  app.use("/mcp", mcpErrorHandler);
 
   // The pages: two stylesheets, which need no sign-in and so come before the actor, then
   // the HTML form parser, the routes and the HTML error pages.

@@ -90,7 +90,7 @@ describe("getting a demo connection", () => {
     expect((await visitor(app).post("/demo/connection")).status).toBe(503);
   });
 
-  it("stops past the per-address limit and past the demo's cap", async () => {
+  it("stops past the per-address limit, and at the demo's cap still gives one by ending another", async () => {
     const { app, db } = buildDemo();
     for (let i = 0; i < DEMO_CONNECTIONS_PER_HOUR; i++) await getConnection(app);
     expect((await visitor(app).post("/demo/connection")).status).toBe(429);
@@ -102,7 +102,11 @@ describe("getting a demo connection", () => {
     );
     for (let i = 0; i < DEMO_CONNECTION_LIMIT; i++) insert.run(`p${i}`, later, later);
     const full = await visitor(other).post("/demo/connection");
-    expect(full.status).toBe(409);
+    expect(full.status).toBe(200);
+    const live = otherDb
+      .prepare("SELECT COUNT(*) AS n FROM agent_connections WHERE demo = 1 AND revoked_at IS NULL")
+      .get() as { n: number };
+    expect(live.n).toBe(DEMO_CONNECTION_LIMIT);
   });
 
   it("stops working when it expires", async () => {
@@ -210,7 +214,9 @@ describe("a demo connection asking to resolve", () => {
       .send({ status: "resolved" });
     expect(res.status).toBe(409);
     expect(res.body.error).toMatchObject({ code: "needs_customer", retry: false });
-    expect(res.body.error.message).toMatch(/Only the customer resolves ticket SUP-4/);
+    expect(res.body.error.message).toMatch(
+      /A status change does not resolve ticket SUP-4\. The customer confirms a fix/,
+    );
   });
 });
 

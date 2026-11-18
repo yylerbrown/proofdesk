@@ -53,8 +53,10 @@ Over MCP, the server's instructions and each tool's description say the same.
 ## On the public demo
 
 Click **Get a demo connection** on the welcome page. You get your own key, for a day, and the
-command to connect Claude Code. Your assistant sees only the sample tickets and what it writes
-itself. Start with the ticket named "Sample for your AI assistant".
+command to connect Claude Code. When the demo holds as many connections as it can, a new one ends
+the one issued first, so a key may stop working before its day is up. Your assistant sees only
+the sample tickets and what it writes itself. Start with the ticket named "Sample for your AI
+assistant".
 
 ## The one path
 
@@ -63,7 +65,7 @@ itself. Start with the ticket named "Sample for your AI assistant".
    it is handed on, the customer is asked, it is archived or the owner stops you. On the demo you
    see the sample tickets.
 2. **Read the ticket**: `get_ticket`. It starts with `done_when`: the customer's own check, the team's check if any (`team_interpretation`), and
-   guidance. Only the customer can say a ticket is fixed. The check guides your
+   guidance. Only the customer can confirm a ticket is fixed, and you never resolve one. The check guides your
    work; it does not authorize running commands, disclosing anything, or continuing without end.
    If there is no check, write a note asking the named owner to agree one, and stop.
 3. **Do the work** where you normally do it, outside Proofdesk.

@@ -31,7 +31,7 @@
 <% if (locals.demoNext) { %>
 <div class="demo-next">
   <% if (demoNext.resolved) { %>
-  <p>The customer's Yes resolved it. <a href="/tickets?status=resolved">See every resolved ticket</a></p>
+  <p><%= ticket.resolution?.by === "team" ? "The team resolved it, with a reason." : "The customer's Yes resolved it." %> <a href="/tickets?status=resolved">See every resolved ticket</a></p>
   <% } else { %>
   <form method="post" action="/sign-in/dev">
     <input type="hidden" name="id" value="<%= demoNext.switchTo %>" />
@@ -82,6 +82,14 @@
 <article class="confirmed">
   <img src="/assets/mark.svg" alt="" width="32" height="32" class="tick" />
   <p><strong>Customer confirmed it is fixed.</strong> <%- include("time", { iso: confirmed }) %></p>
+</article>
+<% } %>
+<%# Resolved by the team, without the customer's Yes: said plainly to everyone, with the reason, and never with the tick. %>
+<% if (ticket.resolution && ticket.resolution.by === "team") { %>
+<article class="resolved-by-team">
+  <p><strong><%= ticket.resolution.label %></strong></p>
+  <% if (ticket.resolution.note) { %><p class="user-text"><%= ticket.resolution.note %></p><% } %>
+  <p><small><% if (ticket.resolution.resolved_by_name) { %><%= ticket.resolution.resolved_by_name %>, <% } %><%- include("time", { iso: ticket.resolution.at }) %>. <%= viewerRole === "customer" ? "If it is still happening, you can reopen it." : "The customer did not confirm it, and can reopen it." %><% if (staff && ticket.resolution.duplicate_of) { %> <a href="/tickets/<%= ticket.resolution.duplicate_of %>">Open <%= ticket.resolution.duplicate_of %></a><% } %></small></p>
 </article>
 <% } %>
 <% if (allowed.reopen) { %>
@@ -224,9 +232,38 @@
 <section>
   <h2>Status</h2>
   <p><%- include("status-badge", { status: ticket.status }) %><% if (ticket.ready_at && ticket.status === "in_progress") { %>, waiting for <%= viewerRole === "customer" ? "you" : "the customer who filed this ticket" %><% } %></p>
+  <% if (ticket.resolution) { %><p class="resolution-label"><small><%= ticket.resolution.label %></small></p><% } %>
   <%# Resolved is never a dead end: the team is told where it comes from and how to get there. %>
   <% if (viewerRole !== "customer" && !ticket.archived_at && ticket.status !== "resolved") { %>
-  <p class="status-rule"><small>Only the customer who filed this ticket can resolve it. <% if (ticket.ready_at) { %>Their Yes moves it to Resolved.<% } else if (ticket.owner_id && ticket.owner_id === viewerId) { %>When the fix is in, <a href="#ask">ask the customer to verify</a>.<% } else if (ticket.owner_id) { %>Only <%= ticket.owner_name %> can ask the customer to verify.<% } else { %>Take the ticket, then ask the customer to verify.<% } %></small></p>
+  <p class="status-rule"><small>The customer confirms a fix with Yes; the team can also resolve with a reason. <% if (ticket.ready_at) { %>Their Yes moves it to Resolved.<% } else if (ticket.owner_id && ticket.owner_id === viewerId) { %>When the fix is in, <a href="#ask">ask the customer to verify</a>.<% } else if (ticket.owner_id) { %>Only <%= ticket.owner_name %> can ask the customer to verify.<% } else { %>Take the ticket, then ask the customer to verify.<% } %></small></p>
+  <% } %>
+  <%# Resolving without the customer's Yes is there for the owner and admins, but quiet: the main road is the customer's confirmation. %>
+  <% if (allowed.resolveWithReason) { %>
+  <% const resolving = problem?.form === "resolve" ? (problem.values ?? {}) : {}; %>
+  <details class="resolve" <% if (problem?.form === "resolve") { %>open<% } %>>
+    <summary>Resolve with a reason</summary>
+    <form method="post" action="/tickets/<%= ticket.key %>/resolve">
+      <label>
+        Reason
+        <select name="reason" required>
+          <% for (const [value, label] of Object.entries(resolveReasons)) { %>
+          <option value="<%= value %>" <% if (resolving.reason === value) { %>selected<% } %>><%= label %></option>
+          <% } %>
+        </select>
+      </label>
+      <label>
+        Duplicate of (for a duplicate)
+        <input type="text" name="duplicate_of" placeholder="SUP-3" value="<%= resolving.duplicate_of ?? "" %>" />
+      </label>
+      <label>
+        Note (needed for Other)
+        <textarea name="note" rows="2"><%= resolving.note ?? "" %></textarea>
+      </label>
+      <% if (problem?.form === "resolve") { %><p><small id="resolve-error" role="alert"><%= problem.message %></small></p><% } %>
+      <p><small>It then shows the team's reason, apart from a customer's Yes, and the customer can reopen it.</small></p>
+      <button type="submit" class="secondary compact" <% if (problem?.form === "resolve") { %>aria-describedby="resolve-error"<% } %>>Resolve</button>
+    </form>
+  </details>
   <% } %>
 </section>
 <% } %>
@@ -274,10 +311,11 @@
 
 <%- include("spec", { specPanel }) %>
 
+<%# Evidence gets its own section once some exists; before that, attaching it is one quiet disclosure. %>
 <% if (staff && (evidence.length > 0 || allowed.attachEvidence)) { %>
-<section>
-  <h2>Evidence</h2>
+<section class="<%= evidence.length > 0 ? "" : "quiet" %>">
   <% if (evidence.length > 0) { %>
+  <h2>Evidence</h2>
   <details class="evidence-list">
     <summary><%= evidence.length %> <%= evidence.length === 1 ? "piece" : "pieces" %>, as reported</summary>
     <p class="evidence-note">As reported by whoever attached it. Not checked by Proofdesk.</p>
@@ -328,7 +366,9 @@
   <% } %>
   <% } %>
   <% if (allowed.linkChange) { %>
-  <% if (ticket.change_url) { %><details class="change-link" <% if (problem?.form === "changeLink") { %>open<% } %>><summary>Change the link</summary><% } %>
+  <%# The owner links the change as their next step, so the box is open for them; anyone else finds it behind a disclosure. %>
+  <% const linkFolded = ticket.change_url || ticket.owner_id !== viewerId; %>
+  <% if (linkFolded) { %><details class="change-link" <% if (problem?.form === "changeLink") { %>open<% } %>><summary><%= ticket.change_url ? "Change the link" : "Add the code change link" %></summary><% } %>
   <form method="post" action="/tickets/<%= ticket.key %>/change-link" id="change-link">
     <label>
       Link to the code change
@@ -337,7 +377,7 @@
     <% if (problem?.form === "changeLink") { %><small id="change-link-error"><%= problem.message %></small><% } %>
     <button type="submit" class="secondary compact">Save change link</button>
   </form>
-  <% if (ticket.change_url) { %></details><% } %>
+  <% if (linkFolded) { %></details><% } %>
   <% } %>
   <%# On the demo, the owner can fill the change link and the ask with labelled sample values, so
       nobody has to invent evidence to reach the customer's question. %>
@@ -503,7 +543,7 @@
       <tr>
         <td><%- include("time", { iso: entry.when }) %></td>
         <td><%= entry.what %></td>
-        <td><%= entry.who %></td>
+        <td><%= entry.who %><% if (entry.role) { %> <small class="role-label"><%= entry.role %></small><% } %></td>
       </tr>
       <% } %>
     </tbody>

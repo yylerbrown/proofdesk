@@ -145,6 +145,16 @@ export type TicketListFilter = (typeof TICKET_LIST_FILTERS)[number];
 
 export const listQuerySchema = z.object({
   status: z.enum(TICKET_LIST_FILTERS).optional(),
+  owner: z.enum(["me", "none"]).optional().meta({
+    description: "Narrow to the tickets you own (me) or that nobody owns yet (none).",
+  }),
+  // A search box sent empty means no search.
+  q: z
+    .preprocess(
+      (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+      z.string().trim().max(100, "Must be at most 100 characters.").optional(),
+    )
+    .meta({ description: "Words to find in the title or description, in any case." }),
   page: z.coerce.number().int().min(1).max(100000).optional(),
   cursor: z.string().max(100).optional().meta({
     description: "Where the previous page ended, as given by its next_cursor or Link header.",
@@ -169,3 +179,38 @@ export function pageOf(cursor: string): number {
     });
   }
 }
+
+/** Why the team resolved a ticket without the customer's Yes. */
+export const RESOLVE_REASONS = [
+  "fixed_no_reply",
+  "duplicate",
+  "wont_fix",
+  "cannot_reproduce",
+  "other",
+] as const;
+export type ResolveReason = (typeof RESOLVE_REASONS)[number];
+export const RESOLVE_REASON_LABELS: Record<ResolveReason, string> = {
+  fixed_no_reply: "Fixed, but the customer has not replied",
+  duplicate: "Duplicate of another ticket",
+  wont_fix: "Won't fix",
+  cannot_reproduce: "Cannot reproduce",
+  other: "Other",
+};
+
+// A form sends an empty box for a field left blank; that means it was not given.
+const blankIsMissing = (value: unknown) =>
+  typeof value === "string" && value.trim() === "" ? undefined : value;
+
+// Resolving by the team: a reason from the list, the other ticket for a duplicate, and a note,
+// which "other" needs (checked by the service).
+export const resolveSchema = z.object({
+  reason: z.enum(RESOLVE_REASONS, { error: "Choose a reason." }),
+  note: z.preprocess(
+    blankIsMissing,
+    z.string().trim().max(500, "Must be at most 500 characters.").optional(),
+  ),
+  duplicate_of: z.preprocess(
+    blankIsMissing,
+    z.string().trim().max(20, "Must be a ticket key, such as SUP-3.").optional(),
+  ),
+});

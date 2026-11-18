@@ -63,13 +63,13 @@ describe("where Resolved comes from", () => {
   it("is said to the team at every step, with the way to get there", async () => {
     const { app } = await filed();
     expect(rule(await page(app, teamActor))).toBe(
-      "Only the customer who filed this ticket can resolve it. Take the ticket, then ask the customer to verify.",
+      "The customer confirms a fix with Yes; the team can also resolve with a reason. Take the ticket, then ask the customer to verify.",
     );
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
 
     const owner = await page(app, teamActor);
     expect(rule(owner)).toBe(
-      "Only the customer who filed this ticket can resolve it. When the fix is in, ask the customer to verify.",
+      "The customer confirms a fix with Yes; the team can also resolve with a reason. When the fix is in, ask the customer to verify.",
     );
     expect(owner.querySelector(".status-rule a")?.getAttribute("href")).toBe("#ask");
     // The link lands on the ask, shown greyed with what is missing until it can be done.
@@ -79,7 +79,7 @@ describe("where Resolved comes from", () => {
     );
 
     expect(rule(await page(app, adminActor))).toBe(
-      "Only the customer who filed this ticket can resolve it. Only Team Member can ask the customer to verify.",
+      "The customer confirms a fix with Yes; the team can also resolve with a reason. Only Team Member can ask the customer to verify.",
     );
     expect(rule(await page(app, customerOne))).toBeUndefined();
   });
@@ -90,7 +90,9 @@ describe("where Resolved comes from", () => {
     const reason = await refusedBackToTicket(as(app, teamActor), "/tickets/SUP-1/status", {
       status: "resolved",
     });
-    expect(reason).toMatch(/Only the customer resolves ticket SUP-1/);
+    expect(reason).toMatch(
+      /A status change does not resolve ticket SUP-1\. The customer confirms a fix/,
+    );
     expect(reason).toMatch(/Ask the customer to verify/);
     const api = await as(app, teamActor).patch("/api/tickets/SUP-1").send({ status: "resolved" });
     expect(api.body.error.hint).toMatch(/Ask the customer to verify/);
@@ -117,7 +119,7 @@ describe("where Resolved comes from", () => {
       "In Progress, waiting for the customer who filed this ticket",
     );
     expect(rule(team)).toBe(
-      "Only the customer who filed this ticket can resolve it. Their Yes moves it to Resolved.",
+      "The customer confirms a fix with Yes; the team can also resolve with a reason. Their Yes moves it to Resolved.",
     );
 
     const customer = await page(app, customerOne);

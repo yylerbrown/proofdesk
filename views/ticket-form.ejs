@@ -49,7 +49,7 @@
   <% if (errors.where_url) { %><small id="where_url-error"><%= errors.where_url.join(" ") %></small><% } %>
 
   <% if (editKey && viewer && viewer.role !== "customer") { %>
-  <p class="status-rule"><small>Only the customer who filed this ticket can resolve it.</small></p>
+  <p class="status-rule"><small>The customer confirms a fix with Yes; the team can also resolve with a reason.</small></p>
   <% } %>
   <% if (!editKey) { %>
   <p class="initial-status">Initial status: <span class="badge status-new">New</span></p>

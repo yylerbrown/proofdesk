@@ -19,7 +19,7 @@ export const UNTRUSTED_TEXT =
 
 /** The same steps, short, for the MCP server's instructions. */
 export const MCP_INSTRUCTIONS =
-  "Proofdesk is a support desk where only the customer says a ticket is fixed. To help: " +
+  "Proofdesk is a support desk where only the customer confirms a ticket is fixed. To help: " +
   "list_tickets (the tickets handed to you), get_ticket (read done_when first), do the work " +
   "elsewhere, add_evidence, then ask_owner_to_review so the named owner reviews it; that does " +
   "not contact the customer. " +
@@ -60,7 +60,7 @@ export function guide(actor: Actor | null, address: string, sourceUrl?: string) 
   return {
     name: "Proofdesk",
     about:
-      "A support desk where the customer says how they will know a ticket is fixed, and only the customer can say it is.",
+      "A support desk where the customer says how they will know a ticket is fixed, and only the customer can confirm it is.",
     untrusted_text: UNTRUSTED_TEXT,
     you: you(actor),
     start_here: {
