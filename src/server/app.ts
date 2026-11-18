@@ -168,7 +168,7 @@ export function createApp(config: Config, db: Db): Express {
   // that connection may do.
   const openapi = openApiDocument();
   api.get("/", (req, res) => {
-    res.json(guide(req.actor, siteAddress(config, req)));
+    res.json(guide(req.actor, siteAddress(config, req), config.sourceUrl));
   });
   api.get("/openapi.json", (_req, res) => {
     res.json(openapi);
