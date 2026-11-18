@@ -39,8 +39,10 @@ async function expectTicketStatus(page: Page, key: string, status: string) {
 }
 
 /** The banner a page shows after a form saved something. */
+// The one-time message after an action. A page with Copy buttons has a second, hidden status
+// line for them, so the message is found by its own class too.
 function savedMessage(page: Page) {
-  return page.getByRole("status");
+  return page.locator("p.saved[role=status]");
 }
 
 test("a customer files a ticket, the team works it, and only the customer resolves it", async ({
