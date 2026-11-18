@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ValidationError } from "../errors.js";
 
 export const TICKET_STATUSES = ["new", "in_progress", "resolved"] as const;
 export type TicketStatus = (typeof TICKET_STATUSES)[number];
@@ -41,6 +42,15 @@ export const addEntrySchema = z.object({
     .max(5000, "Must be at most 5000 characters."),
 });
 
+// An agent asking the ticket's named owner to request the customer's check.
+export const verificationRequestSchema = z.object({
+  message: z
+    .string()
+    .trim()
+    .min(1, "Say what was done and what evidence is attached.")
+    .max(2000, "Must be at most 2000 characters."),
+});
+
 // The agreed version of the check. An empty text removes it, leaving the customer's words.
 export const agreeCheckSchema = z.object({
   agreed_check: z.string().trim().max(500, "Must be at most 500 characters."),
@@ -75,4 +85,26 @@ export type TicketListFilter = (typeof TICKET_LIST_FILTERS)[number];
 export const listQuerySchema = z.object({
   status: z.enum(TICKET_LIST_FILTERS).optional(),
   page: z.coerce.number().int().min(1).max(100000).optional(),
+  cursor: z.string().max(100).optional().meta({
+    description: "Where the previous page ended, as given by its next_cursor or Link header.",
+  }),
 });
+
+/** A cursor names the next page. It is opaque to callers: pass back what you were given. */
+export function cursorFor(page: number): string {
+  return Buffer.from(JSON.stringify({ page })).toString("base64url");
+}
+
+/** The page a cursor names, or a validation error for one that was not made here. */
+export function pageOf(cursor: string): number {
+  try {
+    const { page } = z
+      .object({ page: z.number().int().min(1).max(100000) })
+      .parse(JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")));
+    return page;
+  } catch {
+    throw new ValidationError("That cursor was not made here.", {
+      cursor: ["Pass back the next_cursor you were given, unchanged."],
+    });
+  }
+}

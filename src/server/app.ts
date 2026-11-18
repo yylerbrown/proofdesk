@@ -25,6 +25,9 @@ import { ticketsRouter } from "./routes/tickets.js";
 import { createTicketService, DEMO_BUDGET } from "./tickets/service.js";
 import { createConnectionService } from "./connections/service.js";
 import { connectionsRouter } from "./routes/connections.js";
+import { mcpEndpoint } from "./mcp.js";
+import { guide, openApiDocument } from "./api/describe.js";
+import { siteAddress } from "./routes/connections.js";
 
 // The top folder of the project. It is two levels above this file, both in src/server (when
 // run from source) and in dist/server (when run after a build).
@@ -33,13 +36,9 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../.
 // refused with 413 before any of it is looked at. The biggest valid ticket is about 6 KB.
 const BODY_LIMIT = "100kb";
 
-// How many tickets one person may file in ten minutes, and how many sign-ins one address
-// may start in a minute.
-export const FILING_LIMIT = 20;
-export const SIGN_IN_LIMIT = 10;
-// How many requests that change something one person (or one address) may make in ten
-// minutes, across every page and API route. Reading is not counted.
-export const WRITE_LIMIT = 120;
+// The limits live in limits.ts, where the API's guide reads them too.
+import { DEMO_CONNECTIONS_PER_HOUR, FILING_LIMIT, SIGN_IN_LIMIT, WRITE_LIMIT } from "./limits.js";
+export { DEMO_CONNECTIONS_PER_HOUR, FILING_LIMIT, SIGN_IN_LIMIT, WRITE_LIMIT };
 
 const picoCssFile = path.join(rootDir, "node_modules/@picocss/pico/css/pico.min.css");
 
@@ -111,6 +110,12 @@ export function createApp(config: Config, db: Db): Express {
     skipFailedRequests: true,
   });
   const signInLimit = rateLimit({ ...tooMany, windowMs: 60 * 1000, limit: SIGN_IN_LIMIT });
+  // A demo visitor may ask for a few assistant connections an hour, counted by address.
+  const demoConnectionLimit = rateLimit({
+    ...tooMany,
+    windowMs: 60 * 60 * 1000,
+    limit: DEMO_CONNECTIONS_PER_HOUR,
+  });
   // One allowance for every request that changes something, pages and API together.
   const writeLimit = rateLimit({
     ...tooMany,
@@ -152,10 +157,23 @@ export function createApp(config: Config, db: Db): Express {
   api.post("/tickets", filingLimit);
   api.use(express.json({ limit: BODY_LIMIT }));
   api.use(healthRouter(config, db));
-  api.use(ticketsRouter(tickets));
+  // The API describes itself, with no sign-in needed: a guide at /api, and the
+  // machine-readable description at /api/openapi.json. With a key, the guide also says what
+  // that connection may do.
+  const openapi = openApiDocument();
+  api.get("/", (req, res) => {
+    res.json(guide(req.actor, siteAddress(config, req)));
+  });
+  api.get("/openapi.json", (_req, res) => {
+    res.json(openapi);
+  });
+  api.use(ticketsRouter(tickets, connections));
   api.use(notFoundHandler);
   api.use(errorHandler);
   app.use("/api", api);
+
+  // The MCP endpoint for AI assistants: the same actions as tools, with a connection key.
+  app.all("/mcp", ...mcpEndpoint(tickets, connections, writeLimit));
 
   // The pages: two stylesheets, which need no sign-in and so come before the actor, then
   // the HTML form parser, the routes and the HTML error pages.
@@ -173,10 +191,11 @@ export function createApp(config: Config, db: Db): Express {
   app.use(writeLimit);
   app.post("/tickets", filingLimit);
   app.post("/sign-in/github", signInLimit);
+  app.post("/demo/connection", demoConnectionLimit);
   app.use(express.urlencoded({ extended: false, limit: BODY_LIMIT }));
-  app.use(signInRouter(config, auth));
+  app.use(signInRouter(config, auth, () => tickets.hasDemoSeed()));
   app.use(pagesRouter(tickets));
-  app.use(connectionsRouter(connections, config));
+  app.use(connectionsRouter(connections, config, () => tickets.hasDemoSeed()));
   app.use(pageNotFoundHandler);
   app.use(pageErrorHandler);
 
