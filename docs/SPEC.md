@@ -1,6 +1,6 @@
 # Support desk: specification
 
-This document was written before the features were built. Later cuts and changes are recorded at the end, not edited in silently.
+This document was drafted in a design conversation with the owner on 17 November 2026, before any code was built. It was opened as pull request #3, twenty minutes after the first slice of the ticket core (#2). Later cuts and changes are recorded at the end, not edited in silently.
 
 ## One line
 
@@ -9,7 +9,8 @@ A customer support desk where the customer says how they will know it is fixed, 
 ## Standing rules
 
 - A code change is linked to a ticket by pasting its link, which works with every Git host. Nothing in the desk is specific to one host except the agent run, and the README says so.
-- A person reads every change before it merges.
+- The assistant that builds a change never merges, never pushes to `main` and never deploys. A pull request merges only when its CI checks pass.
+- In this build the project skeleton, seven commits on 17 November, went straight to `main` with no pull request, and every later change came through one. Under the owner's standing instruction, a separate coordinating assistant merged pull requests whose CI checks had passed, using the owner's GitHub account, and deployed the demo and the real site. Not every merge waited for CI. Pull request #1 was merged while its restarted checks were still running, and they passed two minutes later. GitHub Actions stopped starting jobs at 17:01 UTC on 18 November, so the pull requests merged while it was stopped, starting with #96, had no CI run on their final commit. Each of them was merged only after the same checks (typecheck, lint, format, unit tests, build and the browser journey) passed locally on the exact commit being merged. The owner set the direction and priorities, made the design calls, and gave feedback on the live product as it grew. Reviews came from other AI sessions, including another vendor's models, and no human reviewer read the pull requests.
 - Nothing is ever attributed to an AI agent that an AI agent did not do.
 
 ## Who uses it
@@ -167,6 +168,10 @@ Designed by an outside reviewer against this specification, the permission funct
 Left out on purpose, and listed in the README's limits: human review records against evidence ids, reconciling owners when team membership changes, documentation generated from conditional rules, and upgrading the provenance of tickets resolved before this workflow.
 
 The workflow is built in this order: status commands and reopen; the owner-only ask with its record; take, release and hand-off; agent access limited to handed-off tickets; no public replies from agents; then the smaller items.
+
+### 2026-11-18: two corrections
+
+Two sentences above were corrected to say what happened. The opening line used to say this document was written before the features were built, and the standing rule on merging used to say a person reads every change before it merges. The standing rules now also say how this build was merged and reviewed, including the merges that did not wait for CI. Every outside review named in this document came from other AI sessions, including the one that proposed the ticket workflow the owner adopted. That workflow's central rule, that only the customer's Yes resolves a ticket, was the owner's and was in this document from the start.
 
 ### 2026-11-18: the team may resolve with a reason
 
