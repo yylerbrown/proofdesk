@@ -6,26 +6,17 @@ list. The twist: the customer writes how they will know it is fixed, and the tic
 "Did this fix it?" before it counts as confirmed.
 
 - **The demo, no account needed: <https://support-desk-demo.fly.dev>.** Sample data, shared with
-  everyone who visits, so do not type anything private.
+  everyone who visits, so do not type anything private. It returns to its samples by itself about
+  once a day.
 - **The production site, with GitHub sign-in: <https://proofdesk.fly.dev>.**
 - **The source: <https://github.com/yylerbrown/proofdesk>.**
 
-![The customer's view of a ticket the team says is fixed: the box "Did this fix it?" shows what the team tried, what happened and the customer's own check, with "Yes, resolve ticket" and a way to say No](docs/img/did-this-fix-it.png)
+<img src="docs/img/ticket-list.png" width="720" alt="The team's ticket list on the demo: status filters All, New, In Progress, Resolved and Archived, owner filters Everyone, Mine and Unassigned, a search box, and eight sample tickets with their key, title, status, owner, who each one waits on and when it was filed">
 
 ## Run it yourself
 
-Check `node -v` first: Node 22.14 or newer (`.nvmrc` says 22). Older versions are refused by
-`npm ci`, because a dependency needs it. With nvm: `nvm install 22 && nvm use 22`.
-
-```bash
-git clone https://github.com/yylerbrown/proofdesk.git
-```
-
-```bash
-cd proofdesk
-```
-
-**Development**, with a dev login that offers four made-up people and needs no keys:
+You need Node 22.14 or newer (`node -v`; `.nvmrc` says 22). Clone the repository with
+`git clone https://github.com/yylerbrown/proofdesk.git` and `cd proofdesk`, then:
 
 ```bash
 npm ci
@@ -35,9 +26,124 @@ npm ci
 DEV_SIGN_IN=on npm run dev
 ```
 
-Open <http://localhost:3000> and pick a person. It keeps running until you stop it. To keep your
-settings in a file instead, copy `.env.example` to `.env`, which turns the dev login on;
-`npm run dev` reads it.
+Open <http://localhost:3000> and pick one of four made-up people. No keys are needed. The demo
+mode, a production build, Docker and every setting are under [More ways to run](#more-ways-to-run).
+
+## Try each feature in a minute
+
+Each one takes under a minute on the demo, starting from its welcome page.
+
+**Ticket submission: title, description, status**
+
+- Start as: The welcome page
+- Press: **Try the ticket workflow**, then **File ticket**
+- You should see: The form says "Initial status: New" and is filled with a sample you can change. The filed ticket shows **New**.
+
+**Ticket list with filters**
+
+- Start as: **View as Demo Team Member**
+- Press: **Tickets**, then **New**, **In Progress**, **Resolved**; **Mine** and **Unassigned**; or type words and press **Search**
+- You should see: "All tickets", and each filter changes the list. They combine in the address, so a filtered view can be shared. A customer's list is "My tickets": only their own, with the search.
+
+**Update status: New to In Progress**
+
+- Start as: Demo Team Member, on a New ticket
+- Press: **Take ticket and start work**
+- You should see: **In Progress**, with you as its owner.
+
+**Update status: to Resolved**
+
+- Start as: Demo Team Member, owning the ticket
+- Press: **Use sample fix** (or type any link and press **Save change link**), then **Ask the customer to verify**, then **View this ticket as the customer who filed it** and **Yes, resolve ticket**
+- You should see: **Resolved**, and "Customer confirmed it is fixed." The owner can also resolve without the customer: press "Resolve" under Status and choose a reason, and the ticket then shows "Resolved by the team: <reason>" to everyone.
+
+**A working product**
+
+- Start as: The welcome page
+- Press: **Try the ticket workflow**
+- You should see: One ticket from New to Resolved, switching role on the same ticket, in about two minutes.
+
+**Source on GitHub, and a README on how to run it**
+
+- Start as: [github.com/yylerbrown/proofdesk](https://github.com/yylerbrown/proofdesk)
+- Press: [Run it yourself](#run-it-yourself)
+- You should see: A copy running on your own machine.
+
+**A live URL**
+
+- Press: The two links above
+- You should see: The demo, and the production site.
+
+**SSO with roles and permissions**
+
+- Start as: The production site
+- Press: **Sign in with GitHub**
+- You should see: Signed in as a customer, a team member or an admin, as [Sign-in and roles](#sign-in-and-roles) explains. On the demo the three roles are offered by name, the admin as **Admin preview (read-only)**.
+
+**AI features**
+
+- Start as: The welcome page
+- Press: **Get a demo connection**, then paste the command into your own assistant, for example Claude Code
+- You should see: Your assistant, through MCP, reads a sample ticket and its check, proposes a test spec, writes notes and attaches evidence. **See an assistant's work**, also on the welcome page, shows one real run.
+
+**Creative extras**
+
+- Start as: Any ticket
+- Press: **How will we know it's fixed?** on the form; **Did this fix it?** for the customer
+- You should see: The customer's own check stays on the ticket. Their Yes resolves it as "Customer confirmed"; a No goes back to the named owner with their words. Evidence is labelled as reported, never as verified. The history cannot be changed.
+
+This is what the customer meets when the team says it is fixed:
+
+<img src="docs/img/did-this-fix-it.png" width="560" alt="The customer's view of a ticket the team says is fixed: the box &quot;Did this fix it?&quot; shows what the team tried, what happened and the customer's own check, with &quot;Yes, resolve ticket&quot; and a way to say No">
+
+## Sign-in and roles
+
+The production site signs people in with GitHub. Proofdesk reads your name, picture and email
+address, never your code: it asks GitHub only for permission to read your email address, and
+keeps no GitHub token after sign-in. Everyone starts as a customer.
+
+| Role        | How you get it                                                                    | What you can do                                                                                                                                                                                                                                       |
+| ----------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Customer    | Sign in.                                                                          | File tickets. Read, edit and reply on your own tickets, answer "Did this fix it?", and reopen a resolved ticket that is still broken. You never see the team's internal notes.                                                                        |
+| Team member | The site's owner lists your GitHub user ID in `TEAM_GITHUB_IDS` in the settings.  | See every ticket. Take one and start work, reply, write internal notes, link the change, attach evidence, ask the customer to verify, archive and restore, hand on a ticket you own, resolve it with a reason, and reopen it if the team resolved it. |
+| Admin       | The site's owner lists your GitHub user ID in `ADMIN_GITHUB_IDS` in the settings. | Everything a team member can, and resolve any open ticket with a reason, reopen any ticket the team resolved, issue AI assistant connections on **Connections** and delete a ticket permanently.                                                      |
+
+On the demo there is no sign-in. Pick Demo Customer, Demo Team Member or Admin preview
+(read-only) on the welcome page, and use **Switch role** beside "Signed in as" in the header to
+try all three on the same page. Every visitor shares the one Demo Customer. The admin preview
+sees everything, archived tickets included, and changes nothing. On the demo nobody archives or
+deletes, so no visitor can empty it.
+
+## The AI extra: connect your own assistant
+
+Proofdesk makes no AI calls of its own. A person's own assistant can work on tickets through an
+MCP endpoint, with only the permissions its connection allows. It gets the customer's
+definition of "fixed" as direction, and only the customer's Yes confirms a fix: a test can pass
+while the customer is still stuck.
+
+On the demo, choose **Get a demo connection** on the welcome page: you get your own key for a
+day, and the command to paste. For Claude Code it looks like this:
+
+```bash
+claude mcp add --transport http proofdesk \
+  https://support-desk-demo.fly.dev/mcp \
+  --header "Authorization: Bearer <your key>"
+```
+
+A demo connection sees only the sample ticket made for assistants and what it writes itself. An
+assistant can read a ticket (which starts with the customer's check, as `done_when`), attach
+evidence, and ask the owner to request the customer's check; it can never answer for the
+customer or resolve. On the production site an admin issues connections, and a ticket's owner
+hands the ticket to one with **Hand to an AI assistant**: an assistant sees only the tickets
+handed to it. [`docs/AGENTS_GUIDE.md`](docs/AGENTS_GUIDE.md) has the setup for Claude Code and
+Claude Desktop, the tools, the limits and a worked example.
+
+## More ways to run
+
+The development server keeps running until you stop it. To keep your settings in a file instead
+of on the command line, copy `.env.example` to `.env`, which turns the dev login on; `npm run dev`
+reads it. `npm ci` refuses a Node older than 22.14, because a dependency needs it; with nvm:
+`nvm install 22 && nvm use 22`.
 
 **The demo, locally**, on its own database:
 
@@ -115,111 +221,6 @@ does not read `.env` and refuses an http address: pass the four settings as real
 variables, with an https `BETTER_AUTH_URL` and its own `DATABASE_PATH`, such as
 `./data/app.db`.
 
-## The rubric, line by line
-
-Each one takes under a minute on the demo, starting from its welcome page.
-
-**Ticket submission: title, description, status**
-
-- Start as: The welcome page
-- Press: **Try the ticket workflow**, then **File ticket**
-- You should see: The form says "Initial status: New" and is filled with a sample you can change. The filed ticket shows **New**.
-
-**Ticket list with filters**
-
-- Start as: **View as Demo Team Member**
-- Press: **Tickets**, then **New**, **In Progress**, **Resolved**; **Mine** and **Unassigned**; or type words and press **Search**
-- You should see: "All tickets", and each filter changes the list. They combine in the address, so a filtered view can be shared. A customer's list is "My tickets": only their own, with the search.
-
-**Update status: New to In Progress**
-
-- Start as: Demo Team Member, on a New ticket
-- Press: **Take ticket and start work**
-- You should see: **In Progress**, with you as its owner.
-
-**Update status: to Resolved**
-
-- Start as: Demo Team Member, owning the ticket
-- Press: **Use sample fix** (or type any link and press **Save change link**), then **Ask the customer to verify**, then **View this ticket as the customer who filed it** and **Yes, resolve ticket**
-- You should see: **Resolved**, and "Customer confirmed it is fixed." The owner can also resolve without the customer: open "Resolve with a reason" under Status, and the ticket then shows "Resolved by the team: <reason>" to everyone.
-
-**A working product**
-
-- Start as: The welcome page
-- Press: **Try the ticket workflow**
-- You should see: One ticket from New to Resolved, switching role on the same ticket, in about two minutes.
-
-**Source on GitHub, and a README on how to run it**
-
-- Start as: [github.com/yylerbrown/proofdesk](https://github.com/yylerbrown/proofdesk)
-- Press: [Run it yourself](#run-it-yourself)
-- You should see: A copy running on your own machine.
-
-**Bonus: a live URL**
-
-- Press: The two links above
-- You should see: The demo, and the production site.
-
-**Bonus: SSO with roles and permissions**
-
-- Start as: The production site
-- Press: **Sign in with GitHub**
-- You should see: Signed in as a customer, a team member or an admin, as [Sign-in and roles](#sign-in-and-roles) explains. On the demo the three roles are offered by name, the admin as **Admin preview (read-only)**.
-
-**Bonus: AI features**
-
-- Start as: The welcome page
-- Press: **Get a demo connection**, then paste the command into your own assistant, for example Claude Code
-- You should see: Your assistant, through MCP, reads a sample ticket and its check, proposes a test spec, writes notes and attaches evidence. **See an assistant's work**, also on the welcome page, shows one real run.
-
-**Bonus: creative extras**
-
-- Start as: Any ticket
-- Press: **How will we know it's fixed?** on the form; **Did this fix it?** for the customer
-- You should see: The customer's own check stays on the ticket. Their Yes resolves it as "Customer confirmed"; a No goes back to the named owner with their words. Evidence is labelled as reported, never as verified. The history cannot be changed.
-
-## Sign-in and roles
-
-The production site signs people in with GitHub. Proofdesk reads your name, picture and email
-address, never your code: it asks GitHub only for permission to read your email address, and
-keeps no GitHub token after sign-in. Everyone starts as a customer.
-
-| Role        | How you get it                                                                    | What you can do                                                                                                                                                                                                    |
-| ----------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Customer    | Sign in.                                                                          | File tickets. Read, edit and reply on your own tickets, answer "Did this fix it?", and reopen a resolved ticket that is still broken. You never see the team's internal notes.                                     |
-| Team member | The site's owner lists your GitHub user ID in `TEAM_GITHUB_IDS` in the settings.  | See every ticket. Take one and start work, reply, write internal notes, link the change, attach evidence, ask the customer to verify, archive and restore, hand on a ticket you own, and resolve it with a reason. |
-| Admin       | The site's owner lists your GitHub user ID in `ADMIN_GITHUB_IDS` in the settings. | Everything a team member can, and resolve any open ticket with a reason, issue AI assistant connections on **Connections** and delete a ticket permanently.                                                        |
-
-On the demo there is no sign-in. Pick Demo Customer, Demo Team Member or Admin preview
-(read-only) on the welcome page, and use **Switch role** beside "Signed in as" in the header to
-try all three on the same page. Every visitor shares the one Demo Customer. The admin preview
-sees everything, archived tickets included, and changes nothing. On the demo nobody archives or
-deletes, so no visitor can empty it.
-
-## The AI extra: connect your own assistant
-
-Proofdesk makes no AI calls of its own. A person's own assistant can work on tickets through an
-MCP endpoint, with only the permissions its connection allows. It gets the customer's
-definition of "fixed" as direction, and only the customer's Yes confirms a fix: a test can pass
-while the customer is still stuck.
-
-On the demo, choose **Get a demo connection** on the welcome page: you get your own key for a
-day, and the command to paste. For Claude Code it looks like this:
-
-```bash
-claude mcp add --transport http proofdesk \
-  https://support-desk-demo.fly.dev/mcp \
-  --header "Authorization: Bearer <your key>"
-```
-
-A demo connection sees only the sample ticket made for assistants and what it writes itself. An
-assistant can read a ticket (which starts with the customer's check, as `done_when`), attach
-evidence, and ask the owner to request the customer's check; it can never answer for the
-customer or resolve. On the production site an admin issues connections, and a ticket's owner
-hands the ticket to one with **Hand to an AI assistant**: an assistant sees only the tickets
-handed to it. [`docs/AGENTS_GUIDE.md`](docs/AGENTS_GUIDE.md) has the setup for Claude Code and
-Claude Desktop, the tools, the limits and a worked example.
-
 ## Read first
 
 For someone reading the code, in this order:
@@ -250,15 +251,18 @@ entry in the same transaction, and database triggers refuse to change it.
 
 ## How it is verified
 
-| Command                | What it runs                                                                                                                                                                    |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm test`             | Every unit and route test with vitest: about 940, against a real SQLite file and the real app.                                                                                  |
-| `npm run test:browser` | One real-browser journey with Playwright: a customer files, the team works it, No then Yes, and a second customer is refused. Run `npx playwright install chromium` once first. |
-| `npm run typecheck`    | TypeScript, strict.                                                                                                                                                             |
-| `npm run lint`         | ESLint.                                                                                                                                                                         |
-| `npm run format:check` | Prettier, without changing files. `npm run format` rewrites them.                                                                                                               |
+| Command                | What it runs                                                                                                                                                                                                                                  |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm test`             | Every unit and route test with vitest, over 1,000 of them, against a real SQLite file and the real app.                                                                                                                                       |
+| `npm run test:browser` | Real-browser tests with Playwright: one journey where a customer files, the team works it, No then Yes, and a second customer is refused; then the keyboard, menus and phone layout. Run `npx playwright install chromium webkit` once first. |
+| `npm run typecheck`    | TypeScript, strict.                                                                                                                                                                                                                           |
+| `npm run lint`         | ESLint.                                                                                                                                                                                                                                       |
+| `npm run format:check` | Prettier, without changing files. `npm run format` rewrites them.                                                                                                                                                                             |
 
-CI runs all of them on every pull request. Many changes were also broken on purpose to see their
+All of them pass before a pull request merges, with one early exception that
+[`AGENTS.md`](AGENTS.md) names. GitHub's CI ran them until 18 November, when it stopped starting
+jobs on the private working repository; since then a local gate runs the same commands on the
+exact commit being merged. Many changes were also broken on purpose to see their
 test fail; each pull request says which. A few tests read this README, so a route, label or
 command it names cannot drift from the code.
 Pull request numbers, here and in [`BUILD_LOG.md`](BUILD_LOG.md), refer to the private working
@@ -294,8 +298,8 @@ code. The specification ([`docs/SPEC.md`](docs/SPEC.md)), the history of every s
   decisions recorded against each piece of evidence, an immutable record of each question asked
   beyond its history entry, documentation generated from conditional rules, and upgrading
   tickets resolved before the customer's Yes was required.
-- **Design debt** in the code, such as the 1,900-line ticket service, is listed with the plan for
-  each item in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#design-debt).
+- **Design debt** in the code, such as a ticket service of over 2,000 lines, is listed with the
+  plan for each item in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#design-debt).
 
 ## More
 

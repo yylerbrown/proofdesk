@@ -27,7 +27,8 @@ once work has started and the change is linked.
 - **Three statuses**: New, In Progress and Resolved.
 - The customer's Yes to "Did this fix it?" resolves a ticket as "Customer confirmed". Its owner or
   an admin can also resolve it with a required reason, shown everywhere as "Resolved by the team:
-  <reason>". The customer can reopen either. An agent never resolves.
+  <reason>". The customer can reopen either; the owner or an admin can reopen only the team's own
+  resolution. An agent never resolves or reopens.
 - Every ticket in progress has a named person who owns it, never an agent.
 - **History is add-only.** Every change writes a history entry in the same transaction, saying
   who did it and whether they were a person or an agent. Database triggers refuse to change it.
@@ -51,7 +52,7 @@ once work has started and the change is linked.
 
 Shortcuts in the code that were kept for now, each with the plan for it.
 
-- **One large ticket service.** `src/server/tickets/service.ts` is about 1,900 lines doing about
+- **One large ticket service.** `src/server/tickets/service.ts` is over 2,000 lines doing about
   eight jobs: workflow, conversation, evidence, specs, retries, demo seeding, demo visibility and
   page helpers. It will be split behind the same exports, with the test suite as the safety net.
 - **Visibility is decided inline.** Who sees which rows (the customer, a handed agent, a demo
