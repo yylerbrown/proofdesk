@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEMO_ACTORS, DEV_COOKIE } from "../src/server/actor.js";
-import { WRITE_LIMIT } from "../src/server/app.js";
+import { WRITE_LIMIT } from "../src/server/limits.js";
 import {
   createTicketService,
   DEMO_BUDGET,

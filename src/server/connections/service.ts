@@ -11,14 +11,6 @@ import * as repository from "./repository.js";
 // guarantee of one particular agent. An admin issues it with chosen scopes and sees the key
 // once. Losing the key means revoking the connection and issuing another.
 
-/** What a visitor's demo connection may do: read the samples, write notes, attach evidence, propose a test spec. */
-export const DEMO_SCOPES: AgentScope[] = [
-  "read_tickets",
-  "write_notes",
-  "attach_evidence",
-  "propose_specs",
-];
-
 /** How long a demo connection lasts, and how many may be live at once. */
 export const DEMO_CONNECTION_HOURS = 24;
 export const DEMO_CONNECTION_LIMIT = 200;
@@ -30,6 +22,9 @@ export const DEFAULT_SCOPES: AgentScope[] = [
   "attach_evidence",
   "propose_specs",
 ];
+
+/** What a visitor's demo connection may do: the same as a new connection's default. */
+export const DEMO_SCOPES: AgentScope[] = DEFAULT_SCOPES;
 
 // A form sends one checkbox as a text and several as a list; both are read as a list.
 const scopeList = z.preprocess(

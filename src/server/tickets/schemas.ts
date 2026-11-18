@@ -5,6 +5,13 @@ export const TICKET_STATUSES = ["new", "in_progress", "resolved"] as const;
 export type TicketStatus = (typeof TICKET_STATUSES)[number];
 
 // The messages are written for a person, because the ticket form shows them under each box.
+// A link that must be an http or https address, as for "Where did this happen?".
+export const httpLink = z
+  .string()
+  .trim()
+  .max(500, "Must be at most 500 characters.")
+  .pipe(z.url({ protocol: /^https?$/, error: "Must be a link that starts with http or https." }));
+
 export const createTicketSchema = z.object({
   title: z
     .string()
@@ -16,14 +23,9 @@ export const createTicketSchema = z.object({
     .trim()
     .min(1, "Must not be empty.")
     .max(5000, "Must be at most 5000 characters."),
-  where_url: z
-    .string()
-    .max(500, "Must be at most 500 characters.")
-    .pipe(z.url({ protocol: /^https?$/, error: "Must be a link that starts with http or https." }))
-    .optional(),
+  where_url: httpLink.optional(),
   fix_check: z.string().trim().max(500, "Must be at most 500 characters.").optional(),
 });
-export type CreateTicketInput = z.infer<typeof createTicketSchema>;
 
 // Permanent deletion is confirmed by typing the ticket's key.
 export const deleteTicketSchema = z.object({
@@ -99,13 +101,6 @@ export const verificationRequestSchema = z.object({
 export const agreeCheckSchema = z.object({
   agreed_check: z.string().trim().max(500, "Must be at most 500 characters."),
 });
-
-// A link that must be an http or https address, as for "Where did this happen?".
-const httpLink = z
-  .string()
-  .trim()
-  .max(500, "Must be at most 500 characters.")
-  .pipe(z.url({ protocol: /^https?$/, error: "Must be a link that starts with http or https." }));
 
 export const linkChangeSchema = z.object({ change_url: httpLink });
 // Asking the customer: where to try it, what the owner tried there and what happened, their

@@ -6,7 +6,7 @@ import { parse } from "node-html-parser";
 import request from "supertest";
 import { afterEach, describe, expect, it } from "vitest";
 import { DEV_COOKIE } from "../src/server/actor.js";
-import { DEMO_CONNECTIONS_PER_HOUR } from "../src/server/app.js";
+import { DEMO_CONNECTIONS_PER_HOUR } from "../src/server/limits.js";
 import { DEMO_CONNECTION_LIMIT } from "../src/server/connections/service.js";
 import { seedDemo } from "../src/server/demo.js";
 import { createTicketService, LIST_PAGE_SIZE } from "../src/server/tickets/service.js";
