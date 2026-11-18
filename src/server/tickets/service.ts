@@ -209,7 +209,6 @@ const CUSTOMER_EVENT_TYPES = new Set([
   "reopened",
   "check_adopted",
   "evidence_added",
-  "spec_proposed",
   "spec_accepted",
   "spec_discarded",
   "archived",
@@ -459,7 +458,13 @@ export function createTicketService(
    */
   function specFor(ticketId: number, actor: Actor): repository.SpecRow | undefined {
     if (isDemoAgent(actor)) return repository.findLatestSpecBy(db, ticketId, actor.id);
-    return repository.findActiveSpec(db, ticketId);
+    const spec = repository.findActiveSpec(db, ticketId);
+    // A proposed spec is a suggestion for the team to decide on. A customer sees the spec only
+    // once a person on the team has accepted it.
+    if (spec?.state === "proposed" && actor.kind === "person" && actor.role === "customer") {
+      return undefined;
+    }
+    return spec;
   }
 
   function toEntry(row: repository.EntryRow): TicketEntry {
@@ -1569,10 +1574,14 @@ export function createTicketService(
     listEntries(key: string, actor: Actor): TicketEntry[] {
       const row = requireRow(key, actor);
       const includeNotes = can(actor, "read_notes", row);
+      // An assistant without note access still reads back the notes it wrote itself: those
+      // are its own words, not the team's.
+      const ownNotes = actor.kind === "agent" && !includeNotes;
       // Where a reply's words came from is the team's to know: a customer never sees the note.
       const entries = repository
-        .listEntries(db, row.id, includeNotes, THREAD_LIMIT)
+        .listEntries(db, row.id, includeNotes || ownNotes, THREAD_LIMIT)
         .map(toEntry)
+        .filter((entry) => !ownNotes || entry.kind !== "note" || entry.author === actor.id)
         .map((entry) => (includeNotes ? entry : { ...entry, based_on: null }));
       if (!isDemoAgent(actor)) return entries;
       const seeded = seededOrRefused().entries;
