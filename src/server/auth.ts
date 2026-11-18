@@ -52,6 +52,11 @@ export function createAuth(db: Db, signIn: SignInConfig, clientIpHeader: string 
         },
       },
     },
+    // Where a GitHub return goes when it fails before the library knows which sign-in it
+    // belongs to, for example from a GitHub tab left open overnight: the sign-in page, with
+    // the reason as error=..., like every other failed sign-in. Without this the library
+    // would send it to its own error page, which is not offered.
+    onAPIError: { errorURL: new URL("/sign-in", signIn.baseUrl).href },
     // The library's own rate limits count per visitor address. Behind a proxy it must read
     // that address from the header the proxy sets.
     advanced:

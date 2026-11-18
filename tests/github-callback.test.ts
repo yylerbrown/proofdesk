@@ -238,4 +238,42 @@ describe("the sign-in library's own routes", () => {
     }
     expect(db.prepare(`SELECT COUNT(*) AS n FROM "session"`).get()).toEqual({ n: 0 });
   });
+
+  it.each([
+    ["no state", { code: "made-up-code" }, "state_not_found"],
+    ["a state it never gave out", { code: "made-up-code", state: "unknown" }, "state_mismatch"],
+  ])(
+    "send a GitHub return with %s to the sign-in page with its reason, not to the tickets",
+    async (_name, query, reason) => {
+      const { app } = buildGithubApp();
+      // Someone signed in already, as when a GitHub tab left open overnight comes back.
+      const { cookie } = await signInThroughGithub(app, ada);
+      const back = await request(app)
+        .get("/api/auth/callback/github")
+        .query(query)
+        .set("Cookie", cookie);
+      const landed = await landingOf(app, back.headers.location as string, cookie);
+      expect(landed.url.pathname).toBe("/sign-in");
+      expect(landed.url.searchParams.get("error")).toBe(reason);
+      expect(landed.res.text).toContain("That sign-in did not work.");
+    },
+  );
 });
+
+/**
+ * Follows redirects the way a browser would, as long as they stay on this site, and returns
+ * the address it stopped at with its answer. Nothing is ever sent to another site.
+ */
+async function landingOf(app: TestApp, location: string, cookie: string) {
+  const site = SIGN_IN_ENV.BETTER_AUTH_URL;
+  let url = new URL(location, site);
+  for (let hops = 0; hops < 5; hops++) {
+    if (url.origin !== site) throw new Error(`A redirect left the site: ${url.href}`);
+    const res = await request(app)
+      .get(url.pathname + url.search)
+      .set("Cookie", cookie);
+    if (res.status < 300 || res.status >= 400) return { url, res };
+    url = new URL(res.headers.location as string, url);
+  }
+  throw new Error(`Still redirecting after five hops, at ${url.href}`);
+}
