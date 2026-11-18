@@ -217,9 +217,12 @@ describe("deciding on a spec", () => {
       .type("form")
       .send({ decision: "discard" });
     expect((await admin(app).get("/api/tickets/SUP-1")).body.spec).toBeNull();
-    expect((await as(app, teamActor).get("/tickets/SUP-1")).text).toContain(
-      "Want better results? Ask your assistant to spec this ticket",
-    );
+    // While the ticket is handed to the assistant, the team asks it directly; once its work
+    // ends, the line offers to ask for a new spec.
+    const prompt = "Want better results? Ask your assistant to spec this ticket";
+    expect((await as(app, teamActor).get("/tickets/SUP-1")).text).not.toContain(prompt);
+    await as(app, teamActor).post("/tickets/SUP-1/agent/end").type("form").send({});
+    expect((await as(app, teamActor).get("/tickets/SUP-1")).text).toContain(prompt);
   });
 });
 
@@ -229,7 +232,15 @@ describe("the spec on the ticket page", () => {
     const team = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     const line = team.querySelector(".spec-prompt")!;
     expect(line.text).toContain("Using Proofdesk, write a test spec for SUP-1");
-    expect(line.querySelector("a")!.getAttribute("href")).toBe("/connections");
+    // Under the conversation, not in the panel that holds what a person acts on.
+    expect(team.querySelector(".ticket-thread .spec-prompt")).not.toBeNull();
+    expect(team.querySelector(".ticket-panel .spec-prompt")).toBeNull();
+    // A team member cannot connect an assistant, so the line does not offer it; an admin can.
+    expect(line.querySelectorAll("a").map((a) => a.getAttribute("href"))).toEqual([
+      "/assistant-run",
+    ]);
+    const asAdmin = parse((await admin(app).get("/tickets/SUP-1")).text);
+    expect(asAdmin.querySelector(".spec-prompt a")!.getAttribute("href")).toBe("/connections");
     // Nothing says the site contacted anyone's assistant.
     expect(line.text).not.toMatch(/sent|notified|pinged/i);
     const customer = await as(app, customerOne).get("/tickets/SUP-1");
@@ -358,15 +369,17 @@ describe("test specs on the demo", () => {
 
   it("offers the demo's team the line, pointing at the demo's own connection button, and never the customer", async () => {
     const { app } = buildDemo();
+    // A sample in progress that is not the one handed to the demo's assistants.
+    const open = "SUP-1";
     const asCustomer = await visitor(app)
       .set("Cookie", `${DEV_COOKIE}=demo-customer`)
-      .get(`/tickets/${sample}`);
+      .get(`/tickets/${open}`);
     expect(parse(asCustomer.text).querySelector(".spec-prompt")).toBeNull();
     const page = parse(
-      (await visitor(app).set("Cookie", `${DEV_COOKIE}=demo-team`).get(`/tickets/${sample}`)).text,
+      (await visitor(app).set("Cookie", `${DEV_COOKIE}=demo-team`).get(`/tickets/${open}`)).text,
     );
     const line = page.querySelector(".spec-prompt")!;
-    expect(line.text).toContain(`Using Proofdesk, write a test spec for ${sample}`);
+    expect(line.text).toContain(`Using Proofdesk, write a test spec for ${open}`);
     expect(line.querySelector("a")!.getAttribute("href")).toBe("/sign-in");
     const welcome = await visitor(app).set("Cookie", `${DEV_COOKIE}=demo-customer`).get("/sign-in");
     expect(welcome.text).toContain('action="/demo/connection"');

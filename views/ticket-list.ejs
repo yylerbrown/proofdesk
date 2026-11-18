@@ -13,8 +13,9 @@
 <h1><%= mine ? "My tickets" : "All tickets" %></h1>
 <p class="list-note"><small>Tickets start New, move to In Progress when work starts, and become Resolved when the customer who filed them confirms the fix.</small></p>
 <% if (viewer && viewer.role === "admin") { %>
-<p class="role-note"><small><% if (viewer.readOnly) { %>Admin preview, read-only: you see every ticket with its history and internal notes, and nothing you do here changes them.<% } else { %>As an admin you see every ticket with its history and internal notes, restore archived tickets, delete tickets permanently and manage assistant connections.<% } %></small></p>
+<p class="role-note"><small><% if (viewer.readOnly) { %>Admin preview, read-only: you see every ticket with its history and internal notes, and nothing you do here changes them.<% } else { %>As an admin you see every ticket with its history and internal notes, restore archived tickets, delete tickets permanently and <a href="/connections">manage assistant connections</a>.<% } %></small></p>
 <% } %>
+<%- include("assistant-invite", { invite }) %>
 
 <nav aria-label="Filter by status">
   <ul>

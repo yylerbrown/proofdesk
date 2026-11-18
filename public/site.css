@@ -2112,3 +2112,39 @@ dl.run-facts dd {
   margin: 0 0 var(--pd-space-3);
   overflow-wrap: anywhere;
 }
+
+/*
+ * The invitation to bring your own AI assistant, on the team's ticket list: a quiet card with
+ * one primary action, until an assistant is connected.
+ */
+.assistant-invite {
+  margin: var(--pd-space-4) 0 var(--pd-space-5);
+  padding: var(--pd-space-4);
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius-lg);
+  background: var(--pd-surface);
+}
+.assistant-invite h2 {
+  margin-bottom: var(--pd-space-2);
+  font-size: var(--pd-text-lg);
+}
+.assistant-invite > p {
+  max-width: var(--pd-measure);
+}
+.invite-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pd-space-2) var(--pd-space-3);
+}
+.invite-actions form,
+.invite-actions [role="button"] {
+  margin: 0;
+}
+.invite-who {
+  margin: var(--pd-space-3) 0 0;
+  color: var(--pd-muted);
+}
+.assistant-connected {
+  color: var(--pd-muted);
+}
