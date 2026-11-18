@@ -666,7 +666,8 @@ export function createTicketService(
    * the agreed check or the change link. Call it inside the transaction of that change.
    */
   function withdrawQuestion(before: repository.TicketRow): void {
-    if (before.ready_at !== null) repository.clearReady(db, before.id);
+    // Each of those changes writes its own updated_at right after.
+    if (before.ready_at !== null) repository.clearReady(db, before.id, new Date().toISOString());
   }
 
   /** Throws 409 when a budget is used up. Counts only when there is a budget to count against. */
@@ -1084,7 +1085,7 @@ export function createTicketService(
         }
         if (before.ready_at === null) return before; // nothing is open
         const now = new Date().toISOString();
-        repository.clearReady(db, before.id);
+        repository.clearReady(db, before.id, now);
         logEvent({
           ticketId: before.id,
           actor: actor.id,
