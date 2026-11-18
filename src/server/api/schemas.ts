@@ -108,6 +108,10 @@ export const ticketOutput = z
     try_url: z.string().nullable(),
     ready_at: time.nullable(),
     ready_token: z.string().nullable(),
+    version: z.number().int().meta({
+      description:
+        "Rises on every change to the ticket. Send it back as expected_version with a change, and the change is refused with 409 ticket_changed if the ticket has changed since.",
+    }),
   })
   .meta({ id: "Ticket" });
 

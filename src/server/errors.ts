@@ -89,6 +89,8 @@ const HINTS: Record<string, string> = {
   not_new: "This ticket has already started.",
   not_resolved: "The ticket is still open; there is nothing to reopen.",
   owner_changed: "Reload the ticket: it has changed hands since you opened it.",
+  ticket_changed:
+    "Get the ticket again and look at what changed. Then send again with its current version as expected_version, or leave expected_version out to skip the check.",
   not_open:
     "The ticket is resolved. The customer who filed it can reopen it, and so can its owner or an admin when the team resolved it.",
   question_open: "Withdraw the open question first (POST .../withdraw-question), then ask again.",

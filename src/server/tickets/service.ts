@@ -19,11 +19,13 @@ import {
   noteSchema,
   verificationRequestSchema,
   createTicketSchema,
+  editTicketSchema,
   giveToAgentSchema,
   handOffSchema,
   reopenSchema,
   deleteTicketSchema,
   resolveSchema,
+  versionOnlySchema,
   RESOLVE_REASON_LABELS,
   sameText,
   type ResolveReason,
@@ -112,6 +114,8 @@ export type Ticket = {
   try_url: string | null;
   ready_at: string | null;
   ready_token: string | null;
+  /** Rises on every change to the ticket. A change sent with an older one is refused. */
+  version: number;
 };
 
 export type TicketEvent = {
@@ -484,6 +488,7 @@ export function createTicketService(
       ready_at: row.ready_at,
       // The token a customer's answer must carry. An assistant never answers, so never gets it.
       ready_token: actor?.kind === "agent" ? null : row.ready_token,
+      version: row.version,
     };
   }
 
@@ -804,6 +809,28 @@ export function createTicketService(
     });
   }
 
+  /**
+   * A changed ticket's row with the version the database gave it. A change builds its answer
+   * from the row it read, and the database raises the version as the change is written.
+   */
+  function saved(row: repository.TicketRow): repository.TicketRow {
+    return { ...row, version: repository.versionOf(db, row.id) ?? row.version };
+  }
+
+  /**
+   * Throws 409 when the caller says which version it saw and the ticket has changed since, so a
+   * change made from an old page or an old read never writes over a newer one. A caller that
+   * sends no version is not checked.
+   */
+  function requireVersion(key: string, row: repository.TicketRow, expected?: number): void {
+    if (expected === undefined || expected === row.version) return;
+    throw new HttpError(
+      409,
+      "ticket_changed",
+      `Ticket ${key} changed since you opened it, so nothing was saved. This is the ticket as it is now.`,
+    );
+  }
+
   /** Throws 409 when the ticket is archived. Used before any change to its content. */
   function requireNotArchived(key: string, row: repository.TicketRow): void {
     if (row.archived_at !== null) {
@@ -830,7 +857,7 @@ export function createTicketService(
         log(id, actor, "created", { status: "new" }, now);
         return repository.findTicket(db, id)!;
       })();
-      return toTicket(row, actor);
+      return toTicket(saved(row), actor);
     },
 
     /**
@@ -878,6 +905,22 @@ export function createTicketService(
       return toTicket(requireRow(key, actor), actor);
     },
 
+    /**
+     * A cheap read for a ticket page left open: the ticket's version, and how many entries of
+     * its conversation this viewer sees. Who may read it is checked exactly as for the ticket.
+     */
+    ticketStamp(key: string, actor: Actor): { version: number; entries: number } {
+      const row = requireRow(key, actor);
+      return {
+        version: row.version,
+        // The page shows at most THREAD_LIMIT of them, so it counts no further.
+        entries: Math.min(
+          repository.countEntries(db, row.id, can(actor, "read_notes", row)),
+          THREAD_LIMIT,
+        ),
+      };
+    },
+
     /** Checks the input, then saves the new status and its event together. */
     changeStatus(key: string, input: unknown, actor: Actor): Ticket {
       const row = db.transaction(() => {
@@ -894,7 +937,8 @@ export function createTicketService(
           throw needsCustomer(key);
         }
         requirePermission(actor, "change_status", before);
-        const { status } = parse(changeStatusSchema, input);
+        const { status, expected_version } = parse(changeStatusSchema, input);
+        requireVersion(key, before, expected_version);
         requireNotArchived(key, before);
         if (before.status === status) {
           // Work that has started is the owner's: anyone else asking to start it is refused,
@@ -918,7 +962,7 @@ export function createTicketService(
         log(before.id, actor, "status_changed", { from: before.status, to: status }, now);
         return { ...before, status, ready_at: null, ready_token: null, updated_at: now };
       })();
-      return toTicket(row, actor);
+      return toTicket(saved(row), actor);
     },
 
     /**
@@ -930,7 +974,8 @@ export function createTicketService(
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "edit", before);
-        const ticket = parse(createTicketSchema, input);
+        const ticket = parse(editTicketSchema, input);
+        requireVersion(key, before, ticket.expected_version);
         const after = {
           title: ticket.title,
           description: ticket.description,
@@ -972,17 +1017,18 @@ export function createTicketService(
         }
         return { ...before, ...after, agreed_check: agreed, ...noQuestion, updated_at: now };
       })();
-      return toTicket(row, actor);
+      return toTicket(saved(row), actor);
     },
 
     /**
      * The customer adopts the team's interpretation as their own check, in those exact words.
      * Their earlier words stay in the history.
      */
-    adoptCheck(key: string, actor: Actor): Ticket {
+    adoptCheck(key: string, actor: Actor, input: unknown = {}): Ticket {
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "adopt_check", before);
+        requireVersion(key, before, parse(versionOnlySchema, input ?? {}).expected_version);
         requireNotArchived(key, before);
         if (before.agreed_check === null) {
           throw new HttpError(
@@ -1010,7 +1056,7 @@ export function createTicketService(
         log(before.id, actor, "check_adopted", { from: before.fix_check, to: words }, now);
         return { ...before, fix_check: words, agreed_check: null, ...noQuestion, updated_at: now };
       })();
-      return toTicket(row, actor);
+      return toTicket(saved(row), actor);
     },
 
     /**
@@ -1021,7 +1067,8 @@ export function createTicketService(
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "agree_check", before);
-        const { agreed_check } = parse(agreeCheckSchema, input);
+        const { agreed_check, expected_version } = parse(agreeCheckSchema, input);
+        requireVersion(key, before, expected_version);
         // The same words as the customer's are not a tighter check: keep none.
         // Stored text may still hold old line endings, so both checks compare with sameText.
         const agreed =
@@ -1034,7 +1081,7 @@ export function createTicketService(
         log(before.id, actor, "check_agreed", { from: before.agreed_check, to: agreed }, now);
         return { ...before, agreed_check: agreed, ...noQuestion, updated_at: now };
       })();
-      return toTicket(row, actor);
+      return toTicket(saved(row), actor);
     },
 
     /** Records the link to the code change. Evidence, not proof that the ticket is fixed. */
@@ -1042,7 +1089,8 @@ export function createTicketService(
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "link_change", before);
-        const { change_url } = parse(linkChangeSchema, input);
+        const { change_url, expected_version } = parse(linkChangeSchema, input);
+        requireVersion(key, before, expected_version);
         requireNotArchived(key, before);
         if (before.change_url === change_url) return before;
         const now = new Date().toISOString();
@@ -1051,7 +1099,7 @@ export function createTicketService(
         log(before.id, actor, "change_linked", { from: before.change_url, to: change_url }, now);
         return { ...before, change_url, ...noQuestion, updated_at: now };
       })();
-      return toTicket(row, actor);
+      return toTicket(saved(row), actor);
     },
 
     /**
@@ -1065,6 +1113,7 @@ export function createTicketService(
         requirePermission(actor, "mark_ready", before);
         // Every field is optional, so a request with no body at all asks with nothing else.
         const fields = parse(markReadySchema, input ?? {});
+        requireVersion(key, before, fields.expected_version);
         requireNotArchived(key, before);
         // Only the ticket's current owner asks the customer.
         if (before.owner_id === null) {
@@ -1146,17 +1195,18 @@ export function createTicketService(
           updated_at: now,
         };
       })();
-      return toTicket(row, actor);
+      return toTicket(saved(row), actor);
     },
 
     /**
      * The owner takes back the question the customer has not answered yet, for example to
      * change what it says. The customer's open answer form stops working.
      */
-    withdrawQuestionAsked(key: string, actor: Actor): Ticket {
+    withdrawQuestionAsked(key: string, actor: Actor, input: unknown = {}): Ticket {
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "mark_ready", before);
+        const { expected_version } = parse(versionOnlySchema, input ?? {});
         if (before.owner_id !== actor.id) {
           throw new HttpError(
             403,
@@ -1164,6 +1214,7 @@ export function createTicketService(
             `Only the owner of ticket ${key} can withdraw its question.`,
           );
         }
+        requireVersion(key, before, expected_version);
         // Archiving already withdrew any question.
         requireNotArchived(key, before);
         if (before.ready_at === null) return before; // nothing is open
@@ -1172,7 +1223,7 @@ export function createTicketService(
         log(before.id, actor, "question_withdrawn", {}, now);
         return { ...before, ready_at: null, ready_token: null, updated_at: now };
       })();
-      return toTicket(row, actor);
+      return toTicket(saved(row), actor);
     },
 
     /**
@@ -1226,17 +1277,18 @@ export function createTicketService(
         );
         return { ...before, status, ...noQuestion, updated_at: now } as repository.TicketRow;
       })();
-      return toTicket(row, actor);
+      return toTicket(saved(row), actor);
     },
 
     /**
      * Makes the actor the owner of an unowned ticket. A ticket someone else owns is refused:
      * giving it to someone else is a hand-off.
      */
-    takeTicket(key: string, actor: Actor): Ticket {
+    takeTicket(key: string, actor: Actor, input: unknown = {}): Ticket {
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "take", before);
+        requireVersion(key, before, parse(versionOnlySchema, input ?? {}).expected_version);
         requireNotArchived(key, before);
         if (before.owner_id === actor.id) return before; // already theirs
         // Take is for the inbox. Someone else's ticket is handed over, not taken.
@@ -1252,18 +1304,19 @@ export function createTicketService(
         }
         return setOwner(before, actor.id, actor.name, actor);
       })();
-      return toTicket(row, actor);
+      return toTicket(saved(row), actor);
     },
 
     /**
      * Takes an unowned ticket and starts work on it, in one step. A ticket someone else owns
      * is refused: taking it from them is a hand-off.
      */
-    takeAndStart(key: string, actor: Actor): Ticket {
+    takeAndStart(key: string, actor: Actor, input: unknown = {}): Ticket {
       const row = db.transaction(() => {
         let before = requireRow(key, actor);
         requirePermission(actor, "take", before);
         requirePermission(actor, "change_status", before);
+        requireVersion(key, before, parse(versionOnlySchema, input ?? {}).expected_version);
         requireNotArchived(key, before);
         if (before.status !== "new") {
           throw new HttpError(
@@ -1285,7 +1338,7 @@ export function createTicketService(
         log(before.id, actor, "status_changed", { from: "new", to: "in_progress" }, now);
         return { ...before, status: "in_progress" as const, updated_at: now };
       })();
-      return toTicket(row, actor);
+      return toTicket(saved(row), actor);
     },
 
     /**
@@ -1322,7 +1375,8 @@ export function createTicketService(
             );
           }
         }
-        const { reason } = parse(reopenSchema, input);
+        const { reason, expected_version } = parse(reopenSchema, input);
+        requireVersion(key, before, expected_version);
         requireNotArchived(key, before);
         if (before.status !== "resolved") {
           throw new HttpError(
@@ -1364,7 +1418,7 @@ export function createTicketService(
         }
         return { ...before, status, ...noQuestion, updated_at: now } as repository.TicketRow;
       })();
-      return toTicket(row, actor);
+      return toTicket(saved(row), actor);
     },
 
     /**
@@ -1381,7 +1435,8 @@ export function createTicketService(
       const row = db.transaction(() => {
         let before = requireRow(key, actor);
         requirePermission(actor, "resolve_with_reason", before);
-        const { reason, note, duplicate_of } = parse(resolveSchema, input);
+        const { reason, note, duplicate_of, expected_version } = parse(resolveSchema, input);
+        requireVersion(key, before, expected_version);
         if (reason === "other" && !note) {
           throw new ValidationError("Say why, for Other.", { note: ["Say why, for Other."] });
         }
@@ -1461,7 +1516,7 @@ export function createTicketService(
           updated_at: now,
         };
       })();
-      return toTicket(row, actor);
+      return toTicket(saved(row), actor);
     },
 
     /**
@@ -1473,7 +1528,8 @@ export function createTicketService(
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "hand_off", before);
-        const { to, expected_owner } = parse(handOffSchema, input);
+        const { to, expected_owner, expected_version } = parse(handOffSchema, input);
+        requireVersion(key, before, expected_version);
         requireNotArchived(key, before);
         if (before.status === "resolved") {
           throw new HttpError(409, "not_open", `Ticket ${key} is resolved.`);
@@ -1506,7 +1562,7 @@ export function createTicketService(
           ready_token: null,
         };
       })();
-      return toTicket(row, actor);
+      return toTicket(saved(row), actor);
     },
 
     /**
@@ -1517,7 +1573,8 @@ export function createTicketService(
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "hand_to_agent", before);
-        const { connection_id } = parse(giveToAgentSchema, input);
+        const { connection_id, expected_version } = parse(giveToAgentSchema, input);
+        requireVersion(key, before, expected_version);
         requireNotArchived(key, before);
         if (before.owner_id !== actor.id) {
           throw new HttpError(
@@ -1542,14 +1599,15 @@ export function createTicketService(
         log(before.id, actor, "agent_handed", { connection: connection.name }, now);
         return before;
       })();
-      return toTicket(row, actor);
+      return toTicket(saved(row), actor);
     },
 
     /** The owner, or an admin, ends an agent's work on the ticket. */
-    endAgentWork(key: string, actor: Actor): Ticket {
+    endAgentWork(key: string, actor: Actor, input: unknown = {}): Ticket {
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "hand_to_agent", before);
+        const { expected_version } = parse(versionOnlySchema, input ?? {});
         if (before.owner_id !== actor.id && actor.role !== "admin") {
           throw new HttpError(
             403,
@@ -1557,12 +1615,13 @@ export function createTicketService(
             `Only the owner of ticket ${key}, or an admin, can end it.`,
           );
         }
+        requireVersion(key, before, expected_version);
         // Archiving already ended any assistant's work.
         requireNotArchived(key, before);
         endAgent(before, "ended by a person", actor, new Date().toISOString());
         return before;
       })();
-      return toTicket(row, actor);
+      return toTicket(saved(row), actor);
     },
 
     /** How many assistant connections people have issued that can work right now. */
@@ -1587,10 +1646,11 @@ export function createTicketService(
     },
 
     /** Leaves the ticket without an owner. Only its owner, and not while it is in progress. */
-    releaseTicket(key: string, actor: Actor): Ticket {
+    releaseTicket(key: string, actor: Actor, input: unknown = {}): Ticket {
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "release", before);
+        requireVersion(key, before, parse(versionOnlySchema, input ?? {}).expected_version);
         requireNotArchived(key, before);
         if (before.owner_id === null) {
           throw new HttpError(
@@ -1619,7 +1679,7 @@ export function createTicketService(
         }
         return setOwner(before, null, null, actor);
       })();
-      return toTicket(row, actor);
+      return toTicket(saved(row), actor);
     },
 
     /** Hides the ticket from the ordinary lists. Its row and its events are kept. */
@@ -1635,7 +1695,7 @@ export function createTicketService(
         log(before.id, actor, "archived", {}, now);
         return { ...before, archived_at: now, ...noQuestion, updated_at: now };
       })();
-      return toTicket(row, actor);
+      return toTicket(saved(row), actor);
     },
 
     /** Brings an archived ticket back into the ordinary lists. Not for customers. */
@@ -1649,7 +1709,7 @@ export function createTicketService(
         log(before.id, actor, "restored", {}, now);
         return { ...before, archived_at: null, updated_at: now };
       })();
-      return toTicket(row, actor);
+      return toTicket(saved(row), actor);
     },
 
     /**

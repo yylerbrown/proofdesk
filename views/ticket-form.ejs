@@ -24,6 +24,12 @@
 <p class="notice already-filed" role="status">This form was already filed as <a href="/tickets/<%= alreadyFiled.key %>"><%= alreadyFiled.key %></a>. <a href="/tickets/new">Start a new ticket</a>.</p>
 <% } %>
 
+<% if (locals.changedElsewhere) { %>
+<%# Saving over a newer version was refused: what was typed stays in the boxes, and the form now
+    carries the newer version, so saving again is a deliberate choice. %>
+<p role="alert" class="refused changed-elsewhere">Someone changed this ticket while you were editing. Your text is kept below: compare it with the current ticket, then save again. <a href="/tickets/<%= editKey %>" target="_blank" rel="noopener">Open the current ticket in a new tab</a></p>
+<% } %>
+
 <% if (locals.readOnly) { %>
 <%# The demo's admin preview changes nothing, so it gets no form to fill in and then lose. %>
 <p class="notice read-only-note">The admin preview is read-only. Switch to Demo Customer to file a ticket.</p>
@@ -31,6 +37,8 @@
 <% } else { %>
 <form method="post" action="<%= action %>">
   <% if (locals.formId) { %><input type="hidden" name="form" value="<%= formId %>" /><% } %>
+  <%# The version of the ticket this form was filled from, so a save over a newer one is refused. %>
+  <% if (locals.version) { %><input type="hidden" name="expected_version" value="<%= version %>" /><% } %>
   <%# Each box's maxlength is the server's limit for it, so the browser stops at the same length. %>
   <%# Each hint sits inside its label, so the box is named by the label words alone and the hint is read once, as its description. %>
   <label>

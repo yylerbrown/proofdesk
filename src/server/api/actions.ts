@@ -7,6 +7,7 @@ import {
   answerSchema,
   changeStatusSchema,
   createTicketSchema,
+  editTicketSchema,
   giveToAgentSchema,
   handOffSchema,
   cursorFor,
@@ -19,6 +20,7 @@ import {
   reopenSchema,
   resolveSchema,
   verificationRequestSchema,
+  versionOnlySchema,
 } from "../tickets/schemas.js";
 import { addEvidenceSchema } from "../tickets/evidence.js";
 import { decideSpecSchema, proposeSpecSchema } from "../tickets/spec.js";
@@ -146,9 +148,10 @@ export const ACTIONS: ApiAction[] = [
     output: ticketOutput,
     method: "put",
     path: "/tickets/:key",
-    summary: "Replace the text of a ticket.",
+    summary:
+      "Replace the text of a ticket. Send expected_version, the version you read, so an edit from an old read is refused instead of writing over a newer one.",
     needs: "edit",
-    body: createTicketSchema,
+    body: editTicketSchema,
     run: ({ service, actor, key, body }) => service.editTicket(key, body, actor),
   },
   {
@@ -170,7 +173,8 @@ export const ACTIONS: ApiAction[] = [
     summary:
       "The customer adopts the team's interpretation as their own check, in those exact words.",
     needs: "adopt_check",
-    run: ({ service, actor, key }) => service.adoptCheck(key, actor),
+    body: versionOnlySchema,
+    run: ({ service, actor, key, body }) => service.adoptCheck(key, actor, body),
   },
   {
     name: "link_change",
@@ -200,7 +204,8 @@ export const ACTIONS: ApiAction[] = [
     path: "/tickets/:key/withdraw-question",
     summary: "The owner takes back the question the customer has not answered yet.",
     needs: "mark_ready",
-    run: ({ service, actor, key }) => service.withdrawQuestionAsked(key, actor),
+    body: versionOnlySchema,
+    run: ({ service, actor, key, body }) => service.withdrawQuestionAsked(key, actor, body),
   },
   {
     name: "answer",
@@ -220,7 +225,8 @@ export const ACTIONS: ApiAction[] = [
     path: "/tickets/:key/take",
     summary: "Become the named owner of an unowned ticket.",
     needs: "take",
-    run: ({ service, actor, key }) => service.takeTicket(key, actor),
+    body: versionOnlySchema,
+    run: ({ service, actor, key, body }) => service.takeTicket(key, actor, body),
   },
   {
     name: "take_and_start",
@@ -229,7 +235,8 @@ export const ACTIONS: ApiAction[] = [
     summary: "Take an unowned New ticket and start work on it, in one step.",
     needs: ["take", "change_status"],
     output: ticketOutput,
-    run: ({ service, actor, key }) => service.takeAndStart(key, actor),
+    body: versionOnlySchema,
+    run: ({ service, actor, key, body }) => service.takeAndStart(key, actor, body),
   },
   {
     name: "reopen",
@@ -282,7 +289,8 @@ export const ACTIONS: ApiAction[] = [
     path: "/tickets/:key/agent/end",
     summary: "The owner, or an admin, ends the agent's work on the ticket.",
     needs: "hand_to_agent",
-    run: ({ service, actor, key }) => service.endAgentWork(key, actor),
+    body: versionOnlySchema,
+    run: ({ service, actor, key, body }) => service.endAgentWork(key, actor, body),
   },
   {
     name: "release_ticket",
@@ -291,7 +299,8 @@ export const ACTIONS: ApiAction[] = [
     path: "/tickets/:key/release",
     summary: "The owner lets go of a New ticket, back to the inbox.",
     needs: "release",
-    run: ({ service, actor, key }) => service.releaseTicket(key, actor),
+    body: versionOnlySchema,
+    run: ({ service, actor, key, body }) => service.releaseTicket(key, actor, body),
   },
   {
     name: "archive_ticket",

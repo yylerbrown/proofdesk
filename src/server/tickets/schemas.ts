@@ -31,6 +31,27 @@ export const httpLink = z
   .max(500, "Must be at most 500 characters.")
   .pipe(z.url({ protocol: /^https?$/, error: "Must be a link that starts with http or https." }));
 
+// The version of the ticket a form or a program last saw (the ticket's "version"). A change sent
+// with it is refused, with 409 ticket_changed, when the ticket has changed since, and nothing is
+// written. It is optional: a caller that sends none is not checked, as before. A form sends it as
+// text, and an empty box means none.
+export const expectedVersion = z
+  .preprocess(
+    (value) => (value === "" ? undefined : typeof value === "string" ? Number(value) : value),
+    z
+      .number({ error: "Must be the ticket's version, a whole number." })
+      .int()
+      .positive()
+      .optional(),
+  )
+  .meta({
+    description:
+      "Optional. The ticket's version as you last read it. If the ticket has changed since, the change is refused with 409 ticket_changed and nothing is written: read it again, then decide. Leave it out to skip the check.",
+  });
+
+// For an action whose only input is that version.
+export const versionOnlySchema = z.object({ expected_version: expectedVersion });
+
 export const createTicketSchema = z.object({
   title: z
     .string()
@@ -41,6 +62,9 @@ export const createTicketSchema = z.object({
   where_url: httpLink.optional(),
   fix_check: textBox().max(500, "Must be at most 500 characters.").optional(),
 });
+
+// Editing a ticket: the same boxes as a new one, and the version the editor saw.
+export const editTicketSchema = createTicketSchema.extend({ expected_version: expectedVersion });
 
 // Permanent deletion is confirmed by typing the ticket's key.
 export const deleteTicketSchema = z.object({
@@ -79,11 +103,13 @@ export const noteSchema = z.object({
 export const handOffSchema = z.object({
   to: z.string().min(1, "Choose a team member."),
   expected_owner: z.string().default(""),
+  expected_version: expectedVersion,
 });
 
 // The owner hands a ticket to one agent connection, by its id.
 export const giveToAgentSchema = z.object({
   connection_id: z.coerce.number().int().positive("Choose a connection."),
+  expected_version: expectedVersion,
 });
 
 // The customer says a resolved ticket is still happening, and what recurred.
@@ -91,6 +117,7 @@ export const reopenSchema = z.object({
   reason: textBox()
     .min(1, "Give a reason for reopening it.")
     .max(2000, "Must be at most 2000 characters."),
+  expected_version: expectedVersion,
 });
 
 // An agent asking the ticket's named owner to request the customer's check.
@@ -103,9 +130,14 @@ export const verificationRequestSchema = z.object({
 // The agreed version of the check. An empty text removes it, leaving the customer's words.
 export const agreeCheckSchema = z.object({
   agreed_check: textBox().max(500, "Must be at most 500 characters."),
+  expected_version: expectedVersion,
 });
 
-export const linkChangeSchema = z.object({ change_url: httpLink });
+export const linkChangeSchema = z.object({
+  change_url: httpLink,
+  expected_version: expectedVersion,
+});
+
 // Asking the customer "Did this fix it?". Every field is optional, and the customer sees each
 // one given: the page to try, what the owner tried there and what happened, what changed since
 // the customer's last No, and the evidence relied on. A form sends an empty box for a field left
@@ -130,6 +162,7 @@ export const markReadySchema = z.object({
       z.array(z.coerce.number().int().positive()),
     )
     .optional(),
+  expected_version: expectedVersion,
 });
 
 // The customer's answer. A "no" needs a comment, which the service checks.
@@ -142,6 +175,7 @@ export const answerSchema = z.object({
 
 export const changeStatusSchema = z.object({
   status: z.enum(TICKET_STATUSES),
+  expected_version: expectedVersion,
 });
 
 // Which tickets a list shows: one status, every status, or the archived ones.
@@ -214,4 +248,5 @@ export const resolveSchema = z.object({
     blankIsMissing,
     z.string().trim().max(20, "Must be a ticket key, such as SUP-3.").optional(),
   ),
+  expected_version: expectedVersion,
 });

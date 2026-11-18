@@ -51,7 +51,9 @@ describe("the status path, as the docs describe it", () => {
   it("lists every field of the ask as optional, as the schema takes them", () => {
     const row = apiRow("POST /api/tickets/:key/ready");
     expect(markReadySchema.safeParse({}).success).toBe(true);
-    for (const field of Object.keys(markReadySchema.shape)) {
+    // The version every change may carry is described once in the docs, not in each row.
+    const fields = Object.keys(markReadySchema.shape).filter((name) => name !== "expected_version");
+    for (const field of fields) {
       expect(row, field).toContain(`"${field}"?`);
     }
     expect(row).not.toContain("change link");

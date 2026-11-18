@@ -1,7 +1,7 @@
 import { Router, type Request, type RequestHandler, type Response } from "express";
 import type { Actor } from "../actor.js";
 import { DEMO_ACTORS, signedIn } from "../actor.js";
-import { forbidden, ValidationError } from "../errors.js";
+import { forbidden, HttpError, ValidationError } from "../errors.js";
 import { can } from "../permissions.js";
 import {
   confirmedAt,
@@ -234,6 +234,13 @@ function readTicketForm(body: Record<string, unknown> | undefined): typeof empty
 
 export function pagesRouter(service: TicketService): Router {
   const router = Router();
+
+  // A cheap read for a ticket page left open, which asks it now and then to notice a change made
+  // elsewhere. It is registered before the middleware below, so asking never uses up the
+  // message a page shows once after a save. Reading is not counted against the write limit.
+  router.get("/tickets/:key/version", (req, res) => {
+    res.json(service.ticketStamp(req.params.key, signedIn(req)));
+  });
 
   // A page opened just after a save says what was saved.
   router.use((req, res, next) => {
@@ -551,25 +558,43 @@ export function pagesRouter(service: TicketService): Router {
       values,
       errors: {},
       checkLocked: ticket.created_by !== actor.id,
+      version: ticket.version,
     });
   });
 
   router.post("/tickets/:key/edit", (req, res) => {
     const actor = signedIn(req);
     const values = readTicketForm(req.body);
+    const expectedVersion = asText(req.body?.expected_version);
     try {
       const ticket = service.editTicket(
         req.params.key,
-        { ...values, where_url: values.where_url === "" ? undefined : values.where_url },
+        {
+          ...values,
+          where_url: values.where_url === "" ? undefined : values.where_url,
+          expected_version: expectedVersion,
+        },
         actor,
       );
       rememberSaved(res, "edited");
       res.redirect(303, `/tickets/${ticket.key}`);
     } catch (err) {
-      if (!(err instanceof ValidationError)) throw err;
-      // The key is checked before it is put in the form's address.
-      const key = service.getTicket(req.params.key, actor).key;
-      res.status(400).render("ticket-form", { ...editForm(key), values, errors: err.fieldErrors });
+      const changed = err instanceof HttpError && err.code === "ticket_changed";
+      if (!(err instanceof ValidationError) && !changed) throw err;
+      // The ticket as it is now. Its key is checked before it is put in the form's address.
+      const current = service.getTicket(req.params.key, actor);
+      const checkLocked = current.created_by !== actor.id;
+      res.status(changed ? 409 : 400).render("ticket-form", {
+        ...editForm(current.key),
+        // What the person typed stays. A check they may not change shows as it is now.
+        values: checkLocked ? { ...values, fix_check: current.fix_check ?? "" } : values,
+        errors: err instanceof ValidationError ? err.fieldErrors : {},
+        checkLocked,
+        // After a refusal for a newer version, the form carries that version, so saving again
+        // is a choice made with the change in view. After a mistake in a box, it keeps its own.
+        version: changed ? current.version : expectedVersion,
+        changedElsewhere: changed,
+      });
     }
   });
 
@@ -635,12 +660,12 @@ export function pagesRouter(service: TicketService): Router {
   router.post("/tickets/:key/reopen", ticketForm("reopen", service.reopen));
   router.post("/tickets/:key/resolve", ticketForm("resolve", service.resolveWithReason));
   router.post("/tickets/:key/adopt-check", (req, res) => {
-    const ticket = service.adoptCheck(req.params.key, signedIn(req));
+    const ticket = service.adoptCheck(req.params.key, signedIn(req), req.body);
     rememberSaved(res, "adopted");
     res.redirect(303, `/tickets/${ticket.key}`);
   });
   router.post("/tickets/:key/withdraw-question", (req, res) => {
-    const ticket = service.withdrawQuestionAsked(req.params.key, signedIn(req));
+    const ticket = service.withdrawQuestionAsked(req.params.key, signedIn(req), req.body);
     rememberSaved(res, "withdrawn");
     res.redirect(303, `/tickets/${ticket.key}`);
   });
@@ -651,12 +676,12 @@ export function pagesRouter(service: TicketService): Router {
     res.redirect(303, `/tickets/${ticket.key}`);
   });
   router.post("/tickets/:key/agent/end", (req, res) => {
-    const ticket = service.endAgentWork(req.params.key, signedIn(req));
+    const ticket = service.endAgentWork(req.params.key, signedIn(req), req.body);
     rememberSaved(res, "agentEnded");
     res.redirect(303, `/tickets/${ticket.key}`);
   });
   router.post("/tickets/:key/take-and-start", (req, res) => {
-    const ticket = service.takeAndStart(req.params.key, signedIn(req));
+    const ticket = service.takeAndStart(req.params.key, signedIn(req), req.body);
     rememberSaved(res, "started");
     res.redirect(303, `/tickets/${ticket.key}`);
   });
@@ -672,13 +697,13 @@ export function pagesRouter(service: TicketService): Router {
   );
 
   router.post("/tickets/:key/take", (req, res) => {
-    const ticket = service.takeTicket(req.params.key, signedIn(req));
+    const ticket = service.takeTicket(req.params.key, signedIn(req), req.body);
     rememberSaved(res, "taken");
     res.redirect(303, `/tickets/${ticket.key}`);
   });
 
   router.post("/tickets/:key/release", (req, res) => {
-    const ticket = service.releaseTicket(req.params.key, signedIn(req));
+    const ticket = service.releaseTicket(req.params.key, signedIn(req), req.body);
     rememberSaved(res, "released");
     res.redirect(303, `/tickets/${ticket.key}`);
   });
