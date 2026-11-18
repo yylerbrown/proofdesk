@@ -53,6 +53,12 @@ const HINTS: Record<string, string> = {
   needs_change_link: "Link the change first (PUT .../change-link), then ask the customer.",
   not_in_progress: "Move the ticket to in_progress first.",
   not_waiting: "The team has not asked this question yet, or it was withdrawn.",
+  only_filer_reopens: "Only the customer who filed it can reopen a resolved ticket.",
+  cannot_return_to_new: "Started work stays in progress. Hand the ticket to someone else instead.",
+  not_owner: "Only the ticket's owner can do this. Ask them, or have it handed to you.",
+  already_owned: "Someone already owns this ticket. Ask them to hand it to you.",
+  not_new: "This ticket has already started.",
+  not_resolved: "The ticket is still open; there is nothing to reopen.",
   question_changed: "Get the ticket again and answer with its current ready_token.",
   idempotency_key_reused:
     "Use a new idempotency key for a new request. Reuse a key only to retry the very same request.",

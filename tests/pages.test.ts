@@ -155,7 +155,7 @@ describe("ticket page", () => {
     expect(res.text).toMatch(
       /<td><time datetime="[^"]+">\d{1,2} \w{3} \d{4}, \d{2}:\d{2} UTC<\/time>/,
     );
-    expect(res.text).toContain('<option value="new" selected>New</option>');
+    expect(res.text).toContain('<span class="badge status-new">New</span>');
   });
 
   it("returns an HTML 404 page for a ticket that does not exist", async () => {
@@ -197,7 +197,7 @@ describe("status control", () => {
 
     const page = await admin(app).get("/tickets/SUP-1");
     expect(page.text).toContain("Status changed from New to In Progress");
-    expect(page.text).toContain('<option value="in_progress" selected>In Progress</option>');
+    expect(page.text).toContain('<span class="badge status-in_progress">In Progress</span>');
   });
 
   it("writes no history entry when the status stays the same", async () => {

@@ -151,3 +151,19 @@ Asked for by the owner after the agent path worked: an optional test spec, draft
 - **The site never contacts anyone's assistant.** A ticket with no spec shows the team, and every demo visitor, one line to copy into their own assistant.
 - **Evidence may name the scenario it proves.** The customer's "Did this fix it?" box then counts the scenarios with evidence, as reported, never as a pass.
 - **A spec never changes the status.** On the demo, a connection sees only the spec it proposed itself.
+
+### 2026-11-17, evening: the ticket workflow
+
+Designed by an outside reviewer against this specification, the permission function and the service, and adopted by the owner. The spirit: simple, easy to get, and it just works. There are still three statuses and no new ones; whose turn it is comes from the owner, an open question and the latest answer.
+
+- **Intake is a shared inbox.** A new ticket is New and unassigned. A team member takes it and becomes its named owner. The owner or an admin can hand it directly to another team member. There is no dispatcher, routing or acceptance step.
+- **The status moves only by the workflow's own steps.** The owner starts work (New to In Progress; "Take and start work" does both at once). Started work stays In Progress with its owner. Only the customer's Yes resolves. Only the customer who filed a resolved ticket can reopen it, with "Still happening, reopen" and a reason; it returns to its owner, or to the inbox if it has none, and the earlier Yes stays in the history. Agents never change a status.
+- **Only the current owner asks the customer,** after personally trying the delivered result against the customer's check, and the ask records what they tried, where, what happened and which evidence they relied on.
+- **An agent is a contributor, never an owner.** The owner may hand an in-progress ticket to one named connection; the agent sees only tickets handed to it, and loses access on revoke, transfer, ask or archive. The demo keeps its per-connection isolation instead. Agents do not send public replies: suggested wording arrives as an internal note, which a person may publish as their own reply.
+- **After a No** the owner keeps the ticket, the customer's comment is shown first, the team's list says "Customer says it still fails", and the next ask needs the owner's response to that No and a fresh check.
+- **Silence** leaves the question open, dated, never closed by a timer.
+- **The customer's check is theirs.** Staff wording is labelled "Team's interpretation" unless the customer adopts it.
+
+Left out on purpose, and listed in the README's limits: human review records against evidence ids, reconciling owners when team membership changes, documentation generated from conditional rules, and upgrading the provenance of tickets resolved before this workflow.
+
+The workflow is built in this order: status commands and reopen; the owner-only ask with its record; take, release and hand-off; agent access limited to handed-off tickets; no public replies from agents; then the smaller items.

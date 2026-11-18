@@ -16,7 +16,6 @@ export const SCOPE_LABELS: Record<(typeof AGENT_SCOPES)[number], string> = {
   attach_evidence: "Attach evidence that the check was met",
   propose_specs: "Propose a test spec, which a person accepts or discards",
   link_changes: "Link a code change to a ticket",
-  change_status: "Change the status, never to resolved",
 };
 
 /** The site's own address, for the block an admin pastes into an assistant. */

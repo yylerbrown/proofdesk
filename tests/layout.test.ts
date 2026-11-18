@@ -22,14 +22,14 @@ describe("the ticket page layout", () => {
     const panel = html.querySelector("aside.ticket-panel");
     const panelHeadings = panel?.querySelectorAll("h2").map((h) => h.text);
     expect(panelHeadings).toEqual([
-      "Status",
       "Owner",
+      "Status",
       "How will we know it's fixed?",
       "Evidence",
       "The fix",
       "Remove",
     ]);
-    expect(panel?.querySelector("form[action$='/status'] select")).not.toBeNull();
+    expect(panel?.querySelector("form[action$='/take-and-start']")).not.toBeNull();
     expect(panel?.querySelector("form[action$='/take']")).not.toBeNull();
     expect(html.querySelector(".ticket-summary h2")?.text).toBe("Description");
     expect(html.querySelector(".ticket-thread #conversation")).not.toBeNull();
@@ -57,8 +57,8 @@ describe("the ticket page layout", () => {
     const html = await ticketPage(as(app, customerOne));
     const panel = html.querySelector("aside.ticket-panel");
     expect(panel?.querySelectorAll("h2").map((h) => h.text)).toEqual([
-      "Status",
       "Owner",
+      "Status",
       "How will we know it's fixed?",
       "Remove",
     ]);

@@ -23,7 +23,8 @@ export type Action =
   | "attach_evidence"
   | "read_activity"
   | "propose_spec"
-  | "decide_spec";
+  | "decide_spec"
+  | "reopen";
 
 /**
  * What an AI agent may be allowed to do, each named by the operation it permits. A connection
@@ -36,7 +37,6 @@ export const AGENT_SCOPES = [
   "attach_evidence",
   "propose_specs",
   "link_changes",
-  "change_status",
 ] as const;
 export type AgentScope = (typeof AGENT_SCOPES)[number];
 
@@ -56,7 +56,7 @@ export const CAPABILITIES: Record<Action, Capability> = {
   read: { people: "The team, or the customer who filed it.", agent: "read_tickets" },
   read_notes: { people: "The team.", agent: "read_tickets" },
   edit: { people: "The team, or the customer who filed it.", agent: "people_only" },
-  change_status: { people: "The team. Never to resolved.", agent: "change_status" },
+  change_status: { people: "The ticket's owner, to start work.", agent: "people_only" },
   archive: { people: "The team, or the customer who filed it.", agent: "people_only" },
   restore: { people: "The team.", agent: "people_only" },
   delete: { people: "An admin.", agent: "people_only" },
@@ -73,6 +73,7 @@ export const CAPABILITIES: Record<Action, Capability> = {
   read_activity: { people: "The team.", agent: "people_only" },
   propose_spec: { people: "The team.", agent: "propose_specs" },
   decide_spec: { people: "The team.", agent: "people_only" },
+  reopen: { people: "Only the customer who filed it.", agent: "people_only" },
 };
 
 /** The two facts about a ticket that permissions depend on. */
@@ -148,5 +149,6 @@ export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean
   if (action === "mark_ready") return isStaff;
   // Only the person who filed the ticket answers "Did this fix it?". Not the team for them.
   if (action === "answer") return isOwn;
+  if (action === "reopen") return isOwn;
   return false;
 }

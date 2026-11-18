@@ -79,8 +79,8 @@ test("a customer files a ticket, the team works it, and only the customer resolv
     await expect(savedMessage(team)).toContainText("You own this ticket now");
     await expect(team.getByRole("button", { name: "Take this ticket" })).toHaveCount(0);
 
-    await team.getByRole("combobox", { name: "Change to" }).selectOption({ label: "In Progress" });
-    await team.getByRole("button", { name: "Change status" }).click();
+    // Only the owner starts work, with one button.
+    await team.getByRole("button", { name: "Start work" }).click();
     await expect(savedMessage(team)).toContainText("Status changed");
     await expectTicketStatus(team, key, "In Progress");
   });

@@ -258,7 +258,6 @@ describe("GET /api/tickets/:key/events", () => {
     await admin(app).post("/api/tickets").send(valid);
     await admin(app).post("/api/tickets/SUP-1/take");
     await admin(app).patch("/api/tickets/SUP-1").send({ status: "in_progress" });
-    await admin(app).patch("/api/tickets/SUP-1").send({ status: "new" });
 
     const res = await admin(app).get("/api/tickets/SUP-1/events");
     expect(res.status).toBe(200);
@@ -266,7 +265,6 @@ describe("GET /api/tickets/:key/events", () => {
       ["created", { status: "new" }],
       ["owner_changed", { from: null, to: "Admin" }],
       ["status_changed", { from: "new", to: "in_progress" }],
-      ["status_changed", { from: "in_progress", to: "new" }],
     ]);
     expect(res.body[0]).toMatchObject({ ticket_key: "SUP-1", actor: "dev-admin-1" });
   });
@@ -278,7 +276,6 @@ describe("GET /api/tickets/:key/events", () => {
     await admin(app).post("/api/tickets/SUP-1/take");
     await admin(app).post("/api/tickets/SUP-2/take");
     await admin(app).patch("/api/tickets/SUP-2").send({ status: "in_progress" });
-    await admin(app).patch("/api/tickets/SUP-2").send({ status: "new" });
 
     type Row = { ticket_key: string; type: string; data: unknown };
     const summary = (rows: Row[]) => rows.map((e) => [e.ticket_key, e.type, e.data]);
@@ -294,7 +291,6 @@ describe("GET /api/tickets/:key/events", () => {
       ["SUP-2", "created", { status: "new" }],
       ["SUP-2", "owner_changed", { from: null, to: "Admin" }],
       ["SUP-2", "status_changed", { from: "new", to: "in_progress" }],
-      ["SUP-2", "status_changed", { from: "in_progress", to: "new" }],
     ]);
   });
 

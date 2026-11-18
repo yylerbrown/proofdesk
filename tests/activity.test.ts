@@ -64,14 +64,14 @@ describe("the activity trail", () => {
     const client = await connect(app, key);
     await client.callTool({ name: "get_ticket", arguments: { key: "SUP-1" } });
     await client.callTool({
-      name: "change_status",
-      arguments: { key: "SUP-1", status: "resolved" },
+      name: "add_evidence",
+      arguments: { key: "SUP-1", kind: "note", summary: "Seen" },
     });
 
     const rows = await activityRows(app);
     // Newest first: How, What, Ticket, Result, Idempotency key.
     expect(rows.map((r) => r.slice(1))).toEqual([
-      ["Tool", "change_status", "SUP-1", "Refused: needs_customer", ""],
+      ["Tool", "add_evidence", "SUP-1", "Refused: forbidden", ""],
       ["Tool", "get_ticket", "SUP-1", "Done", ""],
       ["API", "add_entry", "SUP-1", "Refused: forbidden", ""],
       ["API", "add_entry", "SUP-1", "Done", "note-1"],

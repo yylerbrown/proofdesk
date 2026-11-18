@@ -16,6 +16,7 @@ import {
   linkChangeSchema,
   markReadySchema,
   createTicketSchema,
+  reopenSchema,
   deleteTicketSchema,
   type TicketListFilter,
   type TicketStatus,
@@ -188,6 +189,7 @@ const CUSTOMER_EVENT_TYPES = new Set([
   "change_linked",
   "ready_for_customer",
   "customer_answered",
+  "reopened",
   "evidence_added",
   "spec_proposed",
   "spec_accepted",
@@ -450,6 +452,24 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
     }
   }
 
+  /** Only the ticket's own owner starts work on it, and only once it has one. */
+  function requireOwnerStarts(key: string, row: repository.TicketRow, actor: Actor): void {
+    if (row.owner_id === null) {
+      throw new HttpError(
+        409,
+        "needs_owner",
+        `Take ticket ${key} before moving it to In Progress.`,
+      );
+    }
+    if (row.owner_id !== actor.id) {
+      throw new HttpError(
+        403,
+        "not_owner",
+        `Only ${row.owner_name ?? "its owner"}, who owns ticket ${key}, starts work on it.`,
+      );
+    }
+  }
+
   /** Changes the owner and writes the history entry. Call it inside a transaction. */
   function setOwner(
     before: repository.TicketRow,
@@ -576,13 +596,22 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
         requireNotArchived(key, before);
         if (before.status === status) return before; // nothing changes, so nothing is logged
         if (status === "resolved") throw needsCustomer(key);
-        if (status === "in_progress" && before.owner_id === null) {
+        // The status moves only by the workflow's own steps. This is now only "start work".
+        if (before.status === "resolved") {
           throw new HttpError(
             409,
-            "needs_owner",
-            `Take ticket ${key} before moving it to In Progress.`,
+            "only_filer_reopens",
+            `Ticket ${key} is resolved. Only the customer who filed it can reopen it.`,
           );
         }
+        if (status === "new") {
+          throw new HttpError(
+            409,
+            "cannot_return_to_new",
+            `Ticket ${key} is in progress. Started work stays in progress with its owner.`,
+          );
+        }
+        requireOwnerStarts(key, before, actor);
         const now = new Date().toISOString();
         repository.updateTicketStatus(db, before.id, status, now);
         logEvent({
@@ -806,6 +835,97 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
         requireNotArchived(key, before);
         if (before.owner_id === actor.id) return before; // already theirs
         return setOwner(before, actor.id, actor.name, actor);
+      })();
+      return toTicket(row, actor);
+    },
+
+    /**
+     * Takes an unowned ticket and starts work on it, in one step. A ticket someone else owns
+     * is refused: taking it from them is a hand-off.
+     */
+    takeAndStart(key: string, actor: Actor): Ticket {
+      const row = db.transaction(() => {
+        let before = requireRow(key, actor);
+        requirePermission(actor, "take", before);
+        requirePermission(actor, "change_status", before);
+        requireNotArchived(key, before);
+        if (before.status !== "new") {
+          throw new HttpError(
+            409,
+            "not_new",
+            `Ticket ${key} is not new, so there is nothing to start.`,
+          );
+        }
+        if (before.owner_id !== null && before.owner_id !== actor.id) {
+          throw new HttpError(
+            409,
+            "already_owned",
+            `${before.owner_name ?? "Someone"} already owns ticket ${key}.`,
+          );
+        }
+        if (before.owner_id === null) before = setOwner(before, actor.id, actor.name, actor);
+        const now = new Date().toISOString();
+        repository.updateTicketStatus(db, before.id, "in_progress", now);
+        logEvent({
+          ticketId: before.id,
+          actor: actor.id,
+          actorKind: actor.kind,
+          context: agentContext(actor),
+          type: "status_changed",
+          data: { from: "new", to: "in_progress" },
+          now,
+        });
+        return { ...before, status: "in_progress" as const, updated_at: now };
+      })();
+      return toTicket(row, actor);
+    },
+
+    /**
+     * The customer who filed a resolved ticket says it is still happening. It goes back to
+     * its owner, in progress, or to the inbox if it has none. Their reason is a public reply,
+     * and their earlier Yes stays in the history.
+     */
+    reopen(key: string, input: unknown, actor: Actor): Ticket {
+      const { reason } = parse(reopenSchema, input);
+      const row = db.transaction(() => {
+        const before = requireRow(key, actor);
+        requirePermission(actor, "reopen", before);
+        requireNotArchived(key, before);
+        if (before.status !== "resolved") {
+          throw new HttpError(
+            409,
+            "not_resolved",
+            `Ticket ${key} is not resolved, so it is still open.`,
+          );
+        }
+        requireRoom(
+          () => repository.countRows(db, "ticket_entries", before.id),
+          budget.entriesPerTicket,
+          "replies on this ticket",
+        );
+        const status = before.owner_id === null ? "new" : "in_progress";
+        const now = new Date().toISOString();
+        repository.updateTicketStatus(db, before.id, status, now);
+        repository.insertEntry(db, {
+          ticket_id: before.id,
+          kind: "reply",
+          body: reason,
+          author: actor.id,
+          author_kind: actor.kind,
+          author_role: actor.role,
+          author_name: actor.name,
+          created_at: now,
+        });
+        logEvent({
+          ticketId: before.id,
+          actor: actor.id,
+          actorKind: actor.kind,
+          context: agentContext(actor),
+          type: "reopened",
+          data: { reason, to: status, owner: before.owner_name },
+          now,
+        });
+        return { ...before, status, ...noQuestion, updated_at: now } as repository.TicketRow;
       })();
       return toTicket(row, actor);
     },
@@ -1225,6 +1345,18 @@ export function createTicketService(db: Db, prefix: string, budget: Budget = {})
           ticket.status !== "in_progress",
         agreeCheck: !archived && can(actor, "agree_check", ticket),
         linkChange: !archived && can(actor, "link_change", ticket),
+        start:
+          !archived &&
+          can(actor, "change_status", ticket) &&
+          ticket.status === "new" &&
+          ticket.owner_id === actor.id,
+        takeAndStart:
+          !archived &&
+          can(actor, "take", ticket) &&
+          can(actor, "change_status", ticket) &&
+          ticket.status === "new" &&
+          ticket.owner_id === null,
+        reopen: !archived && can(actor, "reopen", ticket) && ticket.status === "resolved",
         attachEvidence: !archived && can(actor, "attach_evidence", ticket),
         markReady:
           !archived &&

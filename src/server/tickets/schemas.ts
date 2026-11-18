@@ -42,6 +42,15 @@ export const addEntrySchema = z.object({
     .max(5000, "Must be at most 5000 characters."),
 });
 
+// The customer says a resolved ticket is still happening, and what recurred.
+export const reopenSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(1, "Say what is happening again.")
+    .max(2000, "Must be at most 2000 characters."),
+});
+
 // An agent asking the ticket's named owner to request the customer's check.
 export const verificationRequestSchema = z.object({
   message: z

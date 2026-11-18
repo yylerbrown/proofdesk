@@ -159,6 +159,12 @@ describe("real answers", () => {
     );
     expectShape("list_events", await admin(app).get(`${t}/events`));
     expectShape("release_ticket", await admin(app).post(`${t}/release`));
+    expectShape(
+      "reopen",
+      await as(app, customerOne).post(`${t}/reopen`).send({ reason: "It jams again." }),
+    );
+    await as(app, customerOne).post("/api/tickets").send(valid);
+    expectShape("take_and_start", await admin(app).post("/api/tickets/SUP-2/take-and-start"));
     expectShape("archive_ticket", await admin(app).post(`${t}/archive`));
     expectShape("restore_ticket", await admin(app).post(`${t}/restore`));
     expectShape("delete_ticket", await admin(app).delete(t).send({ confirm: "SUP-1" }));
