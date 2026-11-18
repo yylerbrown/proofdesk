@@ -34,6 +34,8 @@ export function connectionsRouter(
   connections: ConnectionService,
   config: Config,
   demoReady: () => boolean,
+  /** On the demo, the sample ticket a demo key reads, for the key page's first request. */
+  assistantSampleKey: () => string | null = () => null,
 ): Router {
   const router = Router();
   // What is never allowed to an agent, read from the capability table.
@@ -95,6 +97,7 @@ export function connectionsRouter(
       title: "Your demo connection",
       connection,
       key,
+      sampleKey: assistantSampleKey(),
       address: siteAddress(config, req),
       scopeLabels: SCOPE_LABELS,
       formatTime,

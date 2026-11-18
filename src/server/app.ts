@@ -207,7 +207,14 @@ export function createApp(config: Config, db: Db): Express {
   app.use(assistantRunRouter(rootDir, () => tickets.recordedRunKey()));
   app.use(signInRouter(config, auth, () => tickets.hasDemoSeed()));
   app.use(pagesRouter(tickets));
-  app.use(connectionsRouter(connections, config, () => tickets.hasDemoSeed()));
+  app.use(
+    connectionsRouter(
+      connections,
+      config,
+      () => tickets.hasDemoSeed(),
+      () => tickets.assistantSampleKey(),
+    ),
+  );
   app.use(pageNotFoundHandler);
   app.use(pageErrorHandler);
 

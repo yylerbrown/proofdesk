@@ -17,6 +17,9 @@ claude mcp add --transport http proofdesk \
   --header "Authorization: Bearer <key>"
 ```
 
+Run it in the folder or repository where you start Claude Code, or add `--scope user` to use it
+everywhere. For a new key later, run `claude mcp remove proofdesk` first.
+
 Or in a project's `.mcp.json`, with the key in an environment variable of your own:
 
 ```json

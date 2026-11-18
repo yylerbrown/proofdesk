@@ -298,3 +298,31 @@ describe("the key page's address, opened again", () => {
     expect((await visitor(buildTestApp().app).get("/demo/connection")).status).toBe(404);
   });
 });
+
+describe("the demo key page", () => {
+  it("says what to do next: check the connection, ask on the sample, and where to see the result", async () => {
+    const { app } = buildDemo();
+    const page = parse((await visitor(app).post("/demo/connection")).text, {
+      blockTextElements: { script: true, style: true },
+    });
+    const steps = page
+      .querySelectorAll("ol.first-steps li")
+      .map((li) => li.text.replace(/\s+/g, " ").trim());
+    expect(steps[0]).toBe("Start Claude Code there and type /mcp to see proofdesk connected.");
+    expect(steps[1]).toContain("Then ask: Using Proofdesk, write a test spec for SUP-4");
+    expect(steps[2]).toBe(
+      "To see what it wrote, view as Demo Team Member from the welcome page and open SUP-4.",
+    );
+    const text = page.querySelector("main")!.text;
+    expect(text).toContain("add --scope user to use it everywhere");
+    expect(text).toContain("run claude mcp remove proofdesk first");
+    expect(page.querySelector("a[href='/api']")?.text).toBe("The API guide");
+    expect(page.querySelector("a[href='/assistant-run']")?.text).toBe("See an assistant's work");
+    // Commands keep their lines, so a flag is never split across two.
+    expect(page.querySelectorAll("pre.paste.command").map((p) => p.id)).toEqual([
+      "claude-code",
+      "mcp-json",
+      "curl-command",
+    ]);
+  });
+});

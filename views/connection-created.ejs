@@ -16,19 +16,39 @@
   Key for <span class="user-text"><%= connection.name %></span>
   <input type="text" readonly value="<%= key %>" class="key" />
 </label>
-<button type="button" class="copy secondary" data-copy="<%= key %>" hidden>Copy</button>
+<button type="button" class="copy secondary" data-copy="<%= key %>" aria-label="Copy the key" hidden>Copy</button>
 
 <h2>Connect Claude Code</h2>
 <p>Paste this in a terminal:</p>
 <% const claudeCode = `claude mcp add --transport http proofdesk ${address}/mcp --header "Authorization: Bearer ${key}"`; %>
-<pre class="paste" id="claude-code"><code>claude mcp add --transport http proofdesk <%= address %>/mcp --header "Authorization: Bearer <%= key %>"</code></pre>
-<button type="button" class="copy secondary" data-copy="<%= claudeCode %>" hidden>Copy</button>
+<pre class="paste command" id="claude-code"><code>claude mcp add --transport http proofdesk <%= address %>/mcp --header "Authorization: Bearer <%= key %>"</code></pre>
+<button type="button" class="copy secondary" data-copy="<%= claudeCode %>" aria-label="Copy the Claude Code command" hidden>Copy</button>
+<p><small>Run it in the folder or repository where you start Claude Code, or add <code>--scope user</code> to use it everywhere. For a new key later, run <code>claude mcp remove proofdesk</code> first.</small></p>
+<%# On the demo, the first thing to do with the key: check it, ask on the one ticket it reads, and see the result. %>
+<% if (connection.demo && locals.sampleKey) { %>
+<% const firstAsk = `Using Proofdesk, write a test spec for ${sampleKey}`; %>
+<ol class="first-steps">
+  <li>Start Claude Code there and type <code>/mcp</code> to see proofdesk connected.</li>
+  <li>
+    Then ask:
+    <pre class="paste" id="first-ask"><code><%= firstAsk %></code></pre>
+    <button type="button" class="copy secondary" data-copy="<%= firstAsk %>" aria-label="Copy the request" hidden>Copy</button>
+  </li>
+  <li>To see what it wrote, view as Demo Team Member from the welcome page and open <%= sampleKey %>.</li>
+</ol>
+<% } %>
 
 <h2>Other assistants</h2>
-<p>The MCP endpoint is <code><%= address %>/mcp</code>; send the key as <code>Authorization: Bearer &lt;key&gt;</code>. In Claude Desktop, add a custom connector with that address and the key as a request header, where your organization has that option. An assistant that runs commands can also call the API directly:</p>
+<p>An assistant that speaks MCP over HTTP connects to <code><%= address %>/mcp</code> with the header <code>Authorization</code> set to <code>Bearer</code> and this key. For example, in a project's <code>.mcp.json</code>:</p>
+<% const mcpJson = JSON.stringify({ mcpServers: { proofdesk: { type: "http", url: `${address}/mcp`, headers: { Authorization: `Bearer ${key}` } } } }, null, 2); %>
+<pre class="paste command" id="mcp-json"><code><%= mcpJson %></code></pre>
+<button type="button" class="copy secondary" data-copy="<%= mcpJson %>" aria-label="Copy the .mcp.json entry" hidden>Copy</button>
+<p><small>In Claude Desktop, a custom connector can take that address with no sign-in and the request header <code>Authorization</code> with the value <code>Bearer</code> and the key. Request headers on custom connectors are in beta and not offered to every organization.</small></p>
+<p>An assistant that runs commands can also call the JSON API directly:</p>
 <% const curlCommand = `curl -H "Authorization: Bearer ${key}" "${address}/api/tickets"`; %>
-<pre class="paste"><code>curl -H "Authorization: Bearer <%= key %>" "<%= address %>/api/tickets"</code></pre>
-<button type="button" class="copy secondary" data-copy="<%= curlCommand %>" hidden>Copy</button>
+<pre class="paste command" id="curl-command"><code>curl -H "Authorization: Bearer <%= key %>" "<%= address %>/api/tickets"</code></pre>
+<button type="button" class="copy secondary" data-copy="<%= curlCommand %>" aria-label="Copy the curl command" hidden>Copy</button>
+<p><small><a href="/api">The API guide</a>, which needs no key, lists every action. <a href="/assistant-run">See an assistant's work</a> shows one real run.</small></p>
 
 <% if (connection.demo) { %>
 <p><a href="/sign-in">Back to the welcome page</a></p>
