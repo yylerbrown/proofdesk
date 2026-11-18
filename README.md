@@ -13,31 +13,81 @@ already knows.
 
 ## The rubric, line by line
 
-Each row takes under a minute on the demo, starting from its welcome page.
+Each one takes under a minute on the demo, starting from its welcome page.
 
-| Rubric line                                     | Start as                                                                   | Press                                                                                                                                    | You should see                                                                                                                                                                                                                                                                                                           |
-| ----------------------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Ticket submission: title, description, status   | The welcome page                                                           | **Try the ticket workflow**, then **File ticket**                                                                                        | The form says "Initial status: New" and is filled with a sample you can change. The filed ticket shows **New**.                                                                                                                                                                                                          |
-| Ticket list with filters                        | **View as Demo Team Member**                                               | **Tickets**, then **New**, **In Progress**, **Resolved**                                                                                 | "All tickets", and each filter changes the list. A customer's list is "My tickets": only their own.                                                                                                                                                                                                                      |
-| Update status: New to In Progress               | Demo Team Member, on a New ticket                                          | **Take ticket and start work**                                                                                                           | **In Progress**, with you as its owner.                                                                                                                                                                                                                                                                                  |
-| Update status: to Resolved                      | Demo Team Member, owning the ticket                                        | **Save change link**, **Ask the customer to verify**, then **View this ticket as the customer who filed it** and **Yes, resolve ticket** | **Resolved**, and "Customer confirmed it is fixed." Wherever the team looks for Resolved, the page says it comes from the customer's Yes and how to ask.                                                                                                                                                                 |
-| A working product                               | The welcome page                                                           | **Try the ticket workflow**                                                                                                              | One ticket from New to Resolved, switching role on the same ticket, in about two minutes.                                                                                                                                                                                                                                |
-| Source on GitHub, and a README on how to run it | [github.com/yylerbrown/proofdesk](https://github.com/yylerbrown/proofdesk) | [Run it yourself](#run-it-yourself)                                                                                                      | A copy running on your own machine.                                                                                                                                                                                                                                                                                      |
-| Bonus: a live URL                               |                                                                            | The two links above                                                                                                                      | The demo, and the real site.                                                                                                                                                                                                                                                                                             |
-| Bonus: SSO with roles and permissions           | The real site                                                              | **Sign in with GitHub**                                                                                                                  | Signed in as a customer, a team member or an admin, set by GitHub user numbers. On the demo the three roles are offered by name, the admin as **Admin preview (read-only)**.                                                                                                                                             |
-| Bonus: AI features                              | The welcome page                                                           | **Get a demo connection**, then paste the command into your own assistant, for example Claude Code                                       | Your assistant, through MCP, reads a sample ticket and its check, proposes a test spec, writes notes and attaches evidence. Proofdesk makes no model calls of its own. **See an assistant's work**, also on the welcome page, shows one real run: its summary, transcript and files, and the ticket it left on the demo. |
-| Bonus: creative extras                          | Any ticket                                                                 | **How will we know it's fixed?** on the form; **Did this fix it?** for the customer                                                      | The customer's own check stays on the ticket. Only their Yes resolves. A No goes back to the named owner with their words. Evidence is labelled as reported, never as verified. The history cannot be changed.                                                                                                           |
+**Ticket submission: title, description, status**
+
+- Start as: The welcome page
+- Press: **Try the ticket workflow**, then **File ticket**
+- You should see: The form says "Initial status: New" and is filled with a sample you can change. The filed ticket shows **New**.
+
+**Ticket list with filters**
+
+- Start as: **View as Demo Team Member**
+- Press: **Tickets**, then **New**, **In Progress**, **Resolved**
+- You should see: "All tickets", and each filter changes the list. A customer's list is "My tickets": only their own.
+
+**Update status: New to In Progress**
+
+- Start as: Demo Team Member, on a New ticket
+- Press: **Take ticket and start work**
+- You should see: **In Progress**, with you as its owner.
+
+**Update status: to Resolved**
+
+- Start as: Demo Team Member, owning the ticket
+- Press: **Use sample fix** (or fill in and **Save change link**), **Ask the customer to verify**, then **View this ticket as the customer who filed it** and **Yes, resolve ticket**
+- You should see: **Resolved**, and "Customer confirmed it is fixed." Wherever the team looks for Resolved, the page says it comes from the customer's Yes and how to ask.
+
+**A working product**
+
+- Start as: The welcome page
+- Press: **Try the ticket workflow**
+- You should see: One ticket from New to Resolved, switching role on the same ticket, in about two minutes.
+
+**Source on GitHub, and a README on how to run it**
+
+- Start as: [github.com/yylerbrown/proofdesk](https://github.com/yylerbrown/proofdesk)
+- Press: [Run it yourself](#run-it-yourself)
+- You should see: A copy running on your own machine.
+
+**Bonus: a live URL**
+
+- Press: The two links above
+- You should see: The demo, and the real site.
+
+**Bonus: SSO with roles and permissions**
+
+- Start as: The real site
+- Press: **Sign in with GitHub**
+- You should see: Signed in as a customer, a team member or an admin, set by GitHub user numbers. On the demo the three roles are offered by name, the admin as **Admin preview (read-only)**.
+
+**Bonus: AI features**
+
+- Start as: The welcome page
+- Press: **Get a demo connection**, then paste the command into your own assistant, for example Claude Code
+- You should see: Your assistant, through MCP, reads a sample ticket and its check, proposes a test spec, writes notes and attaches evidence. Proofdesk makes no model calls of its own. **See an assistant's work**, also on the welcome page, shows one real run: its summary, transcript and files, and the ticket it left on the demo.
+
+**Bonus: creative extras**
+
+- Start as: Any ticket
+- Press: **How will we know it's fixed?** on the form; **Did this fix it?** for the customer
+- You should see: The customer's own check stays on the ticket. Only their Yes resolves. A No goes back to the named owner with their words. Evidence is labelled as reported, never as verified. The history cannot be changed.
 
 Tickets start New, move to In Progress when work starts, and become Resolved when the customer
 who filed them confirms the fix.
 
 ## Who can do what on the demo
 
-| View as                       | Can                                                                                                                                                               | Cannot                                                                |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| **Demo Customer**             | File a ticket. Read, edit and reply on the tickets the Demo Customer filed (every visitor shares this one customer). Answer "Did this fix it?" on them.           | See the team's internal notes, change a status, archive or delete.    |
-| **Demo Team Member**          | See every ticket. Take one and start work, reply, write internal notes, offer a clearer check, link the code change, attach evidence, ask the customer to verify. | Resolve a ticket (only the customer can), archive, restore or delete. |
-| **Admin preview (read-only)** | See everything, archived tickets included.                                                                                                                        | Change anything, so no visitor can empty the demo.                    |
+- **Demo Customer**
+  - Can: File a ticket. Read, edit and reply on the tickets the Demo Customer filed (every visitor shares this one customer). Answer "Did this fix it?" on them.
+  - Cannot: See the team's internal notes, change a status, archive or delete.
+- **Demo Team Member**
+  - Can: See every ticket. Take one and start work, reply, write internal notes, offer a clearer check, link the code change, attach evidence, ask the customer to verify.
+  - Cannot: Resolve a ticket (only the customer can), archive, restore or delete.
+- **Admin preview (read-only)**
+  - Can: See everything, archived tickets included.
+  - Cannot: Change anything, so no visitor can empty the demo.
 
 To change role, open **Switch role** beside "Signed in as" in the header and pick another
 person: you stay on the same page. On the real site, everyone who signs in is a customer, except the GitHub accounts
@@ -55,7 +105,9 @@ connection** on the welcome page: you get your own key for a day, and the comman
 For Claude Code it looks like this:
 
 ```bash
-claude mcp add --transport http proofdesk https://support-desk-demo.fly.dev/mcp --header "Authorization: Bearer <your key>"
+claude mcp add --transport http proofdesk \
+  https://support-desk-demo.fly.dev/mcp \
+  --header "Authorization: Bearer <your key>"
 ```
 
 Your assistant sees only the sample ticket made for assistants, which is handed to every visitor's
@@ -122,7 +174,8 @@ docker build -t proofdesk .
 ```
 
 ```bash
-docker run --rm -p 3000:3000 -e DEMO=on -v proofdesk-demo:/data proofdesk
+docker run --rm -p 3000:3000 -e DEMO=on \
+  -v proofdesk-demo:/data proofdesk
 ```
 
 A real run needs the four GitHub settings, with `-e` or `--env-file`, and a different volume.
@@ -280,11 +333,16 @@ With the development entrance on, the API can be tried with `curl` and a cookie.
 `dev-customer-1`, `dev-customer-2`, `dev-team-1` and `dev-admin-1`:
 
 ```bash
-curl -c jar -H "Origin: http://localhost:3000" -d id=dev-customer-1 http://localhost:3000/sign-in/dev
+curl -c jar -H "Origin: http://localhost:3000" \
+  -d id=dev-customer-1 http://localhost:3000/sign-in/dev
 ```
 
 ```bash
-curl -b jar -H "Origin: http://localhost:3000" -H "Content-Type: application/json" -d '{"title":"Printer jams","description":"On page two","fix_check":"Ten pages print"}' http://localhost:3000/api/tickets
+curl -b jar -H "Origin: http://localhost:3000" \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Printer jams", "description": "On page two",
+       "fix_check": "Ten pages print"}' \
+  http://localhost:3000/api/tickets
 ```
 
 ```bash

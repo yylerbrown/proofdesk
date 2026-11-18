@@ -4,6 +4,19 @@ import { ACTIONS } from "../src/server/api/actions.js";
 
 // The README's list of API routes must be the routes there are: none missing, none invented.
 
+// A command a reader copies has to be readable on a phone, so a long one is split across lines.
+describe("the commands in the README and the assistants' guide", () => {
+  it("are at most 72 characters a line", () => {
+    for (const file of ["README.md", "docs/AGENTS_GUIDE.md"]) {
+      const text = fs.readFileSync(file, "utf8");
+      const blocks = [...text.matchAll(/^```bash\n([\s\S]*?)^```/gm)].map((m) => m[1]!);
+      expect(blocks.length).toBeGreaterThan(0);
+      const long = blocks.flatMap((b) => b.split("\n")).filter((line) => line.length > 72);
+      expect(long, file).toEqual([]);
+    }
+  });
+});
+
 describe("the README's API table", () => {
   it("lists every route in the action table, and no route that is not there", () => {
     const readme = fs.readFileSync("README.md", "utf8");
@@ -17,10 +30,10 @@ describe("the README's API table", () => {
   });
 });
 
-// The rubric table on the README's first screen names the exact buttons, links and filters a
-// grader presses. Each one must be on a page the demo actually shows, so the table cannot
+// The rubric list on the README's first screen names the exact buttons, links and filters a
+// grader presses. Each one must be on a page the demo actually shows, so the list cannot
 // promise a label the product does not have.
-describe("the README's rubric table", () => {
+describe("the README's rubric list", () => {
   it("names only labels the demo shows", async () => {
     const { parse } = await import("node-html-parser");
     const { DEV_COOKIE } = await import("../src/server/actor.js");
@@ -30,16 +43,13 @@ describe("the README's rubric table", () => {
 
     const readme = fs.readFileSync("README.md", "utf8");
     const table = readme.slice(readme.indexOf("## The rubric"), readme.indexOf("## Who can do"));
-    const rows = table.split("\n").filter((line) => line.startsWith("| ") && !line.includes("---"));
+    // Each rubric line lists where to start and what to press; the bold words there are labels.
     const labels = new Set<string>();
-    for (const row of rows.slice(1)) {
-      // A row starts with a pipe, so the cells are: "", rubric line, start as, press, result.
-      const cells = row.split("|").map((cell) => cell.trim());
-      const [startAs = "", press = ""] = [cells[2], cells[3]];
-      for (const cell of [startAs, press]) {
-        for (const m of cell.matchAll(/\*\*([^*]+)\*\*/g)) labels.add(m[1]!);
-      }
+    for (const line of table.split("\n")) {
+      if (!/^- (Start as|Press):/.test(line)) continue;
+      for (const m of line.matchAll(/\*\*([^*]+)\*\*/g)) labels.add(m[1]!);
     }
+    expect(table).not.toMatch(/^\|/m);
     expect(labels.size).toBeGreaterThan(10);
 
     // The pages a grader passes through on the demo, and the real site's sign-in.
