@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { DEMO_ACTORS, DEV_ACTORS, type Actor, type Role } from "../actor.js";
+import { DEMO_SEED_PEOPLE } from "../demo.js";
 import type { Db } from "../db.js";
 import { demoNotReady, HttpError, ValidationError } from "../errors.js";
 import { can, type Action } from "../permissions.js";
@@ -1529,7 +1530,7 @@ export function createTicketService(
     peopleRoles(ids: string[]): Map<string, Role> {
       if (options.peopleRoles) return options.peopleRoles(ids);
       const roles = new Map<string, Role>();
-      for (const person of [...DEV_ACTORS, ...DEMO_ACTORS]) {
+      for (const person of [...DEV_ACTORS, ...DEMO_ACTORS, ...DEMO_SEED_PEOPLE]) {
         if (ids.includes(person.id)) roles.set(person.id, person.role);
       }
       return roles;
@@ -1537,7 +1538,8 @@ export function createTicketService(
 
     peopleNames(ids: string[]): Map<string, string> {
       const names = repository.userNames(db, ids);
-      for (const person of [...DEV_ACTORS, ...DEMO_ACTORS]) {
+      // The made-up people, and those the demo's samples name, are not in the sign-in tables.
+      for (const person of [...DEV_ACTORS, ...DEMO_ACTORS, ...DEMO_SEED_PEOPLE]) {
         if (ids.includes(person.id)) names.set(person.id, person.name);
       }
       return names;

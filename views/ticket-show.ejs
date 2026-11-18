@@ -25,7 +25,12 @@
 <% } %>
 
 <% if (locals.recordedRun) { %>
-<p class="recorded-run">A recorded example of a real assistant run: what it sent is shown here as it sent it. The run worked on the assistant sample, SUP-4, in an earlier copy of this demo, so its own words name SUP-4. <a href="/assistant-run">See its transcript and files</a></p>
+<%# The customer's view leaves out the assistant's work, so for them the note says where it is instead of promising it here. %>
+<% if (viewerRole === "customer") { %>
+<p class="recorded-run">A recorded assistant run. Its spec, evidence and review request are for the team only, so this view does not show them<% if (locals.demoNext && demoNext.switchTo) { %>: press <strong><%= demoNext.label %></strong> below, or <a href="/assistant-run">see its transcript and files</a>.<% } else { %>. <a href="/assistant-run">See its transcript and files</a>.<% } %></p>
+<% } else { %>
+<p class="recorded-run">A recorded example of a real assistant run: what it sent is shown here as it sent it. The run worked on the assistant sample, <%= locals.assistantSampleKey ?? "SUP-4" %>, in an earlier copy of this demo, so its own words name <%= locals.assistantSampleKey ?? "SUP-4" %>. <a href="/assistant-run">See its transcript and files</a></p>
+<% } %>
 <% } %>
 <%# On the demo: the next role to view this same ticket as, or where resolved tickets are listed. %>
 <% if (locals.demoNext) { %>

@@ -1,5 +1,6 @@
 import { DEMO_ACTORS, DEV_ACTORS, entrancePeople, type Role } from "../actor.js";
 import { roleOf } from "../auth.js";
+import { DEMO_SEED_PEOPLE } from "../demo.js";
 import type { Config } from "../config.js";
 import type { Db } from "../db.js";
 import { listSignedInPeople } from "./repository.js";
@@ -34,7 +35,7 @@ export function peopleRoles(config: Config, db: Db): (ids: string[]) => Map<stri
   return (ids) => {
     const wanted = new Set(ids);
     const roles = new Map<string, Role>();
-    for (const person of [...DEV_ACTORS, ...DEMO_ACTORS]) {
+    for (const person of [...DEV_ACTORS, ...DEMO_ACTORS, ...DEMO_SEED_PEOPLE]) {
       if (wanted.has(person.id)) roles.set(person.id, person.role);
     }
     for (const person of listSignedInPeople(db)) {

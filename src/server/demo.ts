@@ -130,7 +130,7 @@ export function seedDemo(service: TicketService): void {
     third,
   );
 
-  const recorded = seedRecordedRun(service, team, customer);
+  const recorded = seedRecordedRun(service, team, customer, assistantSample.key);
 
   // Record what was seeded, so a visitor's assistant is shown only this, never what other
   // visitors write.
@@ -177,14 +177,20 @@ export const RECORDED_ASSISTANT: Actor = {
  * transcript in docs/assistant-run; nothing is written by hand. Nobody accepted the spec or
  * asked the customer, as in the run.
  */
-function seedRecordedRun(service: TicketService, team: Actor, customer: Actor): string {
+function seedRecordedRun(
+  service: TicketService,
+  team: Actor,
+  customer: Actor,
+  sampleKey: string,
+): string {
   const ticket = service.createTicket(
     {
       title: "Recorded example of a real assistant run on 18 Nov 2026: the total adds tax twice",
       description:
-        "A recorded example: what one real AI assistant did on the sample ticket for assistants " +
-        "on 18 Nov 2026. The spec, the evidence and the review request are exactly what it sent, " +
-        "copied from its transcript, which is linked on this page.\n\n" +
+        `A recorded example: what one real AI assistant did on ${sampleKey}, the sample ticket ` +
+        `for assistants, on 18 Nov 2026, so its words name ${sampleKey}. Its spec, evidence and ` +
+        "review request, which the team sees, are exactly what it sent, copied from its " +
+        "transcript (see its transcript and files above).\n\n" +
         "The checkout total is too high. This is the code that computes it:\n\n" +
         "function total(price, taxRate) {\n  return price + price * taxRate + price * taxRate;\n}\n\n" +
         "total(100, 0.1) returns 120.",
@@ -242,3 +248,6 @@ function seedRecordedRun(service: TicketService, team: Actor, customer: Actor): 
   );
   return ticket.key;
 }
+
+/** Everyone the demo's samples name besides the three demo people, for names and roles in History. */
+export const DEMO_SEED_PEOPLE: Actor[] = [...OTHER_DEMO_CUSTOMERS, RECORDED_ASSISTANT];
