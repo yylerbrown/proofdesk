@@ -157,3 +157,22 @@ describe("the assistant's work, on its own page", () => {
     }
   });
 });
+
+describe("the run page on a phone", () => {
+  it("stacks each fact's label above its paragraph, in the body size", async () => {
+    const { app } = demo();
+    const page = parse((await visitor(app).get("/assistant-run")).text);
+    const facts = page.querySelector(".run-summary dl.run-facts")!;
+    expect(facts.querySelectorAll("dt").map((dt) => dt.text)).toEqual([
+      "When",
+      "Product",
+      "Assistant",
+      "Outcome",
+    ]);
+    // Not the two-column evidence layout, which squeezed the long Outcome into a narrow column.
+    expect(page.querySelector(".run-summary dl.evidence-fields")).toBeNull();
+    const css = fs.readFileSync("public/site.css", "utf8");
+    const dd = /dl\.run-facts dd \{([^}]*)\}/.exec(css)![1]!;
+    expect(dd).not.toContain("font-size");
+  });
+});

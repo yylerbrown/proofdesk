@@ -2068,3 +2068,38 @@ form.sample-fix {
   align-items: center;
   gap: var(--pd-space-2);
 }
+
+/* The phone fixes, kept together at the end. */
+
+/* More is a full-size tap target, like the buttons around it. */
+.ticket-panel details.more > summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+/* The viewer's one next action, right under the status line. */
+.next-action {
+  margin: 0 0 var(--pd-space-4);
+}
+.next-action form {
+  margin: 0;
+}
+.next-action button {
+  margin: 0;
+}
+/* On the demo, the next role to view as: quieter than the next action, and below it. */
+.demo-next button {
+  font-size: var(--pd-text-sm);
+}
+
+/* The recorded run's facts: each label above its paragraph, in the normal body size. */
+dl.run-facts dt {
+  color: var(--pd-muted);
+  font-size: var(--pd-text-xs);
+  font-weight: var(--pd-weight-semibold);
+}
+dl.run-facts dd {
+  margin: 0 0 var(--pd-space-3);
+  overflow-wrap: anywhere;
+}
