@@ -100,6 +100,19 @@ export function pagesRouter(service: TicketService): Router {
     }));
     const allowed = service.allowedActions(ticket, actor);
     const evidence = service.listEvidence(ticket.key, actor);
+    // The test spec, and whether to offer the one line that suggests asking an assistant for
+    // one: to the team, who connect assistants, and to every demo visitor, who may.
+    const specPanel = {
+      key: ticket.key,
+      spec: service.getSpec(ticket.key, actor),
+      canDecide: allowed.decideSpec,
+      // Where to connect an assistant: an admin's connections, or the demo's own button.
+      connectUrl: actor.demo === true ? "/sign-in" : "/connections",
+      offerPrompt:
+        ticket.archived_at === null &&
+        ticket.status !== "resolved" &&
+        (can(actor, "list_all") || actor.demo === true),
+    };
     res.status(status).render("ticket-show", {
       ...helpers,
       title: `${ticket.key}: ${ticket.title}`,
@@ -109,6 +122,7 @@ export function pagesRouter(service: TicketService): Router {
       history,
       confirmed: confirmedAt(ticket, events),
       evidence,
+      specPanel,
       allowed,
       entry,
       problem,
@@ -325,6 +339,12 @@ export function pagesRouter(service: TicketService): Router {
     const ticket = service.releaseTicket(req.params.key, signedIn(req));
     rememberSaved(res, "released");
     res.redirect(303, `/tickets/${ticket.key}`);
+  });
+
+  router.post("/tickets/:key/spec/decision", (req, res) => {
+    const spec = service.decideSpec(req.params.key, req.body, signedIn(req));
+    rememberSaved(res, spec.state === "accepted" ? "specAccepted" : "specDiscarded");
+    res.redirect(303, `/tickets/${spec.ticket_key}`);
   });
 
   router.post("/tickets/:key/restore", (req, res) => {

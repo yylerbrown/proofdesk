@@ -16,13 +16,16 @@ import {
   verificationRequestSchema,
 } from "../tickets/schemas.js";
 import { addEvidenceSchema } from "../tickets/evidence.js";
+import { decideSpecSchema, proposeSpecSchema } from "../tickets/spec.js";
 import { LIST_PAGE_SIZE, type TicketService } from "../tickets/service.js";
 import {
   deletedOutput,
   entryOutput,
   eventOutput,
   evidenceOutput,
+  specOutput,
   ticketOutput,
+  ticketReadOutput,
 } from "./schemas.js";
 import { parse } from "../validation.js";
 
@@ -96,12 +99,17 @@ export const ACTIONS: ApiAction[] = [
   },
   {
     name: "get_ticket",
-    output: ticketOutput,
+    output: ticketReadOutput,
     method: "get",
     path: "/tickets/:key",
-    summary: "One ticket, led by done_when: what the customer will accept as fixed.",
+    summary:
+      "One ticket, led by done_when: what the customer will accept as fixed. spec is its test " +
+      "spec, or null when it has none yet; then you may offer one with propose_spec.",
     needs: "read",
-    run: ({ service, actor, key }) => service.getTicket(key, actor),
+    run: ({ service, actor, key }) => ({
+      ...service.getTicket(key, actor),
+      spec: service.getSpec(key, actor),
+    }),
   },
   {
     name: "change_status",
@@ -265,6 +273,34 @@ export const ACTIONS: ApiAction[] = [
     body: addEvidenceSchema,
     status: 201,
     run: ({ service, actor, key, body }) => service.addEvidence(key, body, actor),
+  },
+  {
+    name: "propose_spec",
+    output: specOutput,
+    method: "post",
+    path: "/tickets/:key/spec",
+    summary:
+      "Propose a test spec for a ticket: a one-paragraph summary a customer can read, and " +
+      "scenarios, each given / when / then in plain words, that make the customer's check " +
+      "testable. Do not invent requirements the customer did not ask for. It replaces the " +
+      "ticket's current spec, and stays a suggestion until a person on the team accepts it. " +
+      "Evidence can then name the scenario it proves. It never changes the ticket's status.",
+    needs: "propose_spec",
+    body: proposeSpecSchema,
+    status: 201,
+    run: ({ service, actor, key, body }) => service.proposeSpec(key, body, actor),
+  },
+  {
+    name: "decide_spec",
+    output: specOutput,
+    method: "post",
+    path: "/tickets/:key/spec/decision",
+    summary:
+      'Accept the proposed test spec as the agreed way to test, or discard it: { "decision": "accept" } or "discard".',
+    needs: "decide_spec",
+    body: decideSpecSchema,
+    page: "POST /tickets/:key/spec/decision",
+    run: ({ service, actor, key, body }) => service.decideSpec(key, body, actor),
   },
   {
     name: "request_verification",

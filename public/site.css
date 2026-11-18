@@ -309,6 +309,14 @@ table.stages {
   }
 }
 
+/* The test spec: collapsed by default, its scenarios numbered and plain. */
+.spec summary small {
+  font-weight: normal;
+}
+.scenarios li p {
+  margin-bottom: 0.25rem;
+}
+
 /* The customer's no, first on the ticket, until the team asks them again. */
 .customer-said-no {
   border-left: 4px solid var(--pico-del-color);
