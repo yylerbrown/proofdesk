@@ -1303,10 +1303,7 @@ details.more {
   margin-top: var(--pd-space-4);
 }
 .ticket-panel details.more > summary {
-  /* A full-size tap target, like the buttons around it. */
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
+  display: inline-block;
   padding: 4px 12px;
   border: 1px solid var(--pd-border);
   border-radius: var(--pd-radius);
@@ -1420,6 +1417,15 @@ form.sample-fix {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--pd-space-2);
+}
+
+/* The phone fixes, kept together at the end. */
+
+/* More is a full-size tap target, like the buttons around it. */
+.ticket-panel details.more > summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
 }
 
 /* The viewer's one next action, right under the status line. */
