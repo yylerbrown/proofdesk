@@ -28,7 +28,7 @@ type EntryForm = { kind: string; body: string; error?: string };
 
 // A refused form on the ticket page: which one, the message, and a comment to keep.
 type Problem = {
-  form: "answer" | "agreedCheck" | "changeLink" | "ready";
+  form: "answer" | "agreedCheck" | "changeLink" | "ready" | "evidence";
   message: string;
   comment: string;
 };
@@ -39,6 +39,7 @@ const FORM_SAVED: Record<Problem["form"], (input: unknown) => SavedKey> = {
   agreedCheck: () => "check",
   changeLink: () => "link",
   ready: () => "ready",
+  evidence: () => "evidence",
   answer: (input) =>
     (input as Record<string, unknown> | undefined)?.fixed === "yes" ? "fixed" : "notFixed",
 };
@@ -103,6 +104,7 @@ export function pagesRouter(service: TicketService): Router {
       ...helpers,
       title: `${ticket.key}: ${ticket.title}`,
       ticket,
+      viewerRole: actor.role,
       entries,
       history,
       confirmed: confirmedAt(ticket, events),
@@ -302,6 +304,16 @@ export function pagesRouter(service: TicketService): Router {
   router.post("/tickets/:key/change-link", ticketForm("changeLink", service.linkChange));
   router.post("/tickets/:key/ready", ticketForm("ready", service.markReady));
   router.post("/tickets/:key/answer", ticketForm("answer", service.answer));
+  // The team attaches evidence from the ticket page. An empty link means none.
+  router.post(
+    "/tickets/:key/evidence",
+    ticketForm("evidence", (key, input, actor) => {
+      const fields = { ...(input as Record<string, unknown>) };
+      if (fields.link === "") delete fields.link;
+      service.addEvidence(key, fields, actor);
+      return service.getTicket(key, actor);
+    }),
+  );
 
   router.post("/tickets/:key/take", (req, res) => {
     const ticket = service.takeTicket(req.params.key, signedIn(req));

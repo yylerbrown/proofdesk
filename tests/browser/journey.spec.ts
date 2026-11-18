@@ -134,7 +134,13 @@ test("a customer files a ticket, the team works it, and only the customer resolv
   await test.step("the ticket is back with the team member, with the customer's words", async () => {
     await team.goto(`/tickets/${key}`);
     await expectTicketStatus(team, key, "In Progress");
-    await expect(team.getByText(notFixedComment)).toBeVisible();
+    // The customer's No comes first on the ticket, with their words and whose hands it is in.
+    const saidNo = team.locator("#customer-said-no");
+    await expect(
+      saidNo.getByRole("heading", { name: "The customer says it is not fixed" }),
+    ).toBeVisible();
+    await expect(saidNo.getByText(notFixedComment)).toBeVisible();
+    await expect(saidNo).toContainText("It is back with Team Member");
     await team.goto("/tickets");
     // Still owned by the same team member, and waiting on the team again.
     await expect(listRow(team, key)).toContainText("Team Member");

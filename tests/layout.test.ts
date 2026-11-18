@@ -25,6 +25,7 @@ describe("the ticket page layout", () => {
       "Status",
       "Owner",
       "How will we know it's fixed?",
+      "Evidence",
       "The fix",
       "Remove",
     ]);

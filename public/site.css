@@ -308,3 +308,8 @@ table.stages {
     display: none;
   }
 }
+
+/* The customer's no, first on the ticket, until the team asks them again. */
+.customer-said-no {
+  border-left: 4px solid var(--pico-del-color);
+}

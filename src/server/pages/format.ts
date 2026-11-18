@@ -47,7 +47,9 @@ export function timeAgo(iso: string, now: Date = new Date()): string {
 export function waitingOn(ticket: Ticket, viewer: Role): string {
   if (ticket.waiting_on === "nobody") return "Nobody";
   if (ticket.waiting_on === "customer") return viewer === "customer" ? "You" : "Customer";
-  return viewer === "customer" ? "Support team" : "Team";
+  if (viewer === "customer") return "Support team";
+  // After a no, the team sees why the ticket is back with them.
+  return ticket.customer_answer?.fixed === false ? "Team: customer says not fixed" : "Team";
 }
 
 /**
