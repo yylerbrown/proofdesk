@@ -29,11 +29,11 @@ These rules apply to any AI coding assistant that changes this repository.
 
 ## Review
 
-- The assistant that builds a change never merges, never pushes to `main`, never deploys, and
-  never changes repository settings, secrets or branch protection.
-- A pull request merges only when its CI checks pass. During this build, under the owner's
-  standing instruction, a separate coordinating assistant merged green pull requests and
-  deployed the demo and the real site. The owner set the direction and checked the product as
-  it grew. Reviews came from other AI sessions, and no human reviewer read the pull requests.
+- The assistant that builds a change never merges, pushes to `main` or deploys. Nothing merges
+  before CI passes. No assistant changes repository settings, secrets or branch protection.
+- In this build, under the owner's standing instruction, a separate coordinating assistant merged
+  pull requests whose checks had passed and deployed the demo and the real site. `docs/SPEC.md`
+  says which merges did not wait for CI. The owner set the direction and made the design calls.
+  Reviews came from other AI sessions and models, and no human reviewer read the pull requests.
 - Say plainly in the pull request what was run and what was not. Do not claim something
   works unless it was run.
