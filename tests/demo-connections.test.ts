@@ -210,7 +210,9 @@ describe("a demo connection asking to resolve", () => {
       .send({ status: "resolved" });
     expect(res.status).toBe(409);
     expect(res.body.error).toMatchObject({ code: "needs_customer", retry: false });
-    expect(res.body.error.message).toMatch(/Only the customer resolves ticket SUP-4/);
+    expect(res.body.error.message).toMatch(
+      /A status change does not resolve ticket SUP-4\. The customer confirms a fix/,
+    );
   });
 });
 

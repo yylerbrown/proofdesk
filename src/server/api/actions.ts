@@ -17,6 +17,7 @@ import {
   noteSchema,
   pageOf,
   reopenSchema,
+  resolveSchema,
   verificationRequestSchema,
 } from "../tickets/schemas.js";
 import { addEvidenceSchema } from "../tickets/evidence.js";
@@ -99,6 +100,7 @@ export const ACTIONS: ApiAction[] = [
         waiting_on: ticket.waiting_on,
         owner_name: ticket.owner_name,
         customer_check: ticket.done_when.customer_check,
+        resolution_label: ticket.resolution?.label ?? null,
         updated_at: ticket.updated_at,
       }));
     },
@@ -134,7 +136,7 @@ export const ACTIONS: ApiAction[] = [
     method: "patch",
     path: "/tickets/:key",
     summary:
-      "Start work: move a New ticket you own to in_progress. Nothing else moves the status this way; only the customer's yes resolves, and only the customer reopens.",
+      "Start work: move a New ticket you own to in_progress. Nothing else moves the status this way: the customer's Yes resolves (or the owner or an admin resolves with a reason, resolve_with_reason), and only the customer reopens.",
     needs: "change_status",
     body: changeStatusSchema,
     run: ({ service, actor, key, body }) => service.changeStatus(key, body, actor),
@@ -238,6 +240,17 @@ export const ACTIONS: ApiAction[] = [
     body: reopenSchema,
     output: ticketOutput,
     run: ({ service, actor, key, body }) => service.reopen(key, body, actor),
+  },
+  {
+    name: "resolve_with_reason",
+    method: "post",
+    path: "/tickets/:key/resolve",
+    summary:
+      "Resolve a New or In Progress ticket without the customer's Yes, with a reason: fixed_no_reply, duplicate (with duplicate_of), wont_fix, cannot_reproduce, or other (with a note). The ticket's owner or an admin; never an agent. It shows as resolved by the team, apart from Customer confirmed, and the customer can reopen it.",
+    needs: "resolve_with_reason",
+    body: resolveSchema,
+    output: ticketOutput,
+    run: ({ service, actor, key, body }) => service.resolveWithReason(key, body, actor),
   },
   {
     name: "hand_off",

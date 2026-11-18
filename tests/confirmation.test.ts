@@ -45,7 +45,9 @@ describe("only the customer resolves a ticket", () => {
     const reason = await refusedBackToTicket(admin(app), "/tickets/SUP-1/status", {
       status: "resolved",
     });
-    expect(reason).toMatch(/Only the customer resolves ticket SUP-1/);
+    expect(reason).toMatch(
+      /A status change does not resolve ticket SUP-1\. The customer confirms a fix/,
+    );
     expect((await admin(app).get("/api/tickets/SUP-1")).body.status).toBe("in_progress");
   });
 });

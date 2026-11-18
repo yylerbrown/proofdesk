@@ -27,7 +27,8 @@ export type Action =
   | "reopen"
   | "hand_off"
   | "hand_to_agent"
-  | "adopt_check";
+  | "adopt_check"
+  | "resolve_with_reason";
 
 /**
  * What an AI agent may be allowed to do, each named by the operation it permits. A connection
@@ -55,7 +56,8 @@ export type Capability = { people: string; agent: AgentScope | "people_only" };
  * API's documentation
  * shows the table. Only the agent column's tests are generated from it; the people column's
  * tests are written by hand. Answering "Did this fix it?", owning a ticket, asking the
- * customer, archiving, restoring and deleting stay with people, whatever an agent holds.
+ * customer, resolving with a reason, archiving, restoring and deleting stay with people,
+ * whatever an agent holds.
  */
 export const CAPABILITIES: Record<Action, Capability> = {
   create: { people: "Anyone signed in.", agent: "people_only" },
@@ -85,6 +87,10 @@ export const CAPABILITIES: Record<Action, Capability> = {
   hand_off: { people: "The ticket's owner, or an admin.", agent: "people_only" },
   hand_to_agent: { people: "The ticket's owner.", agent: "people_only" },
   adopt_check: { people: "Only the customer who filed it.", agent: "people_only" },
+  resolve_with_reason: {
+    people: "The ticket's owner, or an admin, with a reason.",
+    agent: "people_only",
+  },
 };
 
 /** The two facts about a ticket that permissions depend on. */
@@ -158,6 +164,8 @@ export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean
   if (action === "propose_spec") return isStaff;
   if (action === "decide_spec") return isStaff;
   if (action === "mark_ready") return isStaff;
+  // The team resolves without the customer's Yes only as a person, with a reason shown to all.
+  if (action === "resolve_with_reason") return isStaff && actor.kind === "person";
   // Only the person who filed the ticket answers "Did this fix it?". Not the team for them.
   if (action === "answer") return isOwn;
   if (action === "reopen") return isOwn;
