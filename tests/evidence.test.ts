@@ -133,7 +133,7 @@ describe("reading a test report honestly", () => {
   });
 
   it("shows a missing stage as unknown, never as passed", () => {
-    const { green: _green, ...noGreen } = proveReport;
+    const noGreen = { ...proveReport, green: undefined };
     expect(readProveReport(noGreen)).toMatchObject({ after_fix: "unknown", before_fix: "failed" });
   });
 
