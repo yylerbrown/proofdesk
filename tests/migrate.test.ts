@@ -3,7 +3,8 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { isDatabaseOk, openDatabase, type Db } from "../src/server/db.js";
-import { runMigrations } from "../src/server/migrate.js";
+import { defaultMigrationsDir, runMigrations } from "../src/server/migrate.js";
+import { createTicketService } from "../src/server/tickets/service.js";
 
 const tempDirs: string[] = [];
 const dbs: Db[] = [];
@@ -61,6 +62,7 @@ const ALL = [
   "0032_ticket_list_order_indexes.sql",
   "0033_github_account_index.sql",
   "0034_ticket_list_sort_indexes.sql",
+  "0035_ticket_search.sql",
 ];
 
 describe("runMigrations", () => {
@@ -136,6 +138,32 @@ describe("runMigrations", () => {
        VALUES (?, 'x', 'created', '{}', 'now')`,
     );
     expect(() => insertEvent.run(99)).toThrow(/FOREIGN KEY constraint failed/);
+  });
+
+  it("puts the tickets already there into the word index, archived ones too", () => {
+    // A database from before the word index, holding two tickets, one of them archived.
+    const dir = tempDir();
+    const before = ALL.filter((name) => name !== "0035_ticket_search.sql");
+    for (const name of before) {
+      fs.copyFileSync(path.join(defaultMigrationsDir, name), path.join(dir, name));
+    }
+    const db = memoryDb();
+    runMigrations(db, dir);
+    const service = createTicketService(db, "SUP");
+    const customer = { id: "c-1", kind: "person" as const, role: "customer" as const, name: "C" };
+    service.createTicket({ title: "Cannot sign in on my phone", description: "x" }, customer);
+    service.createTicket({ title: "Printer jams", description: "On page two" }, customer);
+    db.prepare("UPDATE tickets SET archived_at = 'now' WHERE id = 2").run();
+
+    fs.copyFileSync(
+      path.join(defaultMigrationsDir, "0035_ticket_search.sql"),
+      path.join(dir, "0035_ticket_search.sql"),
+    );
+    expect(runMigrations(db, dir)).toEqual(["0035_ticket_search.sql"]);
+    const found = (match: string) =>
+      db.prepare("SELECT rowid FROM ticket_search WHERE ticket_search MATCH ?").all(match);
+    expect(found('"signing" AND "phone"')).toEqual([{ rowid: 1 }]);
+    expect(found('"page" AND "printer"')).toEqual([{ rowid: 2 }]);
   });
 
   it("rolls back a failing migration and does not record it", () => {
