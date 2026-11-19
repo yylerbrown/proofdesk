@@ -497,6 +497,19 @@ export function handedTicketIds(db: Db, connectionId: number): number[] {
   ).map((row) => row.ticket_id);
 }
 
+/** The ids of the tickets still handed to a connection that has been revoked. */
+export function ticketsHandedToEndedConnections(db: Db): number[] {
+  return (
+    db
+      .prepare(
+        `SELECT h.ticket_id FROM ticket_agent_handoffs h
+         JOIN agent_connections c ON c.id = h.connection_id
+         WHERE h.ended_at IS NULL AND c.revoked_at IS NOT NULL`,
+      )
+      .all() as { ticket_id: number }[]
+  ).map((row) => row.ticket_id);
+}
+
 export function startHandoff(
   db: Db,
   ticketId: number,

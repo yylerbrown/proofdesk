@@ -186,6 +186,9 @@ export function createReads(shared: Shared, options: ServiceOptions) {
       for (const id of ids) {
         if (id.startsWith("connection-")) names.set(id, "The team's assistant");
       }
+      // A change the server settings made, such as ending an assistant's work when its issuer
+      // stopped being an admin there.
+      if (ids.includes("server-settings")) names.set("server-settings", "The server settings");
       return names;
     },
 
