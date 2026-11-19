@@ -13,7 +13,7 @@ export function createShared(db: Db, prefix: string, budget: Budget) {
     db,
     prefix,
     budget,
-    // access.ts: idFromKey, requireRow, visibleScope
+    // access.ts: idFromKey, requireRow, requireRowWantingCheck, visibleScope
     ...createAccess(db, prefix),
     // history.ts: logEvent, log, setOwner, endAgent, withdrawQuestion
     ...createHistory(db, budget),

@@ -39,7 +39,13 @@ export const DEMO_SCOPES: AgentScope[] = DEFAULT_SCOPES;
 // A form sends one checkbox as a text and several as a list; both are read as a list.
 const scopeList = z.preprocess(
   (value) => (value === undefined ? [] : [value].flat()),
-  z.array(z.enum(AGENT_SCOPES)).min(1, "Choose at least one thing it may do."),
+  z
+    .array(z.enum(AGENT_SCOPES))
+    .min(1, "Choose at least one thing it may do.")
+    // Suggesting is done from what the assistant reads, so it needs reading too.
+    .refine((scopes) => !scopes.includes("suggest_checks") || scopes.includes("read_tickets"), {
+      message: "Suggesting ways to verify needs reading the tickets too.",
+    }),
 );
 
 export const createConnectionSchema = z.object({

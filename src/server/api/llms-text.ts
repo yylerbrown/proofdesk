@@ -5,7 +5,9 @@ import { WRITE_LIMIT_DESCRIPTION } from "../limits.js";
 import { AGENT_SCOPES, CAPABILITIES } from "../permissions.js";
 import { TOOL_ACTIONS } from "../mcp.js";
 import { ACTIONS, type ApiAction } from "./actions.js";
-import { guide, UNTRUSTED_TEXT } from "./describe.js";
+import type { Actor } from "../actor.js";
+import { maySuggestChecks } from "../tickets/access.js";
+import { guide, SUGGEST_CHECKS_TEXT, UNTRUSTED_TEXT } from "./describe.js";
 
 // One page for an AI assistant to read once, served at /llms.txt and /llms-full.txt. It is
 // written as Markdown and built from the same action table, capability table and zod schemas
@@ -116,8 +118,11 @@ function actionSection(row: ApiAction): string {
   ].join("\n");
 }
 
-/** The whole page, for a server at this address. */
-export function llmsText(address: string): string {
+/**
+ * The whole page, for a server at this address. Read with the key of a connection allowed to
+ * suggest ways to verify new tickets, it says how to do that too.
+ */
+export function llmsText(address: string, reader: Actor | null = null): string {
   const g = guide(null, address);
   const rules = g.start_here;
   const scopeRows = AGENT_SCOPES.map((scope) => {
@@ -195,6 +200,9 @@ export function llmsText(address: string): string {
       `- Limits: ${WRITE_LIMIT_DESCRIPTION}`,
       `- ${rules.stop}`,
       "",
+      ...(reader !== null && maySuggestChecks(reader)
+        ? ["## Suggesting ways to verify", "", SUGGEST_CHECKS_TEXT, ""]
+        : []),
       "## What an assistant may do",
       "",
       "A connection holds scopes. Each scope opens the actions named beside it.",

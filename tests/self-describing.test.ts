@@ -199,6 +199,31 @@ describe("real answers", () => {
         .post("/api/tickets/bulk")
         .send({ keys: ["SUP-1", "SUP-404"], owner: "me" }),
     );
+    // A New ticket with no check, an assistant allowed to suggest ways to verify it, and the
+    // customer's pick. The assistant reads only a few fields of it.
+    await as(app, customerOne)
+      .post("/api/tickets")
+      .send({ title: "Scanner stalls", description: "It stops halfway." });
+    const suggester = await issue(app, ["read_tickets", "suggest_checks"]);
+    const byAssistant = (path: string) =>
+      request(app).get(path).set("Authorization", `Bearer ${suggester}`);
+    expectShape(
+      "suggest_checks",
+      await request(app)
+        .post("/api/tickets/SUP-4/check-suggestions")
+        .set("Authorization", `Bearer ${suggester}`)
+        .send({ options: ["I scan ten pages and all ten arrive"] }),
+    );
+    expectShape("list_tickets", await byAssistant("/api/tickets"));
+    expectShape("get_ticket", await byAssistant("/api/tickets/SUP-4"));
+    const read = await as(app, customerOne).get("/api/tickets/SUP-4");
+    expectShape("get_ticket", read);
+    expectShape(
+      "choose_check",
+      await as(app, customerOne)
+        .post("/api/tickets/SUP-4/check")
+        .send({ suggestion_id: read.body.check_suggestions[0].id }),
+    );
     expectShape("archive_ticket", await admin(app).post(`${t}/archive`));
     expectShape("restore_ticket", await admin(app).post(`${t}/restore`));
     expectShape("delete_ticket", await admin(app).delete(t).send({ confirm: "SUP-1" }));

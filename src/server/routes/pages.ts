@@ -45,6 +45,7 @@ import { statusControl } from "../pages/status-control.js";
 import { DESCRIPTION_LIMIT, withHowFarOver } from "../pages/text-limit.js";
 import {
   filedMessage,
+  rememberProblem,
   rememberSaved,
   SAVED_MESSAGES,
   takeProblem,
@@ -468,6 +469,18 @@ export function pagesRouter(
     const stamp = service.ticketStamp(req.params.key, actor);
     const { status } = service.getTicket(req.params.key, actor);
     res.json({ ...stamp, status });
+  });
+
+  // The ways to verify a ticket that an assistant suggested, for a page to ask now and then
+  // while the customer waits for them. Only the customer who filed it and the team may read
+  // them, as for the ticket. Like /version above, it never uses up the message a page shows
+  // once, and reading is not counted against the write limit. Signed-in pages are never kept by
+  // a cache, and this answer says so itself too.
+  router.get("/tickets/:key/check-suggestions", (req, res) => {
+    const actor = signedIn(req);
+    const suggestions = service.listCheckSuggestions(req.params.key, actor);
+    res.set("Cache-Control", "private, no-store");
+    res.json({ check_suggestions: suggestions });
   });
 
   // One picture on a ticket, for whoever may see what it is attached to. Every refusal is the
@@ -1191,6 +1204,21 @@ export function pagesRouter(
     const ticket = service.adoptCheck(req.params.key, signedIn(req), req.body);
     rememberSaved(res, "adopted");
     res.redirect(303, `/tickets/${ticket.key}`);
+  });
+  // The customer says how they will know it is fixed: a suggested way they picked, or their
+  // own words. A refusal goes back to the ticket with the reason, as every other refusal does.
+  router.post("/tickets/:key/check", (req, res) => {
+    const actor = signedIn(req);
+    try {
+      const ticket = service.chooseCheck(req.params.key, req.body, actor);
+      rememberSaved(res, "checkChosen");
+      res.redirect(303, `/tickets/${ticket.key}`);
+    } catch (err) {
+      if (!(err instanceof ValidationError)) throw err;
+      const ticket = service.getTicket(req.params.key, actor);
+      rememberProblem(res, Object.values(err.fieldErrors).flat()[0] ?? err.message);
+      res.redirect(303, `/tickets/${ticket.key}`);
+    }
   });
   router.post("/tickets/:key/withdraw-question", (req, res) => {
     const ticket = service.withdrawQuestionAsked(req.params.key, signedIn(req), req.body);

@@ -260,7 +260,7 @@ export function createApp(config: Config, db: Db, options: { log?: LogLine } = {
     }),
   );
   app.use("/assets", express.static(path.join(rootDir, "public"), { maxAge: ASSET_MAX_AGE }));
-  app.use(llmsRouter(config));
+  app.use(llmsRouter(config, connections));
   app.use(actor);
   app.use(sameOriginOnly(config));
   app.use(writeLimit);

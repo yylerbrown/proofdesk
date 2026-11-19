@@ -210,6 +210,7 @@ describe("the capability table on the JSON door", () => {
         "archive_ticket",
         "bulk_change",
         "change_status",
+        "choose_check",
         "confirm_fix",
         "create_ticket",
         "decide_spec",

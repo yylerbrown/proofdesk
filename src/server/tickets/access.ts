@@ -25,6 +25,23 @@ export function isHandedAgent(actor: Actor): boolean {
   return actor.kind === "agent" && actor.demo !== true && actor.connection !== undefined;
 }
 
+/**
+ * An assistant an admin allowed to suggest ways to verify new tickets. Never a demo one, so the
+ * demo takes no text from strangers into a customer's page.
+ */
+export function maySuggestChecks(actor: Actor): boolean {
+  const scopes = actor.scopes ?? [];
+  // It suggests from what it reads, so it must also hold the scope to read tickets.
+  return (
+    isHandedAgent(actor) && scopes.includes("suggest_checks") && scopes.includes("read_tickets")
+  );
+}
+
+/** A ticket waiting for a way to verify it: New, not archived, and no check from the customer. */
+export function wantsCheck(row: repository.TicketRow): boolean {
+  return row.status === "new" && row.archived_at === null && row.fix_check === null;
+}
+
 /** The owner filter and search as the repository reads them. */
 export function narrowed(narrowing: ListNarrowing, actor: Actor): repository.Narrowing {
   return {
@@ -89,6 +106,20 @@ export function createAccess(db: Db, prefix: string) {
   }
 
   /**
+   * The row of a ticket waiting for a way to verify it, for an assistant allowed to suggest
+   * one. Any other ticket, and any other caller, gets the same 404 as a ticket that does not
+   * exist, so the answer says nothing more about it.
+   */
+  function requireRowWantingCheck(key: string, actor: Actor): repository.TicketRow {
+    const id = idFromKey(key);
+    const row = repository.findTicket(db, id);
+    if (!maySuggestChecks(actor) || row === undefined || !wantsCheck(row)) {
+      throw new HttpError(404, "ticket_not_found", `No ticket ${key}.`);
+    }
+    return row;
+  }
+
+  /**
    * Whose tickets this viewer's lists hold, decided once for both the rows and the counts. The
    * team gets everyone's. An assistant gets only its own: the ones handed to its connection, or
    * on the demo the sample made for assistants. They are picked in SQL before the page is cut,
@@ -98,11 +129,14 @@ export function createAccess(db: Db, prefix: string) {
   function visibleScope(actor: Actor): repository.ListScope {
     if (!can(actor, "list_all")) return { kind: "filed_by", createdBy: actor.id };
     if (isHandedAgent(actor)) {
-      return { kind: "among", ids: repository.handedTicketIds(db, actor.connection!.id) };
+      const ids = repository.handedTicketIds(db, actor.connection!.id);
+      // One allowed to suggest ways to verify also lists the New tickets that have no check.
+      if (maySuggestChecks(actor)) return { kind: "among_or_wanting_check", ids };
+      return { kind: "among", ids };
     }
     if (isDemoAgent(actor)) return { kind: "among", ids: demoTicketIds() };
     return { kind: "everyone" };
   }
 
-  return { idFromKey, requireRow, visibleScope };
+  return { idFromKey, requireRow, requireRowWantingCheck, visibleScope };
 }
