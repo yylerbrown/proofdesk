@@ -120,6 +120,7 @@ function whyKept(outcome: Remembered, code: string): string {
     case "ticket_archived":
       return "archived";
     case "ticket_not_found":
+    case "invalid_key":
       return "no such ticket";
     case "validation_error":
       return outcome.reason === "fixed_no_reply"

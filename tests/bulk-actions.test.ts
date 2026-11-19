@@ -208,6 +208,44 @@ describe("changing ticked tickets from the list", () => {
     expect(parse(none.text).querySelector(".bulk-error")?.text).toBe("Tick at least one ticket.");
   });
 
+  it("drops a note left in the form unless the reason is Other", async () => {
+    const { app } = buildTestApp();
+    await file(app, ["One"]);
+    const posted = await postForm(app, teamActor, "", {
+      keys: "SUP-1",
+      apply: "status",
+      status: "resolved",
+      reason: "wont_fix",
+      note: "typed before the reason changed",
+    });
+    expect(posted.status).toBe(303);
+    const resolved = (await admin(app).get("/api/tickets/SUP-1")).body;
+    expect(resolved.resolution).toMatchObject({ by: "team", reason: "wont_fix", note: null });
+  });
+
+  it("changes a ticket once when its key is sent in two letter cases", async () => {
+    const { app } = buildTestApp();
+    await file(app, ["One"]);
+    const res = await admin(app)
+      .post("/api/tickets/bulk")
+      .send({ keys: ["sup-1", "SUP-1"], owner: "me" });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ change: { owner: "me" }, changed: ["SUP-1"], not_changed: [] });
+  });
+
+  it("explains a key that is not a ticket key as no such ticket", async () => {
+    const { app } = buildTestApp();
+    await file(app, ["One"]);
+    const posted = await postForm(app, teamActor, "", {
+      keys: ["nope", "SUP-1"],
+      apply: "owner",
+      owner: "me",
+    });
+    expect(savedLine(await listAfter(app, teamActor, posted))).toBe(
+      "1 assigned to you. 1 was not changed: NOPE (no such ticket).",
+    );
+  });
+
   it("changes at most one page of the list in one request", async () => {
     const { app } = buildTestApp();
     const keys = Array.from({ length: LIST_PAGE_SIZE + 1 }, (_, i) => `SUP-${i + 1}`);

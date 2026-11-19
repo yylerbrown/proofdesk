@@ -97,8 +97,8 @@ export function createBulk(
         status: ["Choose a status or an owner."],
       });
     }
-    // The same key ticked twice is changed once.
-    const unique = [...new Set(keys)];
+    // The same key ticked twice is changed once, however its letters are written.
+    const unique = [...new Set(keys.map((key) => key.toUpperCase()))];
     if (status === "resolved") {
       // One reason for all of them, checked as the resolve form on a ticket checks it.
       const resolve = readResolveInput({ reason, note, duplicate_of });
