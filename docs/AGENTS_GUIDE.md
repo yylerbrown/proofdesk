@@ -123,15 +123,15 @@ customer's check testable. They must not add requirements the customer did not a
 
 Proofdesk cannot reach anyone's assistant. On a ticket with no spec, the page shows the team, and
 every demo visitor, one line to copy into their own assistant, such as
-`Using Proofdesk, write a test spec for SUP-4`. When the spec arrives it is on the ticket page,
+`Using Proofdesk, write a test spec for SUP-1`. When the spec arrives it is on the ticket page,
 with nothing more to do.
 
 On the demo, a connection sees only the spec it proposed itself, never another visitor's.
 
-A worked example, on the demo's sample "the total adds tax twice" (`SUP-4` on a new demo):
+A worked example, on the demo's sample "the total adds tax twice" (`SUP-1` on a new demo):
 
 ```text
-propose_spec { "key": "SUP-4",
+propose_spec { "key": "SUP-1",
   "summary": "The total adds the tax once. A price of 100 at a 10% rate totals 110, and a price with no tax stays as it is.",
   "scenarios": [
     { "title": "Tax at 10%", "given": "a price of 100 and a tax rate of 0.1",
@@ -140,7 +140,7 @@ propose_spec { "key": "SUP-4",
     { "title": "No tax", "given": "a price of 100 and a tax rate of 0",
       "when": "the total is worked out", "then": "it is 100" } ] }
   -> { "state": "proposed", "coverage": { "scenarios": 2, "with_evidence": 0 }, ... }
-add_evidence { "key": "SUP-4", "kind": "test", "scenario": 1,
+add_evidence { "key": "SUP-1", "kind": "test", "scenario": 1,
                "summary": "The test for scenario 1 fails on the old function and passes on the fix" }
   -> { "scenario": 1, "verified_by_proofdesk": false, ... }
 ```
