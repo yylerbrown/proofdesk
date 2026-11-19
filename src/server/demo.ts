@@ -1,5 +1,10 @@
 import { DEMO_ACTORS, type Actor } from "./actor.js";
+import type { Db } from "./db.js";
+import { demoNotReady } from "./errors.js";
+import { buildKey, parseKey } from "./tickets/keys.js";
+import * as repository from "./tickets/repository.js";
 import type { TicketService } from "./tickets/service.js";
+import type { Budget } from "./tickets/types.js";
 
 /**
  * Made-up customers who filed some of the samples. They cannot sign in. They make the team's
@@ -264,3 +269,120 @@ function seedRecordedRun(
 
 /** Everyone the demo's samples name besides the three demo people, for names and roles in History. */
 export const DEMO_SEED_PEOPLE: Actor[] = [...OTHER_DEMO_CUSTOMERS, RECORDED_ASSISTANT];
+
+/** The demo's budget: enough to try everything, too little to fill the disk. */
+export const DEMO_BUDGET: Budget = {
+  tickets: 200,
+  entriesPerTicket: 50,
+  eventsPerTicket: 100,
+  evidencePerTicket: 20,
+  specsPerTicket: 20,
+};
+
+// ---- The record of what seeding wrote ----------------------------------------------------
+// On the public demo, many visitors share the sample tickets, and each may connect their own
+// assistant. An assistant must never read text another visitor wrote, so the ticket service
+// shows a demo connection only what this record names. The rules that use it are in
+// tickets/access.ts and tickets/public-fields.ts.
+
+/** Where the demo's seeding record is kept in app_meta. */
+export const DEMO_SEED_KEY = "demo_seeded";
+
+/** What seeding wrote: the rows, and each sample ticket's text as first written. */
+export type DemoSeed = {
+  tickets: number[];
+  /** The sample made for assistants: on the demo, it is handed to every visitor's connection. */
+  assistant?: number;
+  /** The recorded example of a real assistant run, copied from its transcript. */
+  recorded?: number;
+  entries: number[];
+  events: number[];
+  text: Record<string, Partial<repository.TicketRow>>;
+};
+
+/** What seeding wrote, recorded when the demo was seeded, or null if it was not recorded. */
+export function readDemoSeed(db: Db): DemoSeed | null {
+  const value = repository.getMeta(db, DEMO_SEED_KEY);
+  return value === undefined ? null : (JSON.parse(value) as DemoSeed);
+}
+
+/** The seeding record, or a 503 that says assistant connections are off until it exists. */
+export function requireDemoSeed(db: Db): DemoSeed {
+  const seed = readDemoSeed(db);
+  if (seed === null) throw demoNotReady();
+  return seed;
+}
+
+/**
+ * The ticket service's methods for the seeding record. logEvent is the service's own writer
+ * of history entries, so the hand-off it records counts against the same budget.
+ */
+export function createDemoRecord(
+  db: Db,
+  prefix: string,
+  logEvent: (event: repository.NewEvent) => void,
+) {
+  return {
+    /**
+     * Records what seeding wrote, so a demo connection can be shown only that. Called once,
+     * right after the demo's sample data is created on an empty database.
+     */
+    recordDemoSeed(assistantKey?: string, recordedKey?: string): void {
+      const text: DemoSeed["text"] = {};
+      const everyTicket = { limit: 1000, offset: 0 };
+      const everyone: repository.ListScope = { kind: "everyone" };
+      for (const row of repository.listTickets(db, everyone, null, "open_first", everyTicket)) {
+        text[String(row.id)] = {
+          title: row.title,
+          description: row.description,
+          where_url: row.where_url,
+          fix_check: row.fix_check,
+          agreed_check: row.agreed_check,
+          change_url: row.change_url,
+          try_url: row.try_url,
+        };
+      }
+      const assistant = assistantKey === undefined ? undefined : parseKey(prefix, assistantKey);
+      // The history says the sample is handed to the demo's assistants, as a real hand-off does.
+      if (assistant !== null && assistant !== undefined) {
+        logEvent({
+          ticketId: assistant,
+          actor: "demo-team",
+          actorKind: "person",
+          context: null,
+          type: "agent_handed",
+          data: { connection: "demo assistants" },
+          now: new Date().toISOString(),
+        });
+      }
+      const seed: DemoSeed = {
+        tickets: repository.allIds(db, "tickets"),
+        ...(assistant === null || assistant === undefined ? {} : { assistant }),
+        ...(recordedKey === undefined
+          ? {}
+          : { recorded: parseKey(prefix, recordedKey) ?? undefined }),
+        entries: repository.allIds(db, "ticket_entries"),
+        events: repository.allIds(db, "ticket_events"),
+        text,
+      };
+      repository.insertMeta(db, DEMO_SEED_KEY, JSON.stringify(seed));
+    },
+
+    /** Whether the demo's seeding was recorded, which demo connections need. */
+    hasDemoSeed(): boolean {
+      return readDemoSeed(db) !== null;
+    },
+
+    /** On the demo, the key of the sample ticket made for assistants; null elsewhere. */
+    assistantSampleKey(): string | null {
+      const id = readDemoSeed(db)?.assistant;
+      return id === undefined ? null : buildKey(prefix, id);
+    },
+
+    /** The demo's recorded example of a real assistant run, by key, or null when there is none. */
+    recordedRunKey(): string | null {
+      const id = readDemoSeed(db)?.recorded;
+      return id === undefined ? null : buildKey(prefix, id);
+    },
+  };
+}

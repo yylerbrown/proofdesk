@@ -184,3 +184,17 @@ export function closeServers(servers: import("node:http").Server[]): Promise<voi
     ),
   );
 }
+
+/**
+ * The source files of the ticket service: every file in src/server/tickets except its
+ * repository, which holds the SQL, and src/server/demo.ts, which keeps the demo's seeding
+ * record for it. Paths are relative to the repository's root.
+ */
+export function ticketServiceFiles(): string[] {
+  const folder = path.join("src", "server", "tickets");
+  const files = fs
+    .readdirSync(folder)
+    .filter((file) => file.endsWith(".ts") && file !== "repository.ts")
+    .map((file) => path.join(folder, file));
+  return [...files, path.join("src", "server", "demo.ts")];
+}

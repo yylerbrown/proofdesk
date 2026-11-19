@@ -3,7 +3,8 @@ import request from "supertest";
 import type { Express } from "express";
 import { describe, expect, it } from "vitest";
 import { readProveReport } from "../src/server/tickets/evidence.js";
-import { createTicketService, DEMO_BUDGET } from "../src/server/tickets/service.js";
+import { DEMO_BUDGET } from "../src/server/demo.js";
+import { createTicketService } from "../src/server/tickets/service.js";
 import {
   admin,
   as,

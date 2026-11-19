@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { noticesFor, TOLD, type Audience, type EventFacts } from "../src/server/notify/rules.js";
+import { ticketServiceFiles } from "./helpers.js";
 
 // Who is told about what, decided by hand for every kind of history event there is. A kind of
 // event that the ticket service writes and this table leaves out fails the first test, so a new
@@ -41,11 +42,12 @@ const EXPECTED: Record<string, Audience[]> = {
  */
 const DECIDED_AHEAD = ["reopened_by_team"];
 
-const SERVICE = path.join(__dirname, "..", "src", "server", "tickets", "service.ts");
-
-/** Every history event type the ticket service writes, read from its source. */
+/** Every history event type the ticket service writes, read from its source files. */
 function eventTypesInService(): string[] {
-  const source = fs.readFileSync(SERVICE, "utf8").replace(/\s+/g, " ");
+  const source = ticketServiceFiles()
+    .map((file) => fs.readFileSync(file, "utf8"))
+    .join("\n")
+    .replace(/\s+/g, " ");
   const types = new Set<string>();
   // log(ticketId, actor, <type>, data, now): the type is a word, or a choice between words.
   for (const call of source.matchAll(/\blog\( ?[\w.]+, actor, ([^,]+),/g)) {
@@ -97,8 +99,8 @@ describe("the list of who is told", () => {
       }
     };
     walk(path.join(__dirname, "..", "src", "server"));
-    // The repository defines it; only the ticket service calls it.
-    expect(callers.sort()).toEqual(["repository.ts", "service.ts"]);
+    // The repository defines it; only the ticket service's history writer calls it.
+    expect(callers.sort()).toEqual(["history.ts", "repository.ts"]);
   });
 
   it.each(Object.entries(EXPECTED))("tells about %s exactly whom the table says", (type, who) => {

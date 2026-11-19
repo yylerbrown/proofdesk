@@ -3,7 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SCOPES, DEMO_SCOPES } from "../src/server/connections/service.js";
 import { LIST_PAGE_SIZE } from "../src/server/tickets/service.js";
-import { buildTestApp, visitor } from "./helpers.js";
+import { buildTestApp, ticketServiceFiles, visitor } from "./helpers.js";
 
 // A value said in two places drifts apart when one of them changes, so each of these is written
 // once and read from there.
@@ -24,7 +24,9 @@ describe("values written once", () => {
   });
 
   it("who wrote a history entry is filled in by one helper in the ticket service", () => {
-    const service = fs.readFileSync("src/server/tickets/service.ts", "utf8");
+    const service = ticketServiceFiles()
+      .map((file) => fs.readFileSync(file, "utf8"))
+      .join("\n");
     expect(service.split("context: agentContext(actor)")).toHaveLength(2);
   });
 

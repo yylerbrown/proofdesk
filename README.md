@@ -219,8 +219,11 @@ For someone reading the code, in this order:
 
 1. [`src/server/permissions.ts`](src/server/permissions.ts): the capability table and `can()`,
    who may take each action.
-2. [`src/server/tickets/service.ts`](src/server/tickets/service.ts): `markReady` (the owner
-   asks "Did this fix it?"), `answer` (the customer's Yes or No) and `resolveWithReason`.
+2. [`src/server/tickets/service.ts`](src/server/tickets/service.ts): the ticket rules, built from
+   one file per concern. Then
+   [`customer-question.ts`](src/server/tickets/customer-question.ts): `markReady` (the owner asks
+   "Did this fix it?") and `answer` (the customer's Yes or No), and
+   [`resolve-and-reopen.ts`](src/server/tickets/resolve-and-reopen.ts): `resolveWithReason`.
 3. [`tests/confirmation.test.ts`](tests/confirmation.test.ts): the confirmation workflow on the
    real routes.
 4. [`tests/capabilities.test.ts`](tests/capabilities.test.ts): every action, tested for agents
@@ -297,8 +300,8 @@ code. The specification ([`docs/SPEC.md`](docs/SPEC.md)), the history of every s
   decisions recorded against each piece of evidence, an immutable record of each question asked
   beyond its history entry, documentation generated from conditional rules, and upgrading
   tickets resolved before the customer's Yes was required.
-- **Design debt** in the code, such as a ticket service of over 2,000 lines, is listed with the
-  plan for each item in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#design-debt).
+- **Design debt** in the code, such as visibility decided inline across the read paths, is
+  listed with the plan for each item in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#design-debt).
 
 ## More
 
