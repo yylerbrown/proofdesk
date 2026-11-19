@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { seedDemo } from "../src/server/demo.js";
 import { ticketFromNext } from "../src/server/routes/sign-in.js";
 import { createTicketService } from "../src/server/tickets/service.js";
+import { DEV_COOKIE } from "../src/server/actor.js";
 import { as, buildTestApp, customerOne, SIGN_IN_ENV, visitor } from "./helpers.js";
 
 // The welcome page ties each explanation to its button, names the ticket a link asked for,
@@ -54,10 +55,12 @@ describe("the demo welcome's first screen", () => {
     });
     seedDemo(createTicketService(built.db, built.config.ticketPrefix));
     const html = await page(built.app);
-    // Nothing sits between the steps and the roles, so all three roles fit on a laptop's
-    // first screen. The source link waits under them, and the assistant setup stays last.
+    // Only one quiet line sits between the steps and the roles, so all three roles fit on a
+    // laptop's first screen. The source link waits under them, and the assistant setup stays last.
     expect(
-      html.querySelector(".try-steps + h3 + ul.people + .source-link + details.connect"),
+      html.querySelector(
+        ".try-steps + .recorded-run-entry + h3 + ul.people + .source-link + details.connect",
+      ),
     ).not.toBeNull();
     expect(html.querySelectorAll(".source-link").length).toBe(1);
     expect(html.querySelector("section")!.lastElementChild?.classNames).toBe("connect");
@@ -85,7 +88,9 @@ describe("the welcome page's assistant setup", () => {
     );
     expect(folded.text).toContain("A key is shown only once");
     expect(folded.querySelector("a[href='/assistant-run']")).not.toBeNull();
-    const outside = section.childNodes.filter((node) => node !== folded);
+    // Outside it, only the one quiet line to the recorded run speaks of an assistant.
+    const entry = section.querySelector(".recorded-run-entry");
+    const outside = section.childNodes.filter((node) => node !== folded && node !== entry);
     expect(outside.map((node) => node.text).join(" ")).not.toMatch(/key|assistant/i);
     // Its summary reads as a quiet link, like the other small disclosures, not a full-width row.
     const css = fs.readFileSync("public/site.css", "utf8");
@@ -111,6 +116,83 @@ describe("the welcome page's assistant setup", () => {
     expect(target.parentNode?.tagName).toBe("DETAILS");
     expect(target.tagName).not.toBe("SUMMARY");
     expect(target.querySelector("form[action='/demo/connection']")).not.toBeNull();
+  });
+});
+
+describe("the welcome page's way to a ticket an AI assistant worked", () => {
+  const LABEL = "Or see a ticket an AI assistant worked (a recorded run)";
+
+  function seeded() {
+    const built = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
+    const service = createTicketService(built.db, built.config.ticketPrefix);
+    seedDemo(service);
+    // The seed keeps the recorded run's key, so no test names a fixed number for it.
+    return { ...built, recorded: service.recordedRunKey()! };
+  }
+
+  /** The welcome page as one of the demo people sees it. */
+  async function pageAs(app: ReturnType<typeof seeded>["app"], id: string) {
+    const response = await visitor(app).get("/sign-in").set("Cookie", `${DEV_COOKIE}=${id}`);
+    return parse(response.text);
+  }
+
+  it("is one quiet line right under the workflow's steps, that switches to the team", async () => {
+    const { app, recorded } = seeded();
+    const html = await page(app);
+    const entry = html.querySelector(".try-steps + form.recorded-run-entry")!;
+    expect(entry.getAttribute("action")).toBe("/sign-in/dev");
+    expect(entry.querySelector("input[name='id']")?.getAttribute("value")).toBe("demo-team");
+    expect(entry.querySelector("input[name='next']")?.getAttribute("value")).toBe(
+      `/tickets/${recorded}`,
+    );
+    // A text button, so it reads as a link and not as a second big choice.
+    const button = entry.querySelector("button")!;
+    expect(button.classNames).toBe("link");
+    expect(button.text).toBe(LABEL);
+  });
+
+  it("opens the recorded ticket in the team's view in one press", async () => {
+    const { app, recorded } = seeded();
+    const browser = visitor(app);
+    const pressed = await browser
+      .post("/sign-in/dev")
+      .type("form")
+      .send({ id: "demo-team", next: `/tickets/${recorded}` });
+    expect(pressed.status).toBe(303);
+    expect(pressed.headers.location).toBe(`/tickets/${recorded}`);
+    const ticket = parse((await browser.get(`/tickets/${recorded}`)).text);
+    expect(ticket.querySelector(".recorded-run")).not.toBeNull();
+  });
+
+  it("is a plain link for the team and the admin, and switches a customer", async () => {
+    const { app, recorded } = seeded();
+    for (const id of ["demo-team", "demo-admin"]) {
+      const html = await pageAs(app, id);
+      expect(html.querySelector("form.recorded-run-entry")).toBeNull();
+      const link = html.querySelector(".try-steps + p.recorded-run-entry a")!;
+      expect(link.getAttribute("href")).toBe(`/tickets/${recorded}`);
+      expect(link.text).toBe(LABEL);
+    }
+    const asCustomer = await pageAs(app, "demo-customer");
+    expect(
+      asCustomer.querySelector("form.recorded-run-entry input[name='id']")?.getAttribute("value"),
+    ).toBe("demo-team");
+  });
+
+  it("is not offered before the demo is seeded, nor on the development entrance", async () => {
+    const unseeded = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
+    expect((await page(unseeded.app)).querySelector(".recorded-run-entry")).toBeNull();
+    expect((await page(buildTestApp().app)).querySelector(".recorded-run-entry")).toBeNull();
+  });
+
+  it("is small print styled as a link, not a full-width button", () => {
+    const css = fs.readFileSync("public/site.css", "utf8");
+    expect(css).toMatch(
+      /\.welcome \.recorded-run-entry \{\s*margin: 0;\s*font-size: var\(--pd-text-sm\);/,
+    );
+    expect(css).toMatch(
+      /\.welcome \.recorded-run-entry button\.link:is\(:hover, :active\) \{\s*width: auto;[^}]*text-decoration: underline;/,
+    );
   });
 });
 

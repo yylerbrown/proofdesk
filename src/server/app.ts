@@ -233,7 +233,14 @@ export function createApp(config: Config, db: Db, options: { log?: LogLine } = {
   app.post("/demo/connection", demoConnectionLimit);
   app.use(express.urlencoded({ extended: false, limit: BODY_LIMIT }));
   app.use(assistantRunRouter(rootDir, () => tickets.recordedRunKey()));
-  app.use(signInRouter(config, auth, () => tickets.hasDemoSeed()));
+  app.use(
+    signInRouter(
+      config,
+      auth,
+      () => tickets.hasDemoSeed(),
+      () => tickets.recordedRunKey(),
+    ),
+  );
   app.use(pagesRouter(tickets));
   app.use(peopleRouter(createPeopleService(db, config)));
   app.use(noticesRouter(tickets, db, config.ticketPrefix));

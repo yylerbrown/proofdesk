@@ -99,7 +99,24 @@ describe("the recorded run on the demo", () => {
     expect(html.querySelector("ul.evidence")?.text).toContain(
       "Reported by Demo visitor's assistant (AI agent)",
     );
-    expect(html.querySelector(".recorded-run a")?.getAttribute("href")).toBe("/assistant-run");
+  });
+
+  it("says in one short line at the top that it is a recorded run, linking to how it was run", async () => {
+    const { asTeam, recorded } = demo();
+    const html = parse((await asTeam().get(`/tickets/${recorded}`)).text);
+    const note = html.querySelector(".recorded-run")!;
+    expect(note.text).toBe(
+      "A recorded run: a real AI assistant worked this ticket on 18 Nov 2026, and what it sent is shown as it sent it. How this was run",
+    );
+    const link = note.querySelector("a")!;
+    expect(link.text).toBe("How this was run");
+    expect(link.getAttribute("href")).toBe("/assistant-run#how-it-was-run");
+    // The address's #part names a place inside the closed "How this was run" section, so a
+    // browser opens it with no script.
+    const run = parse((await visitor(demo().app).get("/assistant-run")).text);
+    const target = run.getElementById("how-it-was-run")!;
+    expect(target.parentNode?.tagName).toBe("DETAILS");
+    expect(target.parentNode?.querySelector("summary")?.text).toBe("How this was run");
   });
 
   it("keeps the assistant's review request apart from the customer's check, and says where SUP-4 comes from", async () => {
@@ -117,8 +134,9 @@ describe("the recorded run on the demo", () => {
     const inside = check.innerHTML;
     expect(inside.indexOf("<blockquote")).toBeGreaterThan(-1);
     expect(inside.indexOf("<blockquote")).toBeLessThan(inside.indexOf("assistant-signal"));
-    expect(html.querySelector(".recorded-run")?.text).toContain(
-      `The run worked on the assistant sample when it was SUP-4, in an earlier copy of this demo, so its own words name SUP-4. Here that sample is ${sample}.`,
+    // The description, under its heading, says it, so the note at the top stays one short line.
+    expect(html.querySelector("h2 + p.user-text")?.text).toContain(
+      `the sample ticket for assistants in an earlier copy of this demo, on 18 Nov 2026, so its words name SUP-4. Here that sample is ${sample}.`,
     );
   });
 });
