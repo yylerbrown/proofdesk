@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { parse } from "node-html-parser";
 import type { Express } from "express";
 import { describe, expect, it } from "vitest";
@@ -6,8 +7,8 @@ import { seedDemo } from "../src/server/demo.js";
 import { createTicketService } from "../src/server/tickets/service.js";
 import { admin, as, buildTestApp, customerOne, teamActor, visitor } from "./helpers.js";
 
-// The ticket list as a grader meets it: named for whose tickets it holds, saying how a ticket
-// moves through its statuses, and on the demo, filters that each visibly change the list.
+// The ticket list as a first-time visitor meets it: named for whose tickets it holds, saying how
+// a ticket moves through its statuses, and on the demo, filters that each visibly change the list.
 
 function buildDemo() {
   const built = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
@@ -45,6 +46,25 @@ describe("the ticket list", () => {
     const { app } = buildDemo();
     const html = parse((await asDemo(app, "demo-admin").get("/tickets")).text);
     expect(html.querySelector(".role-note")?.text).toMatch(/^Admin preview, read-only/);
+  });
+
+  it("links each title to its ticket, as well as its key", async () => {
+    const { app } = buildTestApp();
+    await as(app, customerOne)
+      .post("/api/tickets")
+      .send({ title: "Printer jams", description: "x", fix_check: "Ten pages print" });
+    const html = parse((await as(app, teamActor).get("/tickets")).text);
+    const link = html.querySelector("table.tickets td.title-cell a");
+    expect(link?.text).toBe("Printer jams");
+    expect(link?.getAttribute("href")).toBe("/tickets/SUP-1");
+  });
+
+  it("lets a long title wrap to two lines on a wide screen instead of cutting it off", () => {
+    const css = fs.readFileSync("public/site.css", "utf8");
+    const wide = css.slice(css.indexOf("@media (min-width: 640px)"));
+    const cell = /table\.tickets td\.user-text \{([^}]*)\}/.exec(wide)![1]!;
+    expect(cell).not.toMatch(/nowrap|ellipsis/);
+    expect(wide).toMatch(/table\.tickets td\.user-text a \{[^}]*-webkit-line-clamp: 2/);
   });
 });
 

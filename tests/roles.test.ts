@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEV_COOKIE } from "../src/server/actor.js";
+import { insertEvent } from "../src/server/tickets/repository.js";
 import {
   admin,
   as,
@@ -343,5 +344,26 @@ describe("the sign-in page and the development entrance", () => {
     const res = await visitor(app).post("/sign-in/dev").type("form").send({ id: customerOne.id });
     expect(res.status).toBe(404);
     expect(res.headers["set-cookie"]).toBeUndefined();
+  });
+});
+
+describe("the history a customer sees", () => {
+  it("hides any kind of entry not on the list of kinds they may see", async () => {
+    const { app, db } = buildTestApp();
+    await as(app, customerOne)
+      .post("/api/tickets")
+      .send({ title: "Printer jams", description: "x" });
+    insertEvent(db, {
+      ticketId: 1,
+      actor: teamActor.id,
+      actorKind: "person",
+      type: "something_new_about_a_note",
+      data: {},
+      now: new Date().toISOString(),
+    });
+    const theirs = await as(app, customerOne).get("/api/tickets/SUP-1/events");
+    expect(theirs.body.map((e: { type: string }) => e.type)).toEqual(["created"]);
+    const team = await as(app, teamActor).get("/api/tickets/SUP-1/events");
+    expect(team.body).toHaveLength(2);
   });
 });

@@ -320,6 +320,16 @@ describe("script injection in pages", () => {
     }
   });
 
+  it("does not repeat a malformed key back in the message", async () => {
+    const { app } = buildTestApp();
+    const sent = "SUP-<b>words of my choosing</b>";
+    const res = await admin(app).get(`/api/tickets/${encodeURIComponent(sent)}`);
+    expect(res.status).toBe(400);
+    expect(res.body.error.message).not.toContain("words of my choosing");
+    const page = await admin(app).get(`/tickets/${encodeURIComponent(sent)}`);
+    expect(page.text).not.toContain("words of my choosing");
+  });
+
   it("never turns a link that is not http or https into a clickable link", async () => {
     const { app } = buildTestApp();
     for (const link of ["javascript:alert(1)", "data:text/html,<script>alert(1)</script>"]) {

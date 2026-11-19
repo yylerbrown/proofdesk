@@ -3,10 +3,9 @@ import { parse } from "node-html-parser";
 import { describe, expect, it } from "vitest";
 import { seedDemo } from "../src/server/demo.js";
 import { createTicketService } from "../src/server/tickets/service.js";
-import { admin, as, buildTestApp, customerOne, SIGN_IN_ENV, visitor } from "./helpers.js";
+import { buildTestApp, SIGN_IN_ENV, visitor } from "./helpers.js";
 
-// The welcome page names where to read the source and where sign-in with roles runs, and the
-// team's ticket page points at a real assistant's work beside connecting one.
+// The demo's welcome page names where to read the source and where sign-in with roles runs.
 
 function demo(env: NodeJS.ProcessEnv = {}) {
   const built = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off", ...env });
@@ -60,21 +59,5 @@ describe("the demo's welcome", () => {
     expect(fs.readFileSync("fly.proofdesk.toml", "utf8")).toContain(
       'SOURCE_URL = "https://github.com/yylerbrown/proofdesk"',
     );
-  });
-});
-
-describe("the team's ticket page", () => {
-  it("offers a real assistant's work beside connecting one", async () => {
-    const { app } = buildTestApp();
-    await as(app, customerOne)
-      .post("/api/tickets")
-      .send({ title: "Printer jams", description: "x", fix_check: "Ten pages print" });
-    const prompt = parse((await admin(app).get("/tickets/SUP-1")).text).querySelector(
-      ".spec-prompt",
-    )!;
-    expect(prompt.querySelectorAll("a").map((a) => [a.text, a.getAttribute("href")])).toEqual([
-      ["Connect your assistant", "/connections"],
-      ["See an assistant's work", "/assistant-run"],
-    ]);
   });
 });

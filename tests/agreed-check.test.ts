@@ -14,6 +14,15 @@ async function setup() {
 }
 
 describe("the agreed check", () => {
+  it("is stored as none, with nothing written, when it only repeats the customer", async () => {
+    const { app } = await setup();
+    const res = await as(app, teamActor)
+      .put("/api/tickets/SUP-1/agreed-check")
+      .send({ agreed_check: words });
+    expect(res.body.agreed_check).toBeNull();
+    expect((await admin(app).get("/api/tickets/SUP-1/events")).body).toHaveLength(1);
+  });
+
   it("is set by a team member and kept beside the customer's own words", async () => {
     const { app } = await setup();
     const res = await as(app, teamActor)

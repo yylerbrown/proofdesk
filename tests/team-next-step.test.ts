@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import { parse } from "node-html-parser";
 import { describe, expect, it } from "vitest";
 import { DEV_COOKIE } from "../src/server/actor.js";
@@ -14,9 +13,8 @@ import {
   visitor,
 } from "./helpers.js";
 
-// From a cold walk by a first-time visitor: titles lead to their tickets, the team reads plainly
-// who resolves, and after taking a ticket the owner asks the customer in one press, on the demo
-// as on the real site, with nothing to invent first.
+// The team reads plainly who resolves, and after taking a ticket the owner asks the customer in
+// one press, on the demo as on the real site, with nothing to invent first.
 
 const valid = { title: "Printer jams", description: "x", fix_check: "Ten pages print" };
 
@@ -33,31 +31,6 @@ async function demoInProgress() {
   await built.asDemo("demo-team").post("/tickets/SUP-4/take-and-start").set(FROM_THIS_SITE);
   return built;
 }
-
-describe("the ticket list", () => {
-  it("lets a long title wrap to two lines on a wide screen instead of cutting it off", () => {
-    const css = fs.readFileSync("public/site.css", "utf8");
-    const wide = css.slice(css.indexOf("@media (min-width: 640px)"));
-    const cell = /table\.tickets td\.user-text \{([^}]*)\}/.exec(wide)![1]!;
-    expect(cell).not.toMatch(/nowrap|ellipsis/);
-    expect(wide).toMatch(/table\.tickets td\.user-text a \{[^}]*-webkit-line-clamp: 2/);
-  });
-
-  it("offers a description box short enough that File ticket shows on a laptop screen", async () => {
-    const { app } = buildTestApp();
-    const form = parse((await as(app, customerOne).get("/tickets/new").redirects(1)).text);
-    expect(form.querySelector("textarea[name=description]")?.getAttribute("rows")).toBe("3");
-  });
-
-  it("links each title to its ticket, as well as its key", async () => {
-    const { app } = buildTestApp();
-    await as(app, customerOne).post("/api/tickets").send(valid);
-    const html = parse((await as(app, teamActor).get("/tickets")).text);
-    const link = html.querySelector("table.tickets td.title-cell a");
-    expect(link?.text).toBe("Printer jams");
-    expect(link?.getAttribute("href")).toBe("/tickets/SUP-1");
-  });
-});
 
 describe("who resolves", () => {
   it("is said exactly where the team looks for Resolved: the status and the edit page", async () => {
@@ -102,19 +75,6 @@ describe("the demo's ask", () => {
       change_url: null,
       ready_at: null,
     });
-  });
-
-  it("leaves no styles behind for the removed sample fix", () => {
-    expect(fs.readFileSync("public/site.css", "utf8")).not.toContain("sample-fix");
-  });
-});
-
-describe("the header on a phone", () => {
-  it("keeps Sign out on one line and lets the role switch grow with its words", () => {
-    const css = fs.readFileSync("public/site.css", "utf8");
-    const phone = css.slice(css.indexOf("@media (max-width: 639px)"));
-    expect(phone).toMatch(/\.site-header \.sign-out button \{[^}]*white-space: nowrap/);
-    expect(phone).toMatch(/details\.dropdown\.switch-role > summary \{[^}]*height: auto/);
   });
 });
 

@@ -5,8 +5,8 @@ import { buildTestApp, visitor } from "./helpers.js";
 
 // Small things about the look that a browser test would be slow to reach: what the demo strip
 // says, a select that keeps inside the side panel, decoration screen readers skip, GitHub's mark
-// in forced colours, and buttons marked aria-disabled drawn like disabled ones. The sizes on a
-// phone are measured in a real browser in tests/browser/phone.spec.ts.
+// in forced colours, buttons marked aria-disabled drawn like disabled ones, and the header on a
+// phone. The sizes on a phone are measured in a real browser in tests/browser/phone.spec.ts.
 
 describe("the demo strip", () => {
   it("says the demo is shared and resets itself about once a day", async () => {
@@ -38,5 +38,11 @@ describe("the look", () => {
   it("draws a button marked aria-disabled like a disabled one, and does not press it", () => {
     expect(css).toMatch(/\[disabled\],\s*\[aria-disabled="true"\]\s*\) \{\s*border-color/);
     expect(css).toMatch(/:active:not\(\s*:disabled,\s*\[aria-disabled="true"\]\s*\)/);
+  });
+
+  it("keeps Sign out on one line on a phone and lets the role switch grow with its words", () => {
+    const phone = css.slice(css.indexOf("@media (max-width: 639px)"));
+    expect(phone).toMatch(/\.site-header \.sign-out button \{[^}]*white-space: nowrap/);
+    expect(phone).toMatch(/details\.dropdown\.switch-role > summary \{[^}]*height: auto/);
   });
 });

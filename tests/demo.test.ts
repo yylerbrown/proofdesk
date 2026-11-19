@@ -4,7 +4,7 @@ import { DEMO_ACTORS, DEV_COOKIE } from "../src/server/actor.js";
 import { loadConfig } from "../src/server/config.js";
 import { seedDemo } from "../src/server/demo.js";
 import { createTicketService } from "../src/server/tickets/service.js";
-import { buildTestApp, SIGN_IN_ENV, visitor } from "./helpers.js";
+import { adminActor, buildTestApp, SIGN_IN_ENV, visitor } from "./helpers.js";
 
 const [demoCustomer, demoTeam, demoAdmin] = DEMO_ACTORS as [
   (typeof DEMO_ACTORS)[number],
@@ -78,6 +78,18 @@ describe("the demo entrance", () => {
 });
 
 describe("the sample data", () => {
+  it("counts archived tickets, so it never seeds a second set", () => {
+    const { db } = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
+    const service = createTicketService(db, "SUP");
+    seedDemo(service);
+    const seeded = service.listTickets("all", adminActor);
+    // Every sample archived, as an admin outside the demo rules could.
+    for (const ticket of seeded) service.archiveTicket(ticket.key, adminActor);
+    seedDemo(service);
+    const count = db.prepare("SELECT COUNT(*) AS n FROM tickets").get() as { n: number };
+    expect(count.n).toBe(seeded.length);
+  });
+
   it("is made through the service, with a real history", async () => {
     const { app } = buildDemo();
     const list = await asDemo(app, demoTeam.id).get("/api/tickets");
