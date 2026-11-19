@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { admin, as, buildTestApp, customerOne, teamActor } from "./helpers.js";
 
 // The ticket page, reduced: each viewer sees the one next thing to do, the customer's words once,
-// and the conversation. Everything secondary is collapsed or in one small "More" menu.
+// and the conversation. Everything secondary is collapsed or behind one "More options".
 
 const words = "Ten pages print without a jam";
 const valid = { title: "Printer jams", description: "It jams on page two.", fix_check: words };
@@ -35,7 +35,7 @@ const shown = (html: ReturnType<typeof parse>, text: string) =>
   html.querySelector("main")!.text.split(text).length - 1;
 
 describe("the customer's ticket page", () => {
-  it("holds their words, the owner and status under the title, and a small menu, nothing of the team's", async () => {
+  it("holds their words, the owner and status, Edit beside the title, nothing of the team's", async () => {
     const { app } = await inProgress();
     const html = await page(app, customerOne);
     expect(html.querySelector("hgroup .meta")?.text).toMatch(
@@ -43,15 +43,23 @@ describe("the customer's ticket page", () => {
     );
     const panel = html.querySelector("aside.ticket-panel")!;
     expect(panel.querySelectorAll("h2").map((h) => h.text)).toEqual([
+      "Owner",
+      "Status",
       "How will we know it's fixed?",
     ]);
-    expect(panel.text).not.toContain("Printed ten pages twice");
+    expect(panel.querySelectorAll("p, blockquote").map((el) => el.text.trim())).toEqual([
+      "Team Member",
+      "In Progress",
+      words,
+    ]);
+    expect(html.querySelector("main")!.text).not.toContain("Printed ten pages twice");
+    expect(html.querySelector("hgroup .meta a.edit-link")?.text).toBe("Edit ticket");
     expect(
-      panel
-        .querySelector("details.more")
+      html
+        .querySelector("details.more-options")
         ?.querySelectorAll("a")
         .map((a) => a.text),
-    ).toEqual(["Edit ticket", "Archive ticket"]);
+    ).toEqual(["Archive ticket"]);
   });
 
   it("shows the check once while they are asked: in the question, not again beside it", async () => {
@@ -65,20 +73,21 @@ describe("the customer's ticket page", () => {
 });
 
 describe("the team's ticket page", () => {
-  it("keeps the next action in view and puts the secondary ones in More, opened by keyboard", async () => {
+  it("keeps the next action in view and puts the secondary ones in More options, opened by keyboard", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
     const html = await page(app, teamActor);
     const panel = html.querySelector("aside.ticket-panel")!;
     expect(html.querySelector(".next-action button")?.text).toBe("Take ticket and start work");
     // A native details element: a summary a keyboard can open, with the actions inside it.
-    const more = panel.querySelector("details.more")!;
+    const more = html.querySelector(".ticket-thread details.more-options")!;
     expect(more.firstElementChild?.tagName).toBe("SUMMARY");
+    expect(more.firstElementChild?.text).toBe("More options");
     expect(more.hasAttribute("open")).toBe(false);
-    // Taking is part of In Progress in the status row, so More does not repeat it.
-    expect(more.querySelector("form[action$='/take']")).toBeNull();
-    expect(more.querySelector("a[href$='/edit']")?.text).toBe("Edit ticket");
-    expect(panel.querySelectorAll("section form[action$='/take']")).toHaveLength(0);
+    expect(more.querySelector("details > summary")?.text).toBe("Offer a clearer check");
+    // The owner's one control is in the panel, and nothing secondary is.
+    expect(panel.querySelectorAll("section form[action$='/take']")).toHaveLength(1);
+    expect(panel.querySelector("details.more-options, a[href$='/edit']")).toBeNull();
   });
 
   it("folds the evidence list and an existing change link away", async () => {
@@ -97,15 +106,8 @@ describe("the team's ticket page", () => {
   });
 });
 
-describe("the More control", () => {
-  it("is a full-size tap target, at least 44 pixels high", () => {
-    const css = fs.readFileSync("public/site.css", "utf8");
-    expect(css).toMatch(/details\.more > summary \{[^}]*min-height: 44px/);
-  });
-});
-
 describe("the small controls on a phone", () => {
-  it("are 44-pixel tap targets there, like More: History, the panel's disclosures and Copy", () => {
+  it("are 44-pixel tap targets there: History, the panel's disclosures, More options and Copy", () => {
     const css = fs.readFileSync("public/site.css", "utf8");
     const phone = [...css.matchAll(/@media \(max-width: 639px\) \{([\s\S]*?)\n\}/g)].map(
       (m) => m[1]!,
@@ -115,7 +117,8 @@ describe("the small controls on a phone", () => {
         new RegExp(`${selector.source}[^{]*\\{[^}]*min-height: 44px`).test(block),
       );
     expect(rule(/details\.history > summary/)).toBe(true);
-    expect(rule(/\.ticket-panel details:not\(\.more\) > summary/)).toBe(true);
+    expect(rule(/\.ticket-panel details > summary/)).toBe(true);
+    expect(rule(/details\.more-options summary/)).toBe(true);
     expect(rule(/button\.copy/)).toBe(true);
   });
 });

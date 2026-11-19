@@ -96,7 +96,7 @@ describe("the resolve form", () => {
     expect(css).toContain(
       '.resolve form:not(:has(option[value="duplicate"]:checked)) .resolve-duplicate',
     );
-    expect(css).toContain('.resolve form:has(option[value=""]:checked) .resolve-note');
+    expect(css).toContain('.resolve form:not(:has(option[value="other"]:checked)) .resolve-note');
   });
 });
 

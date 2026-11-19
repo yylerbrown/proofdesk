@@ -125,15 +125,14 @@ describe("the recorded run on the demo", () => {
     const check = html
       .querySelectorAll("section")
       .find((s) => s.querySelector("h2")?.text === "How will we know it's fixed?")!;
-    const signal = check.querySelector(".assistant-signal")!;
+    // The panel's check holds the customer's words alone; the request sits in the main column.
+    expect(check.querySelector("blockquote")).not.toBeNull();
+    expect(check.querySelector(".assistant-signal")).toBeNull();
+    const signal = html.querySelector(".ticket-summary .assistant-signal")!;
     expect(signal.querySelector(".signal-from")?.text).toBe("From the AI assistant");
     expect(signal.querySelector(".review-requested")?.text).toBe(
       "Review requested by Demo visitor's assistant",
     );
-    // The customer's words come first, under the heading; the request follows them.
-    const inside = check.innerHTML;
-    expect(inside.indexOf("<blockquote")).toBeGreaterThan(-1);
-    expect(inside.indexOf("<blockquote")).toBeLessThan(inside.indexOf("assistant-signal"));
     // The description, under its heading, says it, so the note at the top stays one short line.
     expect(html.querySelector("h2 + p.user-text")?.text).toContain(
       `the sample ticket for assistants in an earlier copy of this demo, on 18 Nov 2026, so its words name SUP-4. Here that sample is ${sample}.`,

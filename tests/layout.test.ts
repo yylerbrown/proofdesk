@@ -21,21 +21,29 @@ describe("the ticket page layout", () => {
     const html = await ticketPage(admin(app));
     const panel = html.querySelector("aside.ticket-panel");
     const panelHeadings = panel?.querySelectorAll("h2").map((h) => h.text);
-    // No evidence yet, so no Evidence heading: attaching some is one quiet disclosure.
-    expect(panelHeadings).toEqual(["Owner", "Status", "How will we know it's fixed?", "The fix"]);
-    // Everything secondary is in one small menu, last in the panel.
-    const more = panel?.querySelector("details.more");
-    expect(panel?.lastElementChild).toBe(more);
-    expect(more?.querySelector("summary")?.text).toBe("More");
-    expect(more?.querySelectorAll("button, a").map((el) => el.text.trim())).toEqual([
-      "Edit ticket",
+    // The panel holds three things and nothing more.
+    expect(panelHeadings).toEqual(["Owner", "Status", "How will we know it's fixed?"]);
+    // Nobody owns it, so the owner's one control assigns it to the viewer.
+    expect(panel?.querySelector("form[action$='/take'] button")?.text).toBe("Assign to me");
+    // Everything secondary is behind one closed disclosure, last in the main column.
+    expect(panel?.querySelector("details.more-options")).toBeNull();
+    const more = html.querySelector(".ticket-thread > details.more-options");
+    expect(html.querySelector(".ticket-thread")?.lastElementChild).toBe(more);
+    expect(more?.hasAttribute("open")).toBe(false);
+    expect(more?.querySelector("summary")?.text).toBe("More options");
+    expect(more?.querySelectorAll("details > summary").map((el) => el.text.trim())).toEqual([
+      "Offer a clearer check",
+      "Attach evidence",
+      "Add the code change link",
+    ]);
+    expect(more?.querySelectorAll(".danger-zone a").map((el) => el.text.trim())).toEqual([
       "Archive ticket",
       "Delete permanently",
     ]);
-    // The next action sits under the status; the panel keeps the secondary ones.
+    // Edit is a quiet link under the title.
+    expect(html.querySelector("hgroup .meta a.edit-link")?.text).toBe("Edit ticket");
+    // The next action sits under the status.
     expect(html.querySelector(".next-action form[action$='/take-and-start']")).not.toBeNull();
-    // Taking is part of In Progress in the status row, so the panel does not offer it again.
-    expect(panel?.querySelector("form[action$='/take']")).toBeNull();
     expect(html.querySelector(".ticket-summary h2")?.text).toBe("Description");
     expect(html.querySelector(".ticket-thread #conversation")).not.toBeNull();
     expect(html.querySelector(".ticket-thread form[action$='/entries']")).not.toBeNull();
@@ -50,8 +58,8 @@ describe("the ticket page layout", () => {
       "Archive ticket",
       "Delete permanently",
     ]);
-    // The last thing in the More menu, set apart, and nothing ordinary inside it.
-    expect(html.querySelector("details.more .more-menu")?.lastElementChild).toBe(danger);
+    // The last thing under More options, set apart, and nothing ordinary inside it.
+    expect(html.querySelector("details.more-options")?.lastElementChild).toBe(danger);
     expect(danger?.querySelector("a[href$='/edit']")).toBeNull();
     expect(html.querySelector("a[href$='/edit']")?.classList.contains("danger")).toBe(false);
   });
@@ -61,11 +69,13 @@ describe("the ticket page layout", () => {
     await as(app, customerOne).post("/api/tickets").send(valid);
     const html = await ticketPage(as(app, customerOne));
     const panel = html.querySelector("aside.ticket-panel");
-    // The customer's panel holds their check and a small menu: nothing of the team's.
+    // The customer's panel holds the owner, the status and their check: nothing of the team's.
     expect(panel?.querySelectorAll("h2").map((h) => h.text)).toEqual([
+      "Owner",
+      "Status",
       "How will we know it's fixed?",
     ]);
-    expect(panel?.querySelector("form")).toBeNull();
+    expect(panel?.querySelector("form, button, details")).toBeNull();
     expect(html.querySelectorAll(".danger-zone a").map((a) => a.text)).toEqual(["Archive ticket"]);
   });
 });
@@ -138,9 +148,10 @@ describe("the ticket page's quiet parts", () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
     const headings = async () =>
-      (await ticketPage(admin(app))).querySelectorAll("aside.ticket-panel h2").map((h) => h.text);
+      (await ticketPage(admin(app))).querySelectorAll(".ticket-summary h2").map((h) => h.text);
     const before = await ticketPage(admin(app));
-    expect(before.querySelectorAll("summary").map((s) => s.text)).toContain("Attach evidence");
+    const more = before.querySelector("details.more-options")!;
+    expect(more.querySelectorAll("summary").map((s) => s.text)).toContain("Attach evidence");
     expect(await headings()).not.toContain("Evidence");
     await admin(app).post("/api/tickets/SUP-1/evidence").send({ kind: "note", summary: "Checked" });
     expect(await headings()).toContain("Evidence");

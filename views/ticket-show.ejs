@@ -3,7 +3,7 @@
 
 <hgroup>
   <h1 class="user-text"><%= ticket.title %></h1>
-  <p class="meta"><%= ticket.key %> <%- include("status-badge", { status: ticket.status }) %><% if (ticket.ready_at && ticket.status === "in_progress") { %>, waiting for <%= viewerRole === "customer" ? "you" : "the customer who filed this ticket" %><% } %> · <% if (ticket.owner_name) { %>Owner <%= ticket.owner_name %><% } else { %>Unassigned<% } %> · filed <%- include("time", { iso: ticket.created_at }) %></p>
+  <p class="meta"><%= ticket.key %> <%- include("status-badge", { status: ticket.status }) %><% if (ticket.ready_at && ticket.status === "in_progress") { %>, waiting for <%= viewerRole === "customer" ? "you" : "the customer who filed this ticket" %><% } %> · <% if (ticket.owner_name) { %>Owner <%= ticket.owner_name %><% } else { %>Unassigned<% } %> · filed <%- include("time", { iso: ticket.created_at }) %><% if (allowed.edit) { %> · <a href="/tickets/<%= ticket.key %>/edit" class="edit-link">Edit ticket</a><% } %></p>
 </hgroup>
 <% const staff = viewerRole !== "customer"; %>
 <%
@@ -203,14 +203,46 @@
 <% if (ticket.where_url) { %>
 <p class="page-link">Page: <a href="<%= ticket.where_url %>" rel="noopener noreferrer nofollow" class="user-text"><%= ticket.where_url %></a></p>
 <% } %>
+<%# What the ticket's assistant last asked for, labelled as the assistant's, so it never reads as the customer's words. %>
+<% if (assistantSignal) { %>
+<div class="assistant-signal">
+  <p class="signal-from"><small>From the AI assistant</small></p>
+  <p class="<%= assistantSignal.label === "Assistant blocked:" ? "assistant-blocked" : "review-requested" %>"><strong><%= assistantSignal.label %></strong> <span class="user-text"><%= assistantSignal.text %></span></p>
+</div>
+<% } %>
+<%# The change and what the team attached as proof, the list folded until wanted. The customer
+    sees the proof when asked. %>
+<% if (staff && (evidence.length > 0 || ticket.change_url)) { %>
+<section>
+  <h2>Evidence</h2>
+  <% if (ticket.change_url) { %>
+  <p>Change: <a href="<%= ticket.change_url %>" rel="noopener noreferrer nofollow" class="user-text"><%= ticket.change_url %></a></p>
+  <% } %>
+  <% if (evidence.length > 0) { %>
+  <details class="evidence-list">
+    <summary><%= evidence.length %> <%= evidence.length === 1 ? "piece" : "pieces" %>, as reported</summary>
+    <p class="evidence-note">As reported by whoever attached it. Not checked by Proofdesk.</p>
+    <%- include("evidence", { evidence }) %>
+  </details>
+  <% } %>
+</section>
+<% } %>
+<%- include("spec", { specPanel }) %>
 </div>
 
-<aside class="ticket-panel" aria-label="Status, owner and the fix">
-<% if (staff) { %>
+<%# The panel holds three things: who owns the ticket, its status, and the customer's check.
+    Everything else the team can do waits under "More options" at the bottom of the main column. %>
+<aside class="ticket-panel" aria-label="Owner and status">
 <section>
   <h2>Owner</h2>
   <p><%= ticket.owner_name ?? "Unassigned" %></p>
-  <% if (allowed.handOff && handOffTo.length > 0) { %>
+  <% if (staff && allowed.take) { %>
+  <form method="post" action="/tickets/<%= ticket.key %>/take">
+    <%- versionField %>
+    <button type="submit" class="secondary compact">Assign to me</button>
+  </form>
+  <% } %>
+  <% if (staff && allowed.handOff && handOffTo.length > 0) { %>
   <details <% if (problem?.form === "handOff") { %>open<% } %>>
     <summary>Hand off to…</summary>
     <form method="post" action="/tickets/<%= ticket.key %>/hand-off">
@@ -229,10 +261,10 @@
     </form>
   </details>
   <% } %>
-  <% if (agentHelp.demoSample) { %>
+  <% if (staff && agentHelp.demoSample) { %>
   <p class="agent-help">Handed to <strong>demo assistants</strong>: each visitor's assistant connection works on this sample.</p>
   <% } %>
-  <% if (agentHelp.current) { %>
+  <% if (staff && agentHelp.current) { %>
   <p class="agent-help">Handed to <strong><%= agentHelp.current.name %></strong> (AI assistant), since <%- include("time", { iso: agentHelp.current.granted_at }) %>.</p>
   <% if (allowed.endAgentWork) { %>
   <form method="post" action="/tickets/<%= ticket.key %>/agent/end">
@@ -240,28 +272,14 @@
     <button type="submit" class="secondary outline compact">Stop the assistant</button>
   </form>
   <% } %>
-  <% } else if (allowed.giveToAgent && agentHelp.candidates.length > 0) { %>
-  <details>
-    <summary>Hand to an AI assistant…</summary>
-    <form method="post" action="/tickets/<%= ticket.key %>/agent">
-      <%- versionField %>
-      <label>
-        Connection
-        <select name="connection_id">
-          <% for (const c of agentHelp.candidates) { %>
-          <option value="<%= c.id %>"><%= c.name %></option>
-          <% } %>
-        </select>
-      </label>
-      <p><small>It can work on this ticket only, within what its connection allows, until you stop it, hand the ticket on or ask the customer.</small></p>
-      <button type="submit" class="secondary compact">Hand to assistant</button>
-    </form>
-  </details>
   <% } %>
 </section>
 
 <section class="status-control">
   <h2>Status</h2>
+  <% if (!staff) { %>
+  <p><%- include("status-badge", { status: ticket.status }) %></p>
+  <% } else { %>
   <%# The three statuses in one row: the current one marked, each other one a single press, or
       greyed with one short line saying why. Each comes from the allowed actions, so the page
       offers exactly what the server would accept. %>
@@ -276,7 +294,7 @@
       <% for (const [name, value] of Object.entries(choice.fields)) { %>
       <input type="hidden" name="<%= name %>" value="<%= value %>" />
       <% } %>
-      <button type="submit" class="secondary" <% if (choice.status === "in_progress" && statusRow.alsoTakes) { %>aria-describedby="status-takes"<% } %>><%= statusLabels[choice.status] %></button>
+      <button type="submit" class="secondary"><%= statusLabels[choice.status] %></button>
     </form>
     <% } else if (choice.kind === "resolve") { %>
     <% const resolving = problem?.form === "resolve" ? (problem.values ?? {}) : {}; %>
@@ -284,13 +302,11 @@
         chosen already and resolving takes two presses. While the customer's No stands it is not
         offered, and the person picks a reason. After a refused try, what they picked stays. %>
     <% const chosenReason = problem?.form === "resolve" ? (resolving.reason ?? "") : (notFixed ? "" : "fixed_no_reply"); %>
-    <%# It opens a form rather than changing the status at once, so it says so; the button
-        inside the form is the one that resolves. %>
+    <%# Resolved opens a reason and the button that resolves, rather than changing the status at once. %>
     <details class="resolve" <% if (problem?.form === "resolve") { %>open<% } %>>
-      <summary role="button" class="secondary outline">Resolve with a reason…</summary>
+      <summary role="button" class="secondary outline">Resolved</summary>
       <form method="post" action="/tickets/<%= ticket.key %>/resolve">
         <%- versionField %>
-        <p class="resolve-lead"><small>Resolves the ticket now, with the reason you pick. The customer sees it and can reopen it.</small></p>
         <label>
           Reason
           <select name="reason" required <%= focusIf("resolve", "reason") %>>
@@ -303,13 +319,13 @@
             <% } %>
           </select>
         </label>
-        <%# The stylesheet shows each of these only for the reasons that use it. %>
+        <%# The stylesheet shows each of these only for the reason that needs it. %>
         <label class="resolve-duplicate">
           Duplicate of
           <input type="text" name="duplicate_of" placeholder="SUP-3" maxlength="20" value="<%= resolving.duplicate_of ?? "" %>" <%= focusIf("resolve", "duplicate_of") %> />
         </label>
         <label class="resolve-note">
-          Note (needed for Other)
+          Why?
           <textarea name="note" rows="2" maxlength="500" <%= focusIf("resolve", "note") %>><%= resolving.note ?? "" %></textarea>
         </label>
         <% if (problem?.form === "resolve") { %><p><small id="resolve-error" role="alert"><%= problem.message %></small></p><% } %>
@@ -332,17 +348,17 @@
     <% } %>
     <% } %>
   </div>
-  <% if (statusRow.alsoTakes) { %><p class="status-rule" id="status-takes"><small>In Progress also makes you the owner.</small></p><% } %>
   <% if (statusRow.why) { %><p class="status-rule" id="status-why"><small><%= statusRow.why %></small></p><% } %>
-  <% if (ticket.ready_at && ticket.status === "in_progress") { %><p class="status-rule"><small>Waiting for the customer who filed this ticket.</small></p><% } %>
-  <% if (ticket.resolution) { %><p class="resolution-label"><small><%= ticket.resolution.label %></small></p><% } %>
+  <% } %>
 </section>
-<% } %>
 
-<% if ((ticket.fix_check || ticket.agreed_check || allowed.agreeCheck) && !allowed.answer) { %>
+<%# The customer's check, in one quoted line. While the customer is asked, their answer card
+    above shows it instead. %>
+<% if ((ticket.fix_check || (!staff && ticket.agreed_check)) && !allowed.answer) { %>
 <section>
   <h2>How will we know it's fixed?</h2>
-  <% if (ticket.agreed_check) { %>
+  <%# The customer may take the team's clearer wording as their own. %>
+  <% if (!staff && ticket.agreed_check) { %>
   <p><strong>Team's check</strong></p>
   <blockquote class="user-text"><%= ticket.agreed_check %></blockquote>
   <% if (allowed.adoptCheck) { %>
@@ -351,188 +367,12 @@
     <button type="submit" class="secondary compact">Use these words as my check</button>
   </form>
   <% } %>
-  <p><strong><%= staff ? "In the customer's words" : "In your words" %></strong></p>
+  <% if (ticket.fix_check) { %><p><strong>In your words</strong></p><% } %>
   <% } %>
   <% if (ticket.fix_check) { %>
   <blockquote class="user-text"><%= ticket.fix_check %></blockquote>
-  <% } else { %>
-  <p>The customer did not say.</p>
-  <% } %>
-  <%# What the ticket's assistant last asked for, after the check and labelled as the assistant's, so it never reads as the customer's words. %>
-  <% if (assistantSignal) { %>
-  <div class="assistant-signal">
-    <p class="signal-from"><small>From the AI assistant</small></p>
-    <p class="<%= assistantSignal.label === "Assistant blocked:" ? "assistant-blocked" : "review-requested" %>"><strong><%= assistantSignal.label %></strong> <span class="user-text"><%= assistantSignal.text %></span></p>
-  </div>
-  <% } %>
-  <% if (allowed.agreeCheck) { %>
-  <details <% if (problem?.form === "agreedCheck") { %>open<% } %>>
-    <summary>Offer a clearer check</summary>
-    <form method="post" action="/tickets/<%= ticket.key %>/agreed-check">
-      <%- versionField %>
-      <label>
-        Team's check (leave empty to remove it)
-        <textarea name="agreed_check" rows="3" <% if (problem?.form === "agreedCheck") { %>aria-invalid="true" aria-describedby="agreed-check-error"<% } %> <%= focusIf("agreedCheck", "agreed_check") %>><%= ticket.agreed_check ?? ticket.fix_check ?? "" %></textarea>
-      </label>
-      <% if (problem?.form === "agreedCheck") { %><small id="agreed-check-error"><%= problem.message %></small><% } %>
-      <button type="submit" class="compact">Save team's check</button>
-    </form>
-  </details>
   <% } %>
 </section>
-<% } %>
-
-<%- include("spec", { specPanel }) %>
-
-<%# Evidence gets its own section once some exists; before that, attaching it is one quiet disclosure. %>
-<% if (staff && (evidence.length > 0 || allowed.attachEvidence)) { %>
-<section class="<%= evidence.length > 0 ? "" : "quiet" %>">
-  <% if (evidence.length > 0) { %>
-  <h2>Evidence</h2>
-  <details class="evidence-list">
-    <summary><%= evidence.length %> <%= evidence.length === 1 ? "piece" : "pieces" %>, as reported</summary>
-    <p class="evidence-note">As reported by whoever attached it. Not checked by Proofdesk.</p>
-    <%- include("evidence", { evidence }) %>
-  </details>
-  <% } %>
-  <% if (allowed.attachEvidence) { %>
-  <details <% if (problem?.form === "evidence") { %>open<% } %>>
-    <summary>Attach evidence</summary>
-    <form method="post" action="/tickets/<%= ticket.key %>/evidence">
-      <label>
-        Kind
-        <select name="kind">
-          <option value="check_run">I checked it</option>
-          <option value="test">A test</option>
-          <option value="change_link">A change</option>
-          <option value="note">A note</option>
-        </select>
-      </label>
-      <label>
-        What it shows
-        <input type="text" name="summary" required maxlength="500" <% if (problem?.form === "evidence") { %>aria-invalid="true" aria-describedby="evidence-error"<% } %> <%= focusIf("evidence", "summary") %> />
-      </label>
-      <% if (problem?.form === "evidence") { %><small id="evidence-error"><%= problem.message %></small><% } %>
-      <label>
-        Link (optional)
-        <input type="url" name="link" placeholder="https://" <%= focusIf("evidence", "link") %> />
-      </label>
-      <button type="submit" class="secondary compact">Attach evidence</button>
-    </form>
-  </details>
-  <% } %>
-</section>
-<% } %>
-
-<% if (staff && (ticket.change_url || ticket.ready_at || allowed.linkChange)) { %>
-<section>
-  <h2>The fix</h2>
-  <% if (ticket.change_url) { %>
-  <p>Change: <a href="<%= ticket.change_url %>" rel="noopener noreferrer nofollow" class="user-text"><%= ticket.change_url %></a></p>
-  <% } %>
-  <% if (ticket.ready_at) { %>
-  <p>Waiting for <%= viewerRole === "customer" ? "you to check it" : "the customer who filed this ticket" %>, since <%- include("time", { iso: ticket.ready_at }) %>.</p>
-  <% if (allowed.withdrawQuestion) { %>
-  <form method="post" action="/tickets/<%= ticket.key %>/withdraw-question">
-    <%- versionField %>
-    <button type="submit" class="secondary outline compact">Withdraw the question</button>
-  </form>
-  <% } %>
-  <% } %>
-  <% if (allowed.linkChange) { %>
-  <%# The link to the code change is optional, so it waits behind a disclosure. %>
-  <details class="change-link" <% if (problem?.form === "changeLink") { %>open<% } %>><summary><%= ticket.change_url ? "Change the link" : "Add the code change link" %></summary>
-  <form method="post" action="/tickets/<%= ticket.key %>/change-link" id="change-link">
-    <%- versionField %>
-    <label>
-      Link to the code change
-      <input type="url" id="change-url" name="change_url" required <% if (problem?.form === "changeLink") { %>aria-invalid="true" aria-describedby="change-link-error"<% } %> <%= focusIf("changeLink", "change_url") %> />
-    </label>
-    <% if (problem?.form === "changeLink") { %><small id="change-link-error"><%= problem.message %></small><% } %>
-    <button type="submit" class="secondary compact">Save change link</button>
-  </form>
-  </details>
-  <% } %>
-  <% if (allowed.markReady) { %>
-  <% const asked = problem?.form === "ready" ? (problem.values ?? {}) : {}; %>
-  <% const ticked = problem?.form === "ready" ? (problem.evidenceIds ?? []) : []; %>
-  <%# The one press at the top asks with nothing more. The details are optional, so they wait
-      behind a disclosure of their own. %>
-  <details class="ask-details" id="ask" <% if (problem?.form === "ready") { %>open<% } %>>
-  <summary>Ask with details (optional)</summary>
-  <form method="post" action="/tickets/<%= ticket.key %>/ready" class="ask">
-    <%- versionField %>
-    <p><small>Every box is optional. The customer sees what you write.</small></p>
-    <label>
-      Page on the live site to try (optional)
-      <input type="url" name="try_url" value="<%= asked.try_url ?? ticket.try_url ?? ticket.where_url ?? "" %>" <%= focusIf("ready", "try_url") %> />
-    </label>
-    <label>
-      What did you try? (optional)
-      <textarea name="tried" rows="2" <%= focusIf("ready", "tried") %>><%= asked.tried ?? "" %></textarea>
-    </label>
-    <label>
-      What happened? (optional)
-      <textarea name="result" rows="2" <%= focusIf("ready", "result") %>><%= asked.result ?? "" %></textarea>
-    </label>
-    <% if (ticket.customer_answer && !ticket.customer_answer.fixed) { %>
-    <label>
-      What changed since the customer said it still fails? (optional)
-      <textarea name="response" rows="2" <%= focusIf("ready", "response") %>><%= asked.response ?? "" %></textarea>
-    </label>
-    <% } %>
-    <% if (evidence.length > 0) { %>
-    <fieldset>
-      <legend>Evidence you relied on</legend>
-      <% for (const item of evidence) { %>
-      <label><input type="checkbox" name="evidence_ids" value="<%= item.id %>" <%= ticked.includes(String(item.id)) ? "checked" : "" %> /> <span class="user-text"><%= item.summary %></span></label>
-      <% } %>
-    </fieldset>
-    <% } %>
-    <% if (problem?.form === "ready") { %><p><small id="ready-error" role="alert"><%= problem.message %></small></p><% } %>
-    <button type="submit" class="secondary compact" <% if (problem?.form === "ready") { %>aria-describedby="ready-error"<% } %>>Ask with these details</button>
-  </form>
-  </details>
-  <% } else if (askBlocked) { %>
-  <p class="ask-blocked"><button type="button" class="compact" disabled aria-describedby="ask-blocked-why">Ask the customer to verify</button> <small id="ask-blocked-why"><%= askBlocked %></small></p>
-  <% } %>
-</section>
-<% } %>
-
-<%# The less used actions. Two or more go in a More menu; a single one is shown as it is, since
-    a menu holding one item only hides it. %>
-<% const moreCount = [allowed.release, allowed.edit, allowed.archive, allowed.delete].filter(Boolean).length; %>
-<% if (moreCount > 0) { %>
-<% if (moreCount > 1) { %>
-<details class="more">
-  <summary>More</summary>
-  <div class="more-menu">
-<% } else { %>
-  <div class="more-single">
-<% } %>
-    <% if (allowed.release) { %>
-    <form method="post" action="/tickets/<%= ticket.key %>/release">
-      <%- versionField %>
-      <button type="submit" class="link">Release it</button>
-    </form>
-    <% } %>
-    <% if (allowed.edit) { %>
-    <a href="/tickets/<%= ticket.key %>/edit" role="button" class="link">Edit ticket</a>
-    <% } %>
-    <% if (allowed.archive || allowed.delete) { %>
-    <div class="danger-zone" role="group" aria-label="Remove">
-      <% if (allowed.archive) { %>
-      <a href="/tickets/<%= ticket.key %>/archive" role="button" class="danger">Archive ticket</a>
-      <% } %>
-      <% if (allowed.delete) { %>
-      <a href="/tickets/<%= ticket.key %>/delete" role="button" class="danger">Delete permanently</a>
-      <% } %>
-    </div>
-    <% } %>
-  </div>
-<% if (moreCount > 1) { %>
-</details>
-<% } %>
 <% } %>
 </aside>
 
@@ -635,6 +475,151 @@
   </table>
 </div>
 </details>
+
+<%# Everything the panel does not hold, behind one closed disclosure: optional and rarer steps.
+    After a refused form inside it, it opens on that form and its message. %>
+<% const moreForms = ["agreedCheck", "evidence", "changeLink", "ready"]; %>
+<% const removeAny = allowed.archive || allowed.delete; %>
+<% const hasMore = (staff && (allowed.agreeCheck || allowed.attachEvidence || allowed.linkChange || allowed.markReady || allowed.withdrawQuestion || (allowed.giveToAgent && !agentHelp.current && agentHelp.candidates.length > 0))) || allowed.release || removeAny; %>
+<% if (hasMore) { %>
+<details class="more-options" id="more-options" <% if (moreForms.includes(problem?.form)) { %>open<% } %>>
+<summary>More options</summary>
+<% if (staff && allowed.agreeCheck) { %>
+<details <% if (problem?.form === "agreedCheck") { %>open<% } %>>
+  <summary>Offer a clearer check</summary>
+  <form method="post" action="/tickets/<%= ticket.key %>/agreed-check">
+    <%- versionField %>
+    <label>
+      Team's check (leave empty to remove it)
+      <textarea name="agreed_check" rows="3" <% if (problem?.form === "agreedCheck") { %>aria-invalid="true" aria-describedby="agreed-check-error"<% } %> <%= focusIf("agreedCheck", "agreed_check") %>><%= ticket.agreed_check ?? ticket.fix_check ?? "" %></textarea>
+    </label>
+    <% if (problem?.form === "agreedCheck") { %><small id="agreed-check-error"><%= problem.message %></small><% } %>
+    <button type="submit" class="compact">Save team's check</button>
+  </form>
+</details>
+<% } %>
+<% if (staff && allowed.attachEvidence) { %>
+<details <% if (problem?.form === "evidence") { %>open<% } %>>
+  <summary>Attach evidence</summary>
+  <form method="post" action="/tickets/<%= ticket.key %>/evidence">
+    <label>
+      Kind
+      <select name="kind">
+        <option value="check_run">I checked it</option>
+        <option value="test">A test</option>
+        <option value="change_link">A change</option>
+        <option value="note">A note</option>
+      </select>
+    </label>
+    <label>
+      What it shows
+      <input type="text" name="summary" required maxlength="500" <% if (problem?.form === "evidence") { %>aria-invalid="true" aria-describedby="evidence-error"<% } %> <%= focusIf("evidence", "summary") %> />
+    </label>
+    <% if (problem?.form === "evidence") { %><small id="evidence-error"><%= problem.message %></small><% } %>
+    <label>
+      Link (optional)
+      <input type="url" name="link" placeholder="https://" <%= focusIf("evidence", "link") %> />
+    </label>
+    <button type="submit" class="secondary compact">Attach evidence</button>
+  </form>
+</details>
+<% } %>
+<% if (staff && allowed.linkChange) { %>
+<details class="change-link" <% if (problem?.form === "changeLink") { %>open<% } %>><summary><%= ticket.change_url ? "Change the link" : "Add the code change link" %></summary>
+<form method="post" action="/tickets/<%= ticket.key %>/change-link" id="change-link">
+  <%- versionField %>
+  <label>
+    Link to the code change
+    <input type="url" id="change-url" name="change_url" required <% if (problem?.form === "changeLink") { %>aria-invalid="true" aria-describedby="change-link-error"<% } %> <%= focusIf("changeLink", "change_url") %> />
+  </label>
+  <% if (problem?.form === "changeLink") { %><small id="change-link-error"><%= problem.message %></small><% } %>
+  <button type="submit" class="secondary compact">Save change link</button>
+</form>
+</details>
+<% } %>
+<% if (staff && allowed.markReady) { %>
+<% const asked = problem?.form === "ready" ? (problem.values ?? {}) : {}; %>
+<% const ticked = problem?.form === "ready" ? (problem.evidenceIds ?? []) : []; %>
+<%# The one press at the top asks with nothing more. The details are optional. %>
+<details class="ask-details" id="ask" <% if (problem?.form === "ready") { %>open<% } %>>
+<summary>Ask with details (optional)</summary>
+<form method="post" action="/tickets/<%= ticket.key %>/ready" class="ask">
+  <%- versionField %>
+  <p><small>Every box is optional. The customer sees what you write.</small></p>
+  <label>
+    Page on the live site to try (optional)
+    <input type="url" name="try_url" value="<%= asked.try_url ?? ticket.try_url ?? ticket.where_url ?? "" %>" <%= focusIf("ready", "try_url") %> />
+  </label>
+  <label>
+    What did you try? (optional)
+    <textarea name="tried" rows="2" <%= focusIf("ready", "tried") %>><%= asked.tried ?? "" %></textarea>
+  </label>
+  <label>
+    What happened? (optional)
+    <textarea name="result" rows="2" <%= focusIf("ready", "result") %>><%= asked.result ?? "" %></textarea>
+  </label>
+  <% if (ticket.customer_answer && !ticket.customer_answer.fixed) { %>
+  <label>
+    What changed since the customer said it still fails? (optional)
+    <textarea name="response" rows="2" <%= focusIf("ready", "response") %>><%= asked.response ?? "" %></textarea>
+  </label>
+  <% } %>
+  <% if (evidence.length > 0) { %>
+  <fieldset>
+    <legend>Evidence you relied on</legend>
+    <% for (const item of evidence) { %>
+    <label><input type="checkbox" name="evidence_ids" value="<%= item.id %>" <%= ticked.includes(String(item.id)) ? "checked" : "" %> /> <span class="user-text"><%= item.summary %></span></label>
+    <% } %>
+  </fieldset>
+  <% } %>
+  <% if (problem?.form === "ready") { %><p><small id="ready-error" role="alert"><%= problem.message %></small></p><% } %>
+  <button type="submit" class="secondary compact" <% if (problem?.form === "ready") { %>aria-describedby="ready-error"<% } %>>Ask with these details</button>
+</form>
+</details>
+<% } %>
+<% if (staff && allowed.withdrawQuestion) { %>
+<form method="post" action="/tickets/<%= ticket.key %>/withdraw-question">
+  <%- versionField %>
+  <button type="submit" class="secondary outline compact">Withdraw the question</button>
+</form>
+<% } %>
+<% if (staff && allowed.giveToAgent && !agentHelp.current && agentHelp.candidates.length > 0) { %>
+<details>
+  <summary>Hand to an AI assistant…</summary>
+  <form method="post" action="/tickets/<%= ticket.key %>/agent">
+    <%- versionField %>
+    <label>
+      Connection
+      <select name="connection_id">
+        <% for (const c of agentHelp.candidates) { %>
+        <option value="<%= c.id %>"><%= c.name %></option>
+        <% } %>
+      </select>
+    </label>
+    <p><small>It can work on this ticket only, within what its connection allows, until you stop it, hand the ticket on or ask the customer.</small></p>
+    <button type="submit" class="secondary compact">Hand to assistant</button>
+  </form>
+</details>
+<% } %>
+<% if (allowed.release) { %>
+<form method="post" action="/tickets/<%= ticket.key %>/release">
+  <%- versionField %>
+  <button type="submit" class="secondary outline compact">Release it</button>
+</form>
+<% } %>
+<%# Archive and permanent delete: set apart, last. %>
+<% if (removeAny) { %>
+<div class="danger-zone" role="group" aria-label="Remove">
+  <% if (allowed.archive) { %>
+  <a href="/tickets/<%= ticket.key %>/archive" role="button" class="danger">Archive ticket</a>
+  <% } %>
+  <% if (allowed.delete) { %>
+  <a href="/tickets/<%= ticket.key %>/delete" role="button" class="danger">Delete permanently</a>
+  <% } %>
+</div>
+<% } %>
+</details>
+<% } %>
 </div>
 </div>
 <%- include("footer") %>

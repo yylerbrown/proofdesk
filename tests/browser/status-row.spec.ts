@@ -40,7 +40,7 @@ test("Resolved opens its form under the row, and resolving takes two presses", a
   await expect(reason).toHaveValue("fixed_no_reply");
 
   await row.getByRole("button", { name: "Resolve", exact: true }).click();
-  await expect(page.locator(".resolution-label")).toHaveText(
+  await expect(page.locator("article.resolved-by-team strong")).toHaveText(
     "Resolved by the team: Fixed. Not customer-confirmed.",
   );
 });

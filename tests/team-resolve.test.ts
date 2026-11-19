@@ -133,11 +133,12 @@ describe("how a team resolution shows", () => {
     expect(block.querySelector("strong")?.text).toBe("Resolved by the team: Won't fix");
     expect(block.text).toContain("Works as designed.");
     expect(block.text).toContain("If it is still happening, you can reopen it.");
-    // The team sees the same label beside the status.
+    // The team sees the same label at the top, said once and not again in the panel.
     const teamPage = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    expect(teamPage.querySelector(".resolution-label")?.text).toBe(
+    expect(teamPage.querySelector("article.resolved-by-team strong")?.text).toBe(
       "Resolved by the team: Won't fix",
     );
+    expect(teamPage.querySelector("aside.ticket-panel")!.text).not.toContain("Won't fix");
     // Never the tick or "Customer confirmed": the customer did not say so.
     expect(page.querySelector(".confirmed")).toBeNull();
     expect(page.querySelector("main")!.text).not.toContain("Customer confirmed");
@@ -213,8 +214,8 @@ describe("resolving with a reason on the page", () => {
     const { app } = await setup();
     await admin(app).post("/api/tickets/SUP-2/take");
     const owner = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    // The opener says it opens a form; the button inside the form is the one that resolves.
-    expect(owner.querySelector("details.resolve summary")?.text).toBe("Resolve with a reason…");
+    // The opener is the status itself; the button inside the form is the one that resolves.
+    expect(owner.querySelector("details.resolve summary")?.text).toBe("Resolved");
     expect(owner.querySelector("details.resolve form button")?.text).toBe("Resolve");
     expect(owner.querySelector(".next-action")?.text).not.toContain("Resolve");
     expect(

@@ -1,10 +1,12 @@
 import { expect, test } from "@playwright/test";
 
-// The keyboard around a ticket's More menu and the text fields, in a real browser: Escape and
-// moving focus away close the menu, and a text field shows the 2px focus ring, also when the
+// The keyboard on a ticket page and its text fields, in a real browser: More options and Edit
+// ticket work from the keyboard, and a text field shows the 2px focus ring, also when the
 // server has marked it as wrong.
 
-test("More closes from the keyboard, and text fields show a real focus ring", async ({ page }) => {
+test("More options and Edit work from the keyboard, and text fields show a real focus ring", async ({
+  page,
+}) => {
   await page.goto("/sign-in");
   await page.getByRole("button", { name: "View as Customer One" }).click();
   await page.getByRole("button", { name: "New ticket" }).click();
@@ -23,31 +25,16 @@ test("More closes from the keyboard, and text fields show a real focus ring", as
     await expect(page).toHaveURL(/\/tickets\/SUP-\d+$/);
   });
 
-  const more = page.locator("details.more");
-  const summary = more.locator("summary");
-
-  await test.step("Escape closes More and puts focus back on it", async () => {
+  await test.step("Edit ticket and More options open from the keyboard", async () => {
+    const more = page.locator("details.more-options");
+    const summary = more.locator("summary").first();
     await summary.focus();
     await page.keyboard.press("Enter");
     await expect(more).toHaveAttribute("open", "");
-    await page.keyboard.press("Tab");
-    await page.keyboard.press("Escape");
-    await expect(more).not.toHaveAttribute("open");
-    await expect(summary).toBeFocused();
-  });
-
-  await test.step("Tab past its last choice closes More", async () => {
     await page.keyboard.press("Enter");
-    await expect(more).toHaveAttribute("open", "");
-    const choices = await more.locator(".more-menu :is(a, button)").count();
-    for (let i = 0; i <= choices; i += 1) await page.keyboard.press("Tab");
     await expect(more).not.toHaveAttribute("open");
-  });
-
-  await test.step("a click elsewhere on the page closes More", async () => {
-    await summary.click();
-    await expect(more).toHaveAttribute("open", "");
-    await page.getByRole("heading", { level: 1 }).click();
-    await expect(more).not.toHaveAttribute("open");
+    await page.getByRole("link", { name: "Edit ticket" }).focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/tickets\/SUP-\d+\/edit$/);
   });
 });

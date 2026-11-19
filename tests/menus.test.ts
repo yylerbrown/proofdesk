@@ -1,14 +1,7 @@
 import fs from "node:fs";
 import { parse } from "node-html-parser";
 import { describe, expect, it } from "vitest";
-import {
-  closeOnEscape,
-  keepInView,
-  wireMenu,
-  type Menu,
-  type MenuList,
-  type Page,
-} from "../src/browser/menus.js";
+import { closeOnEscape, wireMenu, type Menu, type Page } from "../src/browser/menus.js";
 import { admin, buildTestApp } from "./helpers.js";
 
 // "Switch role" and "More" are native details menus. The menus script closes them on Escape,
@@ -92,39 +85,6 @@ describe("the menus script", () => {
     listeners.keydown!({ key: "Escape" } as never);
     expect(menu.open).toBe(false);
     expect(focused).toBe(1);
-  });
-
-  it("opens More upward when it has no room below, and scrolls only when neither way fits", () => {
-    const { menu, listeners } = fakeMenu([]);
-    let bottom = 700;
-    let aboveButton = 500;
-    const opensUp: boolean[] = [];
-    const scrolls: unknown[] = [];
-    const list: MenuList = {
-      getBoundingClientRect: () => ({ bottom, height: 100 }),
-      classList: { toggle: (_name, force) => opensUp.push(force) },
-      scrollIntoView: (options) => scrolls.push(options),
-    };
-    keepInView(menu as unknown as Menu, list, () => ({ windowHeight: 800, aboveButton }));
-    const open = () => listeners.toggle!(undefined as never);
-
-    // Room below: it opens below, as before.
-    open();
-    expect(opensUp).toEqual([false]);
-    // No room below, room above: it opens upward and the page stays still.
-    bottom = 900;
-    open();
-    expect(opensUp).toEqual([false, false, true]);
-    expect(scrolls).toEqual([]);
-    // No room either way: the page scrolls to it.
-    aboveButton = 50;
-    open();
-    expect(opensUp.at(-1)).toBe(false);
-    expect(scrolls).toEqual([{ block: "nearest" }]);
-    // Closing it changes nothing.
-    menu.open = false;
-    open();
-    expect(scrolls.length).toBe(1);
   });
 
   it("is loaded on every page, as a script file the security policy allows", async () => {

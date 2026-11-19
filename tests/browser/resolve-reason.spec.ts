@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
 
-// The resolve form shows "Duplicate of" only for a duplicate, and the note once a reason is
-// chosen. A box that is hidden still sends what was typed in it, and the customer sees the
-// note, so the note must stay visible for every chosen reason, a duplicate included.
+// The resolve form shows "Duplicate of" only for a duplicate, and the note box only for Other,
+// the one reason that needs it. A box that is hidden still sends what was typed in it, so the
+// page's route drops a note sent with any other reason, and no hidden words reach the customer.
 
-test("the resolve form never hides a note that would be sent", async ({ page }) => {
+test("the resolve form shows each box only for the reason that needs it", async ({ page }) => {
   await page.goto("/sign-in");
   await page.getByRole("button", { name: "View as Customer One" }).click();
   await page.getByRole("button", { name: "New ticket" }).click();
@@ -21,21 +21,26 @@ test("the resolve form never hides a note that would be sent", async ({ page }) 
   await resolve.locator("summary").click();
   const reason = resolve.getByRole("combobox", { name: "Reason" });
   const duplicateOf = resolve.getByRole("textbox", { name: "Duplicate of" });
-  const note = resolve.getByRole("textbox", { name: "Note (needed for Other)" });
+  const note = resolve.getByRole("textbox", { name: "Why?" });
 
-  // It starts on the "Fixed." reason: the note shows, "Duplicate of" does not.
+  // It starts on the "Fixed." reason: only the reason and the Resolve button show.
   await expect(reason).toHaveValue("fixed_no_reply");
   await expect(duplicateOf).toBeHidden();
-  await expect(note).toBeVisible();
+  await expect(note).toBeHidden();
 
   await reason.selectOption("other");
   await expect(note).toBeVisible();
   await expect(duplicateOf).toBeHidden();
   await note.fill("Typed under Other.");
 
-  // Switching to Duplicate keeps the note in view, words and all.
   await reason.selectOption("duplicate");
   await expect(duplicateOf).toBeVisible();
-  await expect(note).toBeVisible();
-  await expect(note).toHaveValue("Typed under Other.");
+  await expect(note).toBeHidden();
+
+  // Resolving with another reason leaves the hidden note behind.
+  await reason.selectOption("wont_fix");
+  await resolve.getByRole("button", { name: "Resolve", exact: true }).click();
+  const block = page.locator("article.resolved-by-team");
+  await expect(block.locator("strong")).toHaveText("Resolved by the team: Won't fix");
+  await expect(block).not.toContainText("Typed under Other.");
 });
