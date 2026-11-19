@@ -6,9 +6,9 @@ import { seedDemo } from "../src/server/demo.js";
 import { createTicketService } from "../src/server/tickets/service.js";
 import { admin, adminActor, as, buildTestApp, customerOne, teamActor, visitor } from "./helpers.js";
 
-// The team is invited to bring its own AI assistant where it starts the day, the ticket list,
-// until one is connected. Customers never see any of it, and Connections is no longer a header
-// link: an admin reaches it from the invitation and from the admin's note.
+// Under the team's ticket list, one quiet sentence says Proofdesk works with the team's own AI
+// assistant, with one link to an example. It asks nothing and offers nothing to dismiss.
+// Customers never see it, and Connections is in the admin's person menu.
 
 const list = async (app: Express, who = teamActor) =>
   parse((await as(app, who).get("/tickets")).text);
@@ -20,70 +20,44 @@ async function connectOne(app: Express) {
     .send({ name: "Helper", scopes: ["read_tickets", "write_notes"] });
 }
 
-describe("the invitation to connect an assistant", () => {
-  it("asks the team and the admin, says what an assistant does here, and never asks a customer", async () => {
+const SENTENCE =
+  "Works with your own AI assistant. Proofdesk makes no AI calls itself. See an example";
+
+describe("the line about bringing your own assistant", () => {
+  it("is one sentence and one link for the team and the admin, and nothing for a customer", async () => {
     const { app } = buildTestApp();
-    const team = (await list(app)).querySelector(".assistant-invite")!;
-    // One quiet sentence: what an assistant does first, then what Proofdesk does not do.
-    expect(team.querySelector("p")?.text).toBe(
-      "Connect your own AI assistant: it reproduces a ticket's problem and tests a fix, for a person to check. Proofdesk makes no AI calls itself.",
-    );
-    // A team member cannot connect one, so they are told who can instead of shown a button.
-    expect(team.querySelector("a[href='/connections']")).toBeNull();
-    expect(team.querySelector(".invite-who")?.text).toBe("Only an admin can connect an assistant.");
-    expect(team.querySelector("a[href='/assistant-run']")?.text).toBe("See an assistant's work");
-
-    const asAdmin = (await list(app, adminActor)).querySelector(".assistant-invite")!;
-    const primary = asAdmin.querySelector(".invite-actions a")!;
-    expect([primary.text, primary.getAttribute("href")]).toEqual([
-      "Connect your assistant",
-      "/connections",
-    ]);
-
+    for (const who of [teamActor, adminActor]) {
+      const line = (await list(app, who)).querySelector(".assistant-invite")!;
+      expect(line.text.trim()).toBe(SENTENCE);
+      const links = line.querySelectorAll("a");
+      expect(links.map((link) => [link.text, link.getAttribute("href")])).toEqual([
+        ["See an example", "/assistant-run"],
+      ]);
+      expect(line.querySelector("form, button")).toBeNull();
+    }
     const customer = await list(app, customerOne);
-    expect(customer.querySelector(".assistant-invite, .assistant-connected")).toBeNull();
+    expect(customer.querySelector(".assistant-invite")).toBeNull();
     expect(customer.text).not.toContain("assistant");
   });
 
-  it("becomes one quiet line once an assistant is connected", async () => {
+  it("stays the same sentence once an assistant is connected", async () => {
     const { app } = buildTestApp();
     await connectOne(app);
-    const team = await list(app);
-    expect(team.querySelector(".assistant-invite")).toBeNull();
-    expect(team.querySelector(".assistant-connected")?.text).toBe(
-      "1 assistant connected · See an assistant's work",
-    );
-    const asAdmin = parse((await admin(app).get("/tickets")).text);
-    expect(asAdmin.querySelector(".assistant-connected a")?.getAttribute("href")).toBe(
-      "/connections",
-    );
+    const line = (await list(app)).querySelector(".assistant-invite")!;
+    expect(line.text.trim()).toBe(SENTENCE);
   });
 
-  it("hides for a person who says Not now, without a script", async () => {
+  it("has no Not now to remember, so the old address for it is gone", async () => {
     const { app } = buildTestApp();
-    const res = await as(app, teamActor).post("/assistant-invite/hide");
-    expect(res.status).toBe(303);
-    expect(res.headers.location).toBe("/tickets");
-    expect(String(res.headers["set-cookie"])).toMatch(/^assistant_invite=hidden;.*HttpOnly/);
+    expect((await as(app, teamActor).post("/assistant-invite/hide")).status).toBe(404);
+    // A browser that still carries the old cookie sees the line like everyone else.
     const later = await visitor(app)
       .set("Cookie", `${DEV_COOKIE}=${teamActor.id}; assistant_invite=hidden`)
       .get("/tickets");
-    expect(parse(later.text).querySelector(".assistant-invite")).toBeNull();
-    // Someone else in another browser is still asked.
-    expect((await list(app)).querySelector(".assistant-invite")).not.toBeNull();
+    expect(parse(later.text).querySelector(".assistant-invite")?.text.trim()).toBe(SENTENCE);
   });
 
-  it("on the demo, points the team at the welcome page's demo connection", async () => {
-    const built = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
-    seedDemo(createTicketService(built.db, built.config.ticketPrefix));
-    const as = (id: string) =>
-      visitor(built.app).set("Cookie", `${DEV_COOKIE}=${id}`).get("/tickets");
-    const team = parse((await as("demo-team")).text).querySelector(".assistant-invite")!;
-    expect(team.querySelector(".invite-actions a")?.getAttribute("href")).toBe("/sign-in#connect");
-    expect(parse((await as("demo-customer")).text).querySelector(".assistant-invite")).toBeNull();
-  });
-
-  it("sits under the tickets, never above them, and is not shown to the read-only preview", async () => {
+  it("sits under the tickets on the demo, for the team and the read-only preview", async () => {
     const built = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
     seedDemo(createTicketService(built.db, built.config.ticketPrefix));
     const as = (id: string) =>
@@ -94,9 +68,9 @@ describe("the invitation to connect an assistant", () => {
     expect(main.indexOf('class="assistant-invite"')).toBeGreaterThan(
       main.indexOf('<table class="tickets"'),
     );
-    // The preview can connect nothing, so it is not invited to.
     const preview = parse((await as("demo-admin")).text);
-    expect(preview.querySelector(".assistant-invite, .assistant-connected")).toBeNull();
+    expect(preview.querySelector(".assistant-invite")?.text.trim()).toBe(SENTENCE);
+    expect(parse((await as("demo-customer")).text).querySelector(".assistant-invite")).toBeNull();
   });
 });
 

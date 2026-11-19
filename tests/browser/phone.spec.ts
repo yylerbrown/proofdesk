@@ -114,21 +114,8 @@ test("on a phone the small controls are 44-pixel tap targets", async ({ page }) 
     await page.keyboard.press("Escape");
   });
 
-  await test.step("the invite's links keep clear of each other", async () => {
-    const boxes = await page.locator(".invite-actions :is(a, button)").evaluateAll((links) =>
-      links.map((link) => {
-        const box = link.getBoundingClientRect();
-        return { left: box.left, right: box.right, top: box.top, bottom: box.bottom };
-      }),
-    );
-    expect(boxes.length).toBe(3);
-    for (const [i, one] of boxes.entries()) {
-      for (const other of boxes.slice(i + 1)) {
-        const apartSideways = one.right <= other.left || other.right <= one.left;
-        const apartUpDown = one.bottom <= other.top || other.bottom <= one.top;
-        expect(apartSideways || apartUpDown).toBe(true);
-      }
-    }
+  await test.step("the one link under the tickets", async () => {
+    await expectTapTargets(page, ".assistant-invite a");
   });
 
   await test.step("The way back above the title and the reply box's two tabs", async () => {

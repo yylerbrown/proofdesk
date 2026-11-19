@@ -1,6 +1,6 @@
 import { parse, type HTMLElement } from "node-html-parser";
 import { describe, expect, it } from "vitest";
-import { timeAgo, waitingOn } from "../src/server/pages/format.js";
+import { timeAgo, turnTag } from "../src/server/pages/format.js";
 import type { Ticket } from "../src/server/tickets/service.js";
 import {
   admin,
@@ -88,7 +88,7 @@ describe("status badges", () => {
 });
 
 describe("the ticket list", () => {
-  it("shows owner, who it waits on and the age, with the exact time in a time element", async () => {
+  it("shows five columns: owner and the age, with the exact time in a time element", async () => {
     const { app } = buildTestApp();
     await admin(app).post("/api/tickets").send(valid);
     await admin(app)
@@ -101,12 +101,13 @@ describe("the ticket list", () => {
     const headings = html
       .querySelectorAll("thead th")
       .map((th) => (th.querySelector("span.sort-label") ?? th).text);
-    expect(headings).toEqual(["Key", "Title", "Status", "Owner", "Waiting on", "Filed"]);
+    expect(headings).toEqual(["Key", "Title", "Status", "Owner", "Filed"]);
     const rows = html.querySelectorAll("tbody tr").map((tr) => tr.querySelectorAll("td"));
     expect(rows[0]?.[3]?.text).toBe("Team Member");
     expect(rows[1]?.[3]?.text).toBe("Unassigned");
-    expect(rows[0]?.[4]?.text).toBe("Support team");
-    const time = rows[0]?.[5]?.querySelector("time");
+    // The team's turn is the normal case, so the status has no tag after it.
+    expect(rows[0]?.[2]?.querySelector(".turn-tag")).toBeNull();
+    const time = rows[0]?.[4]?.querySelector("time");
     expect(time?.getAttribute("datetime")).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(time?.getAttribute("title")).toMatch(/ UTC$/);
     expect(time?.text).toBe("just now");
@@ -150,15 +151,24 @@ describe("the ticket list", () => {
   });
 });
 
-describe("who is waiting", () => {
+describe("whose turn it is", () => {
   const on = (waiting_on: string) => ({ waiting_on }) as unknown as Ticket;
+  const plain = { reopened: false, signal: undefined };
 
-  it("is said in the viewer's words", () => {
-    expect(waitingOn(on("team"), "team")).toBe("Support team");
-    expect(waitingOn(on("team"), "customer")).toBe("Support team");
-    expect(waitingOn(on("customer"), "team")).toBe("Customer");
-    expect(waitingOn(on("customer"), "customer")).toBe("You");
-    expect(waitingOn(on("nobody"), "team")).toBe("Nobody");
+  it("is said only when it is not simply the team's, in the viewer's words", () => {
+    expect(turnTag(on("team"), "team", plain)).toBeNull();
+    expect(turnTag(on("team"), "customer", plain)).toBeNull();
+    expect(turnTag(on("customer"), "team", plain)).toBe("Asked the customer");
+    expect(turnTag(on("customer"), "customer", plain)).toBe("Your answer needed");
+    expect(turnTag(on("nobody"), "team", plain)).toBeNull();
+  });
+
+  it("puts what an assistant needs first for the team, and never tells the customer", () => {
+    const blocked = { reopened: true, signal: { label: "Assistant blocked:" } };
+    const review = { reopened: false, signal: { label: "Review requested by" } };
+    expect(turnTag(on("team"), "team", blocked)).toBe("Assistant is blocked");
+    expect(turnTag(on("team"), "team", review)).toBe("Assistant asks for review");
+    expect(turnTag(on("team"), "customer", review)).toBeNull();
   });
 });
 

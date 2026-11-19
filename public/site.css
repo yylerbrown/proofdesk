@@ -849,6 +849,18 @@ form.list-search input:is(:focus, :focus-visible) {
   border-color: var(--pico-form-element-border-color);
   box-shadow: none;
 }
+/* The owner toggles follow the status filters after a thin divider. On a phone they take a row
+   of their own, which needs no divider. */
+nav[aria-label="Filter by owner"] ul {
+  padding-left: var(--pd-space-4);
+  border-left: var(--pd-hairline);
+}
+@media (max-width: 639px) {
+  nav[aria-label="Filter by owner"] ul {
+    padding-left: 0;
+    border-left: 0;
+  }
+}
 /* How many tickets each status filter holds: smaller and muted, inside the filter's own link. */
 .filter-count {
   margin-left: 0.25em;
@@ -972,6 +984,13 @@ table.tickets td:first-child,
 table.tickets td .badge {
   white-space: nowrap;
 }
+/* After the status word, only when it is not simply the team's turn: a few quiet grey words. */
+table.tickets .turn-tag {
+  margin-left: var(--pd-space-2);
+  color: var(--pd-muted);
+  font-size: var(--pd-text-sm);
+  white-space: nowrap;
+}
 table.tickets td.user-text {
   color: var(--pd-text);
   font-size: var(--pd-text-md);
@@ -1033,8 +1052,8 @@ table.tickets td:first-child a::after {
 }
 /*
  * Wide windows: every column but the title has a set width, so the columns hold their places
- * instead of drifting apart, and the title takes what is left. Who it waits on may wrap to a
- * second line rather than be cut off.
+ * instead of drifting apart, and the title takes what is left. The status column has room for
+ * the status word and its longest tag on one line.
  */
 @media (min-width: 1100px) {
   table.tickets {
@@ -1044,27 +1063,20 @@ table.tickets td:first-child a::after {
     width: 6.5rem;
   }
   table.tickets th:nth-child(3) {
-    width: 9rem;
+    width: 18.5rem;
   }
   table.tickets th:nth-child(4) {
     width: 11.5rem;
   }
   table.tickets th:nth-child(5) {
-    width: 14rem;
+    width: 7rem;
   }
-  table.tickets th:nth-child(6) {
-    width: 9rem;
-  }
-  table.tickets td:nth-child(4) {
+  table.tickets td:is(:nth-child(3), :nth-child(4)) {
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  table.tickets td:nth-child(5) {
-    line-height: 1.35;
-    white-space: normal;
-  }
 }
-/* On a phone: key, title and status. Owner, waiting and filed are on the ticket page. */
+/* On a phone: key, title and status with its tag. Owner and filed are on the ticket page. */
 @media (max-width: 639px) {
   table.tickets th:nth-child(n + 4),
   table.tickets td:nth-child(n + 4) {
@@ -2056,18 +2068,12 @@ textarea:focus-visible {
 }
 
 /*
- * The ticket list on a narrow window: drop the less important columns rather than cut the last
- * one off. The owner and who it waits on are on each ticket's own page.
+ * The ticket list on a narrow window: drop the owner rather than cut the last column off. The
+ * owner is on each ticket's own page.
  */
 @media (max-width: 860px) {
   table.tickets th:nth-child(4),
   table.tickets td:nth-child(4) {
-    display: none;
-  }
-}
-@media (max-width: 600px) {
-  table.tickets th:nth-child(5),
-  table.tickets td:nth-child(5) {
     display: none;
   }
 }
@@ -2409,55 +2415,20 @@ dl.run-facts dd {
 }
 
 /*
- * The invitation to bring your own AI assistant, on the team's ticket list: one quiet line of
- * small muted text under the tickets, so it never pushes them down. On a wide screen its links sit
- * beside the text. It goes once dismissed or once an assistant is connected.
+ * Under the team's tickets, one quiet sentence: Proofdesk works with their own AI assistant. Small
+ * muted text, so it never pushes the tickets down.
  */
 .assistant-invite {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--pd-space-1) var(--pd-space-4);
   margin: var(--pd-space-4) 0 0;
-  color: var(--pd-muted);
-  font-size: var(--pd-text-sm);
-}
-.assistant-invite p {
-  flex: 0 1 auto;
-  margin: 0;
-  color: inherit;
-}
-.invite-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0 var(--pd-space-4);
-}
-.invite-actions form {
-  margin: 0;
-}
-.invite-actions button.link {
-  min-height: 0;
-  margin: 0;
-  padding: 0;
-  font-size: inherit;
-  line-height: inherit;
-}
-.invite-who,
-.assistant-connected {
   color: var(--pd-muted);
 }
 /* On a phone each link keeps a 44-pixel tap area without making the line taller. */
 @media (max-width: 639px) {
-  .invite-actions :is(a, button.link),
+  .assistant-invite a,
   .list-sort a {
     display: inline-block;
     margin-block: -12px;
     padding-block: 12px;
-  }
-  /* When the links wrap, each row's tap area ends where the next one starts. */
-  .invite-actions {
-    row-gap: 24px;
   }
 }
 
@@ -2597,11 +2568,6 @@ main > form.bulk {
 .bulk-clear[hidden] {
   display: none;
 }
-/* The reason for Resolved sits in the line, after the status. A longer line wraps, and since the
-   bar is held at the bottom of the window, it grows upward. */
-.bulk-reasons {
-  display: contents;
-}
 .bulk-error {
   flex-basis: 100%;
   margin: 0;
@@ -2626,11 +2592,9 @@ form.bulk[data-floating] .bulk-bar {
 body:has(form.bulk[data-floating]) {
   padding-bottom: 10rem;
 }
-/* The reason shows only for Resolved, "Duplicate of" only for a duplicate and the note only for
-   Other, as on the ticket page. A browser that cannot read :has shows them all, which still works. */
-.bulk:not(:has(select[name="status"] option[value="resolved"]:checked)) .bulk-reasons,
-.bulk:not(:has(select[name="reason"] option[value="duplicate"]:checked)) .bulk-duplicate,
-.bulk:not(:has(select[name="reason"] option[value="other"]:checked)) .bulk-note {
+/* The reason shows only for Resolved, in the line after the status. A browser that cannot read
+   :has shows it all the time, which still works. */
+.bulk:not(:has(select[name="status"] option[value="resolved"]:checked)) .bulk-reason {
   display: none;
 }
 /* The tick box sits above the row's link to its ticket, so a press ticks it instead of opening it. */

@@ -77,11 +77,13 @@ describe("the filters on the page", () => {
     expect(link("Unassigned", "Filter by owner").getAttribute("href")).toBe(
       "/tickets?status=new&owner=none&q=print",
     );
-    expect(link("Everyone", "Filter by owner").getAttribute("href")).toBe(
+    // Mine is lit, so pressing it again clears the owner filter and keeps the rest.
+    expect(link("Mine", "Filter by owner").getAttribute("href")).toBe(
       "/tickets?status=new&q=print",
     );
     expect(link("New", "Filter by status").getAttribute("aria-current")).toBe("page");
     expect(link("Mine", "Filter by owner").getAttribute("aria-current")).toBe("page");
+    expect(link("Unassigned", "Filter by owner").getAttribute("aria-current")).toBeUndefined();
     const form = html.querySelector("form.list-search")!;
     expect(form.getAttribute("method")).toBe("get");
     expect(form.querySelector("input[name=status]")?.getAttribute("value")).toBe("new");
@@ -90,6 +92,23 @@ describe("the filters on the page", () => {
     expect(
       html.querySelectorAll("table.tickets tbody tr td:first-child").map((td) => td.text),
     ).toEqual(["SUP-1"]);
+  });
+
+  it("are two owner toggles for the team, neither lit until pressed, with no Everyone", async () => {
+    const { app } = await setup();
+    const html = parse((await as(app, teamActor).get("/tickets")).text);
+    const owners = html.querySelectorAll("nav[aria-label='Filter by owner'] a");
+    expect(owners.map((a) => [a.text, a.getAttribute("href")])).toEqual([
+      ["Mine", "/tickets?owner=me"],
+      ["Unassigned", "/tickets?owner=none"],
+    ]);
+    expect(owners.filter((a) => a.hasAttribute("aria-current"))).toEqual([]);
+    expect(html.querySelector("main")!.text).not.toContain("Everyone");
+    // Pressing the lit Unassigned clears it.
+    const lit = parse((await as(app, teamActor).get("/tickets?owner=none")).text);
+    const unassigned = lit.querySelectorAll("nav[aria-label='Filter by owner'] a")[1]!;
+    expect(unassigned.getAttribute("aria-current")).toBe("page");
+    expect(unassigned.getAttribute("href")).toBe("/tickets");
   });
 
   it("gives a customer the search but not the owner chips", async () => {

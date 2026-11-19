@@ -62,20 +62,30 @@ export function teamSaysFixed(ticket: Ticket, viewer: Role): boolean {
   );
 }
 
+/** What the list knows about a ticket besides the ticket itself. */
+export type TurnFacts = {
+  /** The customer's latest word is their reopening it. */
+  reopened: boolean;
+  /** The label of what the ticket's assistant last said it needs, for a viewer who may read notes. */
+  signal: { label: string } | undefined;
+};
+
 /**
- * Who has to act next on a ticket, in the words the viewer should read. reopened is true when
- * the customer's latest word is their reopening it.
+ * The short tag the list shows after a ticket's status when it is not simply the team's turn,
+ * or null when there is nothing to flag. Each tag is a reason for someone to look at it.
  */
-export function waitingOn(ticket: Ticket, viewer: Role, reopened = false): string {
-  if (ticket.waiting_on === "nobody") return "Nobody";
-  if (ticket.waiting_on === "customer") return viewer === "customer" ? "You" : "Customer";
-  // The team has one name for every viewer, so the customer and the team read the same word.
-  if (viewer === "customer") return "Support team";
-  // After a reopening or a no, the team sees why the ticket is back with them.
-  if (reopened) return "Support team: customer reopened it";
-  return ticket.customer_answer?.fixed === false
-    ? "Support team: customer says it still fails"
-    : "Support team";
+export function turnTag(ticket: Ticket, viewer: Role, facts: TurnFacts): string | null {
+  if (ticket.waiting_on === "customer") {
+    return viewer === "customer" ? "Your answer needed" : "Asked the customer";
+  }
+  // The rest are about the team's turn, which the customer is not told about.
+  if (ticket.waiting_on !== "team" || viewer === "customer") return null;
+  // What an assistant said it needs is what the team needs to see first.
+  if (facts.signal?.label === "Assistant blocked:") return "Assistant is blocked";
+  if (facts.signal?.label === "Review requested by") return "Assistant asks for review";
+  if (facts.reopened) return "Customer reopened it";
+  if (ticket.customer_answer?.fixed === false) return "Customer said no";
+  return null;
 }
 
 /** The customer's latest word that the ticket is not fixed: a No, or their reopening it. */
