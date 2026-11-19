@@ -72,9 +72,8 @@ describe("the ticket's card", () => {
       "team, In Progress after the customer's No": ["label", "check", "line", "step"],
       "team, Resolved by the customer": ["label", "check", "line"],
       "team, the ticket an assistant worked": ["label", "check", "line", "step"],
-      // This sample also has a team's check: one quiet line under the customer's.
-      "team, waiting on the customer": ["label", "check", "card-team-check", "line", "step"],
-      "customer, asked Did this fix it?": ["question", "check", "card-team-check", "answer"],
+      "team, waiting on the customer": ["label", "check", "line", "step"],
+      "customer, asked Did this fix it?": ["question", "check", "answer"],
     };
     for (const [state, page] of Object.entries(states)) {
       const cards = page.querySelectorAll("main .ticket-card");
@@ -106,7 +105,7 @@ describe("the ticket's card", () => {
       }
       // The tick only ever stands beside the words "Customer confirmed".
       for (const tick of page.querySelectorAll("main .tick")) {
-        expect(tick.parentNode?.text, state).toContain("Customer confirmed it is fixed.");
+        expect(tick.parentNode?.text, state).toContain("Customer confirmed on ");
       }
     }
     expect(states["team, Resolved by the customer"]!.querySelectorAll("main .tick")).toHaveLength(

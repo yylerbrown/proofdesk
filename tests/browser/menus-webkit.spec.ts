@@ -23,7 +23,7 @@ test("More options and Edit ticket work with a mouse in WebKit", async ({ page }
     const more = page.locator("details.more-options");
     await more.locator("summary").first().click();
     await expect(more).toHaveAttribute("open", "");
-    await expect(more.locator("summary", { hasText: "Attach evidence" })).toBeVisible();
+    await expect(more.locator("summary", { hasText: "Add evidence" })).toBeVisible();
   });
 
   await test.step("Edit ticket", async () => {

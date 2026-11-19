@@ -100,7 +100,7 @@ describe("publishing an agent's suggestion", () => {
       based_on: note.id,
     });
     const teamPage = (await admin(app).get("/tickets/SUP-1")).text;
-    expect(teamPage).toContain("Published from a note by Helper (AI agent)");
+    expect(teamPage).toContain("Published from a note by Helper (AI assistant)");
     const customer = await as(app, customerOne).get("/tickets/SUP-1");
     expect(customer.text).toContain("double-sided printing works now");
     expect(customer.text).not.toContain("Published from a note");

@@ -35,9 +35,7 @@ describe("the ticket page layout", () => {
     expect(more?.hasAttribute("open")).toBe(false);
     expect(more?.querySelector("summary")?.text).toBe("More options");
     expect(more?.querySelectorAll("details > summary").map((el) => el.text.trim())).toEqual([
-      "Offer a clearer check",
-      "Attach evidence",
-      "Add the code change link",
+      "Add evidence",
     ]);
     expect(more?.querySelectorAll(".danger-zone a").map((el) => el.text.trim())).toEqual([
       "Archive ticket",
@@ -168,7 +166,7 @@ describe("the ticket page's quiet parts", () => {
       (await ticketPage(admin(app))).querySelector(".ticket-summary details.evidence-list");
     const before = await ticketPage(admin(app));
     const more = before.querySelector("details.more-options")!;
-    expect(more.querySelectorAll("summary").map((s) => s.text)).toContain("Attach evidence");
+    expect(more.querySelectorAll("summary").map((s) => s.text)).toContain("Add evidence");
     expect(await line()).toBeNull();
     await admin(app).post("/api/tickets/SUP-1/evidence").send({ kind: "note", summary: "Checked" });
     const after = await line();
@@ -178,16 +176,32 @@ describe("the ticket page's quiet parts", () => {
     expect(headings.map((h) => h.text)).toEqual(["Description"]);
   });
 
-  it("folds the optional change link box for everyone, the owner too", async () => {
+  it("has no change link box: a change is evidence, and a linked one is its first line", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
     for (const viewer of [as(app, teamActor), admin(app)]) {
-      const folded = (await ticketPage(viewer))
-        .querySelector("form#change-link")
-        ?.closest("details");
-      expect(folded?.querySelector("summary")?.text).toBe("Add the code change link");
-      expect(folded?.hasAttribute("open")).toBe(false);
+      const page = await ticketPage(viewer);
+      expect(page.querySelector("form#change-link")).toBeNull();
+      expect(page.text).not.toContain("Add the code change link");
+      const kinds = page.querySelectorAll("form[action$='/evidence'] select[name=kind] option");
+      expect(kinds.map((option) => option.text)).toContain("A change");
     }
+    // A change linked through the API is the first line of the one closed evidence line.
+    const link = "https://example.com/change/7";
+    await as(app, teamActor).put("/api/tickets/SUP-1/change-link").send({ change_url: link });
+    await as(app, teamActor)
+      .post("/api/tickets/SUP-1/evidence")
+      .send({ kind: "note", summary: "Checked" });
+    const evidence = (await ticketPage(as(app, teamActor))).querySelector(
+      ".ticket-summary details.evidence-list",
+    )!;
+    expect(evidence.hasAttribute("open")).toBe(false);
+    expect(evidence.querySelector("summary")?.text).toBe("Evidence (2)");
+    expect(evidence.querySelector("summary + .change-line")?.text).toBe(`Change: ${link}`);
+    // It is said once: nowhere else on the page.
+    expect(
+      (await ticketPage(as(app, teamActor))).querySelectorAll(`a[href="${link}"]`),
+    ).toHaveLength(1);
   });
 });

@@ -59,9 +59,9 @@ describe("the team's forms on the ticket page", () => {
   it("say what is wrong next to the form, for a link that is not http or https", async () => {
     const { app } = await waiting();
     const res = await as(app, teamActor)
-      .post("/tickets/SUP-1/change-link")
+      .post("/tickets/SUP-1/evidence")
       .type("form")
-      .send({ change_url: "javascript:alert(1)" });
+      .send({ kind: "change_link", summary: "The fix", link: "javascript:alert(1)" });
     expect(res.status).toBe(400);
     expect(res.text).toContain("Must be a link that starts with http or https.");
   });

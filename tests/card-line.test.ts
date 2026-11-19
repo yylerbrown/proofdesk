@@ -102,7 +102,7 @@ describe("the card's line", () => {
     const facts = { ...nothing, confirmed: at };
     for (const viewer of ["team", "admin", "customer"] as const) {
       expect(cardLine(resolved, viewer, facts)).toEqual({
-        text: "Customer confirmed it is fixed. ",
+        text: "Customer confirmed on ",
         day: at,
         after: ".",
         tick: true,
@@ -152,7 +152,7 @@ describe("the card's line", () => {
       "customer",
       nothing,
     );
-    expect(words(fixed)).toBe("The team says it is fixed. You have not confirmed it.");
+    expect(words(fixed)).toBe("Resolved by the team: Fixed. You have not confirmed it.");
     expect(fixed?.tick).toBe(false);
     expect(words(cardLine(byTeam("wont_fix", "Won't fix"), "customer", nothing))).toBe(
       "Resolved by the team: Won't fix (Works as designed). You have not confirmed it.",

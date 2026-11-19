@@ -102,7 +102,7 @@ describe("resolving a New ticket nobody owns", () => {
     const what = page
       .querySelectorAll("details.history tbody tr")
       .map((row) => row.querySelectorAll("td")[1]!.text);
-    const owned = what.indexOf("Owner: Team Member");
+    const owned = what.indexOf("Assigned to Team Member");
     expect(owned).toBeGreaterThanOrEqual(0);
     expect(what[owned + 1]).toMatch(/^Resolved by the team/);
 

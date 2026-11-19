@@ -114,7 +114,7 @@ describe("the activity trail", () => {
 });
 
 describe("the history names an agent", () => {
-  it("by its connection's name, marked as an AI agent", async () => {
+  it("by its connection's name, marked as an AI assistant", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
     const key = await issue(app, ["read_tickets", "write_notes"]);
@@ -128,7 +128,7 @@ describe("the history names an agent", () => {
       .at(-1)!
       .querySelectorAll("tbody td:last-child")
       .map((td) => td.text);
-    expect(who).toContain("Night shift (AI agent)");
+    expect(who).toContain("Night shift (AI assistant)");
     expect(who.join(" ")).not.toContain("connection-");
   });
 });

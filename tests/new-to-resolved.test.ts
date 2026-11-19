@@ -81,7 +81,7 @@ describe("where Resolved comes from", () => {
     expect(owner.querySelector(".next-action button")?.text).toBe("Ask the customer to verify");
     const details = owner.querySelector("details#ask")!;
     expect(details.hasAttribute("open")).toBe(false);
-    expect(details.querySelector("summary")?.text).toBe("Ask with details (optional)");
+    expect(details.querySelector("summary")?.text).toBe("Ask with details");
     expect(details.querySelector("button[type=submit]")?.hasAttribute("disabled")).toBe(false);
     expect(owner.querySelector("#ask-blocked-why")).toBeNull();
     expect(owner.querySelector(".status-control details.resolve summary")?.text).toBe("Resolved");

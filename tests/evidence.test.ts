@@ -171,7 +171,7 @@ describe("evidence on the ticket page", () => {
     // An assistant's evidence is in its one card, under Details.
     const section = main.querySelector(".ticket-summary .assistant-card details.card-details");
     expect(section?.text).toContain("Reproduced and fixed");
-    expect(section?.text).toContain("Reported by Helper (AI agent)");
+    expect(section?.text).toContain("Reported by Helper (AI assistant)");
     expect(section?.text).toContain("Not checked by Proofdesk.");
     expect(section?.querySelectorAll("table.stages td").map((td) => td.text)).toEqual([
       "failed",

@@ -79,7 +79,7 @@ describe("the ticket page's one black button", () => {
     expect(send.classList.contains("secondary")).toBe(true);
     const accept = assistant
       .querySelectorAll(".assistant-card button")
-      .find((button) => button.text.trim() === "Accept as the way to test")!;
+      .find((button) => button.text.trim() === "Accept test")!;
     expect(accept.classList.contains("secondary")).toBe(true);
   });
 });

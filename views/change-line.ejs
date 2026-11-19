@@ -1,0 +1,4 @@
+<%# The code change linked to a ticket, as the first line of its evidence. Nothing when there is none. %>
+<% if (changeUrl) { %>
+<p class="change-line"><strong>Change:</strong> <a href="<%= changeUrl %>" rel="noopener noreferrer nofollow" class="user-text"><%= changeUrl %></a></p>
+<% } %>

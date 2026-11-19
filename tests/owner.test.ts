@@ -141,7 +141,9 @@ describe("the owner on the ticket page", () => {
   it("shows the owner to everyone and the buttons to the team only", async () => {
     const { app } = await setup();
     const unowned = await as(app, teamActor).get("/tickets/SUP-1");
-    expect(unowned.text).toContain("<p>Unassigned</p>");
+    const ownerName = (text: string) =>
+      parse(text).querySelector(".panel-owner details.owner-control > summary")?.text;
+    expect(ownerName(unowned.text)).toBe("Unassigned");
     // Taking is part of In Progress and of the next action at the top, so More does not repeat it.
     expect(unowned.text).toContain("Take ticket and start work");
     expect(unowned.text).not.toContain("Take this ticket");
@@ -149,14 +151,17 @@ describe("the owner on the ticket page", () => {
     const taken = await as(app, teamActor).post("/tickets/SUP-1/take");
     expect(taken.status).toBe(303);
     const page = await as(app, teamActor).get("/tickets/SUP-1");
-    expect(page.text).toContain("<p>Team Member</p>");
-    expect(page.text).toContain("Release it");
+    expect(ownerName(page.text)).toBe("Team Member");
+    expect(page.text).toContain("Unassign");
     expect(page.text).not.toContain("Take this ticket");
-    expect(page.text).toContain("<td>Owner: Team Member</td>");
+    expect(page.text).toContain("<td>Assigned to Team Member</td>");
 
-    // An admin may hand it on, but not take it over.
+    // An admin may assign it to someone else, but not take it over.
     const adminPage = (await admin(app).get("/tickets/SUP-1")).text;
-    expect(adminPage).toContain("Hand off to…");
+    expect(
+      parse(adminPage).querySelector(".owner-control form[action$='/hand-off']"),
+    ).not.toBeNull();
+    expect(adminPage).not.toContain("Assign to me");
     expect(adminPage).not.toContain("Take this ticket");
 
     // A customer sees the owner as a plain row in the panel, once somebody owns the ticket.

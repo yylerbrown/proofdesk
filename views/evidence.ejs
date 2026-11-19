@@ -11,7 +11,7 @@
     <% if (item.link || item.scenario || item.revision || item.command || item.result) { %>
     <dl class="evidence-fields">
       <% if (item.link) { %><dt>Link</dt><dd><a href="<%= item.link %>" rel="noopener noreferrer nofollow" class="user-text"><%= item.link %></a></dd><% } %>
-      <% if (item.scenario) { %><dt>Scenario</dt><dd>Says it proves scenario <%= item.scenario %> of the test spec.</dd><% } %>
+      <% if (item.scenario) { %><dt>Scenario</dt><dd>Says it proves scenario <%= item.scenario %> of the suggested test.</dd><% } %>
       <% if (item.revision) { %><dt>Revision</dt><dd><code class="user-text"><%= item.revision %></code></dd><% } %>
       <% if (item.command) { %><dt>Command</dt><dd><code class="user-text"><%= item.command %></code></dd><% } %>
       <% if (item.result) { %><dt>Result</dt><dd class="user-text"><%= item.result %></dd><% } %>
@@ -35,7 +35,7 @@
     <% } %>
     <% if (read.more > 0) { %><p><small><%= read.more %> more <%= read.more === 1 ? "field" : "fields" %> not shown.</small></p><% } %>
     <% } %>
-    <p><small>Reported by <%= item.reported_by.name %><% if (item.reported_by.kind === "agent") { %> (AI agent)<% } %>, <%- include("time", { iso: item.created_at }) %>.</small></p>
+    <p><small>Reported by <%= item.reported_by.name %><% if (item.reported_by.kind === "agent") { %> (AI assistant)<% } %>, <%- include("time", { iso: item.created_at }) %>.</small></p>
   </li>
   <% } %>
 </ul>

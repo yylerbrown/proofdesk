@@ -98,7 +98,7 @@ describe("after the customer says No", () => {
     await as(app, customerOne)
       .post("/api/tickets/SUP-1/answer")
       .send({ fixed: "yes", ready_token: token });
-    expect(await line()).toMatch(/^Customer confirmed it is fixed\./);
+    expect(await line()).toMatch(/^Customer confirmed on /);
   });
 
   it("is never shown to another customer, who cannot see the ticket at all", async () => {

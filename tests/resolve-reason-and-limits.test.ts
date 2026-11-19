@@ -159,10 +159,10 @@ describe("a long text with line breaks", () => {
 });
 
 describe("a resolved ticket", () => {
-  it("offers no new change link once resolved", async () => {
+  it("offers no change link form, before or after resolving", async () => {
     const { app } = await setup();
     const before = await ticketPage(app);
-    expect(before.querySelector("form#change-link")).not.toBeNull();
+    expect(before.querySelector("form#change-link")).toBeNull();
     await as(app, teamActor)
       .post("/api/tickets/SUP-1/resolve")
       .send({ reason: "cannot_reproduce" });

@@ -103,32 +103,48 @@
 
 <% if (staff || ticket.owner_name) { %>
 <section class="panel-owner">
-  <p class="panel-label">Owner</p>
-  <p><%= ticket.owner_name ?? "Unassigned" %></p>
-  <% if (staff && allowed.take) { %>
-  <form method="post" action="/tickets/<%= ticket.key %>/take">
-    <%- versionField %>
-    <button type="submit" class="secondary compact">Assign to me</button>
-  </form>
-  <% } %>
-  <% if (staff && allowed.handOff && handOffTo.length > 0) { %>
-  <details <% if (problem?.form === "handOff") { %>open<% } %>>
-    <summary>Hand off to…</summary>
-    <form method="post" action="/tickets/<%= ticket.key %>/hand-off">
-      <input type="hidden" name="expected_owner" value="<%= ticket.owner_id ?? "" %>" />
-      <%- versionField %>
-      <label>
-        Team member
-        <select name="to" <% if (problem?.form === "handOff") { %>aria-describedby="hand-off-error"<% } %> <%= focusIf("handOff", "to") %>>
-          <% for (const member of handOffTo) { %>
-          <option value="<%= member.id %>"><%= member.name %></option>
-          <% } %>
-        </select>
-      </label>
-      <% if (problem?.form === "handOff") { %><small id="hand-off-error" role="alert"><%= problem.message %></small><% } %>
-      <button type="submit" class="secondary compact">Hand off</button>
-    </form>
+  <p class="panel-label" id="owner-label">Owner</p>
+  <%# The owner's name. For a team member who may change it, the name opens a short list of
+      what the rules allow, each one the same route as before. After a refused change the list
+      is open on its message. %>
+  <% const ownerName = ticket.owner_name ?? "Unassigned"; %>
+  <% const canAssignTo = staff && allowed.handOff && handOffTo.length > 0; %>
+  <% if (staff && (allowed.take || canAssignTo || allowed.release)) { %>
+  <details class="owner-control" <% if (problem?.form === "handOff") { %>open<% } %>>
+    <summary aria-describedby="owner-label"><%= ownerName %></summary>
+    <div class="owner-choices">
+      <% if (allowed.take) { %>
+      <form method="post" action="/tickets/<%= ticket.key %>/take">
+        <%- versionField %>
+        <button type="submit" class="secondary outline compact">Assign to me</button>
+      </form>
+      <% } %>
+      <% if (canAssignTo) { %>
+      <form method="post" action="/tickets/<%= ticket.key %>/hand-off">
+        <input type="hidden" name="expected_owner" value="<%= ticket.owner_id ?? "" %>" />
+        <%- versionField %>
+        <label>
+          Assign to
+          <select name="to" <% if (problem?.form === "handOff") { %>aria-describedby="hand-off-error"<% } %> <%= focusIf("handOff", "to") %>>
+            <% for (const member of handOffTo) { %>
+            <option value="<%= member.id %>"><%= member.name %></option>
+            <% } %>
+          </select>
+        </label>
+        <% if (problem?.form === "handOff") { %><small id="hand-off-error" role="alert"><%= problem.message %></small><% } %>
+        <button type="submit" class="secondary outline compact">Assign</button>
+      </form>
+      <% } %>
+      <% if (allowed.release) { %>
+      <form method="post" action="/tickets/<%= ticket.key %>/release">
+        <%- versionField %>
+        <button type="submit" class="secondary outline compact">Unassign</button>
+      </form>
+      <% } %>
+    </div>
   </details>
+  <% } else { %>
+  <p><%= ownerName %></p>
   <% } %>
   <% if (staff && agentHelp.current) { %>
   <p class="agent-help">Handed to <strong><%= agentHelp.current.name %></strong> (AI assistant), since <%- include("time", { iso: agentHelp.current.granted_at }) %>.</p>
@@ -153,10 +169,6 @@
 
 <% if (ticket.where_url) { %>
 <p class="page-link">Page: <a href="<%= ticket.where_url %>" rel="noopener noreferrer nofollow" class="user-text"><%= ticket.where_url %></a></p>
-<% } %>
-<%# The code change, for the team, as one plain line like the page above. %>
-<% if (staff && ticket.change_url) { %>
-<p class="page-link">Change: <a href="<%= ticket.change_url %>" rel="noopener noreferrer nofollow" class="user-text"><%= ticket.change_url %></a></p>
 <% } %>
 
 <%# The card: how the customer will know it is fixed, where the ticket stands, and the one step
@@ -295,13 +307,18 @@
 
 <%# Everything an assistant left on the ticket is one card. Evidence a person attached, with no
     assistant's work beside it, is one closed line. The customer sees the proof when asked. %>
+<%# A code change linked to the ticket is the first line of the evidence, for the team. %>
+<% const changeUrl = staff ? ticket.change_url : null; %>
 <% if (assistantCard) { %>
-<%- include("assistant-card", { card: assistantCard }) %>
-<% } else if (staff && evidence.length > 0) { %>
+<%- include("assistant-card", { card: assistantCard, changeUrl }) %>
+<% } else if (staff && (evidence.length > 0 || changeUrl)) { %>
 <details class="evidence-list">
-  <summary>Evidence (<%= evidence.length %>)</summary>
+  <summary>Evidence (<%= evidence.length + (changeUrl ? 1 : 0) %>)</summary>
+  <%- include("change-line", { changeUrl }) %>
+  <% if (evidence.length > 0) { %>
   <p class="evidence-note">As reported by whoever attached it. Not checked by Proofdesk.</p>
   <%- include("evidence", { evidence }) %>
+  <% } %>
 </details>
 <% } %>
 </div>
@@ -311,12 +328,21 @@
 <% for (const item of entries) { %>
 <article class="entry<% if (item.kind === "note") { %> note<% } %>" id="entry-<%= item.id %>">
   <header>
-    <strong><%= item.author_name %></strong><% if (item.author_kind === "agent") { %> <span class="tag">AI agent</span><% } %>
+    <strong><%= item.author_name %></strong><% if (item.author_kind === "agent") { %> <span class="tag">AI assistant</span><% } %>
     <small><% if (item.author_kind !== "agent") { %><%= item.author_role %> · <% } %><% if (item.kind === "note") { %><span class="note-label">internal note, the customer does not see this</span> · <% } %><%- include("time", { iso: item.created_at }) %></small>
   </header>
-  <p class="user-text"><%= item.body %></p>
+  <%# An assistant's long note shows its first paragraph, and the rest behind one line. A
+      person's message is always whole. %>
+  <% const parts = item.author_kind === "agent" && item.kind === "note" ? firstParagraph(item.body) : { first: item.body, rest: null }; %>
+  <p class="user-text"><%= parts.first %></p>
+  <% if (parts.rest !== null) { %>
+  <details class="note-rest">
+    <summary>Show the full note</summary>
+    <p class="user-text"><%= parts.rest %></p>
+  </details>
+  <% } %>
   <% if (item.based_on) { const source = entries.find((e) => e.id === item.based_on); if (source) { %>
-  <p><small>Published from a note by <%= source.author_name %><% if (source.author_kind === "agent") { %> (AI agent)<% } %>. Only the team sees this line.</small></p>
+  <p><small>Published from a note by <%= source.author_name %><% if (source.author_kind === "agent") { %> (AI assistant)<% } %>. Only the team sees this line.</small></p>
   <% } } %>
   <%# Only wording an assistant suggested for the customer is offered for publishing: never a
       review request or its working notes, so nothing internal reaches the customer by one click. %>
@@ -366,6 +392,7 @@
 
 <details class="history">
 <summary>History (<%= history.length %>)</summary>
+<p class="history-notices"><small><a href="/tickets/<%= ticket.key %>/notices">Email notices for this ticket</a></small></p>
 <div class="overflow-auto">
   <table>
     <thead>
@@ -390,29 +417,15 @@
 
 <%# Everything the panel does not hold, behind one closed disclosure: optional and rarer steps.
     After a refused form inside it, it opens on that form and its message. %>
-<% const moreForms = ["agreedCheck", "evidence", "changeLink", "ready"]; %>
+<% const moreForms = ["evidence", "ready"]; %>
 <% const removeAny = allowed.archive || allowed.delete; %>
-<% const hasMore = (staff && (allowed.agreeCheck || allowed.attachEvidence || allowed.linkChange || allowed.markReady || allowed.withdrawQuestion || (allowed.giveToAgent && !agentHelp.current && agentHelp.candidates.length > 0))) || allowed.release || removeAny; %>
+<% const hasMore = (staff && (allowed.attachEvidence || allowed.markReady || allowed.withdrawQuestion || (allowed.giveToAgent && !agentHelp.current && agentHelp.candidates.length > 0))) || removeAny; %>
 <% if (hasMore) { %>
 <details class="more-options" id="more-options" <% if (moreForms.includes(problem?.form)) { %>open<% } %>>
 <summary>More options</summary>
-<% if (staff && allowed.agreeCheck) { %>
-<details <% if (problem?.form === "agreedCheck") { %>open<% } %>>
-  <summary>Offer a clearer check</summary>
-  <form method="post" action="/tickets/<%= ticket.key %>/agreed-check">
-    <%- versionField %>
-    <label>
-      Team's check (leave empty to remove it)
-      <textarea name="agreed_check" rows="3" <% if (problem?.form === "agreedCheck") { %>aria-invalid="true" aria-describedby="agreed-check-error"<% } %> <%= focusIf("agreedCheck", "agreed_check") %>><%= ticket.agreed_check ?? ticket.fix_check ?? "" %></textarea>
-    </label>
-    <% if (problem?.form === "agreedCheck") { %><small id="agreed-check-error"><%= problem.message %></small><% } %>
-    <button type="submit" class="secondary compact">Save team's check</button>
-  </form>
-</details>
-<% } %>
 <% if (staff && allowed.attachEvidence) { %>
 <details <% if (problem?.form === "evidence") { %>open<% } %>>
-  <summary>Attach evidence</summary>
+  <summary>Add evidence</summary>
   <form method="post" action="/tickets/<%= ticket.key %>/evidence">
     <label>
       Kind
@@ -428,25 +441,13 @@
       <input type="text" name="summary" required maxlength="500" <% if (problem?.form === "evidence") { %>aria-invalid="true" aria-describedby="evidence-error"<% } %> <%= focusIf("evidence", "summary") %> />
     </label>
     <% if (problem?.form === "evidence") { %><small id="evidence-error"><%= problem.message %></small><% } %>
+    <%# For "A change", the link is the code change. %>
     <label>
       Link (optional)
       <input type="url" name="link" placeholder="https://" <%= focusIf("evidence", "link") %> />
     </label>
-    <button type="submit" class="secondary compact">Attach evidence</button>
+    <button type="submit" class="secondary compact">Add evidence</button>
   </form>
-</details>
-<% } %>
-<% if (staff && allowed.linkChange) { %>
-<details class="change-link" <% if (problem?.form === "changeLink") { %>open<% } %>><summary><%= ticket.change_url ? "Change the link" : "Add the code change link" %></summary>
-<form method="post" action="/tickets/<%= ticket.key %>/change-link" id="change-link">
-  <%- versionField %>
-  <label>
-    Link to the code change
-    <input type="url" id="change-url" name="change_url" required <% if (problem?.form === "changeLink") { %>aria-invalid="true" aria-describedby="change-link-error"<% } %> <%= focusIf("changeLink", "change_url") %> />
-  </label>
-  <% if (problem?.form === "changeLink") { %><small id="change-link-error"><%= problem.message %></small><% } %>
-  <button type="submit" class="secondary compact">Save change link</button>
-</form>
 </details>
 <% } %>
 <% if (staff && allowed.markReady) { %>
@@ -454,7 +455,7 @@
 <% const ticked = problem?.form === "ready" ? (problem.evidenceIds ?? []) : []; %>
 <%# The one press at the top asks with nothing more. The details are optional. %>
 <details class="ask-details" id="ask" <% if (problem?.form === "ready") { %>open<% } %>>
-<summary>Ask with details (optional)</summary>
+<summary>Ask with details</summary>
 <form method="post" action="/tickets/<%= ticket.key %>/ready" class="ask">
   <%- versionField %>
   <p><small>Every box is optional. The customer sees what you write.</small></p>
@@ -497,7 +498,7 @@
 <% } %>
 <% if (staff && allowed.giveToAgent && !agentHelp.current && agentHelp.candidates.length > 0) { %>
 <details>
-  <summary>Hand to an AI assistant…</summary>
+  <summary>Hand to an AI assistant</summary>
   <form method="post" action="/tickets/<%= ticket.key %>/agent">
     <%- versionField %>
     <label>
@@ -512,12 +513,6 @@
     <button type="submit" class="secondary compact">Hand to assistant</button>
   </form>
 </details>
-<% } %>
-<% if (allowed.release) { %>
-<form method="post" action="/tickets/<%= ticket.key %>/release">
-  <%- versionField %>
-  <button type="submit" class="secondary outline compact">Release it</button>
-</form>
 <% } %>
 <%# Archive and permanent delete: set apart, last. %>
 <% if (removeAny) { %>

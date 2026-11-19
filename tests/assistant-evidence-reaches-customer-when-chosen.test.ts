@@ -105,7 +105,7 @@ describe("the customer's view of the history", () => {
     const { app, attach } = await handed();
     await attach({ kind: "note", summary: "Checked it." });
     const page = (await as(app, customerOne).get("/tickets/SUP-1")).text;
-    expect(page).toContain("The team&#39;s assistant (AI agent)");
+    expect(page).toContain("The team&#39;s assistant (AI assistant)");
     expect(page).not.toContain("Helper");
   });
 });

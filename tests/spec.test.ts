@@ -209,9 +209,7 @@ describe("deciding on a spec", () => {
       const card = parse((await as(app, who).get("/tickets/SUP-1")).text).querySelector(
         ".assistant-card",
       )!;
-      expect(card.querySelector(".card-outcome")?.text).toBe(
-        "Accepted as the way to test by Team Member.",
-      );
+      expect(card.querySelector(".card-outcome")?.text).toBe("Accepted by Team Member.");
       expect(card.querySelectorAll("form")).toHaveLength(0);
     }
   });
@@ -276,14 +274,14 @@ describe("the spec on the ticket page", () => {
       "Printing ten pages in a row works",
     );
     expect(card.querySelectorAll(".card-decision button").map((b) => b.text)).toEqual([
-      "Accept as the way to test",
+      "Accept test",
       "Discard",
     ]);
     const details = card.querySelector("details.card-details")!;
     expect(details.hasAttribute("open")).toBe(false);
     expect(details.querySelector("summary")?.text).toBe("Details");
     expect(details.text).toContain(
-      "2 scenarios, proposed by Helper (AI agent). Reported, not verified by Proofdesk.",
+      "2 scenarios, proposed by Helper (AI assistant). Reported, not verified by Proofdesk.",
     );
     expect(details.querySelectorAll(".scenarios li")).toHaveLength(2);
     expect(page.querySelector(".spec-prompt")).toBeNull();
