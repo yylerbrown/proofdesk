@@ -70,6 +70,9 @@ export function createTicketService(
   options: ServiceOptions = {},
 ) {
   const teamMembers = options.teamMembers ?? (() => []);
+  // Without a list of the team, nobody is known to have left it.
+  const isOnTeam = (personId: string) =>
+    options.teamMembers === undefined || teamMembers().some((member) => member.id === personId);
   pinPrefix(db, prefix);
   const shared = createShared(db, prefix, budget);
 
@@ -84,7 +87,7 @@ export function createTicketService(
     // handOffCandidates
     ...createWorkflow(shared, teamMembers),
     // resolve-and-reopen.ts: resolveWithReason, reopen
-    ...createResolveAndReopen(shared),
+    ...createResolveAndReopen(shared, isOnTeam),
     // customer-question.ts: markReady, withdrawQuestionAsked, answer
     ...createCustomerQuestion(shared),
     // conversation.ts: addEntry, addNote, askOwnerToReview, requestReview, listEntries
