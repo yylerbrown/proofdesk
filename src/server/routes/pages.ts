@@ -31,7 +31,13 @@ import { fingerprint } from "../pages/loaded-text.js";
 import { messageRefusalLine, ticketFormPictureLine } from "../pages/picture-refusal.js";
 import { sendPicturesFewAtOnce } from "../pictures/sending.js";
 import { keepUploaderToken, picturesOf, uploaderToken, viewerToken } from "../pictures/upload.js";
-import { noMatchWords, readListPageQuery, sortHeaders } from "../pages/list-query.js";
+import {
+  noMatchWords,
+  olderResolvedWords,
+  readListPageQuery,
+  recentResolvedCutoff,
+  sortHeaders,
+} from "../pages/list-query.js";
 import { sameText, type ListSort, type TicketListFilter } from "../tickets/schemas.js";
 import { rememberBulkOutcome, takeBulkOutcome } from "../pages/bulk-outcome.js";
 import { customerStanding } from "../pages/standing.js";
@@ -798,7 +804,12 @@ export function pagesRouter(
     const current = view.status;
     const { owner, q, sort } = view;
     const pageNumber = view.page;
-    const tickets = service.listTickets(current, actor, pageNumber, { owner, q }, sort);
+    // "All" shows the open tickets and the ones resolved in the last 14 days. Older ones stay
+    // under Resolved, and a line under the list says how many and links there.
+    const cutoff = recentResolvedCutoff(current, q, new Date());
+    const tickets = service.listTickets(current, actor, pageNumber, { owner, q }, sort, cutoff);
+    const olderResolved =
+      cutoff === undefined ? 0 : service.countResolvedBefore(actor, { owner, q }, cutoff);
     // Beside each status filter: how many tickets it holds with the same owner filter and search.
     const counts = service.countTickets(actor, { owner, q });
     // Every link on the list keeps the other filters, so a filtered view can be shared.
@@ -850,6 +861,13 @@ export function pagesRouter(
       narrowed: owner !== undefined || q !== undefined,
       noMatch: noMatchWords(current, owner, q),
       counts,
+      olderResolved:
+        olderResolved === 0
+          ? null
+          : {
+              words: olderResolvedWords(olderResolved),
+              href: listHref({ ...filters, status: "resolved" }),
+            },
       // Each header that sorts, with the address a press opens. A new sort starts on page one.
       sortHeaders: sortHeaders(sort).map((header) => ({
         ...header,

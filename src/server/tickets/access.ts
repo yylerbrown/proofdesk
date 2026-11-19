@@ -34,6 +34,8 @@ export function narrowed(narrowing: ListNarrowing, actor: Actor): repository.Nar
     search: narrowing.q ? `%${narrowing.q.replace(/[\\%_]/g, "\\$&")}%` : null,
     // And searched as words, in any order and any form.
     match: narrowing.q ? listSearchMatch(narrowing.q) : null,
+    // Only the list page leaves older resolved tickets out, and it says so itself.
+    resolvedSince: null,
   };
 }
 

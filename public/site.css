@@ -2920,15 +2920,18 @@ dl.run-facts dd {
 
 /*
  * Under the team's tickets, one quiet sentence: Proofdesk works with their own AI assistant. Small
- * muted text, so it never pushes the tickets down.
+ * muted text, so it never pushes the tickets down. The line saying how many older resolved
+ * tickets "All" leaves out looks the same.
  */
-.assistant-invite {
+.assistant-invite,
+.older-resolved {
   margin: var(--pd-space-4) 0 0;
   color: var(--pd-muted);
 }
 /* On a phone each link keeps a 44-pixel tap area without making the line taller. */
 @media (max-width: 639px) {
   .assistant-invite a,
+  .older-resolved a,
   .list-sort a {
     display: inline-block;
     margin-block: -12px;
