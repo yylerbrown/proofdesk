@@ -1,7 +1,7 @@
 # JSON API
 
 Every route is under `/api` and speaks JSON. The routes are built from one table, `ACTIONS` in
-`src/server/api/actions.ts`, and `tests/readme.test.ts` checks this list against it. `GET /api`
+`src/server/api/actions.ts`, and `tests/docs/readme.test.ts` checks this list against it. `GET /api`
 is a guide for agents, and `GET /api/openapi.json` the full description, generated from the same
 table. AI assistants reach the same actions as MCP tools; [`AGENTS_GUIDE.md`](AGENTS_GUIDE.md)
 covers that side.

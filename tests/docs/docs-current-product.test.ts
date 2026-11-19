@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import { describe, expect, it } from "vitest";
-import { markReadySchema } from "../src/server/tickets/schemas.js";
+import { markReadySchema } from "../../src/server/tickets/schemas.js";
 
 // The README and the docs must say what the product does now. Each check below ties a sentence
 // in the docs to the code that makes it true, so the words cannot fall behind the product again.
