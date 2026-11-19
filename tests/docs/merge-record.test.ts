@@ -17,11 +17,13 @@ describe("the merge record in AGENTS.md", () => {
     expect(review).not.toMatch(/Nothing merges before CI passes/i);
   });
 
-  it("names the same exceptions as the specification", () => {
-    const named = [...reviewSection().matchAll(/#(\d+)/g)].map((m) => m[1]);
-    expect(named).toEqual(["1", "96"]);
+  it("keeps the dated merge history in the specification, not in the working rules", () => {
+    const review = reviewSection();
+    expect(review.match(/#\d+/g)).toBeNull();
+    expect(review).not.toMatch(/\d{1,2}:\d{2} UTC|\d+ November/);
+    expect(review).toContain("`docs/SPEC.md`");
     const spec = fs.readFileSync("docs/SPEC.md", "utf8");
-    for (const number of named) expect(spec).toContain(`#${number}`);
+    for (const exception of ["#1", "#96"]) expect(spec).toContain(exception);
   });
 
   it("is what the README's verification section points to, with the local gate", () => {
@@ -31,5 +33,9 @@ describe("the merge record in AGENTS.md", () => {
     expect(section).toContain("](AGENTS.md)");
     expect(section).toContain("local gate");
     expect(section).not.toContain("CI runs all of them on every pull request");
+    // The dated history of how CI stopped is process detail a first reader does not need.
+    expect(section).not.toContain("GitHub's CI ran them until");
+    expect(section).toContain("](docs/SPEC.md#standing-rules)");
+    expect(section).not.toContain("the public copy's");
   });
 });

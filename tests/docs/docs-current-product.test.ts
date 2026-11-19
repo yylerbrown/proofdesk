@@ -92,7 +92,9 @@ describe("email notices, as the README describes them", () => {
     expect(limits).toContain("The demo never sends");
     expect(limits).not.toContain("nobody can turn them off");
     const features = section(readme, "## Try each feature in a minute");
-    expect(features).toContain("(`/tickets/SUP-1/notices`)");
+    // The page is named by its pattern: a fixed key such as SUP-1 changes with the seed.
+    expect(features).toContain("(`/tickets/<key>/notices`");
+    expect(readme).not.toContain("/tickets/SUP-1/notices");
   });
 });
 
