@@ -164,8 +164,8 @@ describe("starting work", () => {
     const { app } = buildTestApp();
     await admin(app).post("/api/tickets").send(valid);
     const unowned = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    const panel = unowned.querySelector("aside.ticket-panel")!;
-    expect(panel.querySelectorAll(".panel-label").map((label) => label.text)).toEqual([
+    const panel = unowned.querySelector(".ticket-facts")!;
+    expect(panel.querySelectorAll(".fact-label").map((label) => label.text)).toEqual([
       "Status",
       "Owner",
     ]);
@@ -174,7 +174,7 @@ describe("starting work", () => {
     );
     // The owner's one control assigns it without starting work.
     expect(panel.querySelector("form[action$='/take'] button")?.text).toBe("Assign to me");
-    // The status row's In Progress takes the ticket too, so it is the same one step as the top.
+    // The Status menu's In Progress takes the ticket too, so it is the same one step as the top.
     expect(panel.querySelector("form[action$='/status']")).toBeNull();
     await as(app, teamActor).post("/api/tickets/SUP-1/take");
     const mine = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);

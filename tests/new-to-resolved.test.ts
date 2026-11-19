@@ -16,8 +16,8 @@ import {
 } from "./helpers.js";
 
 // The minimum features, as a first-time visitor meets them: a ticket starts New, one action owns
-// it and starts work, and Resolved is never a dead end. The status is one row of the three
-// statuses, and when this viewer cannot press one, one short line says who can.
+// it and starts work, and Resolved is never a dead end. The status is a small menu of the three
+// statuses, and when this viewer cannot choose one, its title says who can.
 
 const valid = {
   title: "Printer jams",
@@ -28,7 +28,10 @@ const valid = {
 
 const page = async (app: Express, who: typeof teamActor) =>
   parse((await as(app, who).get("/tickets/SUP-1")).text);
-const rule = (html: ReturnType<typeof parse>) => html.querySelector(".status-rule")?.text.trim();
+const rule = (html: ReturnType<typeof parse>) =>
+  html.querySelector(".ticket-facts [title]")?.getAttribute("title");
+const resolveLink = (html: ReturnType<typeof parse>) =>
+  html.querySelector(".status-menu a[href$='?step=resolve']");
 
 async function filed() {
   const built = buildTestApp();
@@ -47,7 +50,9 @@ describe("a new ticket", () => {
       .type("form")
       .send({ title: "Printer jams", description: "It jams on page two.", fix_check: "" });
     expect(res.status).toBe(303);
-    expect((await page(app, customerOne)).querySelector(".ticket-panel .badge")?.text).toBe("New");
+    expect((await page(app, customerOne)).querySelector(".ticket-standing")?.text).toBe(
+      "New, not yet taken by the team",
+    );
     // Editing an existing ticket says nothing about how it starts.
     const edit = parse((await as(app, customerOne).get("/tickets/SUP-1/edit")).text);
     expect(edit.querySelector(".initial-status")).toBeNull();
@@ -69,7 +74,7 @@ describe("where Resolved comes from", () => {
     const { app } = await filed();
     const fresh = await page(app, teamActor);
     expect(fresh.querySelector(".next-action button")?.text).toBe("Take ticket and start work");
-    expect(fresh.querySelector(".status-control details.resolve summary")?.text).toBe("Resolved");
+    expect(resolveLink(fresh)?.text).toBe("Resolved");
     // Nothing is greyed, so the row needs no line under it. The success message says that
     // In Progress also made you the owner.
     expect(rule(fresh)).toBeUndefined();
@@ -84,16 +89,16 @@ describe("where Resolved comes from", () => {
     expect(details.querySelector("summary")?.text).toBe("Ask with details");
     expect(details.querySelector("button[type=submit]")?.hasAttribute("disabled")).toBe(false);
     expect(owner.querySelector("#ask-blocked-why")).toBeNull();
-    expect(owner.querySelector(".status-control details.resolve summary")?.text).toBe("Resolved");
+    expect(resolveLink(owner)?.text).toBe("Resolved");
 
     // An admin may resolve it with a reason too, but only its owner asks the customer, so the
     // admin is shown no ask at all rather than a greyed one.
     const byAdmin = await page(app, adminActor);
-    expect(byAdmin.querySelector(".status-control details.resolve")).not.toBeNull();
+    expect(resolveLink(byAdmin)).not.toBeNull();
     expect(byAdmin.querySelector("#ask-blocked-why")).toBeNull();
     expect(byAdmin.querySelector("main")!.text).not.toContain("Ask the customer to verify");
     // The customer reads the status, with no control to change it.
-    expect((await page(app, customerOne)).querySelector(".status-control .status-row")).toBeNull();
+    expect((await page(app, customerOne)).querySelector(".status-menu")).toBeNull();
   });
 
   it("does not tell the read-only admin preview to take a ticket it cannot take", async () => {
@@ -129,25 +134,24 @@ describe("where Resolved comes from", () => {
     const { app } = await filed();
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
     const before = await page(app, teamActor);
-    // The page to try starts from where the customer said it happened, and is optional.
-    const tryUrl = before.querySelector("#ask input[name=try_url]")!;
-    expect(tryUrl.getAttribute("value")).toBe("https://example.com/print");
-    expect(tryUrl.parentNode!.text).toContain("Page on the live site to try (optional)");
-    expect(tryUrl.hasAttribute("required")).toBe(false);
+    // The details are one optional message; the API takes the page to try and the rest.
+    const message = before.querySelector("#ask textarea[name=response]")!;
+    expect(message.parentNode!.text).toContain("Message to the customer (optional)");
+    expect(message.hasAttribute("required")).toBe(false);
     await as(app, teamActor)
       .post("/api/tickets/SUP-1/ready")
       .send({ try_url: "https://example.com/print", tried: "Printed.", result: "No jam." });
 
     const team = await page(app, teamActor);
-    expect(team.querySelector(".ticket-panel .badge")?.text).toBe("In Progress");
+    expect(team.querySelector(".ticket-facts .badge")?.text).toBe("In Progress");
     expect(team.querySelector(".ticket-card .card-line")?.text.trim()).toMatch(
       /^Waiting for the customer's answer\. Asked /,
     );
-    // Said once, in the main column, and not again in the panel.
+    // Said once, on the card, and not again with the status.
     expect(rule(team)).toBeUndefined();
 
     const customer = await page(app, customerOne);
-    expect(customer.querySelector(".ticket-panel .badge")?.text).toBe("In Progress");
+    expect(customer.querySelector(".ticket-standing")?.text).toBe("In Progress, with Team Member");
     // The question itself is on the page, in place of a line saying it is waiting.
     expect(customer.querySelector("#did-this-fix-it")).not.toBeNull();
     expect(customer.querySelector("main")!.text).not.toContain("Waiting for the customer");

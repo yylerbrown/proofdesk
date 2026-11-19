@@ -43,20 +43,18 @@ async function customerSaysNo(app: Express, words: string) {
 
 const ticketPage = async (app: Express, who = teamActor) =>
   parse((await as(app, who).get("/tickets/SUP-1")).text);
+/** The ticket page with the resolve form shown, as the Status menu's Resolved opens it. */
+const resolvePage = async (app: Express) =>
+  parse((await as(app, teamActor).get("/tickets/SUP-1?step=resolve")).text);
 
 describe("the resolve form", () => {
   it("starts on an empty, required choice while the customer's No stands", async () => {
     const { app } = await setup();
     // Otherwise it starts on the "Fixed." reason (status-row-reads-as-one-control).
     await customerSaysNo(app, "Still jams on page two.");
-    const select = (await ticketPage(app)).querySelector('details.resolve select[name="reason"]')!;
-    expect(select.hasAttribute("required")).toBe(true);
-    const first = select.querySelectorAll("option")[0]!;
-    expect([first.getAttribute("value"), first.text, first.hasAttribute("selected")]).toEqual([
-      "",
-      "Choose a reason",
-      true,
-    ]);
+    const radios = (await resolvePage(app)).querySelectorAll('form.resolve input[name="reason"]');
+    expect(radios.every((radio) => radio.hasAttribute("required"))).toBe(true);
+    expect(radios.some((radio) => radio.hasAttribute("checked"))).toBe(false);
     // Sent without a choice anyway, it is refused and the ticket stays open.
     const refused = await as(app, teamActor)
       .post("/tickets/SUP-1/resolve")
@@ -70,12 +68,12 @@ describe("the resolve form", () => {
   it("offers 'the customer has not replied' only while that is true", async () => {
     const { app } = await setup();
     const values = async () =>
-      (await ticketPage(app))
-        .querySelectorAll('details.resolve select[name="reason"] option')
-        .map((option) => option.getAttribute("value"));
+      (await resolvePage(app))
+        .querySelectorAll('form.resolve input[name="reason"]')
+        .map((radio) => radio.getAttribute("value"));
     expect(await values()).toContain("fixed_no_reply");
     await customerSaysNo(app, "Still jams on page two.");
-    expect(await values()).toEqual(["", "duplicate", "wont_fix", "cannot_reproduce", "other"]);
+    expect(await values()).toEqual(["duplicate", "wont_fix", "cannot_reproduce", "other"]);
     // Sent anyway, the service refuses it beside the reason.
     const res = await as(app, teamActor)
       .post("/api/tickets/SUP-1/resolve")
@@ -89,14 +87,14 @@ describe("the resolve form", () => {
 
   it("marks the duplicate and note boxes, which the stylesheet shows only when used", async () => {
     const { app } = await setup();
-    const form = (await ticketPage(app)).querySelector("details.resolve form")!;
+    const form = (await resolvePage(app)).querySelector("form.resolve")!;
     expect(form.querySelector('label.resolve-duplicate input[name="duplicate_of"]')).not.toBeNull();
     expect(form.querySelector('label.resolve-note textarea[name="note"]')).not.toBeNull();
     const css = fs.readFileSync(new URL("../public/site.css", import.meta.url), "utf8");
     expect(css).toContain(
-      '.resolve form:not(:has(option[value="duplicate"]:checked)) .resolve-duplicate',
+      'form.resolve:not(:has(input[value="duplicate"]:checked)) .resolve-duplicate',
     );
-    expect(css).toContain('.resolve form:not(:has(option[value="other"]:checked)) .resolve-note');
+    expect(css).toContain('form.resolve:not(:has(input[value="other"]:checked)) .resolve-note');
   });
 });
 

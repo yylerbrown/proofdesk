@@ -3,8 +3,7 @@
 // Escape closes it and puts focus back on the button that opened it, and moving focus or
 // clicking somewhere else on the page closes it too.
 //
-// The ticket's Resolve panel is a details element too. It holds a form, so it gets only the
-// Escape key: moving focus or clicking elsewhere never closes it and hides what was typed.
+// The ticket page's Status and Owner menus are details elements too, and behave the same way.
 
 /** The button that opens a menu: the details element's summary. */
 export type MenuButton = { focus(): void };
@@ -44,16 +43,12 @@ export function wireMenu(menu: Menu, button: MenuButton, page: Page) {
 }
 
 if (typeof document !== "undefined") {
-  for (const menu of document.querySelectorAll<HTMLDetailsElement>("details.person-menu")) {
+  for (const menu of document.querySelectorAll<HTMLDetailsElement>(
+    "details.person-menu, details.fact-menu",
+  )) {
     const button = menu.querySelector("summary");
     if (button === null) continue;
     // A real details element has all the parts Menu names; its event types are only wider.
     wireMenu(menu as unknown as Menu, button, document as unknown as Page);
-  }
-  for (const panel of document.querySelectorAll<HTMLDetailsElement>(
-    "details.resolve, details.reopen",
-  )) {
-    const button = panel.querySelector("summary");
-    if (button !== null) closeOnEscape(panel as unknown as Menu, button);
   }
 }

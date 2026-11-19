@@ -40,9 +40,9 @@ async function answer(app: Express, fixed: "yes" | "no", comment?: string) {
 }
 
 const reasonsOffered = async (app: Express) =>
-  parse((await as(app, teamActor).get("/tickets/SUP-1")).text)
-    .querySelectorAll('details.resolve select[name="reason"] option')
-    .map((option) => option.getAttribute("value"));
+  parse((await as(app, teamActor).get("/tickets/SUP-1?step=resolve")).text)
+    .querySelectorAll('form.resolve input[name="reason"]')
+    .map((radio) => radio.getAttribute("value"));
 
 const resolveNoReply = (app: Express) =>
   as(app, teamActor).post("/api/tickets/SUP-1/resolve").send({ reason: "fixed_no_reply" });
@@ -75,7 +75,7 @@ describe("'Fixed, but the customer has not replied'", () => {
 describe("the resolve form's note box", () => {
   it("shows only for Other, the one reason that needs it", () => {
     const css = fs.readFileSync(new URL("../public/site.css", import.meta.url), "utf8");
-    expect(css).toContain('.resolve form:not(:has(option[value="other"]:checked)) .resolve-note');
+    expect(css).toContain('form.resolve:not(:has(input[value="other"]:checked)) .resolve-note');
   });
 
   it("sends no hidden words: a note left behind with another reason is dropped", async () => {

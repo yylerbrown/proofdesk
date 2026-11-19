@@ -35,29 +35,24 @@ const shown = (html: ReturnType<typeof parse>, text: string) =>
   html.querySelector("main")!.text.split(text).length - 1;
 
 describe("the customer's ticket page", () => {
-  it("holds their words, the status and owner, Edit on the panel's last line, nothing of the team's", async () => {
+  it("holds their words, the status and owner in one line, Edit under More options, nothing of the team's", async () => {
     const { app } = await inProgress();
     const html = await page(app, customerOne);
     expect(html.querySelector(".back")?.text.trim()).toBe("My tickets / SUP-1");
-    const panel = html.querySelector("aside.ticket-panel")!;
-    expect(panel.querySelectorAll(".panel-label, h2").map((h) => h.text)).toEqual([
-      "Status",
-      "Owner",
-    ]);
-    expect(
-      panel.querySelectorAll("p:not(.panel-label), blockquote").map((el) => el.text.trim()),
-    ).toEqual(["In Progress", "Team Member", "Edit ticket"]);
-    // Their words are on the card, once.
+    // Where it stands and whose turn it is, in plain words, with nothing to press.
+    const standing = html.querySelector(".ticket-standing")!;
+    expect(standing.text).toBe("In Progress, with Team Member");
+    expect(standing.querySelector("a, button, details, form")).toBeNull();
+    // Their words are under the check's small label, once.
     expect(html.querySelector(".ticket-card blockquote")?.text).toBe(words);
     expect(shown(html, words)).toBe(1);
     expect(html.querySelector("main")!.text).not.toContain("Printed ten pages twice");
-    expect(panel.querySelector(".panel-edit a.edit-link")?.text).toBe("Edit ticket");
     expect(
       html
         .querySelector("details.more-options")
         ?.querySelectorAll("a")
         .map((a) => a.text),
-    ).toEqual(["Archive ticket"]);
+    ).toEqual(["Edit ticket", "Archive ticket"]);
   });
 
   it("shows the check once while they are asked: in the question, not again beside it", async () => {
@@ -66,7 +61,7 @@ describe("the customer's ticket page", () => {
     const html = await page(app, customerOne);
     expect(html.querySelector("#did-this-fix-it")?.text).toContain(words);
     expect(shown(html, words)).toBe(1);
-    expect(html.querySelector(".ticket-panel .badge")?.text).toBe("In Progress");
+    expect(html.querySelector(".ticket-standing")?.text).toBe("In Progress, with Team Member");
   });
 });
 
@@ -75,19 +70,18 @@ describe("the team's ticket page", () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
     const html = await page(app, teamActor);
-    const panel = html.querySelector("aside.ticket-panel")!;
+    const top = html.querySelector(".ticket-facts")!;
     expect(html.querySelector(".next-action button")?.text).toBe("Take ticket and start work");
     // A native details element: a summary a keyboard can open, with the actions inside it.
-    const more = html.querySelector(".ticket-thread details.more-options")!;
+    const more = html.querySelector(".ticket-last-row details.more-options")!;
     expect(more.firstElementChild?.tagName).toBe("SUMMARY");
     expect(more.firstElementChild?.text).toBe("More options");
     expect(more.hasAttribute("open")).toBe(false);
     expect(more.querySelector("details > summary")?.text).toBe("Add evidence");
-    // The owner's one control is in the panel, and nothing secondary is.
-    expect(panel.querySelectorAll("section form[action$='/take']")).toHaveLength(1);
-    expect(panel.querySelector("details.more-options")).toBeNull();
-    // Its one link is the quiet Edit ticket, on its last line.
-    expect(panel.querySelectorAll("a").map((a) => a.text)).toEqual(["Edit ticket"]);
+    // The owner's menu is in the line under the title, and nothing secondary is.
+    expect(top.querySelectorAll(".owner-menu form[action$='/take']")).toHaveLength(1);
+    expect(top.querySelector("details.more-options")).toBeNull();
+    expect(top.querySelector("a[href$='/edit']")).toBeNull();
   });
 
   it("folds the evidence list and an existing change link away", async () => {
@@ -107,7 +101,7 @@ describe("the team's ticket page", () => {
 });
 
 describe("the small controls on a phone", () => {
-  it("are 44-pixel tap targets there: History, the panel's disclosures, More options and Copy", () => {
+  it("are 44-pixel tap targets there: History, Status and Owner, the message box, More options and Copy", () => {
     const css = fs.readFileSync("public/site.css", "utf8");
     const phone = [...css.matchAll(/@media \(max-width: 639px\) \{([\s\S]*?)\n\}/g)].map(
       (m) => m[1]!,
@@ -117,7 +111,8 @@ describe("the small controls on a phone", () => {
         new RegExp(`${selector.source}[^{]*\\{[^}]*min-height: 44px`).test(block),
       );
     expect(rule(/details\.history > summary/)).toBe(true);
-    expect(rule(/\.ticket-panel details > summary/)).toBe(true);
+    expect(rule(/\.ticket-facts details\.fact-menu > summary/)).toBe(true);
+    expect(rule(/details\.reply-fold > summary/)).toBe(true);
     expect(rule(/details\.more-options summary/)).toBe(true);
     expect(rule(/button\.copy/)).toBe(true);
   });

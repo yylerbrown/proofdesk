@@ -17,29 +17,30 @@ test("the resolve form shows each box only for the reason that needs it", async 
   await page.goto("/sign-in");
   await page.getByRole("button", { name: "View as Team Member" }).click();
   await page.goto(`/tickets/${key}`);
-  const resolve = page.locator("details.resolve");
-  await resolve.locator("summary").click();
-  const reason = resolve.getByRole("combobox", { name: "Reason" });
+  await page.locator("details.status-menu summary").click();
+  await page.locator("details.status-menu").getByRole("link", { name: "Resolved" }).click();
+  const resolve = page.locator("form#resolve-form");
+  const reason = (name: string) => resolve.getByRole("radio", { name, exact: true });
   const duplicateOf = resolve.getByRole("textbox", { name: "Duplicate of" });
   const note = resolve.getByRole("textbox", { name: "Why?" });
 
-  // It starts with no reason chosen: only the reason and the Resolve button show.
-  await expect(reason).toHaveValue("");
+  // It starts with no reason chosen: only the five reasons and the buttons show.
+  await expect(resolve.getByRole("radio", { checked: true })).toHaveCount(0);
   await expect(duplicateOf).toBeHidden();
   await expect(note).toBeHidden();
 
-  await reason.selectOption("other");
+  await reason("Other").check();
   await expect(note).toBeVisible();
   await expect(duplicateOf).toBeHidden();
   await note.fill("Typed under Other.");
 
-  await reason.selectOption("duplicate");
+  await reason("Duplicate of another ticket").check();
   await expect(duplicateOf).toBeVisible();
   await expect(note).toBeHidden();
 
   // Resolving with another reason leaves the hidden note behind.
-  await reason.selectOption("wont_fix");
-  await resolve.getByRole("button", { name: "Resolve", exact: true }).click();
+  await reason("Won't fix").check();
+  await resolve.getByRole("button", { name: "Resolve ticket" }).click();
   const line = page.locator(".ticket-card .card-line");
   await expect(line).toContainText("Resolved by the team: Won't fix.");
   await expect(line).not.toContainText("Typed under Other.");

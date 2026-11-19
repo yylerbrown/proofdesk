@@ -37,6 +37,8 @@ import { roleNowOf } from "./people/role-now.js";
 import { peopleRouter } from "./routes/people.js";
 import { guide, openApiDocument } from "./api/describe.js";
 import { siteAddress } from "./routes/connections.js";
+import { noticeCountFor } from "./notify/view.js";
+import { parseKey } from "./tickets/keys.js";
 // The limits live in limits.ts, where the API's guide reads them too.
 import { DEMO_CONNECTIONS_PER_HOUR, FILING_LIMIT, SIGN_IN_LIMIT, WRITE_LIMIT } from "./limits.js";
 
@@ -246,7 +248,11 @@ export function createApp(config: Config, db: Db, options: { log?: LogLine } = {
   app.use(express.urlencoded({ extended: false, limit: BODY_LIMIT }));
   app.use(assistantRunRouter(rootDir, () => tickets.recordedRunKey()));
   app.use(signInRouter(config, auth, db, () => tickets.hasDemoSeed()));
-  app.use(pagesRouter(tickets));
+  app.use(
+    pagesRouter(tickets, (key, actor) =>
+      noticeCountFor(db, parseKey(config.ticketPrefix, key)!, actor),
+    ),
+  );
   app.use(peopleRouter(createPeopleService(db, config)));
   app.use(noticesRouter(tickets, db, config.ticketPrefix));
   app.use(

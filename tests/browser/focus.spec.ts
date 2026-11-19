@@ -47,6 +47,7 @@ test("focus starts from the saved line, the sent line or the search box", async 
   await test.step("a reply lands on the sent line by the message box, which has focus", async () => {
     // A short window, so the sent line starts below the first screen and the browser must scroll to it.
     await page.setViewportSize({ width: 1280, height: 480 });
+    await page.locator("summary", { hasText: "Write a message" }).click();
     await page.locator("#entry-body").fill("A reply that lands on the conversation.");
     await page.getByRole("button", { name: "Send", exact: true }).click();
     await expect(page).toHaveURL(/#sent$/);
@@ -75,7 +76,9 @@ test("focus starts from the saved line, the sent line or the search box", async 
   });
 });
 
-test("the team's ticket page: Shift+Tab, and Escape on Resolve and Reopen", async ({ page }) => {
+test("the team's ticket page: Shift+Tab, Escape on the Status and Owner menus, and Reopen", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await signIn(page, "Customer One");
   await page.goto("/tickets/new");
@@ -87,6 +90,9 @@ test("the team's ticket page: Shift+Tab, and Escape on Resolve and Reopen", asyn
   await page.goto(ticketUrl);
 
   await test.step("a control reached with Shift+Tab is not left under the header", async () => {
+    await page.locator("summary", { hasText: "Reply or add a note" }).click();
+    // History open under the box gives the page room to scroll Send up under the header.
+    await page.locator("details.history > summary").click();
     // A short window, so the page can scroll far enough to put Send under the header.
     await page.setViewportSize({ width: 1280, height: 300 });
     const send = page.getByRole("button", { name: "Send reply to customer" });
@@ -107,41 +113,37 @@ test("the team's ticket page: Shift+Tab, and Escape on Resolve and Reopen", asyn
     await page.setViewportSize({ width: 1280, height: 800 });
   });
 
-  await test.step("Escape closes Resolve and puts focus back on it", async () => {
-    const resolve = page.locator("details.resolve");
-    const summary = resolve.locator("summary");
-    await summary.focus();
-    await page.keyboard.press("Enter");
-    await expect(resolve).toHaveAttribute("open", "");
-    await page.keyboard.press("Tab");
-    await page.keyboard.press("Escape");
-    await expect(resolve).not.toHaveAttribute("open");
-    await expect(summary).toBeFocused();
-  });
+  for (const name of ["status", "owner"]) {
+    await test.step(`Escape closes the ${name} menu and puts focus back on it`, async () => {
+      const menu = page.locator(`details.${name}-menu`);
+      const summary = menu.locator("summary");
+      await summary.focus();
+      await page.keyboard.press("Enter");
+      await expect(menu).toHaveAttribute("open", "");
+      await page.keyboard.press("Tab");
+      await page.keyboard.press("Escape");
+      await expect(menu).not.toHaveAttribute("open");
+      await expect(summary).toBeFocused();
+    });
+  }
 
-  await test.step("Resolve holds a form, so a click elsewhere leaves it open", async () => {
-    const resolve = page.locator("details.resolve");
-    await resolve.locator("summary").click();
-    await expect(resolve).toHaveAttribute("open", "");
+  await test.step("a click elsewhere closes the Status menu", async () => {
+    const menu = page.locator("details.status-menu");
+    await menu.locator("summary").click();
+    await expect(menu).toHaveAttribute("open", "");
     await page.getByRole("heading", { level: 1 }).click();
-    await expect(resolve).toHaveAttribute("open", "");
-    await resolve.locator("summary").click();
+    await expect(menu).not.toHaveAttribute("open");
   });
 
-  await test.step("Escape closes Reopen and puts focus back on it", async () => {
-    const resolve = page.locator("details.resolve");
-    await resolve.locator("summary").click();
-    await resolve.locator('select[name="reason"]').selectOption("wont_fix");
-    await resolve.locator('button[type="submit"]').click();
+  await test.step("Reopen from the Status menu lands in its reason box", async () => {
+    await page.locator("details.status-menu summary").click();
+    await page.locator("details.status-menu").getByRole("link", { name: "Resolved" }).click();
+    await page.getByRole("radio", { name: "Won't fix" }).check();
+    await page.getByRole("button", { name: "Resolve ticket" }).click();
     await expect(page.locator('main > p[role="status"]')).toBeVisible();
-    const reopen = page.locator("details.reopen");
-    const summary = reopen.locator("summary");
-    await summary.focus();
-    await page.keyboard.press("Enter");
-    await expect(reopen).toHaveAttribute("open", "");
-    await page.keyboard.press("Tab");
-    await page.keyboard.press("Escape");
-    await expect(reopen).not.toHaveAttribute("open");
-    await expect(summary).toBeFocused();
+    await page.locator("details.status-menu summary").click();
+    await page.locator("details.status-menu").getByRole("link", { name: "In Progress" }).click();
+    await expect(page.getByLabel("Why reopen it?")).toBeFocused();
+    await expect(page.getByRole("button", { name: "Reopen ticket" })).toBeVisible();
   });
 });
