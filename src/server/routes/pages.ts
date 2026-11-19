@@ -168,6 +168,8 @@ type NextStep = {
    * button so the owner reads it before asking. Null when they gave none.
    */
   customerCheck?: string | null;
+  /** A quiet link beside the button to the optional form with more to say, by its id. */
+  detailsId?: string;
 };
 
 /**
@@ -197,6 +199,7 @@ function nextStep(
       form: { action: `${at}/ready` },
       note: 'Sends the customer "Did this fix it?".',
       customerCheck: ticket.fix_check,
+      detailsId: "ask",
     };
   }
   return null;

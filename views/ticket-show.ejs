@@ -33,6 +33,8 @@
   <a href="<%= nextStep.href %>" role="button"><%= nextStep.label %></a>
   <% } %>
   <% if (nextStep.note) { %><small class="next-note"><%= nextStep.note %></small><% } %>
+  <%# The optional details form is further down; this link leads there, and opens it with scripts. %>
+  <% if (nextStep.detailsId) { %><small class="next-details"><a href="#<%= nextStep.detailsId %>" data-opens="<%= nextStep.detailsId %>">Add details first (optional)</a></small><% } %>
 </div>
 <% } %>
 
