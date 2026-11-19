@@ -76,7 +76,6 @@
   --pd-badge-new: var(--pd-status-new);
   --pd-badge-in_progress: var(--pd-status-in_progress);
   --pd-badge-resolved: var(--pd-status-resolved);
-  --pd-badge-archived: var(--pd-status-archived);
   --pd-badge-text: var(--pd-text);
   --pd-badge-dot: 12px;
 

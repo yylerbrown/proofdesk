@@ -860,6 +860,18 @@ form.list-search :is(input, button) {
   margin: 0;
   font-size: var(--pd-text-sm);
 }
+/*
+ * The box and its button join into one pill, so focus rings the whole pill, following its round
+ * ends. The control that has focus turns its own edge blue instead of drawing a square ring.
+ */
+form.list-search:has(:focus-visible) {
+  outline: 2px solid var(--pd-focus);
+  outline-offset: 2px;
+}
+form.list-search :is(input, button):focus-visible {
+  outline: none;
+  border-color: var(--pd-focus);
+}
 @media (max-width: 639px) {
   form.list-search {
     max-width: none;

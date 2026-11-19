@@ -1,27 +1,43 @@
 <%- include("header") %>
 <div class="column-form assistant-run">
 <h1>An assistant's work</h1>
+<%# What happened first, in plain words, with one press to the result. How the run was set up
+    stays one quiet click away, in the closed section below. %>
+<p class="run-lead">On 18 Nov 2026 a visitor connected their own AI assistant to the Proofdesk demo and pointed it at the sample ticket the team keeps for assistants. The assistant reproduced the customer's problem, tested a fix, proposed a test, attached the test run as evidence and asked the ticket's owner to review it. It resolved nothing: accepting the test and asking the customer are left to people.</p>
+<% if (recordedKey && viewer && viewer.role !== "customer") { %>
+<p class="run-result"><a href="/tickets/<%= recordedKey %>" role="button">See what it left on <%= recordedKey %></a></p>
+<% } else if (recordedKey) { %>
+<%# Another customer filed it, so a customer cannot open it. A customer or a signed-out
+    visitor opens it as the demo team member instead, the same way Switch role does. %>
+<% const teamMember = demoPeople.find((person) => person.role === "team"); %>
+<% if (teamMember) { %>
+<div class="run-result recorded-ticket">
+  <p>Its work is kept on <%= recordedKey %>. Only the team can open that ticket, so this button switches you to the team's view.</p>
+  <form method="post" action="/sign-in/dev">
+    <input type="hidden" name="id" value="<%= teamMember.id %>" />
+    <input type="hidden" name="next" value="/tickets/<%= recordedKey %>" />
+    <button type="submit">Open it as <%= teamMember.name %></button>
+  </form>
+</div>
+<% } %>
+<% } %>
+<h2 class="run-left-heading">What it left on the ticket</h2>
+<ul class="run-left">
+  <li>A proposed test spec with one scenario, "Tax is applied once", for a person to accept or discard.</li>
+  <li>The test run as evidence, 3 passed and 0 failed, labelled as reported by an AI agent.</li>
+  <li>A review request to the owner, saying what it checked and what it did not.</li>
+</ul>
+<% if (tryUrl) { %>
+<p class="run-try"><small>To try it yourself, <a href="<%= tryUrl %>">connect your own assistant</a>.</small></p>
+<% } %>
+
+<details class="run-details">
+<summary>How this was run</summary>
 <p>One real AI assistant, run from a visitor's own computer with a demo connection, worked the sample ticket for assistants on 18 Nov 2026. Below is the summary of that run. The transcript and the two files the assistant wrote are kept as they were, with local file paths replaced.</p>
 <ul>
   <li><a href="/assistant-run/files/transcript.public.jsonl">The transcript</a>, every step of the run</li>
   <li><a href="/assistant-run/files/sup4/total.js">total.js</a>, the code it wrote: the ticket's function and its fix</li>
   <li><a href="/assistant-run/files/sup4/total.test.js">total.test.js</a>, the test it ran</li>
-  <% if (recordedKey && viewer && viewer.role !== "customer") { %>
-  <li><a href="/tickets/<%= recordedKey %>">The ticket it left, recorded on this demo</a>: its spec, evidence and review request as it sent them, in the team's view</li>
-  <% } else if (recordedKey) { %>
-  <%# Another customer filed it, so a customer cannot open it. A customer or a signed-out
-      visitor opens it as the demo team member instead, the same way Switch role does. %>
-  <% const teamMember = demoPeople.find((person) => person.role === "team"); %>
-  <% if (teamMember) { %>
-  <li class="recorded-ticket">The ticket it left, <%= recordedKey %>, recorded on this demo: its spec, evidence and review request as it sent them, in the team's view.
-    <form method="post" action="/sign-in/dev" class="inline">
-      <input type="hidden" name="id" value="<%= teamMember.id %>" />
-      <input type="hidden" name="next" value="/tickets/<%= recordedKey %>" />
-      <button type="submit" class="link">Open it as <%= teamMember.name %></button>
-    </form>
-  </li>
-  <% } %>
-  <% } %>
 </ul>
 <%# The summary in docs/assistant-run/summary.md, as headed sections: the same words, without
     Markdown's marks. A test checks that every heading there is a heading here. %>
@@ -72,5 +88,6 @@
 <h3>Not done</h3>
 <p>Nobody accepted the spec or asked the customer, since those steps belong to people. The fix was tested on a copy of the ticket's snippet, not on real code.</p>
 </div>
+</details>
 </div>
 <%- include("footer") %>
