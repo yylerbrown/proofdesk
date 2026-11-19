@@ -10,6 +10,7 @@ import {
   describeActor,
   describeEvent,
   formatTime,
+  notFixedCard,
   STATUS_LABELS,
   timeAgo,
   reportFields,
@@ -25,7 +26,14 @@ import {
 import { LIST_ORDER_LABELS, noMatchWords, readListPageQuery } from "../pages/list-query.js";
 import { sameText, type ListOrder } from "../tickets/schemas.js";
 import { statusControl } from "../pages/status-control.js";
-import { rememberSaved, takeProblem, takeSaved, type SavedKey } from "../pages/saved.js";
+import { DESCRIPTION_LIMIT, withHowFarOver } from "../pages/text-limit.js";
+import {
+  rememberSaved,
+  SAVED_MESSAGES,
+  takeProblem,
+  takeSaved,
+  type SavedKey,
+} from "../pages/saved.js";
 import { RESOLVE_REASON_LABELS, TICKET_STATUSES } from "../tickets/schemas.js";
 import { LIST_PAGE_SIZE, type Ticket, type TicketService } from "../tickets/service.js";
 
@@ -218,10 +226,21 @@ const emptyEntry: EntryForm = { kind: "reply", body: "" };
 const emptyForm = { title: "", description: "", where_url: "", fix_check: "" };
 
 // What differs between the two uses of the ticket form: its heading, where it posts, its button.
-const newForm = { title: "New ticket", action: "/tickets", submitLabel: "File ticket" };
+// Both show the description's limit.
+const newForm = {
+  title: "New ticket",
+  action: "/tickets",
+  submitLabel: "File ticket",
+  descriptionLimit: DESCRIPTION_LIMIT,
+};
 
 function editForm(key: string) {
-  return { title: `Edit ${key}`, action: `/tickets/${key}/edit`, submitLabel: "Save changes" };
+  return {
+    title: `Edit ${key}`,
+    action: `/tickets/${key}/edit`,
+    submitLabel: "Save changes",
+    descriptionLimit: DESCRIPTION_LIMIT,
+  };
 }
 
 // The heading of each list, for the page title.
@@ -265,8 +284,13 @@ export function pagesRouter(service: TicketService): Router {
   // A cheap read for a ticket page left open, which asks it now and then to notice a change made
   // elsewhere. It is registered before the middleware below, so asking never uses up the
   // message a page shows once after a save. Reading is not counted against the write limit.
+  // The status rides along, so the page can say what kind of change it was; the viewer sees the
+  // status on the ticket page anyway.
   router.get("/tickets/:key/version", (req, res) => {
-    res.json(service.ticketStamp(req.params.key, signedIn(req)));
+    const actor = signedIn(req);
+    const stamp = service.ticketStamp(req.params.key, actor);
+    const { status } = service.getTicket(req.params.key, actor);
+    res.json({ ...stamp, status });
   });
 
   // A page opened just after a save says what was saved.
@@ -351,7 +375,10 @@ export function pagesRouter(service: TicketService): Router {
       entries,
       history,
       confirmed: confirmedAt(ticket, events),
+      // The customer's standing No, which the resolve form's reasons follow, and the card at the
+      // top, which only shows their word while nothing the team did since has answered it.
       notFixed: customerSaysNotFixed(ticket, events),
+      notFixedCard: notFixedCard(ticket, events),
       evidence,
       specPanel,
       specPrompt,
@@ -490,7 +517,9 @@ export function pagesRouter(service: TicketService): Router {
       noMatch: noMatchWords(current, owner, q),
       counts,
       orders: LIST_ORDER_LABELS,
-      showArchivedFilter: can(actor, "list_archived"),
+      // Nobody archives on the demo, so its Archived tab would always be empty. The address
+      // still works there, and says why it is empty.
+      showArchivedFilter: can(actor, "list_archived") && actor.demo !== true,
       invite,
     });
   });
@@ -532,6 +561,8 @@ export function pagesRouter(service: TicketService): Router {
       formId,
       alreadyFiled: ticketFiledWith(service, actor, formId),
       values: sample ? WALKTHROUGH_SAMPLE : emptyForm,
+      // The form says so, since sample text in the boxes looks like text the visitor typed.
+      sample,
       errors: {},
     });
   });
@@ -574,14 +605,32 @@ export function pagesRouter(service: TicketService): Router {
     } catch (err) {
       if (!(err instanceof ValidationError)) throw err;
       // Show the form again with what was typed and one message under each wrong box.
-      res
-        .status(400)
-        .render("ticket-form", { ...newForm, formId, values, errors: err.fieldErrors });
+      res.status(400).render("ticket-form", {
+        ...newForm,
+        formId,
+        values,
+        errors: withHowFarOver(err.fieldErrors, values.description),
+      });
     }
   });
 
   router.get("/tickets/:key", (req, res) => {
-    showTicket(req, res, 200, emptyEntry);
+    // Just after a message was sent, the line saying so sits by the message box, where the
+    // browser lands, and the box keeps the choice of who sees it for this page load, so a second
+    // note is not sent to the customer by accident.
+    const sentKind =
+      res.locals.saved === SAVED_MESSAGES.note
+        ? "note"
+        : res.locals.saved === SAVED_MESSAGES.reply
+          ? "reply"
+          : null;
+    if (sentKind === null) {
+      showTicket(req, res, 200, emptyEntry);
+      return;
+    }
+    res.locals.sent = res.locals.saved;
+    res.locals.saved = null;
+    showTicket(req, res, 200, { kind: sentKind, body: "" });
   });
 
   // Adds a reply or a note from the form under the conversation.
@@ -598,7 +647,8 @@ export function pagesRouter(service: TicketService): Router {
         actor,
       );
       rememberSaved(res, added.kind === "note" ? "note" : "reply");
-      res.redirect(303, `/tickets/${ticket.key}#conversation`);
+      // The line that says it was sent is drawn by the message box, with this id.
+      res.redirect(303, `/tickets/${ticket.key}#sent`);
     } catch (err) {
       if (!(err instanceof ValidationError)) throw err;
       // Show the ticket again with what was typed and the message under the box.
@@ -656,7 +706,8 @@ export function pagesRouter(service: TicketService): Router {
       const checkLocked = current.created_by !== actor.id;
       // What the person typed stays. A check they may not change shows as it is now.
       const shown = checkLocked ? { ...values, fix_check: current.fix_check ?? "" } : values;
-      const errors = err instanceof ValidationError ? err.fieldErrors : {};
+      const errors =
+        err instanceof ValidationError ? withHowFarOver(err.fieldErrors, values.description) : {};
       res.status(changed ? 409 : 400).render("ticket-form", {
         ...editForm(current.key),
         values: shown,

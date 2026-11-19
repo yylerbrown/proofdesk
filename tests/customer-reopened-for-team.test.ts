@@ -42,7 +42,7 @@ describe("a ticket the customer reopened", () => {
     const box = page.querySelector("#customer-said-no")!;
     expect(box.querySelector("h2")?.text).toBe("The customer reopened it");
     expect(box.querySelector("blockquote")?.text).toBe(reason);
-    expect(await waitingCell(app, teamActor)).toBe("Team: customer reopened it");
+    expect(await waitingCell(app, teamActor)).toBe("Support team: customer reopened it");
     expect(await waitingCell(app, customerOne)).toBe("Support team");
     // The history keeps their reason too.
     const history = page.querySelectorAll("details.history tbody tr").map((row) => row.text);
@@ -51,8 +51,8 @@ describe("a ticket the customer reopened", () => {
 
   it("is told apart from an older No, which the reopening replaces", () => {
     const ticket = { waiting_on: "team", customer_answer: { fixed: false } } as Ticket;
-    expect(waitingOn(ticket, "team")).toBe("Team: customer says it still fails");
-    expect(waitingOn(ticket, "team", true)).toBe("Team: customer reopened it");
+    expect(waitingOn(ticket, "team")).toBe("Support team: customer says it still fails");
+    expect(waitingOn(ticket, "team", true)).toBe("Support team: customer reopened it");
     expect(waitingOn(ticket, "customer", true)).toBe("Support team");
   });
 

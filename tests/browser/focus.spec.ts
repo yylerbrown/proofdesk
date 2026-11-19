@@ -1,8 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 
 // Where keyboard focus goes, in a real browser. After an action the saved line at the top has
-// focus, so a screen reader reads it and the next Tab goes on from there; a reply that lands on
-// #conversation keeps its place; a search puts focus back in the search box. A control reached
+// focus, so a screen reader reads it and the next Tab goes on from there; a reply lands on the
+// line that says it was sent, by the message box, with focus on it; a search puts focus back in
+// the search box. A control reached
 // with Shift+Tab is never left under the sticky header. Escape closes the Resolve and Reopen
 // panels and returns focus to them, and the More menu opens in view.
 
@@ -21,7 +22,7 @@ function focused(page: Page) {
   });
 }
 
-test("focus starts from the saved line, the conversation or the search box", async ({ page }) => {
+test("focus starts from the saved line, the sent line or the search box", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await signIn(page, "Customer One");
   await page.goto("/tickets/new");
@@ -41,12 +42,14 @@ test("focus starts from the saved line, the conversation or the search box", asy
     expect(inHeader, await focused(page)).toBe(false);
   });
 
-  await test.step("a reply lands on the conversation and keeps its place", async () => {
+  await test.step("a reply lands on the sent line by the message box, which has focus", async () => {
     await page.locator("#entry-body").fill("A reply that lands on the conversation.");
     await page.getByRole("button", { name: "Send", exact: true }).click();
-    await expect(page).toHaveURL(/#conversation$/);
-    await expect(page.locator('main > p[role="status"]')).toHaveText("Reply sent.");
-    expect(await focused(page)).toBe("the page itself");
+    await expect(page).toHaveURL(/#sent$/);
+    const sent = page.locator('p#sent[role="status"]');
+    await expect(sent).toHaveText("Reply sent.");
+    await expect(sent).toBeFocused();
+    await expect(sent).toBeInViewport();
     expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
   });
 

@@ -89,7 +89,10 @@ describe("what is new, as the README says it", () => {
 
   it("says a save from an old copy is refused, and quotes the open page's notice", () => {
     const script = fs.readFileSync("src/browser/ticket-changed.ts", "utf8");
-    expect(script).toContain('"This ticket changed. ", refresh, " to see it."');
+    // The notice names the change when it can ("This ticket is now Resolved."); these are its
+    // plain words when it cannot, followed by the Refresh link.
+    expect(script).toContain('return "This ticket changed.";');
+    expect(script).toContain('refresh, " to see it."');
     const steps = feature("Two people on one ticket").replace(/\s+/g, " ");
     expect(steps).toContain("This ticket changed. Refresh to see it.");
     expect(steps).toContain("refused and keeps what you typed");

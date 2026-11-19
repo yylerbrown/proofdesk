@@ -115,7 +115,7 @@ describe("the conversation on the ticket page", () => {
       .type("form")
       .send(reply("Thanks!"));
     expect(res.status).toBe(303);
-    expect(res.headers.location).toBe("/tickets/SUP-1#conversation");
+    expect(res.headers.location).toBe("/tickets/SUP-1#sent");
     expect((await as(app, customerOne).get("/tickets/SUP-1")).text).toContain("Thanks!");
   });
 
