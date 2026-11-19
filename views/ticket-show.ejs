@@ -40,14 +40,15 @@
 
 <%# Another demo customer filed the recorded run, so only the team opens it. %>
 <% if (locals.recordedRun && viewerRole !== "customer") { %>
-<%# One short line. The description below says why the run's own words name another key. %>
-<p class="recorded-run">A recorded run: a real AI assistant worked this ticket on 18 Nov 2026, and what it sent is shown as it sent it. <a href="/assistant-run#how-it-was-run">How this was run</a></p>
+<%# The title and the description say it is a recorded run and why its words name another key, so this line is only the way to how it was run. %>
+<p class="recorded-run"><a href="/assistant-run#how-it-was-run">How this was run</a></p>
 <% } %>
 <%# On the demo: the next role to view this same ticket as, or where resolved tickets are listed. %>
 <% if (locals.demoNext) { %>
 <div class="demo-next">
   <% if (demoNext.resolved) { %>
-  <p><%= ticket.resolution?.by === "team" ? "The team resolved it, with a reason." : "The customer's Yes resolved it." %> <a href="/tickets?status=resolved">See every resolved ticket</a></p>
+  <%# The card below already says who resolved it, so this is only the way on. %>
+  <p><a href="/tickets?status=resolved">See every resolved ticket</a></p>
   <% } else { %>
   <form method="post" action="/sign-in/dev">
     <input type="hidden" name="id" value="<%= demoNext.switchTo %>" />
@@ -180,20 +181,6 @@
     <% if (problem?.form === "answer") { %><small id="answer-error"><%= problem.message %></small><% } %>
     <button type="submit" class="secondary large">No, send it back</button>
   </form>
-  <%# Common answers, as plain words. With scripts, each fills the box above, to change before
-      sending, and the script changes the line above them to say so: a No is then sent only by
-      "No, send it back", never by one press on a chip. Without scripts, each sends its words as
-      an ordinary answer, as this line says. %>
-  <p class="quick-label" id="quick-answers-label"><small data-filled-label="Or start your answer with one of these:">Or answer No in a few words:</small></p>
-  <div class="quick-answers" role="group" aria-labelledby="quick-answers-label">
-    <% for (const words of ["Still happening", "Partly fixed", "Something else broke"]) { %>
-    <form method="post" action="/tickets/<%= ticket.key %>/answer">
-      <input type="hidden" name="fixed" value="no" />
-      <input type="hidden" name="ready_token" value="<%= ticket.ready_token %>" />
-      <button type="submit" name="comment" value="<%= words %>" class="secondary quick" data-fill="answer-comment"><%= words %></button>
-    </form>
-    <% } %>
-  </div>
 </article>
 <% } %>
 
@@ -203,31 +190,21 @@
 <% if (ticket.where_url) { %>
 <p class="page-link">Page: <a href="<%= ticket.where_url %>" rel="noopener noreferrer nofollow" class="user-text"><%= ticket.where_url %></a></p>
 <% } %>
-<%# What the ticket's assistant last asked for, labelled as the assistant's, so it never reads as the customer's words. %>
-<% if (assistantSignal) { %>
-<div class="assistant-signal">
-  <p class="signal-from"><small>From the AI assistant</small></p>
-  <p class="<%= assistantSignal.label === "Assistant blocked:" ? "assistant-blocked" : "review-requested" %>"><strong><%= assistantSignal.label %></strong> <span class="user-text"><%= assistantSignal.text %></span></p>
-</div>
+<%# The code change, for the team, as one plain line like the page above. %>
+<% if (staff && ticket.change_url) { %>
+<p class="page-link">Change: <a href="<%= ticket.change_url %>" rel="noopener noreferrer nofollow" class="user-text"><%= ticket.change_url %></a></p>
 <% } %>
-<%# The change and what the team attached as proof, the list folded until wanted. The customer
-    sees the proof when asked. %>
-<% if (staff && (evidence.length > 0 || ticket.change_url)) { %>
-<section>
-  <h2>Evidence</h2>
-  <% if (ticket.change_url) { %>
-  <p>Change: <a href="<%= ticket.change_url %>" rel="noopener noreferrer nofollow" class="user-text"><%= ticket.change_url %></a></p>
-  <% } %>
-  <% if (evidence.length > 0) { %>
-  <details class="evidence-list">
-    <summary><%= evidence.length %> <%= evidence.length === 1 ? "piece" : "pieces" %>, as reported</summary>
-    <p class="evidence-note">As reported by whoever attached it. Not checked by Proofdesk.</p>
-    <%- include("evidence", { evidence }) %>
-  </details>
-  <% } %>
-</section>
+<%# Everything an assistant left on the ticket is one card. Evidence a person attached, with no
+    assistant's work beside it, is one closed line. The customer sees the proof when asked. %>
+<% if (assistantCard) { %>
+<%- include("assistant-card", { card: assistantCard }) %>
+<% } else if (staff && evidence.length > 0) { %>
+<details class="evidence-list">
+  <summary>Evidence (<%= evidence.length %>)</summary>
+  <p class="evidence-note">As reported by whoever attached it. Not checked by Proofdesk.</p>
+  <%- include("evidence", { evidence }) %>
+</details>
 <% } %>
-<%- include("spec", { specPanel }) %>
 </div>
 
 <%# The panel holds three things: who owns the ticket, its status, and the customer's check.
@@ -415,41 +392,24 @@
 <p role="status" class="saved" id="sent"><%= sent %></p>
 <% } %>
 <% if (allowed.reply) { %>
-<form method="post" action="/tickets/<%= ticket.key %>/entries">
+<form method="post" action="/tickets/<%= ticket.key %>/entries" class="reply-box">
   <% if (allowed.note) { %>
-  <fieldset>
-    <legend>Who sees it</legend>
-    <div class="kind-choice">
-      <label><input type="radio" name="kind" value="reply" <% if (entry.kind !== "note") { %>checked<% } %> /> Reply to the customer</label>
-      <label><input type="radio" name="kind" value="note" <% if (entry.kind === "note") { %>checked<% } %> /> Internal note, for the team only</label>
-    </div>
+  <%# Who sees it: two tabs directly on top of the box. %>
+  <fieldset class="kind-tabs">
+    <legend class="visually-hidden">Who sees it</legend>
+    <label><input type="radio" name="kind" value="reply" <% if (entry.kind !== "note") { %>checked<% } %> /> Reply to the customer</label>
+    <label><input type="radio" name="kind" value="note" <% if (entry.kind === "note") { %>checked<% } %> /> Internal note</label>
   </fieldset>
   <% } else { %>
   <input type="hidden" name="kind" value="reply" />
   <% } %>
-  <label>
-    Your message
-    <textarea id="entry-body" name="body" rows="4" required <% if (entry.error) { %>aria-invalid="true" aria-describedby="body-error" autofocus<% } %>><%= entry.body %></textarea>
-  </label>
+  <label for="entry-body" class="visually-hidden">Your message</label>
+  <textarea id="entry-body" name="body" rows="3" required <% if (entry.error) { %>aria-invalid="true" aria-describedby="body-error" autofocus<% } %>><%= entry.body %></textarea>
   <% if (entry.error) { %><small id="body-error"><%= entry.error %></small><% } %>
   <%# With a choice of who sees it, a small script makes the button name that audience. %>
   <button type="submit" class="compact" <% if (allowed.note) { %>data-label-reply="Send reply to customer" data-label-note="Save internal note"<% } %>>Send</button>
 </form>
-<%# A few common replies for the team, as plain words: they fill the box, or send as they are.
-    They suit an open ticket, so a resolved one does not offer them. %>
-<% if (allowed.note && ticket.status !== "resolved") { %>
-<div class="quick-answers" role="group" aria-label="Quick replies">
-  <% for (const words of ["Thanks, we can reproduce this.", "Can you send a screenshot?", "Which browser and device are you using?"]) { %>
-  <form method="post" action="/tickets/<%= ticket.key %>/entries">
-    <input type="hidden" name="kind" value="reply" />
-    <button type="submit" name="body" value="<%= words %>" class="secondary quick" data-fill="entry-body" data-fill-kind="reply"><%= words %></button>
-  </form>
-  <% } %>
-</div>
 <% } %>
-<% } %>
-
-<%- include("spec-prompt", { specPrompt }) %>
 
 <details class="history">
 <summary>History (<%= history.length %>)</summary>
@@ -479,10 +439,11 @@
     After a refused form inside it, it opens on that form and its message. %>
 <% const moreForms = ["agreedCheck", "evidence", "changeLink", "ready"]; %>
 <% const removeAny = allowed.archive || allowed.delete; %>
-<% const hasMore = (staff && (allowed.agreeCheck || allowed.attachEvidence || allowed.linkChange || allowed.markReady || allowed.withdrawQuestion || (allowed.giveToAgent && !agentHelp.current && agentHelp.candidates.length > 0))) || allowed.release || removeAny; %>
+<% const hasMore = specPrompt || (staff && (allowed.agreeCheck || allowed.attachEvidence || allowed.linkChange || allowed.markReady || allowed.withdrawQuestion || (allowed.giveToAgent && !agentHelp.current && agentHelp.candidates.length > 0))) || allowed.release || removeAny; %>
 <% if (hasMore) { %>
 <details class="more-options" id="more-options" <% if (moreForms.includes(problem?.form)) { %>open<% } %>>
 <summary>More options</summary>
+<%- include("spec-prompt", { specPrompt }) %>
 <% if (staff && allowed.agreeCheck) { %>
 <details <% if (problem?.form === "agreedCheck") { %>open<% } %>>
   <summary>Offer a clearer check</summary>

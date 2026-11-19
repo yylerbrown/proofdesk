@@ -150,6 +150,8 @@ describe("following one ticket across roles on the demo", () => {
     expect(resolved.querySelector(".demo-next a")?.getAttribute("href")).toBe(
       "/tickets?status=resolved",
     );
+    // The confirmed card already says the customer's Yes resolved it, so the line is only the link.
+    expect(resolved.querySelector(".demo-next")?.text.trim()).toBe("See every resolved ticket");
   });
 
   it("offers a switch in the header that comes back to the page the visitor was on", async () => {

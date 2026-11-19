@@ -163,7 +163,7 @@ test("the long path: a check, a change link and evidence, a No, then the custome
     await team.getByRole("button", { name: "Send reply to customer" }).click();
     await expect(savedMessage(team)).toContainText("Reply sent");
 
-    await team.getByRole("radio", { name: "Internal note, for the team only" }).check();
+    await team.getByRole("radio", { name: "Internal note" }).check();
     await team.getByLabel("Your message").fill(note);
     await team.getByRole("button", { name: "Save internal note" }).click();
     await expect(savedMessage(team)).toContainText("Internal note added");

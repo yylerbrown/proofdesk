@@ -88,7 +88,7 @@ test("the team's ticket page: Shift+Tab, and Escape on Resolve and Reopen", asyn
     // A short window, so the page can scroll far enough to put Send under the header.
     await page.setViewportSize({ width: 1280, height: 300 });
     const send = page.getByRole("button", { name: "Send reply to customer" });
-    const nextOne = page.locator("button[data-fill]").first();
+    const nextOne = page.locator("details.history > summary");
     const header = page.locator("body > header");
     const top = (button: typeof send) =>
       button.evaluate((element) => element.getBoundingClientRect().top);

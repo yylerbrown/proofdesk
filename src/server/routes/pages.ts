@@ -463,13 +463,42 @@ export function pagesRouter(service: TicketService): Router {
               actor.demo !== true && agentHelp.candidates.length > 0 ? null : connectUrl(actor),
           }
         : null;
+    // Everything an assistant left on the ticket, for one card under the description: what it
+    // last asked for, its test spec and its evidence, and how a person's decision on the spec
+    // ended. A customer sees only a spec the team accepted.
+    const staff = actor.role !== "customer";
+    const signal = service.assistantSignals([ticket], actor).get(ticket.key) ?? null;
+    const lastSpecEvent = events.filter((event) => event.type.startsWith("spec_")).at(-1);
+    const discardedBy =
+      staff && !specPanel.spec && lastSpecEvent?.type === "spec_discarded"
+        ? describeActor(lastSpecEvent, names)
+        : null;
+    const agentEvidence = evidence.some((item) => item.reported_by.kind === "agent");
+    const showCard = staff
+      ? signal !== null || specPanel.spec !== null || agentEvidence || discardedBy !== null
+      : specPanel.spec !== null;
+    const assistantCard = showCard
+      ? {
+          key: ticket.key,
+          from:
+            specPanel.spec?.proposed_by.kind === "person"
+              ? `From ${specPanel.spec.proposed_by.name}`
+              : "From the AI assistant",
+          reviewBy: signal?.label === "Review requested by" ? signal.text : null,
+          blocked: signal?.label === "Assistant blocked:" ? signal.text : null,
+          spec: specPanel.spec,
+          discardedBy,
+          canDecide: specPanel.canDecide,
+          evidence: staff ? evidence : [],
+        }
+      : null;
     res.status(status).render("ticket-show", {
       ...helpers,
       title: `${ticket.key}: ${ticket.title}`,
       ticket,
       viewerRole: actor.role,
       viewerId: actor.id,
-      assistantSignal: service.assistantSignals([ticket], actor).get(ticket.key) ?? null,
+      assistantCard,
       demoNext: demoNext(ticket, actor),
       nextStep: nextStep(ticket, allowed, isWalkthroughSample(ticket, actor)),
       statusRow: statusControl(ticket, allowed, actor),

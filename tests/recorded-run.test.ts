@@ -101,13 +101,12 @@ describe("the recorded run on the demo", () => {
     );
   });
 
-  it("says in one short line at the top that it is a recorded run, linking to how it was run", async () => {
+  it("links at the top to how it was run, which the title and description do not repeat", async () => {
     const { asTeam, recorded } = demo();
     const html = parse((await asTeam().get(`/tickets/${recorded}`)).text);
     const note = html.querySelector(".recorded-run")!;
-    expect(note.text).toBe(
-      "A recorded run: a real AI assistant worked this ticket on 18 Nov 2026, and what it sent is shown as it sent it. How this was run",
-    );
+    // The title already says it is a recorded run, so the line is only the link.
+    expect(note.text).toBe("How this was run");
     const link = note.querySelector("a")!;
     expect(link.text).toBe("How this was run");
     expect(link.getAttribute("href")).toBe("/assistant-run#how-it-was-run");
@@ -127,9 +126,15 @@ describe("the recorded run on the demo", () => {
       .find((s) => s.querySelector("h2")?.text === "How will we know it's fixed?")!;
     // The panel's check holds the customer's words alone; the request sits in the main column.
     expect(check.querySelector("blockquote")).not.toBeNull();
-    expect(check.querySelector(".assistant-signal")).toBeNull();
-    const signal = html.querySelector(".ticket-summary .assistant-signal")!;
-    expect(signal.querySelector(".signal-from")?.text).toBe("From the AI assistant");
+    expect(check.querySelector(".assistant-card")).toBeNull();
+    // Everything the assistant left is one card, which says whose it is and who asked for review.
+    const cards = html.querySelectorAll(".ticket-summary .assistant-card");
+    expect(cards).toHaveLength(1);
+    const signal = cards[0]!;
+    expect(signal.querySelector(".card-from")?.text).toBe(
+      "From the AI assistant · Review requested by Demo visitor's assistant",
+    );
+    expect(signal.querySelectorAll("h2, h3")).toHaveLength(0);
     expect(signal.querySelector(".review-requested")?.text).toBe(
       "Review requested by Demo visitor's assistant",
     );
