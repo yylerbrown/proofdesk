@@ -55,7 +55,9 @@
 </div>
 
 <% if (tickets.length === 0 && narrowed) { %>
-<p class="empty">No tickets match. <a href="<%= href({ owner: undefined, q: undefined }) %>">Clear the owner and search</a>.</p>
+<%# Name only what is set: the owner filter, the search, or both. %>
+<% const clearWhat = filters.owner && filters.q ? "the owner filter and search" : filters.owner ? "the owner filter" : "the search"; %>
+<p class="empty">No tickets match. <a href="<%= href({ owner: undefined, q: undefined }) %>">Clear <%= clearWhat %></a>.</p>
 <% } else if (tickets.length === 0) { %>
 <p class="empty"><%= empty[current] %><% if (current !== "archived") { %> <a href="/tickets/new">File a ticket</a>.<% } %></p>
 <% } else { %>

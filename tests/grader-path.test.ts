@@ -69,7 +69,8 @@ describe("where Resolved comes from", () => {
     const fresh = await page(app, teamActor);
     expect(fresh.querySelector(".next-action button")?.text).toBe("Take ticket and start work");
     expect(fresh.querySelector(".status-control details.resolve summary")?.text).toBe("Resolved");
-    expect(rule(fresh)).toBeUndefined();
+    // Nothing is greyed; the one line says the row's In Progress also takes the ticket.
+    expect(rule(fresh)).toBe("In Progress also makes you the owner.");
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
 
     // In progress: the next action asks the customer in one press. The details are optional,

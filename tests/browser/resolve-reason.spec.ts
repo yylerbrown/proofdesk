@@ -23,9 +23,10 @@ test("the resolve form never hides a note that would be sent", async ({ page }) 
   const duplicateOf = resolve.getByRole("textbox", { name: "Duplicate of" });
   const note = resolve.getByRole("textbox", { name: "Note (needed for Other)" });
 
-  // Nothing chosen yet: neither box shows.
+  // It starts on "Fixed, not yet confirmed": the note shows, "Duplicate of" does not.
+  await expect(reason).toHaveValue("fixed_no_reply");
   await expect(duplicateOf).toBeHidden();
-  await expect(note).toBeHidden();
+  await expect(note).toBeVisible();
 
   await reason.selectOption("other");
   await expect(note).toBeVisible();

@@ -260,24 +260,27 @@
       <% for (const [name, value] of Object.entries(choice.fields)) { %>
       <input type="hidden" name="<%= name %>" value="<%= value %>" />
       <% } %>
-      <button type="submit" class="secondary"><%= statusLabels[choice.status] %></button>
+      <button type="submit" class="secondary" <% if (choice.status === "in_progress" && statusRow.alsoTakes) { %>aria-describedby="status-takes"<% } %>><%= statusLabels[choice.status] %></button>
     </form>
     <% } else if (choice.kind === "resolve") { %>
     <% const resolving = problem?.form === "resolve" ? (problem.values ?? {}) : {}; %>
+    <%# "Fixed, not yet confirmed" is what the team means when it resolves directly, so it is
+        chosen already and resolving takes two presses. While the customer's No stands it is not
+        offered, and the person picks a reason. After a refused try, what they picked stays. %>
+    <% const chosenReason = problem?.form === "resolve" ? (resolving.reason ?? "") : (notFixed ? "" : "fixed_no_reply"); %>
     <details class="resolve" <% if (problem?.form === "resolve") { %>open<% } %>>
       <summary role="button" class="secondary outline"><%= statusLabels[choice.status] %></summary>
       <form method="post" action="/tickets/<%= ticket.key %>/resolve">
         <%- versionField %>
         <label>
           Reason
-          <%# No reason is chosen until the person picks one, so a stray press records nothing. %>
           <select name="reason" required <%= focusIf("resolve", "reason") %>>
-            <option value="" <% if (!resolving.reason) { %>selected<% } %>>Choose a reason</option>
+            <% if (!chosenReason) { %><option value="" selected>Choose a reason</option><% } %>
             <% for (const [value, label] of Object.entries(resolveReasons)) { %>
             <%# While the customer's No or reopening is their standing word, "Fixed" would
                 contradict them. The same rule as the callout at the top and the service. %>
             <% if (value === "fixed_no_reply" && notFixed) continue; %>
-            <option value="<%= value %>" <% if (resolving.reason === value) { %>selected<% } %>><%= label %></option>
+            <option value="<%= value %>" <% if (chosenReason === value) { %>selected<% } %>><%= label %></option>
             <% } %>
           </select>
         </label>
@@ -311,6 +314,7 @@
     <% } %>
     <% } %>
   </div>
+  <% if (statusRow.alsoTakes) { %><p class="status-rule" id="status-takes"><small>In Progress also makes you the owner.</small></p><% } %>
   <% if (statusRow.why) { %><p class="status-rule" id="status-why"><small><%= statusRow.why %></small></p><% } %>
   <% if (ticket.ready_at && ticket.status === "in_progress") { %><p class="status-rule"><small>Waiting for the customer who filed this ticket.</small></p><% } %>
   <% if (ticket.resolution) { %><p class="resolution-label"><small><%= ticket.resolution.label %></small></p><% } %>
@@ -477,10 +481,17 @@
 </section>
 <% } %>
 
-<% if (allowed.release || allowed.edit || allowed.archive || allowed.delete) { %>
+<%# The less used actions. Two or more go in a More menu; a single one is shown as it is, since
+    a menu holding one item only hides it. %>
+<% const moreCount = [allowed.release, allowed.edit, allowed.archive, allowed.delete].filter(Boolean).length; %>
+<% if (moreCount > 0) { %>
+<% if (moreCount > 1) { %>
 <details class="more">
   <summary>More</summary>
   <div class="more-menu">
+<% } else { %>
+  <div class="more-single">
+<% } %>
     <% if (allowed.release) { %>
     <form method="post" action="/tickets/<%= ticket.key %>/release">
       <%- versionField %>
@@ -501,7 +512,9 @@
     </div>
     <% } %>
   </div>
+<% if (moreCount > 1) { %>
 </details>
+<% } %>
 <% } %>
 </aside>
 
