@@ -5,7 +5,7 @@ import type { Db } from "../db.js";
 import { HttpError } from "../errors.js";
 import { parse } from "../validation.js";
 import * as repository from "./repository.js";
-import { roleWordOf } from "./words.js";
+import { roleWordOf, wayWordOf } from "./words.js";
 
 // The account page: who Proofdesk thinks the signed-in person is, and their one setting, the
 // switch for email notices. It only ever shows the person who is looking.
@@ -27,6 +27,13 @@ export type AccountPage = {
   email: string | null;
   /** What stands in for the address of a made-up person, or null for a real one. */
   madeUpLine: string | null;
+  /** Where the email address comes from, under it, or null for a made-up person. */
+  emailFrom: string | null;
+  /**
+   * How the person signed in, as one word, on a site with both ways in. Null elsewhere, where
+   * everyone signed in the same way.
+   */
+  signedInWith: string | null;
   roleWord: string;
   roleAllows: string;
   /** True for a customer, who is told how to join the support team. */
@@ -66,18 +73,20 @@ export function createAccountService(db: Db, config: Config) {
     return null;
   }
 
-  /** The address Proofdesk holds for a person who signed in with GitHub, or null. */
-  function emailOf(actor: Actor): string | null {
-    const person = repository.findPerson(db, actor.id);
-    if (person === undefined || person.email === "") return null;
-    return person.email;
-  }
+  /** Where an address comes from, by how the person signed in. */
+  const EMAIL_FROM: Record<string, string> = {
+    GitHub: "From your GitHub account; change it on GitHub.",
+    Microsoft: "From your Microsoft account; your organization changes it there.",
+  };
 
   return {
     /** The account page of the person who is looking. */
     page(actor: Actor): AccountPage {
       mustBePerson(actor);
-      const email = emailOf(actor);
+      // The address Proofdesk holds for a person who signed in with GitHub or Microsoft.
+      const person = repository.findPerson(db, actor.id);
+      const email = person === undefined || person.email === "" ? null : person.email;
+      const way = wayWordOf(person?.signed_in_with);
       let madeUpLine: string | null = null;
       if (email === null) {
         madeUpLine = config.demo
@@ -88,6 +97,8 @@ export function createAccountService(db: Db, config: Config) {
         name: actor.name,
         email,
         madeUpLine,
+        emailFrom: email === null || way === null ? null : (EMAIL_FROM[way] ?? null),
+        signedInWith: config.signIn?.microsoft != null ? way : null,
         roleWord: roleWordOf(actor),
         roleAllows: actor.readOnly === true ? READ_ONLY_ALLOWS : ROLE_ALLOWS[actor.role],
         showAskAnAdmin: actor.role === "customer",

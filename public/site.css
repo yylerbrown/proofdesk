@@ -1914,8 +1914,9 @@ main > p:is([role="status"], [role="alert"])[tabindex="-1"]:focus {
   color: var(--pd-muted);
   font-size: var(--pd-text-sm);
 }
-/* GitHub's mark on its sign-in button, in the button's own text colour. */
-.github-mark {
+/* GitHub's and Microsoft's marks on their sign-in buttons, in the button's own text colour. */
+.github-mark,
+.microsoft-mark {
   display: inline-block;
   width: 1.15em;
   height: 1.15em;
@@ -1925,9 +1926,17 @@ main > p:is([role="status"], [role="alert"])[tabindex="-1"]:focus {
   -webkit-mask: url("/assets/github-mark.svg") center / contain no-repeat;
   mask: url("/assets/github-mark.svg") center / contain no-repeat;
 }
+.microsoft-mark {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.12em;
+  -webkit-mask-image: url("/assets/microsoft-mark.svg");
+  mask-image: url("/assets/microsoft-mark.svg");
+}
 /* In forced colours the browser would paint the fill as the button's background, hiding it. */
 @media (forced-colors: active) {
-  .github-mark {
+  .github-mark,
+  .microsoft-mark {
     background-color: ButtonText;
     forced-color-adjust: none;
   }

@@ -72,7 +72,8 @@ describe("the guides' shape", () => {
     ["docs/API.md", 95],
     ["docs/AGENTS_GUIDE.md", 174],
     ["docs/TOUR.md", 57],
-    ["docs/DEPLOY.md", 326],
+    // Microsoft sign-in beside GitHub added its settings and setup steps.
+    ["docs/DEPLOY.md", 349],
   ])("%s is no longer than it was", (file, lines) => {
     expect(read(file).split("\n").length).toBeLessThanOrEqual(lines);
   });

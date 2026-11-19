@@ -1,4 +1,5 @@
 import type { Actor, Role } from "../actor.js";
+import { WAY_NAMES } from "../sign-in-notice.js";
 
 // The words the pages use for roles. They live here, apart from the People page's rules, so the
 // header can use them on every page.
@@ -14,6 +15,15 @@ export const ROLE_LABELS: Record<Role, string> = {
 export function roleWordOf(actor: Actor): string {
   if (actor.readOnly === true) return `${ROLE_LABELS[actor.role]}, read-only`;
   return ROLE_LABELS[actor.role];
+}
+
+/**
+ * How a person signed in, as one word such as "Microsoft", from the provider their account
+ * names. Null for anything else.
+ */
+export function wayWordOf(providerId: string | null | undefined): string | null {
+  if (providerId === "github" || providerId === "microsoft") return WAY_NAMES[providerId];
+  return null;
 }
 
 /**

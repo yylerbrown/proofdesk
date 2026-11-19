@@ -10,7 +10,7 @@
 </ul>
 
 <% if (people.length === 0) { %>
-<p class="empty">Nobody has signed in with GitHub yet.</p>
+<p class="empty"><%= emptyLine %></p>
 <% } else { %>
 <div class="overflow-auto">
   <table class="people">
@@ -21,7 +21,7 @@
       <% for (const person of people) { %>
       <tr>
         <%# The email address beside the name, since anyone can choose their display name. %>
-        <td class="user-text"><span class="person-name"><%= person.name %></span><br /><small class="person-email"><%= person.email ?? madeUpLine %></small></td>
+        <td class="user-text"><span class="person-name"><%= person.name %></span><br /><small class="person-email"><%= person.email ?? madeUpLine %></small><% if (person.signedInWith) { %><br /><small class="person-way"><%= person.signedInWith %></small><% } %></td>
         <td><% if (person.firstSignedIn) { %><%- include("time", { iso: person.firstSignedIn }) %><% } %></td>
         <td>
           <% if (person.locked) { %>

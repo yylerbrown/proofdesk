@@ -11,6 +11,8 @@ export type PersonRow = {
   email: string;
   first_signed_in: string;
   github_id: string | null;
+  /** How they signed in: "github" or "microsoft". Each person has one account. */
+  signed_in_with: string | null;
   chosen_role: Role | null;
 };
 
@@ -24,9 +26,12 @@ export type RoleChangeRow = {
   created_at: string;
 };
 
-// Each person with their GitHub user number and the role an admin chose, if any.
+// Each person with their GitHub user number, how they signed in and the role an admin chose,
+// if any. Accounts are never linked, so each person has one account.
 const PEOPLE = `SELECT u.id, u.name, u.email, u."createdAt" AS first_signed_in,
-         a."accountId" AS github_id, r.role AS chosen_role
+         a."accountId" AS github_id,
+         (SELECT w."providerId" FROM "account" w WHERE w."userId" = u.id LIMIT 1) AS signed_in_with,
+         r.role AS chosen_role
   FROM "user" u
   LEFT JOIN "account" a ON a."userId" = u.id AND a."providerId" = 'github'
   LEFT JOIN people_roles r ON r.person_id = u.id`;

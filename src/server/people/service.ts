@@ -12,7 +12,7 @@ import * as connectionsRepository from "../connections/repository.js";
 import { createAccountService } from "./account.js";
 import * as repository from "./repository.js";
 import { roleNowOf } from "./role-now.js";
-import { endedWhenNotAdmin, ROLE_LABELS } from "./words.js";
+import { endedWhenNotAdmin, ROLE_LABELS, wayWordOf } from "./words.js";
 
 // The People page: an admin chooses who is on the team. The server settings come first and
 // cannot be changed here, nobody changes their own role, and someone who still owns open
@@ -43,6 +43,11 @@ export type PersonView = {
   role: Role;
   /** Why the role cannot be changed here, or null when an admin may change it. */
   locked: string | null;
+  /**
+   * How they signed in, as one word ("GitHub" or "Microsoft"), on a site with both ways in.
+   * Null elsewhere, where everyone signed in the same way.
+   */
+  signedInWith: string | null;
 };
 
 /** One line of the history of role changes. */
@@ -63,6 +68,8 @@ export type PeoplePage = {
   madeUpLine: string | null;
   /** After a save, the one line that says what changed, or null. */
   changedLine: string | null;
+  /** What the page says before anyone has signed in. */
+  emptyLine: string;
 };
 
 /** What the People page says about the made-up people of the demo and the development entrance. */
@@ -70,6 +77,9 @@ const DEMO_NOTE =
   "On the real site an admin changes roles here, and it applies at once. The demo admin changes nothing.";
 const DEV_NOTE =
   "These people are made up for development and keep their roles. People who sign in with GitHub appear here.";
+
+/** What the People page says before anyone has signed in with GitHub. */
+const EMPTY_LINE = "Nobody has signed in with GitHub yet.";
 
 /** What changeRole did: the person's id, and whether their role changed. */
 export type RoleChange = { personId: string; changed: boolean };
@@ -89,6 +99,9 @@ function listInWords(items: string[]): string {
 }
 
 export function createPeopleService(db: Db, config: Config) {
+  // True on a site that offers Microsoft beside GitHub.
+  const bothWays = config.signIn?.microsoft != null;
+
   /** The page is for admins only, and never for an assistant's connection. */
   function mayLook(actor: Actor): void {
     if (!can(actor, "list_people")) {
@@ -132,6 +145,7 @@ export function createPeopleService(db: Db, config: Config) {
       firstSignedIn: null,
       role: person.role,
       locked: person.id === actor.id ? "You" : null,
+      signedInWith: null,
     }));
   }
 
@@ -150,6 +164,7 @@ export function createPeopleService(db: Db, config: Config) {
           note: config.demo ? DEMO_NOTE : DEV_NOTE,
           madeUpLine: config.demo ? "Made up for the demo" : "Made up for development",
           changedLine: null,
+          emptyLine: EMPTY_LINE,
         };
       }
       const people = repository.listPeople(db).map((person) => ({
@@ -159,6 +174,7 @@ export function createPeopleService(db: Db, config: Config) {
         firstSignedIn: person.first_signed_in,
         role: roleOfRow(person),
         locked: lockOf(actor, person),
+        signedInWith: bothWays ? wayWordOf(person.signed_in_with) : null,
       }));
       const changed = people.find((person) => person.id === changedId);
       const changes = repository.listChanges(db).map((change) => ({
@@ -173,6 +189,7 @@ export function createPeopleService(db: Db, config: Config) {
         canChange: can(actor, "change_role"),
         note: null,
         madeUpLine: null,
+        emptyLine: bothWays ? "Nobody has signed in yet." : EMPTY_LINE,
         changedLine:
           changed === undefined
             ? null
