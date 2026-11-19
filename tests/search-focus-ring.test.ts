@@ -20,5 +20,13 @@ describe("the list's search box focus", () => {
     const control = rule(css, "form.list-search :is(input, button):focus-visible");
     expect(control).toContain("outline: none");
     expect(control).toContain("border-color: var(--pd-focus)");
+    expect(control).toContain("box-shadow: inset 0 0 0 1px var(--pd-focus)");
+  });
+
+  it("gives the Search button a look of its own, so it differs from the focused box", () => {
+    const css = fs.readFileSync("public/site.css", "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(rule(css, "form.list-search button:focus-visible")).toContain(
+      "background-color: var(--pd-subtle)",
+    );
   });
 });

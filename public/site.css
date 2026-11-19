@@ -432,8 +432,12 @@ header nav .viewer strong {
 .site-header details.dropdown.switch-role[open] > summary::before {
   display: none;
 }
-/* Its menu: a small popover, the one kind of thing that floats, as wide as its button. */
+/*
+ * Its menu: a small popover, the one kind of thing that floats, as wide as its button. Its rows
+ * sit close with no gap, so the header's phone spacing never reads as a missing row.
+ */
 .site-header details.dropdown.switch-role > summary + ul {
+  gap: 0;
   min-width: 100%;
   margin-top: 6px;
   padding: var(--pd-space-1);
@@ -833,11 +837,17 @@ table.people .person-email {
   background-color: var(--pd-subtle);
   color: var(--pd-text);
 }
+/*
+ * "This is the current one", in one look wherever it is shown: the list's selected filter and the
+ * ticket page's current status are a grey box with a strong edge. Buttons stay white, so the
+ * current status never reads as one more button.
+ */
 :is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"]) a[aria-current="page"],
 :is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"])
-  a[aria-current="page"]:hover {
+  a[aria-current="page"]:hover,
+.status-row > .status-current {
   border-color: var(--pd-border-strong);
-  background-color: var(--pd-surface);
+  background-color: var(--pd-subtle);
   color: var(--pd-text);
 }
 /*
@@ -862,7 +872,8 @@ form.list-search :is(input, button) {
 }
 /*
  * The box and its button join into one pill, so focus rings the whole pill, following its round
- * ends. The control that has focus turns its own edge blue instead of drawing a square ring.
+ * ends. The control that has focus turns its own edge blue and draws a blue line inside it, and
+ * the button also turns grey, so the box and the button never look the same when focused.
  */
 form.list-search:has(:focus-visible) {
   outline: 2px solid var(--pd-focus);
@@ -871,6 +882,10 @@ form.list-search:has(:focus-visible) {
 form.list-search :is(input, button):focus-visible {
   outline: none;
   border-color: var(--pd-focus);
+  box-shadow: inset 0 0 0 1px var(--pd-focus);
+}
+form.list-search button:focus-visible {
+  background-color: var(--pd-subtle);
 }
 /* How many tickets each status filter holds: smaller and muted, inside the filter's own link. */
 .filter-count {
@@ -1703,6 +1718,34 @@ article.entry > p {
    details box steps out of the row's layout, so its button stays in line with the other two and
    its form takes a full line of its own under all three. A browser that cannot do this opens
    the form in place, which still works. */
+/*
+ * The three statuses sit on one centre line at one height, the current one boxed like the list's
+ * selected filter. A greyed button keeps no margin of its own, so it lines up with the others.
+ */
+.status-row {
+  align-items: center;
+}
+.status-row > * > :is(button, summary[role="button"]),
+.status-row > .status-current {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 2.25rem;
+  margin: 0;
+  padding-block: 0;
+}
+@media (max-width: 639px) {
+  .status-row > * > :is(button, summary[role="button"]),
+  .status-row > .status-current {
+    min-height: 44px;
+  }
+}
+.status-row > .status-current {
+  padding-inline: 10px;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: var(--pd-radius);
+}
 .status-row > details,
 .status-row > details > summary {
   width: auto;

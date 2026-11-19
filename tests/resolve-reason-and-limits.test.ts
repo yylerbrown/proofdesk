@@ -148,7 +148,9 @@ describe("a long text with line breaks", () => {
       Number(form.querySelector(`[name="${name}"]`)!.getAttribute("maxlength"));
     const shape = createTicketSchema.shape;
     expect(limit("title")).toBe(shape.title.maxLength);
-    expect(limit("description")).toBe(shape.description.maxLength);
+    // The description counts against the limit instead, so a long paste is never cut off.
+    const description = form.querySelector('[name="description"]')!;
+    expect(Number(description.getAttribute("data-count-limit"))).toBe(shape.description.maxLength);
     expect(limit("fix_check")).toBe(shape.fix_check.unwrap().maxLength);
     expect(limit("where_url")).toBe(500);
   });
