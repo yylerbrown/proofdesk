@@ -31,7 +31,9 @@ export type Action =
   | "resolve_with_reason"
   | "bulk_change"
   | "list_people"
-  | "change_role";
+  | "change_role"
+  | "suggest_checks"
+  | "choose_check";
 
 /**
  * What an AI agent may be allowed to do, each named by the operation it permits. A connection
@@ -46,6 +48,9 @@ export const AGENT_SCOPES = [
   "attach_evidence",
   "propose_specs",
   "link_changes",
+  // Suggesting ways to verify new tickets is off unless an admin ticks it. With it, the
+  // connection also reads the title and description of New tickets that have no check yet.
+  "suggest_checks",
 ] as const;
 export type AgentScope = (typeof AGENT_SCOPES)[number];
 
@@ -108,6 +113,12 @@ export const CAPABILITIES: Record<Action, Capability> = {
   },
   list_people: { people: "An admin.", agent: "people_only" },
   change_role: { people: "An admin, for someone else.", agent: "people_only" },
+  suggest_checks: {
+    people:
+      "Nobody: an assistant suggests, for a New ticket with no check, and the customer chooses.",
+    agent: "suggest_checks",
+  },
+  choose_check: { people: "Only the customer who filed it.", agent: "people_only" },
 };
 
 /** The two facts about a ticket that permissions depend on. */
@@ -168,6 +179,10 @@ export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean
   // Choosing who is on the team. The people service adds who may be changed.
   if (action === "list_people") return actor.role === "admin" && actor.kind === "person";
   if (action === "change_role") return actor.role === "admin" && actor.kind === "person";
+  // Suggesting ways to verify is for an assistant only, and never one on the public demo, so
+  // the demo takes no text from strangers into a customer's page. The ticket service decides
+  // which tickets: New ones with no check.
+  if (action === "suggest_checks") return actor.kind === "agent" && actor.demo !== true;
 
   // Every other action is about one ticket.
   if (ticket === undefined) return false;
@@ -203,5 +218,8 @@ export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean
   if (action === "hand_off") return isStaff && actor.kind === "person";
   if (action === "hand_to_agent") return isStaff && actor.kind === "person";
   if (action === "adopt_check") return isOwn;
+  // The customer picks a suggested way to verify, or writes their own. Only a person, never an
+  // assistant, and never the team for them.
+  if (action === "choose_check") return isOwn && actor.kind === "person";
   return false;
 }

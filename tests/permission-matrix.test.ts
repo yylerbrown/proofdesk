@@ -245,6 +245,32 @@ const TABLE: Record<string, Row> = {
     handedAgent: whileHanded(NO),
     ...outsiders,
   },
+  // Only an assistant allowed to suggests ways to verify, and only for a New ticket with no
+  // check. This ticket has one, so the key that may suggest is told it does not exist.
+  suggest_checks: {
+    filer: all(NO),
+    otherCustomer: all(NO),
+    owner: all(NO),
+    teamNotOwner: all(NO),
+    demoTeam: all(NO),
+    admin: all(NO),
+    preview: all(NO),
+    handedAgent: all(NO),
+    otherAgent: all(HIDDEN),
+    nobody: all(SIGN_IN),
+  },
+  // Only the customer who filed it says how they will know it is fixed, and only while it has
+  // no check. This ticket has one.
+  choose_check: {
+    filer: [NOT_NOW, NOT_NOW, NOT_NOW, NOT_NOW, NOT_NOW, NOT_NOW, HIDDEN],
+    owner: all(NO),
+    teamNotOwner: all(NO),
+    demoTeam: all(NO),
+    admin: all(NO),
+    preview: all(NO),
+    handedAgent: whileHanded(NO),
+    ...outsiders,
+  },
   // The team links changes; the handed agent's key has no link_changes scope.
   link_change: {
     filer: [NO, NO, NO, NO, NO, NO, HIDDEN],
@@ -541,6 +567,7 @@ async function buildTemplate(state: State, owner: Actor): Promise<Template> {
     "attach_evidence",
     "propose_specs",
     "link_changes",
+    "suggest_checks",
   ]);
   // The team's wording to adopt and a spec to decide on, in every state.
   must(
@@ -682,6 +709,8 @@ function callFor(action: string, template: Template, demo: boolean): Call {
       body: { agreed_check: "Twenty pages print" },
     },
     adopt_check: post("/adopt-check"),
+    suggest_checks: post("/check-suggestions", { options: ["Twenty pages print with no jam"] }),
+    choose_check: post("/check", { words: "Eleven pages print" }),
     link_change: {
       method: "put",
       path: `${at}/change-link`,

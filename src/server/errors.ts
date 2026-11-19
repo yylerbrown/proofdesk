@@ -95,6 +95,10 @@ export const HINTS: Record<string, string> = {
     "The ticket is resolved. The customer who filed it can reopen it, and so can its owner or an admin when the team resolved it.",
   question_open: "Withdraw the open question first (POST .../withdraw-question), then ask again.",
   no_interpretation: "The team has not offered any wording for the check.",
+  suggestions_full:
+    "Other assistants already offer enough ways to verify this ticket. Offer fewer, or none.",
+  suggestion_gone: "Get the ticket again and pick one of its offered check_suggestions.",
+  check_exists: "The ticket already has a check. Edit the ticket to change it.",
   question_changed: "Get the ticket again and answer with its current ready_token.",
   idempotency_key_reused:
     "Use a new idempotency key for a new request. Reuse a key only to retry the very same request.",

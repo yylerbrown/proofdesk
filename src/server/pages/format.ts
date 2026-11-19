@@ -373,6 +373,14 @@ export function describeEvent(event: TicketEvent): string {
   if (event.type === "question_withdrawn") return "Question to the customer withdrawn";
   if (event.type === "check_adopted")
     return "The customer adopted the team's wording as their check";
+  if (event.type === "check_chosen") {
+    const chosen = z.object({ suggested_by: z.string().nullable() }).safeParse(event.data);
+    if (chosen.success) {
+      return chosen.data.suggested_by === null
+        ? "Customer wrote how to verify"
+        : `Customer chose how to verify, suggested by ${chosen.data.suggested_by}`;
+    }
+  }
   if (event.type === "archived") return "Archived";
   if (event.type === "restored") return "Restored";
   return event.type;

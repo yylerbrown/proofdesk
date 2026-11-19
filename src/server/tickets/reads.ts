@@ -46,6 +46,7 @@ const CUSTOMER_EVENT_TYPES = new Set([
   "reopened",
   "reopened_by_team",
   "check_adopted",
+  "check_chosen",
   "resolved_by_team",
   "evidence_added",
   "spec_accepted",

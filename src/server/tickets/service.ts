@@ -13,6 +13,7 @@ import { createReads } from "./reads.js";
 import * as repository from "./repository.js";
 import { createResolveAndReopen } from "./resolve-and-reopen.js";
 import { createShared } from "./shared.js";
+import { createSuggestedChecks } from "./suggested-checks.js";
 import type { Budget, ServiceOptions } from "./types.js";
 import { createWorkflow } from "./workflow.js";
 
@@ -108,6 +109,8 @@ export function createTicketService(
     ...createPictures(shared, { ...filing, ...conversation }),
     // evidence-and-specs.ts: addEvidence, listEvidence, getSpec, proposeSpec, decideSpec
     ...createEvidenceAndSpecs(shared),
+    // suggested-checks.ts: suggestChecks, chooseCheck, listCheckSuggestions, ticketWantingCheck
+    ...createSuggestedChecks(shared),
     // assistants.ts: giveToAgent, endAgentWork, connectedAssistants, agentHelp, assistantSignals
     ...createAssistants(shared),
     // once.ts: once, the retry-safe wrapper around a write
