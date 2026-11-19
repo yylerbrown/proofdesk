@@ -42,11 +42,15 @@ export type TicketFacts = {
   owner_id: string | null;
   owner_name: string | null;
   try_url: string | null;
+  /** How the customer said they will know it is fixed, in their own words. */
+  fix_check: string | null;
 };
 
 export function ticketFacts(db: Db, ticketId: number): TicketFacts | undefined {
   return db
-    .prepare("SELECT title, created_by, owner_id, owner_name, try_url FROM tickets WHERE id = ?")
+    .prepare(
+      "SELECT title, created_by, owner_id, owner_name, try_url, fix_check FROM tickets WHERE id = ?",
+    )
     .get(ticketId) as TicketFacts | undefined;
 }
 

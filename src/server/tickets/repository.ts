@@ -456,24 +456,6 @@ export function evidenceChosenForCustomer(db: Db, ticketId: number): Set<number>
 }
 
 /**
- * True when the customer's latest word on a ticket says it is not fixed: their latest answer
- * or reopening is a reopening, or an answer of no.
- */
-export function customerSaysNotFixed(db: Db, ticketId: number): boolean {
-  const event = db
-    .prepare(
-      `SELECT type, data FROM ticket_events
-       WHERE ticket_id = ? AND type IN ('customer_answered', 'reopened')
-       ORDER BY id DESC LIMIT 1`,
-    )
-    .get(ticketId) as { type: string; data: string } | undefined;
-  if (event === undefined) return false;
-  if (event.type === "reopened") return true;
-  const data = JSON.parse(event.data) as { fixed?: boolean };
-  return data.fixed !== true;
-}
-
-/**
  * Of these tickets, the ids of those whose customer's latest word is their reopening it: a
  * reopening newer than any answer to "Did this fix it?".
  */
