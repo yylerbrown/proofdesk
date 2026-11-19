@@ -532,6 +532,8 @@ export function pagesRouter(service: TicketService): Router {
       formId,
       alreadyFiled: ticketFiledWith(service, actor, formId),
       values: sample ? WALKTHROUGH_SAMPLE : emptyForm,
+      // The form says so, since sample text in the boxes looks like text the visitor typed.
+      sample,
       errors: {},
     });
   });
