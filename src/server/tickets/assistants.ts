@@ -19,7 +19,8 @@ export function createAssistants(shared: Shared) {
   return {
     /**
      * The owner hands an in-progress ticket to one agent connection, which can then work on it
-     * within its scopes. A ticket has at most one; handing it to another ends the first.
+     * within its scopes. A ticket has at most one; handing it to another ends the first. While
+     * the customer is answering a question, no agent is given the ticket.
      */
     giveToAgent(key: string, input: unknown, actor: Actor): Ticket {
       const row = db.transaction(() => {
@@ -36,6 +37,14 @@ export function createAssistants(shared: Shared) {
         }
         if (before.status !== "in_progress") {
           throw new HttpError(409, "not_in_progress", `Start work on ticket ${key} first.`);
+        }
+        // Asking the customer ends any agent's work, so no agent works while they answer.
+        if (before.ready_at !== null) {
+          throw new HttpError(
+            409,
+            "question_open",
+            `The customer is answering a question on ${key}. Withdraw it first to hand the ticket to an assistant.`,
+          );
         }
         const now = new Date().toISOString();
         const connection = repository.liveConnections(db, now).find((c) => c.id === connection_id);
