@@ -1,7 +1,7 @@
 import { Router, type Request, type RequestHandler, type Response } from "express";
 import type { Actor } from "../actor.js";
 import { DEMO_ACTORS, signedIn } from "../actor.js";
-import { forbidden, HttpError, ValidationError } from "../errors.js";
+import { forbidden, HttpError, onTicketPage, ValidationError } from "../errors.js";
 import { can } from "../permissions.js";
 import {
   confirmedAt,
@@ -22,6 +22,7 @@ import {
   ticketFiledWith,
 } from "../pages/form-id.js";
 import { readListPageQuery } from "../pages/list-query.js";
+import { sameText } from "../tickets/schemas.js";
 import { statusControl } from "../pages/status-control.js";
 import { rememberSaved, takeProblem, takeSaved, type SavedKey } from "../pages/saved.js";
 import { RESOLVE_REASON_LABELS, TICKET_STATUSES } from "../tickets/schemas.js";
@@ -73,8 +74,9 @@ const FORM_FIELDS: Record<Problem["form"], string[]> = {
   resolve: ["reason", "duplicate_of", "note"],
 };
 
-// The forms on the ticket page that show what was typed again when they are drawn after a refusal.
-const KEEPS_TEXT = new Set<Problem["form"]>(["answer", "ready", "reopen", "resolve"]);
+// The forms on the ticket page that carry the ticket's version and show what was typed again
+// when they are drawn after a refusal for an old version.
+const KEEPS_TEXT = new Set<Problem["form"]>(["ready", "reopen", "resolve"]);
 
 /** The box a refused form should focus: the first one with a message, or else its first box. */
 function focusField(form: Problem["form"], fieldErrors: Record<string, string[] | undefined>) {
@@ -243,11 +245,14 @@ const BOX_NAMES: [keyof typeof emptyForm, string][] = [
   ["where_url", "Page where it happened"],
 ];
 
-/** The names of the boxes whose text differs from the ticket as it is now. */
+/**
+ * The names of the boxes whose text differs from the ticket as it is now. They are compared the
+ * way a ticket stores them: trimmed, and with a browser's CR LF line breaks the same as plain ones.
+ */
 function differingBoxes(ticket: Ticket, values: typeof emptyForm): string[] {
-  return BOX_NAMES.filter(([field]) => (ticket[field] ?? "") !== values[field]).map(
-    ([, name]) => name,
-  );
+  return BOX_NAMES.filter(
+    ([field]) => !sameText((ticket[field] ?? "").trim(), values[field].trim()),
+  ).map(([, name]) => name);
 }
 
 export function pagesRouter(service: TicketService): Router {
@@ -381,7 +386,7 @@ export function pagesRouter(service: TicketService): Router {
           firstTyped !== undefined &&
           KEEPS_TEXT.has(form)
         ) {
-          res.locals.refused = err.message;
+          res.locals.refused = onTicketPage(err);
           showTicket(req, res, 409, emptyEntry, {
             form,
             message: "Your text is kept here. Look at the ticket as it is now, then send again.",

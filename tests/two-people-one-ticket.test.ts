@@ -5,6 +5,7 @@ import { parse } from "node-html-parser";
 import request from "supertest";
 import type { Express } from "express";
 import { afterEach, describe, expect, it } from "vitest";
+import { DEV_COOKIE, type Actor } from "../src/server/actor.js";
 import type { Db } from "../src/server/db.js";
 import { WRITE_LIMIT } from "../src/server/limits.js";
 import {
@@ -18,6 +19,7 @@ import {
   listenLocally,
   refusedBackToTicket,
   teamActor,
+  visitor,
 } from "./helpers.js";
 
 // Two people acting on one ticket at once. Many races were already refused by the workflow's
@@ -52,6 +54,20 @@ function stored(db: Db) {
 async function formVersion(app: Express, who: typeof teamActor, path: string) {
   const page = parse((await as(app, who).get(path)).text);
   return page.querySelector("input[name=expected_version]")?.getAttribute("value");
+}
+
+/** Posts a form as this person and returns the response and the lines on the page it leads to. */
+async function postThenRead(app: Express, who: Actor, path: string, fields: object) {
+  const res = await as(app, who).post(path).type("form").send(fields);
+  const page = await visitor(app)
+    .set("Cookie", [`${DEV_COOKIE}=${who.id}`, ...[res.headers["set-cookie"] ?? []].flat()])
+    .get(res.headers.location ?? path);
+  const html = parse(page.text);
+  return {
+    status: res.status,
+    saved: html.querySelector("p.saved")?.text.trim(),
+    refused: html.querySelector("p.refused")?.text.trim(),
+  };
 }
 
 describe("what the workflow's state checks already refuse", () => {
@@ -221,6 +237,60 @@ describe("two people editing one ticket", () => {
     expect((await read(app)).description).toBe("Jams on every second page.");
   });
 
+  it("names only the boxes that differ, with a browser's line breaks the same as stored ones", async () => {
+    const { app } = buildTestApp();
+    await as(app, customerOne)
+      .post("/api/tickets")
+      .send({ ...valid, description: "It jams.\nOn page two.", fix_check: "Ten pages\nprint" });
+    const version = await formVersion(app, customerOne, "/tickets/SUP-1/edit");
+    // Someone else changes only the title.
+    await admin(app)
+      .put("/api/tickets/SUP-1")
+      .send({ ...valid, title: "Printer jams often", description: "It jams.\nOn page two." });
+    // The old form sends the same two-line boxes, as a browser does, with CR LF line breaks.
+    const res = await as(app, customerOne).post("/tickets/SUP-1/edit").type("form").send({
+      title: "Printer jams ",
+      description: "It jams.\r\nOn page two.",
+      fix_check: "Ten pages\r\nprint",
+      where_url: "https://example.com/print",
+      expected_version: version,
+    });
+    expect(res.status).toBe(409);
+    expect(parse(res.text).querySelector("p.changed-elsewhere")?.text).toContain(
+      "Different on the ticket now: Title, Page where it happened.",
+    );
+  });
+
+  it("saves a double click on Save once, and says Changes saved both times", async () => {
+    const { app } = buildTestApp();
+    await filed(app);
+    const version = await formVersion(app, customerOne, "/tickets/SUP-1/edit");
+    const fields = { ...valid, title: "Printer jams on page two", expected_version: version };
+    const first = await postThenRead(app, customerOne, "/tickets/SUP-1/edit", fields);
+    const second = await postThenRead(app, customerOne, "/tickets/SUP-1/edit", fields);
+    for (const press of [first, second]) {
+      expect(press.status).toBe(303);
+      expect(press.saved).toBe("Changes saved.");
+    }
+    expect((await read(app)).title).toBe("Printer jams on page two");
+  });
+
+  it("still refuses a second save with the same old version when its text differs", async () => {
+    const { app } = buildTestApp();
+    await filed(app);
+    const version = await formVersion(app, customerOne, "/tickets/SUP-1/edit");
+    await as(app, customerOne)
+      .post("/tickets/SUP-1/edit")
+      .type("form")
+      .send({ ...valid, title: "First words", expected_version: version });
+    const res = await as(app, customerOne)
+      .post("/tickets/SUP-1/edit")
+      .type("form")
+      .send({ ...valid, title: "Other words", expected_version: version });
+    expect(res.status).toBe(409);
+    expect((await read(app)).title).toBe("First words");
+  });
+
   it("refuses an API edit sent with an old version, and writes nothing", async () => {
     const { app, db } = buildTestApp();
     await filed(app);
@@ -234,8 +304,9 @@ describe("two people editing one ticket", () => {
       .send({ ...valid, title: "Second save", expected_version: seen });
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe("ticket_changed");
+    // The API's message ends there: the page adds that it shows the ticket as it is now.
     expect(res.body.error.message).toBe(
-      "Ticket SUP-1 changed since you opened it, so nothing was saved. This is the ticket as it is now.",
+      "Ticket SUP-1 changed since you opened it, so nothing was saved.",
     );
     expect(stored(db)).toEqual(before);
   });
@@ -442,6 +513,30 @@ describe("every action that accepts a version", () => {
     }
   });
 
+  // The second press of a double click carries the version the first press saw. It changes
+  // nothing, so it is answered as before rather than refused as if someone else had changed it.
+  const REPEATS = [
+    "edit_ticket",
+    "change_status",
+    "take_ticket",
+    "agree_check",
+    "link_change",
+    "withdraw_question",
+  ];
+  it.each(CASES.filter((c) => REPEATS.includes(c.name)))(
+    "$name sent twice with the same version is not refused the second time",
+    async (c) => {
+      const { app } = buildTestApp();
+      await filed(app);
+      await c.setup(app);
+      const seen = (await read(app)).version;
+      expect((await c.send(app, seen)).status).toBe(200);
+      const after = (await read(app)).version;
+      expect((await c.send(app, seen)).status).toBe(200);
+      expect((await read(app)).version).toBe(after);
+    },
+  );
+
   it("is described in the API's own description, with the version in the ticket's JSON", async () => {
     const { app } = buildTestApp();
     const spec = (await admin(app).get("/api/openapi.json")).body;
@@ -604,6 +699,20 @@ describe("the ticket page's own forms", () => {
       "Ticket SUP-1 changed since you opened it, so nothing was saved. This is the ticket as it is now.",
     );
     expect((await read(app)).owner_id).toBeNull();
+  });
+
+  it("answer a status button pressed twice with one line, and no refusal", async () => {
+    const { app } = buildTestApp();
+    await filed(app);
+    await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
+    const version = await formVersion(app, teamActor, "/tickets/SUP-1");
+    const fields = { status: "new", expected_version: version! };
+    const first = await postThenRead(app, teamActor, "/tickets/SUP-1/status", fields);
+    expect(first.saved).toContain("Back to New");
+    const second = await postThenRead(app, teamActor, "/tickets/SUP-1/status", fields);
+    expect(second.status).toBe(303);
+    expect(second.refused).toBeUndefined();
+    expect((await read(app)).status).toBe("new");
   });
 
   it("keep what was typed when a press is refused for an old version", async () => {

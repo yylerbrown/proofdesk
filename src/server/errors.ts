@@ -196,6 +196,15 @@ export const pageNotFoundHandler: RequestHandler = (_req, _res, next) => {
   next(new HttpError(404, "not_found", "There is no page at this address."));
 };
 
+/**
+ * A refusal as the ticket page shows it. The page that comes back is the ticket as it is now, so
+ * a refusal for an old version says so. The API's message stops before that sentence.
+ */
+export function onTicketPage(err: { code: string; message: string }): string {
+  if (err.code === "ticket_changed") return `${err.message} This is the ticket as it is now.`;
+  return err.message;
+}
+
 export const pageErrorHandler: ErrorRequestHandler = (err, req, res, next) => {
   if (res.headersSent) {
     next(err);
@@ -218,7 +227,7 @@ export const pageErrorHandler: ErrorRequestHandler = (err, req, res, next) => {
     // A forged request from another site gets a plain refusal, never a trip to the ticket.
     shown.code !== "cross_site_request"
   ) {
-    rememberProblem(res, shown.message);
+    rememberProblem(res, onTicketPage(shown));
     res.redirect(303, `/tickets/${ticketAction[1]}`);
     return;
   }

@@ -823,14 +823,15 @@ export function createTicketService(
   /**
    * Throws 409 when the caller says which version it saw and the ticket has changed since, so a
    * change made from an old page or an old read never writes over a newer one. A caller that
-   * sends no version is not checked.
+   * sends no version is not checked. Each action checks it only once it knows it will write: a
+   * change that changes nothing, such as the second press of a double click, is not refused.
    */
   function requireVersion(key: string, row: repository.TicketRow, expected?: number): void {
     if (expected === undefined || expected === row.version) return;
     throw new HttpError(
       409,
       "ticket_changed",
-      `Ticket ${key} changed since you opened it, so nothing was saved. This is the ticket as it is now.`,
+      `Ticket ${key} changed since you opened it, so nothing was saved.`,
     );
   }
 
@@ -942,7 +943,6 @@ export function createTicketService(
         }
         requirePermission(actor, "change_status", before);
         const { status, expected_version } = parse(changeStatusSchema, input);
-        requireVersion(key, before, expected_version);
         requireNotArchived(key, before);
         if (before.status === status) {
           // Work that has started is the owner's: anyone else asking to start it is refused,
@@ -950,6 +950,7 @@ export function createTicketService(
           if (status === "in_progress") requireOwnerStarts(key, before, actor);
           return before; // nothing changes, so nothing is logged
         }
+        requireVersion(key, before, expected_version);
         if (status === "resolved") throw needsCustomer(key);
         // The status moves only by the workflow's own steps: start work, or send it back to New.
         if (before.status === "resolved") {
@@ -979,7 +980,6 @@ export function createTicketService(
         const before = requireRow(key, actor);
         requirePermission(actor, "edit", before);
         const ticket = parse(editTicketSchema, input);
-        requireVersion(key, before, ticket.expected_version);
         const after = {
           title: ticket.title,
           description: ticket.description,
@@ -998,6 +998,7 @@ export function createTicketService(
           }
         }
         if (Object.keys(changes).length === 0) return before;
+        requireVersion(key, before, ticket.expected_version);
         const now = new Date().toISOString();
         withdrawQuestion(before);
         repository.updateTicketText(
@@ -1072,13 +1073,13 @@ export function createTicketService(
         const before = requireRow(key, actor);
         requirePermission(actor, "agree_check", before);
         const { agreed_check, expected_version } = parse(agreeCheckSchema, input);
-        requireVersion(key, before, expected_version);
         // The same words as the customer's are not a tighter check: keep none.
         // Stored text may still hold old line endings, so both checks compare with sameText.
         const agreed =
           agreed_check === "" || sameText(agreed_check, before.fix_check) ? null : agreed_check;
         requireNotArchived(key, before);
         if (sameText(before.agreed_check, agreed)) return before; // nothing changes
+        requireVersion(key, before, expected_version);
         const now = new Date().toISOString();
         withdrawQuestion(before);
         repository.updateAgreedCheck(db, before.id, agreed, now);
@@ -1094,9 +1095,9 @@ export function createTicketService(
         const before = requireRow(key, actor);
         requirePermission(actor, "link_change", before);
         const { change_url, expected_version } = parse(linkChangeSchema, input);
-        requireVersion(key, before, expected_version);
         requireNotArchived(key, before);
         if (before.change_url === change_url) return before;
+        requireVersion(key, before, expected_version);
         const now = new Date().toISOString();
         withdrawQuestion(before);
         repository.updateChangeUrl(db, before.id, change_url, now);
@@ -1218,10 +1219,10 @@ export function createTicketService(
             `Only the owner of ticket ${key} can withdraw its question.`,
           );
         }
-        requireVersion(key, before, expected_version);
         // Archiving already withdrew any question.
         requireNotArchived(key, before);
         if (before.ready_at === null) return before; // nothing is open
+        requireVersion(key, before, expected_version);
         const now = new Date().toISOString();
         repository.clearReady(db, before.id, now);
         log(before.id, actor, "question_withdrawn", {}, now);
@@ -1292,9 +1293,10 @@ export function createTicketService(
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "take", before);
-        requireVersion(key, before, parse(versionOnlySchema, input ?? {}).expected_version);
+        const { expected_version } = parse(versionOnlySchema, input ?? {});
         requireNotArchived(key, before);
         if (before.owner_id === actor.id) return before; // already theirs
+        requireVersion(key, before, expected_version);
         // Take is for the inbox. Someone else's ticket is handed over, not taken.
         if (before.owner_id !== null) {
           throw new HttpError(
@@ -1533,7 +1535,6 @@ export function createTicketService(
         const before = requireRow(key, actor);
         requirePermission(actor, "hand_off", before);
         const { to, expected_owner, expected_version } = parse(handOffSchema, input);
-        requireVersion(key, before, expected_version);
         requireNotArchived(key, before);
         if (before.status === "resolved") {
           throw new HttpError(409, "not_open", `Ticket ${key} is resolved.`);
@@ -1557,6 +1558,7 @@ export function createTicketService(
           throw new ValidationError("Choose a team member.", { to: ["Choose a team member."] });
         }
         if (target.id === before.owner_id) return before;
+        requireVersion(key, before, expected_version);
         withdrawQuestion(before);
         // A new owner chooses their own help: the old owner's agent hand-off ends.
         endAgent(before, "the ticket changed hands", actor, new Date().toISOString());
