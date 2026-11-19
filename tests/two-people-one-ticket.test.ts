@@ -521,6 +521,7 @@ describe("every action that accepts a version", () => {
     "take_ticket",
     "agree_check",
     "link_change",
+    "mark_ready",
     "withdraw_question",
   ];
   it.each(CASES.filter((c) => REPEATS.includes(c.name)))(
@@ -536,6 +537,117 @@ describe("every action that accepts a version", () => {
       expect((await read(app)).version).toBe(after);
     },
   );
+
+  // The ticket's state is checked before its version, so a press the state refuses gets the
+  // state's own words, even when it also carries an old version, such as after a double click.
+  type StateRefusal = {
+    name: string;
+    setup: (app: Express) => Promise<unknown>;
+    send: (app: Express, v: number) => Promise<{ body: { error?: { code?: string } } }>;
+    code: string;
+  };
+  const STATE_REFUSALS: StateRefusal[] = [
+    {
+      name: "change_status",
+      setup: none,
+      send: (app, v) =>
+        as(app, teamActor)
+          .patch("/api/tickets/SUP-1")
+          .send({ status: "in_progress", expected_version: v }),
+      code: "needs_owner",
+    },
+    {
+      name: "take_ticket",
+      setup: (app) => admin(app).post("/api/tickets/SUP-1/take"),
+      send: (app, v) =>
+        as(app, teamActor).post("/api/tickets/SUP-1/take").send({ expected_version: v }),
+      code: "already_owned",
+    },
+    {
+      name: "take_and_start",
+      setup: takeAndStart,
+      send: (app, v) =>
+        as(app, teamActor).post("/api/tickets/SUP-1/take-and-start").send({ expected_version: v }),
+      code: "not_new",
+    },
+    {
+      name: "release_ticket",
+      setup: none,
+      send: (app, v) =>
+        as(app, teamActor).post("/api/tickets/SUP-1/release").send({ expected_version: v }),
+      code: "no_owner",
+    },
+    {
+      name: "adopt_check",
+      setup: none,
+      send: (app, v) =>
+        as(app, customerOne).post("/api/tickets/SUP-1/adopt-check").send({ expected_version: v }),
+      code: "no_interpretation",
+    },
+    {
+      name: "mark_ready",
+      setup: (app) => as(app, teamActor).post("/api/tickets/SUP-1/take"),
+      send: (app, v) =>
+        as(app, teamActor).post("/api/tickets/SUP-1/ready").send({ expected_version: v }),
+      code: "not_in_progress",
+    },
+    {
+      name: "resolve_with_reason",
+      setup: (app) =>
+        as(app, teamActor).post("/api/tickets/SUP-1/resolve").send({ reason: "wont_fix" }),
+      send: (app, v) =>
+        as(app, teamActor)
+          .post("/api/tickets/SUP-1/resolve")
+          .send({ reason: "wont_fix", expected_version: v }),
+      code: "not_open",
+    },
+    {
+      name: "reopen",
+      setup: none,
+      send: (app, v) =>
+        as(app, customerOne)
+          .post("/api/tickets/SUP-1/reopen")
+          .send({ reason: "It jams again.", expected_version: v }),
+      code: "not_resolved",
+    },
+    {
+      name: "give_to_agent",
+      setup: async (app) => {
+        await issueKey(app);
+        await as(app, teamActor).post("/api/tickets/SUP-1/take");
+      },
+      send: async (app, v) => {
+        const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
+        const id = page.querySelector("select[name=connection_id] option")?.getAttribute("value");
+        return as(app, teamActor)
+          .post("/api/tickets/SUP-1/agent")
+          .send({ connection_id: id ?? 1, expected_version: v });
+      },
+      code: "not_in_progress",
+    },
+  ];
+  it.each(STATE_REFUSALS)(
+    "$name refused for the ticket's state says so, even with an old version",
+    async (c) => {
+      const { app, db } = buildTestApp();
+      await filed(app);
+      await c.setup(app);
+      const seen = (await read(app)).version;
+      changedElsewhere(db);
+      expect((await c.send(app, seen)).body.error?.code).toBe(c.code);
+    },
+  );
+
+  it("treats a version sent as JSON null as no version", async () => {
+    const { app } = buildTestApp();
+    await filed(app);
+    await as(app, teamActor).post("/api/tickets/SUP-1/take");
+    const res = await as(app, teamActor)
+      .post("/api/tickets/SUP-1/release")
+      .send({ expected_version: null });
+    expect(res.status).toBe(200);
+    expect((await read(app)).owner_id).toBeNull();
+  });
 
   it("is described in the API's own description, with the version in the ticket's JSON", async () => {
     const { app } = buildTestApp();
@@ -713,6 +825,44 @@ describe("the ticket page's own forms", () => {
     expect(second.status).toBe(303);
     expect(second.refused).toBeUndefined();
     expect((await read(app)).status).toBe("new");
+  });
+
+  it("answer Ask the customer to verify pressed twice with the saved line, and no refusal", async () => {
+    const { app } = buildTestApp();
+    await filed(app);
+    await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
+    const version = await formVersion(app, teamActor, "/tickets/SUP-1");
+    const fields = { expected_version: version! };
+    const first = await postThenRead(app, teamActor, "/tickets/SUP-1/ready", fields);
+    expect(first.saved).toBe("The customer has been asked to check the fix.");
+    const second = await postThenRead(app, teamActor, "/tickets/SUP-1/ready", fields);
+    expect(second.status).toBe(303);
+    expect(second.saved).toBe("The customer has been asked to check the fix.");
+    expect(second.refused).toBeUndefined();
+  });
+
+  it("keep the ticked evidence when Ask with these details is refused for an old version", async () => {
+    const { app, db } = buildTestApp();
+    await filed(app);
+    await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
+    await admin(app).post("/api/tickets/SUP-1/evidence").send({ kind: "note", summary: "One" });
+    await admin(app).post("/api/tickets/SUP-1/evidence").send({ kind: "note", summary: "Two" });
+    const version = await formVersion(app, teamActor, "/tickets/SUP-1");
+    const boxes = parse((await as(app, teamActor).get("/tickets/SUP-1")).text)
+      .querySelectorAll("form.ask input[name=evidence_ids]")
+      .map((box) => box.getAttribute("value")!);
+    expect(boxes.length).toBe(2);
+    changedElsewhere(db);
+    const res = await as(app, teamActor)
+      .post("/tickets/SUP-1/ready")
+      .type("form")
+      .send(`tried=Printed+ten.&evidence_ids=${boxes[1]}&expected_version=${version}`);
+    expect(res.status).toBe(409);
+    const ticked = parse(res.text)
+      .querySelectorAll("form.ask input[name=evidence_ids]")
+      .filter((box) => box.hasAttribute("checked"))
+      .map((box) => box.getAttribute("value"));
+    expect(ticked).toEqual([boxes[1]]);
   });
 
   it("keep what was typed when a press is refused for an old version", async () => {

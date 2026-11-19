@@ -58,6 +58,8 @@ type Problem = {
   comment: string;
   /** What was typed in the form, so it can be shown again. */
   values?: Record<string, string>;
+  /** The evidence boxes that were ticked, so they are ticked again. */
+  evidenceIds?: string[];
   /** The box that gets focus when the page comes back, so the visitor lands on the error. */
   focus?: string;
 };
@@ -376,6 +378,8 @@ export function pagesRouter(service: TicketService): Router {
         for (const [name, value] of Object.entries(req.body ?? {})) {
           if (typeof value === "string") values[name] = value;
         }
+        // Ticked boxes arrive as one text, or as a list when more than one is ticked.
+        const evidenceIds = [req.body?.evidence_ids].flat().filter((id) => typeof id === "string");
         // The ticket changed since the page was opened. A form with text typed in it is shown
         // again on the ticket as it is now, with the text kept. Any other press goes back to
         // the ticket with the reason, as for other refusals.
@@ -392,6 +396,7 @@ export function pagesRouter(service: TicketService): Router {
             message: "Your text is kept here. Look at the ticket as it is now, then send again.",
             comment: asText(req.body?.comment ?? req.body?.reason),
             values,
+            evidenceIds,
             focus: firstTyped,
           });
           return;
@@ -403,6 +408,7 @@ export function pagesRouter(service: TicketService): Router {
           message,
           comment: asText(req.body?.comment ?? req.body?.reason),
           values,
+          evidenceIds,
           focus: focusField(form, err.fieldErrors),
         });
       }

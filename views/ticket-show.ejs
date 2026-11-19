@@ -433,6 +433,7 @@
   <% } %>
   <% if (allowed.markReady) { %>
   <% const asked = problem?.form === "ready" ? (problem.values ?? {}) : {}; %>
+  <% const ticked = problem?.form === "ready" ? (problem.evidenceIds ?? []) : []; %>
   <%# The one press at the top asks with nothing more. The details are optional, so they wait
       behind a disclosure of their own. %>
   <details class="ask-details" id="ask" <% if (problem?.form === "ready") { %>open<% } %>>
@@ -462,7 +463,7 @@
     <fieldset>
       <legend>Evidence you relied on</legend>
       <% for (const item of evidence) { %>
-      <label><input type="checkbox" name="evidence_ids" value="<%= item.id %>" /> <span class="user-text"><%= item.summary %></span></label>
+      <label><input type="checkbox" name="evidence_ids" value="<%= item.id %>" <%= ticked.includes(String(item.id)) ? "checked" : "" %> /> <span class="user-text"><%= item.summary %></span></label>
       <% } %>
     </fieldset>
     <% } %>

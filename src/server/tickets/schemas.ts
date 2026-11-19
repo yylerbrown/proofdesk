@@ -37,7 +37,13 @@ export const httpLink = z
 // text, and an empty box means none.
 export const expectedVersion = z
   .preprocess(
-    (value) => (value === "" ? undefined : typeof value === "string" ? Number(value) : value),
+    // An empty box and a JSON null both mean no version was sent.
+    (value) =>
+      value === "" || value === null
+        ? undefined
+        : typeof value === "string"
+          ? Number(value)
+          : value,
     z
       .number({ error: "Must be the ticket's version, a whole number." })
       .int()

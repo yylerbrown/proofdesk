@@ -823,8 +823,11 @@ export function createTicketService(
   /**
    * Throws 409 when the caller says which version it saw and the ticket has changed since, so a
    * change made from an old page or an old read never writes over a newer one. A caller that
-   * sends no version is not checked. Each action checks it only once it knows it will write: a
-   * change that changes nothing, such as the second press of a double click, is not refused.
+   * sends no version is not checked. Every action decides first what it can decide without the
+   * version: who may do it, whether the ticket's state allows it, and whether it is a repeat that
+   * changes nothing. It checks the version last, just before it writes. So the second press of a
+   * double click is never refused for its version, and a refusal for the ticket's state keeps
+   * its own words.
    */
   function requireVersion(key: string, row: repository.TicketRow, expected?: number): void {
     if (expected === undefined || expected === row.version) return;
@@ -950,7 +953,6 @@ export function createTicketService(
           if (status === "in_progress") requireOwnerStarts(key, before, actor);
           return before; // nothing changes, so nothing is logged
         }
-        requireVersion(key, before, expected_version);
         if (status === "resolved") throw needsCustomer(key);
         // The status moves only by the workflow's own steps: start work, or send it back to New.
         if (before.status === "resolved") {
@@ -960,8 +962,13 @@ export function createTicketService(
             `Ticket ${key} is resolved. A resolved ticket moves only by reopening it.`,
           );
         }
-        if (status === "new") return returnToNew(key, before, actor);
+        if (status === "new") {
+          requireOwnerOrAdminReturns(key, before, actor);
+          requireVersion(key, before, expected_version);
+          return returnToNew(key, before, actor);
+        }
         requireOwnerStarts(key, before, actor);
+        requireVersion(key, before, expected_version);
         const now = new Date().toISOString();
         repository.updateTicketStatus(db, before.id, status, now);
         log(before.id, actor, "status_changed", { from: before.status, to: status }, now);
@@ -1033,7 +1040,7 @@ export function createTicketService(
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "adopt_check", before);
-        requireVersion(key, before, parse(versionOnlySchema, input ?? {}).expected_version);
+        const { expected_version } = parse(versionOnlySchema, input ?? {});
         requireNotArchived(key, before);
         if (before.agreed_check === null) {
           throw new HttpError(
@@ -1042,6 +1049,7 @@ export function createTicketService(
             `Ticket ${key} has no wording from the team to adopt.`,
           );
         }
+        requireVersion(key, before, expected_version);
         const now = new Date().toISOString();
         const words = before.agreed_check;
         // The question was about the old words, so it is withdrawn.
@@ -1118,7 +1126,6 @@ export function createTicketService(
         requirePermission(actor, "mark_ready", before);
         // Every field is optional, so a request with no body at all asks with nothing else.
         const fields = parse(markReadySchema, input ?? {});
-        requireVersion(key, before, fields.expected_version);
         requireNotArchived(key, before);
         // Only the ticket's current owner asks the customer.
         if (before.owner_id === null) {
@@ -1175,6 +1182,7 @@ export function createTicketService(
             evidence_ids: ["Choose evidence attached to this ticket."],
           });
         }
+        requireVersion(key, before, fields.expected_version);
         const ask = { tryUrl: try_url, tried, result, response, evidenceIds };
         const now = new Date().toISOString();
         // Asking the customer ends any agent's work on the ticket.
@@ -1296,7 +1304,6 @@ export function createTicketService(
         const { expected_version } = parse(versionOnlySchema, input ?? {});
         requireNotArchived(key, before);
         if (before.owner_id === actor.id) return before; // already theirs
-        requireVersion(key, before, expected_version);
         // Take is for the inbox. Someone else's ticket is handed over, not taken.
         if (before.owner_id !== null) {
           throw new HttpError(
@@ -1308,6 +1315,7 @@ export function createTicketService(
         if (before.status === "resolved") {
           throw new HttpError(409, "not_open", `Ticket ${key} is resolved.`);
         }
+        requireVersion(key, before, expected_version);
         return setOwner(before, actor.id, actor.name, actor);
       })();
       return toTicket(saved(row), actor);
@@ -1322,7 +1330,7 @@ export function createTicketService(
         let before = requireRow(key, actor);
         requirePermission(actor, "take", before);
         requirePermission(actor, "change_status", before);
-        requireVersion(key, before, parse(versionOnlySchema, input ?? {}).expected_version);
+        const { expected_version } = parse(versionOnlySchema, input ?? {});
         requireNotArchived(key, before);
         if (before.status !== "new") {
           throw new HttpError(
@@ -1338,6 +1346,7 @@ export function createTicketService(
             `${before.owner_name ?? "Someone"} already owns ticket ${key}.`,
           );
         }
+        requireVersion(key, before, expected_version);
         if (before.owner_id === null) before = setOwner(before, actor.id, actor.name, actor);
         const now = new Date().toISOString();
         repository.updateTicketStatus(db, before.id, "in_progress", now);
@@ -1382,7 +1391,6 @@ export function createTicketService(
           }
         }
         const { reason, expected_version } = parse(reopenSchema, input);
-        requireVersion(key, before, expected_version);
         requireNotArchived(key, before);
         if (before.status !== "resolved") {
           throw new HttpError(
@@ -1398,6 +1406,7 @@ export function createTicketService(
             "replies on this ticket",
           );
         }
+        requireVersion(key, before, expected_version);
         const status = before.owner_id === null ? "new" : "in_progress";
         const now = new Date().toISOString();
         repository.updateTicketStatus(db, before.id, status, now);
@@ -1442,7 +1451,6 @@ export function createTicketService(
         let before = requireRow(key, actor);
         requirePermission(actor, "resolve_with_reason", before);
         const { reason, note, duplicate_of, expected_version } = parse(resolveSchema, input);
-        requireVersion(key, before, expected_version);
         if (reason === "other" && !note) {
           throw new ValidationError("Say why, for Other.", { note: ["Say why, for Other."] });
         }
@@ -1485,6 +1493,7 @@ export function createTicketService(
           }
           duplicateOf = buildKey(prefix, other.id);
         }
+        requireVersion(key, before, expected_version);
         // Nobody owns it yet: the person resolving it becomes its owner first.
         if (before.owner_id === null) before = setOwner(before, actor.id, actor.name, actor);
         const now = new Date().toISOString();
@@ -1580,7 +1589,6 @@ export function createTicketService(
         const before = requireRow(key, actor);
         requirePermission(actor, "hand_to_agent", before);
         const { connection_id, expected_version } = parse(giveToAgentSchema, input);
-        requireVersion(key, before, expected_version);
         requireNotArchived(key, before);
         if (before.owner_id !== actor.id) {
           throw new HttpError(
@@ -1600,6 +1608,7 @@ export function createTicketService(
           });
         }
         if (repository.activeHandoff(db, before.id)?.connection_id === connection.id) return before;
+        requireVersion(key, before, expected_version);
         endAgent(before, "handed to another agent", actor, now);
         repository.startHandoff(db, before.id, connection.id, actor.id, now);
         log(before.id, actor, "agent_handed", { connection: connection.name }, now);
@@ -1621,9 +1630,10 @@ export function createTicketService(
             `Only the owner of ticket ${key}, or an admin, can end it.`,
           );
         }
-        requireVersion(key, before, expected_version);
         // Archiving already ended any assistant's work.
         requireNotArchived(key, before);
+        if (repository.activeHandoff(db, before.id) === undefined) return before; // nothing to end
+        requireVersion(key, before, expected_version);
         endAgent(before, "ended by a person", actor, new Date().toISOString());
         return before;
       })();
@@ -1656,7 +1666,7 @@ export function createTicketService(
       const row = db.transaction(() => {
         const before = requireRow(key, actor);
         requirePermission(actor, "release", before);
-        requireVersion(key, before, parse(versionOnlySchema, input ?? {}).expected_version);
+        const { expected_version } = parse(versionOnlySchema, input ?? {});
         requireNotArchived(key, before);
         if (before.owner_id === null) {
           throw new HttpError(
@@ -1683,6 +1693,7 @@ export function createTicketService(
             `Ticket ${key} is in progress, so it must keep an owner. Someone else can take it.`,
           );
         }
+        requireVersion(key, before, expected_version);
         return setOwner(before, null, null, actor);
       })();
       return toTicket(saved(row), actor);
