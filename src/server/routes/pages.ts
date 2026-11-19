@@ -10,6 +10,7 @@ import {
   describeActor,
   describeEvent,
   formatTime,
+  notFixedCard,
   STATUS_LABELS,
   timeAgo,
   reportFields,
@@ -357,7 +358,10 @@ export function pagesRouter(service: TicketService): Router {
       entries,
       history,
       confirmed: confirmedAt(ticket, events),
+      // The customer's standing No, which the resolve form's reasons follow, and the card at the
+      // top, which only shows their word while nothing the team did since has answered it.
       notFixed: customerSaysNotFixed(ticket, events),
+      notFixedCard: notFixedCard(ticket, events),
       evidence,
       specPanel,
       specPrompt,

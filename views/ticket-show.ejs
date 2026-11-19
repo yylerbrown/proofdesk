@@ -68,18 +68,18 @@
 <div class="ticket-layout" data-ticket-key="<%= ticket.key %>" data-ticket-version="<%= stamp.version %>" data-ticket-entries="<%= stamp.entries %>" data-ticket-handoffs="<%= stamp.handoffs %>">
 <div class="ticket-summary">
 <%# The customer said it is not fixed, with a No or by reopening it: shown first, until the team
-    asks them again. Their latest word is the one shown. %>
-<% if (notFixed) { %>
+    asks them again, resolves it or reopens it. Their latest word is the one shown. %>
+<% if (notFixedCard) { %>
 <article class="customer-said-no" id="customer-said-no">
   <% if (viewerRole === "customer") { %>
-  <h2><%= notFixed.reopened ? "You reopened it" : "You said it is not fixed" %></h2>
+  <h2><%= notFixedCard.reopened ? "You reopened it" : "You said it is not fixed" %></h2>
   <% } else { %>
-  <h2><%= notFixed.reopened ? "The customer reopened it" : "The customer says it is not fixed" %></h2>
+  <h2><%= notFixedCard.reopened ? "The customer reopened it" : "The customer says it is not fixed" %></h2>
   <% } %>
-  <% if (notFixed.words) { %>
-  <blockquote class="user-text"><%= notFixed.words %></blockquote>
+  <% if (notFixedCard.words) { %>
+  <blockquote class="user-text"><%= notFixedCard.words %></blockquote>
   <% } %>
-  <p><small><%= notFixed.reopened ? "Reopened" : "Answered" %> <%- include("time", { iso: notFixed.at }) %>.</small></p>
+  <p><small><%= notFixedCard.reopened ? "Reopened" : "Answered" %> <%- include("time", { iso: notFixedCard.at }) %>.</small></p>
   <% if (viewerRole === "customer") { %>
   <p>The team has your words. You will be asked again when they think it is fixed.</p>
   <% } else { %>

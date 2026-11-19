@@ -93,6 +93,26 @@ export function customerSaysNotFixed(ticket: Ticket, events: TicketEvent[]): Not
 }
 
 /**
+ * The customer's word that it is not fixed, for the card at the top of the ticket page: only
+ * while it is their latest word and nothing the team did since answered it. Once the team
+ * resolved or reopened the ticket after that word, the card is not shown, since it would read as
+ * the customer's current answer. The resolve form still uses customerSaysNotFixed, the same rule
+ * the service applies to the "Fixed" reason.
+ */
+export function notFixedCard(ticket: Ticket, events: TicketEvent[]): NotFixed | null {
+  const said = customerSaysNotFixed(ticket, events);
+  if (said === null) return null;
+  const latest = [...events]
+    .reverse()
+    .find((event) =>
+      ["customer_answered", "reopened", "resolved_by_team", "reopened_by_team"].includes(
+        event.type,
+      ),
+    );
+  return latest?.type === "resolved_by_team" || latest?.type === "reopened_by_team" ? null : said;
+}
+
+/**
  * When the customer confirmed the fix, or null. Only a resolved ticket whose latest answer to
  * "Did this fix it?" was yes counts: a proposed fix, a linked change or a ticket marked ready
  * does not, and neither does a ticket resolved before answers existed.
