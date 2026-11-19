@@ -137,7 +137,10 @@ export function createReads(shared: Shared, options: ServiceOptions) {
         events = events.filter((event) => seeded.includes(event.id) || event.actor === actor.id);
       }
       if (can(actor, "read_notes", row)) return events;
-      return events.filter((event) => CUSTOMER_EVENT_TYPES.has(event.type));
+      // The connection details an agent's entry records are for the team.
+      return events
+        .filter((event) => CUSTOMER_EVENT_TYPES.has(event.type))
+        .map((event) => ({ ...event, context: null }));
     },
 
     /**
@@ -177,6 +180,11 @@ export function createReads(shared: Shared, options: ServiceOptions) {
       // The made-up people, and those the demo's samples name, are not in the sign-in tables.
       for (const person of [...DEV_ACTORS, ...DEMO_ACTORS, ...DEMO_SEED_PEOPLE]) {
         if (ids.includes(person.id)) names.set(person.id, person.name);
+      }
+      // An assistant's entry names its connection only for the team, so anyone else reads it
+      // as the team's assistant.
+      for (const id of ids) {
+        if (id.startsWith("connection-")) names.set(id, "The team's assistant");
       }
       return names;
     },

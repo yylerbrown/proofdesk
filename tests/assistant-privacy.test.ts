@@ -6,8 +6,8 @@ import { admin, as, buildTestApp, customerOne, handToAgent, teamActor } from "./
 
 // An assistant's working stays with the team until a person decides otherwise: only wording it
 // suggests for the customer is offered for publishing, the team's message box starts as an
-// internal note while it is at work, and its evidence reaches the customer only once the owner
-// has asked them.
+// internal note while it is at work, and its evidence reaches the customer only when the owner
+// chose it in a question to them.
 
 const valid = { title: "Printer jams", description: "x", fix_check: "Ten pages print" };
 
@@ -75,7 +75,7 @@ describe("the team's message box", () => {
 });
 
 describe("an assistant's evidence and the customer", () => {
-  it("reaches the customer only once the owner asks, without a scenario of a spec they cannot see", async () => {
+  it("reaches the customer once the owner asks with it, without a scenario of a spec they cannot see", async () => {
     const { app, agent } = await handed();
     await agent("/spec", {
       summary: "Ten pages print.",
@@ -83,7 +83,11 @@ describe("an assistant's evidence and the customer", () => {
         { title: "Ten pages", given: "a printer", when: "I print ten pages", then: "no jam" },
       ],
     });
-    await agent("/evidence", { kind: "test", summary: "Printed ten pages", scenario: 1 });
+    const evidence = await agent("/evidence", {
+      kind: "test",
+      summary: "Printed ten pages",
+      scenario: 1,
+    });
     const early = (await as(app, customerOne).get("/api/tickets/SUP-1/evidence")).body;
     expect(early).toEqual([]);
     // The team sees it at once, with its scenario.
@@ -95,7 +99,12 @@ describe("an assistant's evidence and the customer", () => {
       .send({ change_url: "https://example.com/c" });
     await as(app, teamActor)
       .post("/api/tickets/SUP-1/ready")
-      .send({ try_url: "https://example.com/t", tried: "Printed.", result: "No jam." });
+      .send({
+        try_url: "https://example.com/t",
+        tried: "Printed.",
+        result: "No jam.",
+        evidence_ids: [evidence.body.id],
+      });
     const asked = (await as(app, customerOne).get("/api/tickets/SUP-1/evidence")).body;
     expect(asked).toEqual([
       expect.objectContaining({ summary: "Printed ten pages", scenario: null }),
@@ -115,7 +124,11 @@ describe("an assistant's evidence and the customer", () => {
         { title: "Ten pages", given: "a printer", when: "I print ten pages", then: "no jam" },
       ],
     });
-    await agent("/evidence", { kind: "test", summary: "Printed ten pages", scenario: 1 });
+    const evidence = await agent("/evidence", {
+      kind: "test",
+      summary: "Printed ten pages",
+      scenario: 1,
+    });
     await as(app, teamActor)
       .post("/tickets/SUP-1/spec/decision")
       .type("form")
@@ -125,7 +138,12 @@ describe("an assistant's evidence and the customer", () => {
       .send({ change_url: "https://example.com/c" });
     await as(app, teamActor)
       .post("/api/tickets/SUP-1/ready")
-      .send({ try_url: "https://example.com/t", tried: "Printed.", result: "No jam." });
+      .send({
+        try_url: "https://example.com/t",
+        tried: "Printed.",
+        result: "No jam.",
+        evidence_ids: [evidence.body.id],
+      });
     const seen = (await as(app, customerOne).get("/api/tickets/SUP-1/evidence")).body;
     expect(seen[0]).toMatchObject({ scenario: 1 });
   });

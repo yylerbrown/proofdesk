@@ -423,6 +423,20 @@ export function latestAnswer(
 }
 
 /**
+ * The ids of the evidence the owner chose to show the customer in any question asked on a
+ * ticket, the open one included.
+ */
+export function evidenceChosenForCustomer(db: Db, ticketId: number): Set<number> {
+  const rows = db
+    .prepare(
+      `SELECT DISTINCT chosen.value AS id FROM ticket_events e, json_each(e.data, '$.evidence_ids') chosen
+       WHERE e.ticket_id = ? AND e.type = 'ready_for_customer'`,
+    )
+    .all(ticketId) as { id: number }[];
+  return new Set(rows.map((row) => row.id));
+}
+
+/**
  * True when the customer's latest word on a ticket says it is not fixed: their latest answer
  * or reopening is a reopening, or an answer of no.
  */
