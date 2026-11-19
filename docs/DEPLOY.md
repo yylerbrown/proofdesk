@@ -1,4 +1,93 @@
-# Deploying to Fly.io
+# Running and deploying
+
+[More ways to run](#more-ways-to-run) is for your own machine or Docker, with every setting. The
+rest of the page is the hosting on Fly.io. The README's
+[Run it yourself](../README.md#run-it-yourself) has the two commands that start it.
+
+## More ways to run
+
+The development server keeps running until you stop it. To keep your settings in a file instead
+of on the command line, copy `.env.example` to `.env`, which turns the dev login on; `npm run dev`
+reads it. `npm ci` refuses a Node older than 22.14, because a dependency needs it; with nvm:
+`nvm install 22 && nvm use 22`.
+
+**The demo, locally**, on its own database:
+
+```bash
+DEV_SIGN_IN=off DEMO=on \
+  DATABASE_PATH=./data/demo.db npm run dev
+```
+
+**A production build** reads only real environment variables, never `.env`:
+
+```bash
+npm run build
+```
+
+```bash
+NODE_ENV=production DEMO=on \
+  DATABASE_PATH=./data/demo.db npm start
+```
+
+For production with real tickets, leave out `DEMO=on` and pass the four GitHub settings below as
+real environment variables, with an https `BETTER_AUTH_URL` and a database of its own, such as
+`DATABASE_PATH=./data/app.db`. Production refuses an http address, and the server refuses a demo
+database for real tickets.
+
+**Docker.** Without keys, a container can only run as the demo. Give the demo its own volume: a
+database records for good whether it is for the demo or for real tickets.
+
+```bash
+docker build -t proofdesk .
+```
+
+```bash
+docker run --rm -p 3000:3000 -e DEMO=on \
+  -v proofdesk-demo:/data proofdesk
+```
+
+A real run needs the four GitHub settings, with `-e` or `--env-file`, and a different volume.
+`PORT` changes the port inside the container, so `-e PORT=8080` needs `-p 8080:8080`. Hosting on
+Fly.io is [below](#flyio).
+
+### Settings
+
+All of them are in `.env.example`, with comments.
+
+| Name                                                                                | What it does                                                                                                                                                                |
+| ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                                                                          | `development`, `test` or `production`. Production refuses the dev login and requires https sign-in.                                                                         |
+| `PORT`                                                                              | Default 3000.                                                                                                                                                               |
+| `DATABASE_PATH`                                                                     | The SQLite file. Default `./data/app.db`.                                                                                                                                   |
+| `TICKET_PREFIX`                                                                     | The letters before a ticket's number, default `SUP`. Fixed when the database is created.                                                                                    |
+| `DEV_SIGN_IN`                                                                       | `on` offers four made-up people. Development only.                                                                                                                          |
+| `DEMO`                                                                              | `on` makes this server the demo: sample data, three demo people, no GitHub sign-in.                                                                                         |
+| `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | GitHub sign-in. All four or none. Required in production unless `DEMO=on`.                                                                                                  |
+| `TEAM_GITHUB_IDS`, `ADMIN_GITHUB_IDS`                                               | GitHub user IDs, separated by commas. These people keep that role and show as locked on **People**; an admin chooses everyone else's, a customer by default.                |
+| `CLIENT_IP_HEADER`                                                                  | Behind a proxy, the header with the visitor's address, for rate limits. Fly.io: `fly-client-ip`.                                                                            |
+| `DEMO_URL`                                                                          | Optional, on the production site: the demo's https address, linked from the sign-in page as "Try the demo without signing in".                                              |
+| `REAL_SITE_URL`                                                                     | Optional, on the demo: the production site's https address, named on the welcome page as where GitHub sign-in with roles runs.                                              |
+| `SOURCE_URL`                                                                        | Optional: the repository's https address. The welcome page then links **Source and setup** to its README, and `GET /api` names it. Both Fly apps set it to the public copy. |
+| `PUBLIC_URL`                                                                        | Optional: the address people and assistants reach this server at, for the commands to paste. Else `BETTER_AUTH_URL`, else each request's own address. The demo sets it.     |
+| `SMTP_URL`, `MAIL_FROM`                                                             | Optional: the mail server (`smtps://user:password@host:465`) and the sender for email notices. Both or neither. Without them, or on the demo, nothing is sent.              |
+| `GIT_COMMIT`                                                                        | Reported by `GET /api/health`.                                                                                                                                              |
+
+### GitHub sign-in
+
+1. On GitHub, **Settings → Developer settings → OAuth Apps → New OAuth App**. Homepage URL: your
+   address, for example `http://localhost:3000`. Authorization callback URL: the same address
+   followed by `/api/auth/callback/github`.
+2. Put its client id and a new client secret in `.env`, with `BETTER_AUTH_URL` set to the same
+   address and `BETTER_AUTH_SECRET` set to the output of `openssl rand -base64 32`.
+3. Set `DEV_SIGN_IN=off`. To make yourself an admin, put your GitHub user ID (the `id` at
+   `https://api.github.com/users/<your user name>`) in `ADMIN_GITHUB_IDS`.
+
+The `.env` file and the http address are for `npm run dev`. A production build (`npm start`)
+does not read `.env` and refuses an http address: pass the four settings as real environment
+variables, with an https `BETTER_AUTH_URL` and its own `DATABASE_PATH`, such as
+`./data/app.db`.
+
+## Fly.io
 
 Every step here is the owner's to run. Nothing in the repository creates accounts, disks,
 secrets or machines.

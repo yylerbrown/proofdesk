@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 // The build log is evidence a reader may check, so each row must name the pull request that
 // carried it, each step number must be used once and in order, and every gap must be explained.
 
-const text = fs.readFileSync("BUILD_LOG.md", "utf8");
+const text = fs.readFileSync("docs/BUILD_LOG.md", "utf8");
 const rows = text
   .split("\n")
   .filter((line) => /^\| \d+[a-z]?\. /.test(line))
@@ -24,6 +24,12 @@ const rows = text
 const notes = text.slice(text.indexOf("## Notes on the numbering"));
 
 describe("the build log", () => {
+  // It sits with the other docs, so the top of the repository is the README and the code.
+  it("lives under docs/, and no copy is left at the top of the repository", () => {
+    expect(fs.existsSync("BUILD_LOG.md")).toBe(false);
+    expect(text).toMatch(/^# Build log\n/);
+  });
+
   it("names a real pull request on every row but the skeleton's", () => {
     expect(rows.length).toBeGreaterThan(100);
     expect(text).not.toContain("This pull request");

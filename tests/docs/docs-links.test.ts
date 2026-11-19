@@ -13,6 +13,8 @@ const FILES = [
   "docs/DEPLOY.md",
   "docs/ROADMAP.md",
   "docs/AGENTS_GUIDE.md",
+  "docs/TOUR.md",
+  "docs/BUILD_LOG.md",
 ];
 
 /** The anchor GitHub gives a heading: lower case, punctuation dropped, spaces as hyphens. */
@@ -79,7 +81,7 @@ describe("the README", () => {
     const list = readme.indexOf('src="docs/img/ticket-list.png"');
     const question = readme.indexOf('src="docs/img/did-this-fix-it.png"');
     expect(list).toBeLessThan(readme.indexOf("## Run it yourself"));
-    expect(question).toBeGreaterThan(readme.indexOf("**Creative extras**"));
+    expect(question).toBeGreaterThan(readme.indexOf("**Ask the customer to verify**"));
   });
 
   // A wide picture pushed the run steps far down the first screen, so each one has a width.
@@ -96,15 +98,15 @@ describe("the README", () => {
   });
 
   // A stranger needs two commands first; the other ways to run sit further down.
-  it("keeps Run it yourself to installing and starting, with the rest under More ways to run", () => {
+  it("keeps Run it yourself to installing and starting, with the rest in the deploy guide", () => {
     const readme = fs.readFileSync("README.md", "utf8");
     const start = readme.indexOf("## Run it yourself");
     const section = readme.slice(start, readme.indexOf("\n## ", start + 1));
     const commands = [...section.matchAll(/^```bash\n([\s\S]*?)^```/gm)].map((m) => m[1]!.trim());
     expect(commands).toEqual(["npm ci", "DEV_SIGN_IN=on npm run dev"]);
     expect(section).toContain("http://localhost:3000");
-    expect(section).toContain("](#more-ways-to-run)");
-    expect(anchorsIn("README.md")).toContain("more-ways-to-run");
+    expect(section).toContain("](docs/DEPLOY.md#more-ways-to-run)");
+    expect(anchorsIn("docs/DEPLOY.md")).toContain("more-ways-to-run");
   });
 
   it("says the team can resolve with a reason, and never that only the customer resolves", () => {

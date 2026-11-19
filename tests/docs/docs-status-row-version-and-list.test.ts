@@ -16,10 +16,10 @@ function section(text: string, heading: string): string {
   return text.slice(start, end === -1 ? undefined : end);
 }
 
-/** The lines of one feature in "Try each feature in a minute", by its bold heading. */
+/** The lines of one feature in the tour's "Try each feature in a minute", by its bold heading. */
 function feature(heading: string): string {
-  const readme = fs.readFileSync("README.md", "utf8");
-  const features = section(readme, "## Try each feature in a minute");
+  const tour = fs.readFileSync("docs/TOUR.md", "utf8");
+  const features = section(tour, "## Try each feature in a minute");
   const start = features.indexOf(`**${heading}**`);
   expect(start, heading).toBeGreaterThanOrEqual(0);
   const end = features.indexOf("\n**", start + heading.length + 4);
@@ -38,7 +38,7 @@ async function demoApp() {
   return { demo, service, as, visitor: () => visitor(demo.app) };
 }
 
-describe("the README's steps for changing a status", () => {
+describe("the tour's steps for changing a status", () => {
   it("start from the ticket the visitor filed, since a sample may belong to another customer", async () => {
     for (const heading of ["Update status: New to In Progress", "Update status: to Resolved"]) {
       expect(feature(heading)).toMatch(/^- Start as: .*the ticket you (just )?filed/im);
@@ -74,8 +74,8 @@ describe("the README's steps for changing a status", () => {
   });
 });
 
-describe("what is new, as the README says it", () => {
-  const readme = flat("README.md");
+describe("what is new, as the tour says it", () => {
+  const readme = flat("docs/TOUR.md");
 
   it("names the list's order choices and counts with the page's own words", () => {
     const labels = fs.readFileSync("src/server/pages/list-query.ts", "utf8");
@@ -190,7 +190,7 @@ describe("the assistants' guide", () => {
 
 describe("the build log", () => {
   it("has a row for each pull request merged on the evening of 18 November, in merge order", () => {
-    const log = fs.readFileSync("BUILD_LOG.md", "utf8");
+    const log = fs.readFileSync("docs/BUILD_LOG.md", "utf8");
     const merged = [143, 144, 140, 145, 146, 147, 148, 150, 151, 149, 152, 153, 154, 155];
     const at = merged.map((pr) => {
       const match = new RegExp(`\\| #${pr} +\\|`).exec(log);
