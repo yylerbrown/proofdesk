@@ -213,6 +213,8 @@ export function cardLine(ticket: Ticket, viewer: Role, facts: CardFacts): CardLi
 
   if (ticket.status === "resolved") {
     if (facts.confirmed !== null) {
+      // The customer has the day in the line under the title, with the tick, so it is said once.
+      if (!team) return null;
       return { ...line("Customer confirmed on ", facts.confirmed, "."), tick: true };
     }
     const resolution = ticket.resolution;
@@ -239,9 +241,13 @@ export function cardLine(ticket: Ticket, viewer: Role, facts: CardFacts): CardLi
     }
     // Most notes end in a full stop; the line's own full stop follows the bracket.
     const note = resolution.note ? ` (${resolution.note.replace(/\.$/, "")})` : "";
-    const resolved = `Resolved by the team: ${resolution.reason_label}${note}.`;
-    if (!team) return line(`${resolved} You have not confirmed it.`);
-    return teamLine(resolved, "Not confirmed by the customer.");
+    // The customer's line under the title already says "Resolved by the team", so theirs starts
+    // at the reason.
+    if (!team) return line(`${resolution.reason_label}${note}. You have not confirmed it.`);
+    return teamLine(
+      `Resolved by the team: ${resolution.reason_label}${note}.`,
+      "Not confirmed by the customer.",
+    );
   }
 
   // Asked: the customer has the question itself, as the card's heading.

@@ -107,7 +107,7 @@ describe("resolving a New ticket nobody owns", () => {
     expect(what[owned + 1]).toMatch(/^Resolved by the team/);
 
     // As its owner now, they may undo a resolution made by mistake, from the Status menu.
-    expect(page.querySelector(".status-menu a[href$='?step=reopen']")).not.toBeNull();
+    expect(page.querySelector(".status-menu a[href$='?step=reopen#reopen-form']")).not.toBeNull();
     const reopen = parse((await as(app, teamActor).get("/tickets/SUP-1?step=reopen")).text);
     expect(reopen.querySelector("form#reopen-form")?.getAttribute("action")).toBe(
       "/tickets/SUP-1/reopen",

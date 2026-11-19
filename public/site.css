@@ -1391,11 +1391,14 @@ article {
  * conversation by space, with no box around them.
  */
 article.ticket-card {
-  margin: var(--pd-space-6) 0;
+  margin: var(--pd-space-5) 0 var(--pd-space-6);
   padding: 0;
   border: 0;
   border-radius: 0;
   background: none;
+}
+.ticket-card > :first-child {
+  margin-top: 0;
 }
 .ticket-card > :last-child {
   margin-bottom: 0;
@@ -1408,28 +1411,33 @@ article.ticket-card {
 .ticket-card .card-detail {
   margin-bottom: var(--pd-space-2);
   color: var(--pd-muted);
-  font-size: var(--pd-text-xs);
-  font-weight: var(--pd-weight-medium);
+  font-size: var(--pd-text-sm);
+  font-weight: var(--pd-weight-regular);
 }
-/* The customer's own words: full size and full contrast. */
+/* The customer's own words: full size and full contrast. What follows sets the space after. */
 .ticket-card blockquote {
-  margin: 0 0 var(--pd-space-4);
+  margin: 0;
   color: var(--pd-text);
   font-size: inherit;
+}
+.ticket-card blockquote + :is(.card-team-check, .card-detail, .card-try, .card-evidence) {
+  margin-top: var(--pd-space-4);
 }
 .ticket-card .card-team-check {
   margin-bottom: var(--pd-space-3);
   color: var(--pd-muted);
 }
-/* Where it stands: one muted line; the tick sits before it only for the customer's Yes. */
+/*
+ * Where it stands: at reading size and full colour, 24px under the check and 12px over the step,
+ * so it reads as the reason for the step. The tick sits before it only for the customer's Yes.
+ */
 .ticket-card .card-line {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--pd-space-1) var(--pd-space-2);
-  margin-bottom: var(--pd-space-4);
-  color: var(--pd-muted);
-  font-size: var(--pd-text-sm);
+  margin: var(--pd-space-5) 0 0;
+  color: var(--pd-text);
 }
 .ticket-card .card-line a {
   color: inherit;
@@ -1458,7 +1466,10 @@ article.ticket-card {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--pd-space-2) var(--pd-space-4);
-  margin: var(--pd-space-6) 0 0;
+  margin: var(--pd-space-5) 0 0;
+}
+.ticket-card .card-line + .card-step {
+  margin-top: var(--pd-space-3);
 }
 .ticket-card .card-step + .card-step {
   margin-top: var(--pd-space-4);
@@ -1470,16 +1481,6 @@ article.ticket-card {
 }
 .ticket-card details.card-step {
   display: block;
-}
-/* Marking it fixed: the optional "Fixed in" box, one short line, above the button. The demo's
-   sample note sits beside the button, not beside the box. */
-.ticket-card .card-step:has(form.mark-fixed) {
-  align-items: flex-end;
-}
-.ticket-card form.mark-fixed input[name="note"] {
-  display: block;
-  max-width: 20rem;
-  margin: var(--pd-space-2) 0 var(--pd-space-4);
 }
 .ticket-card details.card-evidence {
   margin-bottom: var(--pd-space-3);
@@ -1610,7 +1611,7 @@ article.entry > header small {
 }
 article.entry > p {
   margin-bottom: 0;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 article.entry > p + p {
   margin-top: var(--pd-space-2);
@@ -1722,6 +1723,7 @@ details.history td:first-child {
   line-height: 1.5;
 }
 .ticket-page h1 {
+  margin-top: var(--pd-space-3);
   margin-bottom: var(--pd-space-3);
   font-size: 1.8667rem; /* 28px */
   font-weight: var(--pd-weight-semibold);
@@ -1729,6 +1731,17 @@ details.history td:first-child {
 }
 .ticket-description {
   margin-bottom: 0;
+}
+/* Text boxes and lists on the ticket page type at the size of the words round them. */
+.ticket-page :is(textarea, select, input[type="text"], input[type="url"]) {
+  font-size: 1.0667rem; /* 16px */
+}
+/* A label stands 6px above its box, whether it is written before the box or wrapped round it. */
+.ticket-page label:has(+ :is(textarea, input, select)) {
+  margin-bottom: 6px;
+}
+.ticket-page label > :is(textarea, input[type="text"], input[type="url"], select) {
+  margin-top: 6px;
 }
 .page-link {
   margin: var(--pd-space-2) 0 0;
@@ -1740,146 +1753,255 @@ details.history td:first-child {
 }
 
 /*
- * Status and owner on one line under the title. Each is a small label and its value; for the team
- * the value opens a short menu in place, under the whole line.
+ * Status and owner on one line under the title, 8px apart. For the team each is a small outlined
+ * control, in the family of "New ticket", with a down mark that does not turn, like the header's
+ * person menu. A fact this viewer cannot change has the same padding and no border. Label and
+ * value are one small type.
  */
-.ticket-facts,
-.ticket-standing {
+.ticket-facts {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--pd-space-2) var(--pd-space-5);
-  margin-bottom: var(--pd-space-5);
-}
-.ticket-facts {
-  column-gap: var(--pd-space-3);
-}
-.ticket-standing {
   gap: var(--pd-space-2);
-}
-.ticket-standing .tick {
-  flex: none;
-  width: 20px;
-  height: 20px;
+  margin-bottom: var(--pd-space-5);
 }
 .fact-label {
   margin-right: var(--pd-space-2);
   color: var(--pd-muted);
   font-size: var(--pd-text-sm);
+  font-weight: var(--pd-weight-regular);
 }
 .fact-value {
   color: var(--pd-text);
+  font-size: var(--pd-text-sm);
+  font-weight: var(--pd-weight-medium);
 }
-.ticket-facts details.fact-menu {
+.ticket-facts .fact,
+.ticket-facts details.dropdown.fact-menu > summary:not([role]) {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: auto;
+  min-height: 28px;
+  margin: 0;
+  padding: var(--pd-space-1) var(--pd-space-2);
+  border: 1px solid transparent;
+  border-radius: var(--pd-radius);
+  background-color: transparent;
+  color: var(--pd-text);
+  font-size: var(--pd-text-sm);
+  line-height: 18px;
+}
+.ticket-facts .badge {
+  line-height: 18px;
+}
+/*
+ * The menu is measured against the details element, so it is an inline block as wide as its
+ * button (as in the header, a plain inline box can be 0px wide in WebKit).
+ */
+.ticket-facts details.dropdown.fact-menu {
+  display: inline-block;
   margin: 0;
   border-bottom: 0;
 }
-.ticket-facts details.fact-menu > summary {
-  display: inline-flex;
-  align-items: center;
-  margin-bottom: 0;
-  padding: var(--pd-space-1) 6px;
-  border-radius: var(--pd-radius);
-  line-height: 1.5;
+.ticket-facts details.dropdown.fact-menu > summary:not([role]) {
+  border-color: var(--pd-control-border);
+  background-color: var(--pd-surface);
+  box-shadow: none;
 }
-/* The first value's words start on the column's edge; its grey hover box reaches past it. */
-.ticket-facts > details.fact-menu:first-child > summary {
-  margin-left: -6px;
-}
-.ticket-facts details.fact-menu > summary:hover,
-.ticket-facts details.fact-menu[open] > summary {
+.ticket-facts details.dropdown.fact-menu > summary:not([role]):hover,
+.ticket-facts details.dropdown.fact-menu[open] > summary:not([role]) {
+  border-color: var(--pd-control-border);
   background-color: var(--pd-subtle);
+  box-shadow: none;
 }
-.ticket-facts details.fact-menu > summary::after {
-  display: inline-block;
+.ticket-facts details.dropdown.fact-menu > summary:not([role]):focus {
+  border-color: var(--pd-control-border);
+  box-shadow: none;
+}
+.ticket-facts details.dropdown.fact-menu > summary:not([role]):focus-visible {
+  outline: 2px solid var(--pd-focus);
+  outline-offset: 2px;
+}
+.ticket-facts details.dropdown.fact-menu > summary::after {
   float: none;
   width: 0.9rem;
+  height: 0.9rem;
   margin-inline-start: var(--pd-space-1);
-  opacity: 0.7;
+  transform: none;
+  background-size: 0.9rem auto;
+  opacity: 0.8;
 }
-/* Opened, the menu's details element steps out of the line, so its list takes a full line under
-   both values. Newer browsers wrap the list in ::details-content; older ones place the list. */
-.ticket-facts > details[open] {
-  display: contents;
+/* As in the header, the menus script closes a menu on a click outside it, so Pico's invisible
+   layer over the page is not needed, and the click reaches what it was aimed at. */
+.ticket-facts details.dropdown.fact-menu[open] > summary::before {
+  display: none;
 }
-.ticket-facts > details[open]::details-content,
-.ticket-facts > details[open] > ul {
-  flex-basis: 100%;
-  order: 1;
+/*
+ * The opened list: the header menu's popover, under its own button, floating over the page, so
+ * opening and closing it moves nothing.
+ */
+.ticket-facts details.dropdown.fact-menu > summary + ul {
+  gap: 0;
+  width: max-content;
+  min-width: 14rem;
+  max-width: calc(100vw - 32px);
+  margin-top: 6px;
+  padding: var(--pd-space-1);
+  border: var(--pd-hairline);
+  border-radius: var(--pd-radius-lg);
+  background: var(--pd-surface);
+  box-shadow: var(--pd-shadow);
+  white-space: normal;
 }
-.fact-menu ul {
-  margin: 0;
-  padding: 0;
+.ticket-facts details.dropdown.fact-menu[open] > summary + ul {
+  animation: pd-pop var(--pd-ease-move);
 }
-.fact-menu li {
+.ticket-facts details.dropdown.fact-menu > summary + ul li {
   margin: 0;
   padding: 0;
   list-style: none;
 }
-.fact-menu li > :is(a, span, button),
-.fact-menu li > form > button {
-  display: inline-flex;
-  align-items: center;
-  min-height: 2.25rem;
-  margin: 0;
-  padding: 0;
-  font-size: inherit;
-}
 .fact-menu li form {
   margin: 0;
 }
-.fact-menu li > a {
-  color: var(--pd-text);
-}
-.fact-menu .menu-current {
-  font-weight: var(--pd-weight-semibold);
-}
-.fact-menu button.link[disabled] {
+/* The header menu's rows: full width, small type, text colour, grey on hover. */
+.ticket-facts details.dropdown.fact-menu > summary + ul li > :is(a, span, button),
+.ticket-facts details.dropdown.fact-menu > summary + ul li > form:not(.assign-to) > button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 6px 10px;
   border: 0;
+  border-radius: var(--pd-radius);
   background: none;
+  color: var(--pd-text);
+  font-size: var(--pd-text-sm);
+  font-weight: var(--pd-weight-regular);
+  line-height: 1.45;
+  text-align: left;
+  text-decoration: none;
+}
+.ticket-facts details.dropdown.fact-menu > summary + ul li > a:hover,
+.ticket-facts
+  details.dropdown.fact-menu
+  > summary
+  + ul
+  li
+  > form:not(.assign-to)
+  > button:not([disabled]):hover {
+  background-color: var(--pd-subtle);
+}
+.fact-menu li .badge {
+  font-weight: inherit;
+}
+/* The current status is named, not offered. */
+.ticket-facts details.dropdown.fact-menu > summary + ul li > .menu-current {
+  font-weight: var(--pd-weight-medium);
+}
+/* A status the rules refuse is greyed. */
+.ticket-facts details.dropdown.fact-menu > summary + ul li > button[disabled] {
   color: var(--pd-muted);
   opacity: 0.6;
 }
-.fact-menu .agent-help {
-  padding-top: var(--pd-space-2);
+.ticket-facts details.dropdown.fact-menu > summary + ul li.agent-help {
+  padding: 6px 10px;
+  color: var(--pd-muted);
+  font-size: var(--pd-text-sm);
 }
-/* "Assign to": its label, the member list and its button on one line that wraps. */
+/* "Assign to": its label, the member list and its button on one row that wraps. */
 .fact-menu form.assign-to {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--pd-space-2) var(--pd-space-4);
-  padding-block: var(--pd-space-2);
+  gap: var(--pd-space-2);
+  padding: 6px 10px;
 }
 .fact-menu form.assign-to label {
   display: flex;
   align-items: center;
   gap: var(--pd-space-2);
   margin: 0;
+  font-size: var(--pd-text-sm);
 }
 .fact-menu form.assign-to select {
   width: auto;
   max-width: 100%;
   margin: 0;
 }
+.ticket-facts details.dropdown.fact-menu > summary + ul li form.assign-to button {
+  margin: 0;
+  font-size: var(--pd-text-sm);
+}
 .fact-menu form.assign-to small {
   flex-basis: 100%;
+}
+
+/*
+ * The customer's line under the title, in the small type of the team's line: the status mark and
+ * word, or the tick after their Yes, then the rest in grey.
+ */
+.ticket-standing {
+  margin-bottom: var(--pd-space-5);
+  color: var(--pd-muted);
+  font-size: var(--pd-text-sm);
+}
+.ticket-standing .badge,
+.ticket-standing .tick {
+  vertical-align: middle;
+}
+.ticket-standing .tick {
+  width: 20px;
+  height: 20px;
+  margin-right: 6px;
+}
+.ticket-standing .standing-word {
+  color: var(--pd-text);
+  font-weight: var(--pd-weight-medium);
+}
+.ticket-standing .standing-rest {
+  vertical-align: middle;
 }
 
 /* Resolving or reopening from the Status menu: one small form in the next step's place. */
 .ticket-card form.step-form {
   display: block;
 }
+/* The Status menu's links land on the form with room for the sticky header above it. */
+.ticket-card form.step-form {
+  scroll-margin-top: 96px;
+}
 .step-form fieldset {
   margin-bottom: var(--pd-space-4);
 }
+/* The page's one decision, at reading size: the question 16px / 500, each choice a 32px row. */
 .step-form legend {
   margin-bottom: var(--pd-space-2);
+  font-size: 1.0667rem; /* 16px */
   font-weight: var(--pd-weight-medium);
 }
 .step-form fieldset label {
-  display: block;
-  margin-bottom: var(--pd-space-1);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+  margin: 0;
+  font-size: 1.0667rem; /* 16px */
+  font-weight: var(--pd-weight-regular);
+}
+.step-form fieldset label input[type="radio"] {
+  margin: 0;
+}
+/* The boxes a reason reveals: a short key box, and a wider one for where it is fixed. */
+.step-form .resolve-duplicate input {
+  max-width: 12rem;
+}
+.step-form .resolve-fixed-in input {
+  max-width: 20rem;
 }
 .step-form .form-actions {
   margin-top: var(--pd-space-4);
@@ -1905,7 +2027,7 @@ form.resolve:not(:has(input[value="fixed_no_reply"]:checked)) .resolve-fixed-in 
 
 /* The page's one hairline, where the conversation begins. */
 hr.thread-start {
-  margin: var(--pd-space-6) 0;
+  margin: var(--pd-space-6) 0 var(--pd-space-5);
   border: 0;
   border-top: var(--pd-hairline);
 }
@@ -1914,54 +2036,119 @@ article.entry > p {
 }
 
 /*
- * The last row: the message box, History and More options, three quiet lines that open in place.
- * An open one takes a full line of its own where it stands, so the keyboard and the eye meet the
- * lines in the same order.
+ * The last row is two rows that never rearrange. The first is the message line alone. Closed, it
+ * is drawn as an empty text box; opened, it is a small label over the box again.
  */
 .ticket-last-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--pd-space-2) var(--pd-space-5);
   margin-top: var(--pd-space-6);
 }
-.ticket-last-row > details {
+.ticket-last-row > details.reply-fold {
   margin: 0;
   border-bottom: 0;
 }
-.ticket-last-row > details.reply-fold {
-  margin-right: auto;
+details.reply-fold:not([open]) > summary {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 var(--pd-space-3);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: var(--pd-radius);
+  background: var(--pd-surface);
+  color: var(--pd-muted);
+  font-size: 1.0667rem; /* 16px */
+  font-weight: var(--pd-weight-regular);
+  cursor: text;
 }
-.ticket-last-row > details[open] {
-  flex-basis: 100%;
+details.reply-fold:not([open]) > summary::after {
+  display: none;
 }
-.ticket-last-row > details[open] > summary {
+details.reply-fold[open] > summary {
   margin-bottom: var(--pd-space-3);
 }
-/* "Only the team can see this." shows only while Internal note is chosen. It keeps its line while
-   hidden, so switching tabs moves nothing on the page. */
+/* The send button's row: the button, and in note mode "Only the team can see this." at its end. */
+form.reply-box .reply-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pd-space-2) var(--pd-space-4);
+}
+form.reply-box .reply-actions > * {
+  margin: 0;
+}
 form.reply-box .note-hint {
-  margin: 0 0 var(--pd-space-2);
+  margin-left: auto;
   color: var(--pd-muted);
 }
 form.reply-box:not(:has(input[value="note"]:checked)) .note-hint {
-  visibility: hidden;
+  display: none;
+}
+/*
+ * The second row: History, then More options, at the left, 24px apart. An open one steps out of
+ * the row (its details element gives up its own box), so its content takes a full line under the
+ * row while its own line stays where it was. Newer browsers wrap the content in ::details-content;
+ * older ones place the content itself.
+ */
+.ticket-more-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--pd-space-3) var(--pd-space-5);
+  margin-top: var(--pd-space-3);
+}
+.ticket-more-row > details {
+  margin: 0;
+  border-bottom: 0;
+}
+.ticket-more-row > details[open] {
+  display: contents;
+}
+/* Each line is its own box, so no line of the page's larger type adds space above it. */
+.ticket-more-row > details > summary {
+  display: block;
+}
+.ticket-more-row > details[open] > summary {
+  margin-bottom: 0;
+}
+.ticket-more-row > details[open]::details-content,
+.ticket-more-row > details[open] > :not(summary) {
+  flex-basis: 100%;
+  order: 1;
 }
 
-/* More options: each choice one closed line, in a plain list. */
+/*
+ * More options: every row one look, small and text-coloured with no underline. Rows that unfold
+ * keep the right-pointing mark; rows that leave the page have none. Only Delete is red.
+ */
 ul.more-list {
   margin: 0;
   padding: 0;
 }
 ul.more-list > li {
-  margin: 0 0 var(--pd-space-2);
+  margin: 0;
   padding: 0;
   list-style: none;
 }
-ul.more-list a {
-  color: var(--pd-muted);
+ul.more-list > li > a,
+ul.more-list button.link,
+ul.more-list details > summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  margin: 0;
+  padding: 0;
+  color: var(--pd-text);
   font-size: var(--pd-text-sm);
   font-weight: var(--pd-weight-medium);
+  text-decoration: none;
+}
+ul.more-list > li > a:hover,
+ul.more-list button.link:hover {
+  text-decoration: underline;
+}
+ul.more-list details > summary:hover {
+  color: var(--pd-text);
 }
 ul.more-list a.danger {
   color: var(--pd-danger);
@@ -1970,26 +2157,46 @@ ul.more-list details {
   margin: 0;
   border-bottom: 0;
 }
+/* An opened row's form sits 8px under its line and 16px above the next row. */
 ul.more-list form {
-  margin: var(--pd-space-3) 0;
-}
-ul.more-list button.link {
-  margin: 0;
-  padding: 0;
-  font-size: var(--pd-text-sm);
-  font-weight: var(--pd-weight-medium);
+  margin: var(--pd-space-2) 0 var(--pd-space-4);
 }
 
 /* On a phone every one of these small controls is a 44-pixel tap target. */
 @media (max-width: 639px) {
-  .ticket-facts details.fact-menu > summary,
-  .fact-menu li > :is(a, span, button),
-  .fact-menu li > form > button,
+  .ticket-page h1 {
+    margin-top: var(--pd-space-1);
+  }
+  .ticket-facts .fact,
+  .ticket-facts details.dropdown.fact-menu > summary:not([role]),
   ul.more-list > li > a,
-  ul.more-list button.link {
-    display: inline-flex;
-    align-items: center;
+  ul.more-list button.link,
+  ul.more-list details > summary {
     min-height: 44px;
+  }
+  .ticket-facts details.dropdown.fact-menu > summary + ul li > :is(a, span, button),
+  .ticket-facts details.dropdown.fact-menu > summary + ul li > form:not(.assign-to) > button {
+    min-height: 44px;
+  }
+  details.reply-fold:not([open]) > summary {
+    min-height: 44px;
+  }
+  .step-form fieldset label {
+    min-height: 44px;
+  }
+  /*
+   * The Owner menu's list is placed against the whole line, from its right edge, so it stays on
+   * the screen whether Owner sits beside Status or has wrapped under it.
+   */
+  .ticket-facts {
+    position: relative;
+  }
+  .ticket-facts details.dropdown.owner-menu {
+    position: static;
+  }
+  .ticket-facts details.dropdown.owner-menu > summary + ul {
+    right: 0;
+    left: auto;
   }
 }
 
@@ -2457,6 +2664,12 @@ textarea:focus-visible {
 }
 .site-footer a {
   color: inherit;
+}
+/* Under a page in the centred column, the footer's links start at the column's left edge. */
+main:has(> :is(.column, .column-narrow)) + .site-footer > small {
+  display: block;
+  max-width: var(--pd-column);
+  margin-inline: auto;
 }
 /* A Copy button beside a command, prompt or key meant to be pasted: small, under its text. */
 button.copy {

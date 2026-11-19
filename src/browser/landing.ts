@@ -65,6 +65,35 @@ export function focusLanding(landing: Landing): Focusable | null {
   return null;
 }
 
+// The Status menu's Resolved and In Progress choices lead to a small form further down the page,
+// with an address that names it, such as #resolve-form, so the browser scrolls it into view. A
+// browser does not honour autofocus on a page whose address names a part of it, so the form's
+// first box would lose the focus the server gave it. This puts focus back there, where the
+// browser has already scrolled.
+
+/** The parts of a box this code focuses. */
+export type StartBox = { focus(options: { preventScroll: boolean }): void };
+
+/** Focuses the box the server marked to start on, unless focus is already somewhere. */
+export function focusNamedForm(start: StartBox | null, focusTaken: boolean): StartBox | null {
+  if (start === null || focusTaken) return null;
+  start.focus({ preventScroll: true });
+  return start;
+}
+
+if (typeof document !== "undefined" && window.location.hash !== "") {
+  // The browser moves to the named part once the page has loaded, and that move takes focus
+  // away, so the box is focused after it.
+  window.addEventListener("load", () => {
+    const named = document.getElementById(decodeURIComponent(window.location.hash.slice(1)));
+    const start = named?.matches("form") ? named.querySelector<HTMLElement>("[autofocus]") : null;
+    focusNamedForm(
+      start ?? null,
+      document.activeElement !== null && document.activeElement !== document.body,
+    );
+  });
+}
+
 if (typeof document !== "undefined") {
   const searched = new URLSearchParams(window.location.search).has("q");
   const message = document.querySelector<HTMLElement>(

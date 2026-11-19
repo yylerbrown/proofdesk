@@ -46,7 +46,11 @@ describe("a ticket the team resolved as fixed, for its customer", () => {
     const card = ticket.querySelector("#did-this-fix-it")!;
     expect(card.querySelector("h2")?.text).toBe("Did this fix it?");
     expect(card.querySelector("blockquote")?.text).toBe("Ten pages print");
-    expect(card.text).toContain("The team says it is fixed.");
+    // It is said once, in the line under the title, and not again on the card.
+    expect(ticket.querySelector(".ticket-standing")?.text).toBe(
+      "Resolved, the team says it is fixed",
+    );
+    expect(card.text).not.toContain("The team says it is fixed");
     expect(card.text).not.toContain("Fixed in:");
     // The question replaces the old line and the old way to reopen.
     expect(card.querySelector(".card-line")).toBeNull();
@@ -74,7 +78,6 @@ describe("a ticket the team resolved as fixed, for its customer", () => {
     const { page } = await resolvedByTeam("fixed_no_reply", { note: "version 4.2.1" });
     const card = (await page(customerOne, "/tickets/SUP-1")).querySelector("#did-this-fix-it")!;
     expect(card.querySelectorAll(".card-detail").map((line) => line.text.trim())).toEqual([
-      "The team says it is fixed.",
       "Fixed in: version 4.2.1",
     ]);
     const team = await page(teamActor, "/tickets/SUP-1");
@@ -96,7 +99,7 @@ describe("a ticket the team resolved as fixed, for its customer", () => {
     expect(statusCell(await page(customerOne, "/tickets"))).toBe("Resolved");
     const ticket = await page(customerOne, "/tickets/SUP-1");
     expect(ticket.querySelector(".ticket-card .card-line")?.text.trim()).toBe(
-      "Resolved by the team: Won't fix (Works as designed). You have not confirmed it.",
+      "Won't fix (Works as designed). You have not confirmed it.",
     );
   });
 });

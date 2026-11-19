@@ -177,7 +177,7 @@ describe("the state of each notice, in plain words", () => {
     );
   });
 
-  it("reads 'this demo never sends email' on the demo", async () => {
+  it("reads 'the demo sends no email' on the demo", async () => {
     const { app, db, config } = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
     const settings = { ...notifySettingsOf(config), madeUpPeople: madeUpPeopleOf(config) };
     const [demoCustomer, demoTeam] = DEMO_ACTORS as [Actor, Actor];
@@ -200,7 +200,7 @@ describe("the state of each notice, in plain words", () => {
     collectNotices(db, settings);
     const res = await ok(asDemo(app, demoCustomer).get(`/tickets/${key}/notices`));
     expect(recipients(res.text)).toEqual(["To You"]);
-    expect(states(res.text)).toEqual(["Not sent: this demo never sends email"]);
+    expect(states(res.text)).toEqual(["Not sent: the demo sends no email"]);
     expect(res.text).toContain("Looking at it.");
   });
 });

@@ -111,8 +111,9 @@ describe("the small controls on a phone", () => {
         new RegExp(`${selector.source}[^{]*\\{[^}]*min-height: 44px`).test(block),
       );
     expect(rule(/details\.history > summary/)).toBe(true);
-    expect(rule(/\.ticket-facts details\.fact-menu > summary/)).toBe(true);
-    expect(rule(/details\.reply-fold > summary/)).toBe(true);
+    expect(rule(/\.ticket-facts details\.dropdown\.fact-menu > summary/)).toBe(true);
+    // The closed message line, drawn as a text box.
+    expect(rule(/details\.reply-fold:not\(\[open\]\) > summary/)).toBe(true);
     expect(rule(/details\.more-options summary/)).toBe(true);
     expect(rule(/button\.copy/)).toBe(true);
   });

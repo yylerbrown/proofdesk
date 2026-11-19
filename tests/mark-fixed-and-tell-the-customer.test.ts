@@ -47,18 +47,19 @@ function nextStepFields(page: Page, typed: Record<string, string> = {}) {
 }
 
 describe("Mark fixed and tell the customer", () => {
-  it("is the owner's one step, with one optional box for where it is fixed", async () => {
+  it("is the owner's one step: one button, with no box above or beside it", async () => {
     const app = await inProgress();
     const page = await ticketPage(app, teamActor);
     const form = page.querySelector(".next-action form")!;
     expect(form.getAttribute("action")).toBe("/tickets/SUP-1/resolve");
     expect(form.querySelector("input[name=reason]")?.getAttribute("value")).toBe("fixed_no_reply");
-    expect(form.querySelector("label")?.text.trim()).toBe("Fixed in (optional)");
-    const box = form.querySelector("input[name=note]")!;
-    expect(box.getAttribute("placeholder")).toBe("a version, or live now");
-    expect(box.getAttribute("maxlength")).toBe("120");
-    expect(box.hasAttribute("required")).toBe(false);
-    expect(form.querySelector("button")?.text).toBe("Mark fixed and tell the customer");
+    // Where it is fixed is given on the Status menu's Resolved form, never here.
+    expect(form.querySelector("label")).toBeNull();
+    expect(form.querySelectorAll("input:not([type=hidden])")).toHaveLength(0);
+    expect(page.querySelector(".ticket-card")?.text).not.toContain("Fixed in");
+    expect(form.querySelectorAll("button").map((b) => b.text)).toEqual([
+      "Mark fixed and tell the customer",
+    ]);
     // The reply box is a form of its own, so what is typed there is never sent by this press.
     expect(form.querySelector("textarea")).toBeNull();
   });
@@ -74,20 +75,22 @@ describe("Mark fixed and tell the customer", () => {
     expect(ticket.resolution).toMatchObject({ by: "team", reason: "fixed_no_reply", note: null });
   });
 
-  it("keeps where it is fixed, for both of them", async () => {
+  it("keeps where it is fixed, given on the Status menu's form, for both of them", async () => {
     const app = await inProgress();
-    const { action, fields } = nextStepFields(await ticketPage(app, teamActor), {
-      note: "version 4.2.1",
-    });
-    await as(app, teamActor).post(action).type("form").send(fields).expect(303);
+    await as(app, teamActor)
+      .post("/tickets/SUP-1/resolve")
+      .type("form")
+      .send({ reason: "fixed_no_reply", fixed_in: "version 4.2.1" })
+      .expect(303);
     const team = await ticketPage(app, teamActor);
     expect(team.querySelector(".card-line")?.text).toContain("Fixed in: version 4.2.1.");
     const customer = await ticketPage(app, customerOne);
     expect(customer.querySelector("#did-this-fix-it")?.text).toContain("Fixed in: version 4.2.1");
   });
 
-  it("shows a refusal beside its own button, with what was typed, and no reason form", async () => {
+  it("shows a refusal beside its own button, and no reason form", async () => {
     const app = await inProgress();
+    // The page sends no note from this button; the server still checks one sent by hand.
     const { action, fields } = nextStepFields(await ticketPage(app, teamActor), {
       note: "x".repeat(501),
     });
@@ -96,9 +99,7 @@ describe("Mark fixed and tell the customer", () => {
     const page = parse(res.text);
     const step = page.querySelector(".next-action")!;
     expect(step.querySelector("#mark-fixed-error")?.text).toBe("Must be at most 500 characters.");
-    const box = step.querySelector("input[name=note]")!;
-    expect(box.hasAttribute("autofocus")).toBe(true);
-    expect(box.getAttribute("aria-invalid")).toBe("true");
+    expect(step.querySelector("button")?.getAttribute("aria-describedby")).toBe("mark-fixed-error");
     expect(page.querySelector("form.resolve")).toBeNull();
     expect((await as(app, teamActor).get("/api/tickets/SUP-1")).body.status).toBe("in_progress");
   });
@@ -134,8 +135,8 @@ describe("the customer's answer to a ticket marked fixed", () => {
       }),
     ).toBe("Thank you. The ticket is resolved.");
     const page = await ticketPage(app, customerOne);
-    expect(page.querySelector(".ticket-standing")?.text.trim()).toBe(
-      "Resolved, customer confirmed",
+    expect(page.querySelector(".ticket-standing")?.text.trim()).toMatch(
+      /^Resolved, customer confirmed on /,
     );
     expect(page.querySelector(".ticket-standing img.tick")).not.toBeNull();
     expect(page.querySelector("#did-this-fix-it")).toBeNull();
@@ -216,7 +217,7 @@ describe("the Status menu's Resolved form", () => {
     return page.querySelector("form.resolve")!;
   }
 
-  it("has the box Fixed in for Fixed, and a button that says what Fixed does", async () => {
+  it("has the box Fixed in for Fixed, and one button label for every reason", async () => {
     const app = await inProgress();
     const form = await resolveForm(app);
     const label = form.querySelector("label.resolve-fixed-in")!;
@@ -224,9 +225,12 @@ describe("the Status menu's Resolved form", () => {
     expect(label.querySelector("input")?.getAttribute("name")).toBe("fixed_in");
     // "Why?" keeps its own box, for Other.
     expect(form.querySelector("label.resolve-note")?.text.trim()).toBe("Why?");
+    // The Fixed choice says itself that the customer is told, so the button never changes.
+    const fixed = form.querySelector("input[value=fixed_no_reply]")!.parentNode!;
+    expect(fixed.text.trim()).toBe("Fixed (the customer is told)");
     const button = form.querySelector(".form-actions button")!;
     expect(button.text).toBe("Resolve ticket");
-    expect(button.getAttribute("data-label-fixed")).toBe("Mark fixed and tell the customer");
+    expect(button.hasAttribute("data-label-fixed")).toBe(false);
   });
 
   it("sends only the box for the reason chosen", async () => {

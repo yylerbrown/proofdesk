@@ -87,14 +87,16 @@ describe("who sees a message", () => {
     expect(html.querySelectorAll("button[data-fill]")).toHaveLength(0);
   });
 
-  it("shows the customer, who has no tabs, the box's label", async () => {
+  it("gives the customer, who has no tabs, the box's label for screen readers only", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
     const html = parse((await as(app, customerOne).get("/tickets/SUP-1")).text);
     const form = html.querySelector("form.reply-box")!;
     expect(form.querySelector("fieldset.kind-tabs")).toBeNull();
+    // The line they pressed to open the box already says "Write a message".
+    expect(html.querySelector("details.reply-fold > summary")?.text).toBe("Write a message");
     const label = form.querySelector("label[for=entry-body]")!;
     expect(label.text).toBe("Your message");
-    expect(label.classList.contains("visually-hidden")).toBe(false);
+    expect(label.classList.contains("visually-hidden")).toBe(true);
   });
 });

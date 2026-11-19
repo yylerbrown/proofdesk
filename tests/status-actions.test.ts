@@ -111,7 +111,7 @@ describe("the status control", () => {
     // reason form shown in the next step's place.
     expect(section.tagName).toBe("DETAILS");
     const resolve = section.querySelector("a")!;
-    expect(resolve.getAttribute("href")).toBe("/tickets/SUP-1?step=resolve");
+    expect(resolve.getAttribute("href")).toBe("/tickets/SUP-1?step=resolve#resolve-form");
     const shownForm = parse((await as(app, teamActor).get("/tickets/SUP-1?step=resolve")).text);
     const form = shownForm.querySelector(".ticket-card form#resolve-form")!;
     expect(form.getAttribute("action")).toBe("/tickets/SUP-1/resolve");
@@ -198,7 +198,9 @@ describe("the status control", () => {
     // The button already says where reopening takes it, so no line repeats it.
     expect(why(section)).toBeNull();
     expect(section.text).not.toContain("Reopening takes it");
-    expect(section.querySelector("a")?.getAttribute("href")).toBe("/tickets/SUP-1?step=reopen");
+    expect(section.querySelector("a")?.getAttribute("href")).toBe(
+      "/tickets/SUP-1?step=reopen#reopen-form",
+    );
     const reopenPage = parse((await as(app, teamActor).get("/tickets/SUP-1?step=reopen")).text);
     const reopen = reopenPage.querySelector("form#reopen-form")!;
     expect(reopen.getAttribute("action")).toBe("/tickets/SUP-1/reopen");

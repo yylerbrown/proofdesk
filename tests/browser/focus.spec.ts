@@ -91,8 +91,10 @@ test("the team's ticket page: Shift+Tab, Escape on the Status and Owner menus, a
 
   await test.step("a control reached with Shift+Tab is not left under the header", async () => {
     await page.locator("summary", { hasText: "Reply or add a note" }).click();
-    // History open under the box gives the page room to scroll Send up under the header.
+    // History and More options open under the box give the page room to scroll Send up under
+    // the header.
     await page.locator("details.history > summary").click();
+    await page.locator("details.more-options > summary").click();
     // A short window, so the page can scroll far enough to put Send under the header.
     await page.setViewportSize({ width: 1280, height: 300 });
     const send = page.getByRole("button", { name: "Send reply to customer" });
