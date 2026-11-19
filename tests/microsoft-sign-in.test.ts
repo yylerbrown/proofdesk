@@ -3,6 +3,7 @@ import { parse } from "node-html-parser";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadConfig } from "../src/server/config.js";
+import { SIGN_IN_LIMIT } from "../src/server/limits.js";
 import { buildTestApp, FROM_THIS_SITE, SIGN_IN_ENV, visitor } from "./helpers.js";
 
 type TestApp = ReturnType<typeof buildTestApp>["app"];
@@ -193,7 +194,7 @@ const ada = { id: 1001, login: "ada", name: "Ada Admin", email: "ada@corp.exampl
 const ADDRESS_TAKEN =
   "Your email address already belongs to a different account here. Sign in with the account you used before.";
 const NO_EMAIL =
-  "Microsoft did not share a verified email address for this account. Ask whoever runs your organization's Microsoft accounts to add one, then sign in again.";
+  "Microsoft did not share a verified email address for this account. Ask whoever runs this site or your organization's Microsoft accounts, then sign in again.";
 
 function buildMicrosoftApp() {
   return buildTestApp(MICROSOFT_ENV);
@@ -255,6 +256,27 @@ describe("the sign-in page with both ways in", () => {
     // Microsoft's mark is drawn from a file this server serves, like GitHub's.
     expect(page.querySelector("form[action='/sign-in/microsoft'] .microsoft-mark")).not.toBeNull();
     expect((await request(app).get("/assets/microsoft-mark.svg")).status).toBe(200);
+  });
+});
+
+describe("the sign-in page's protections with both ways in", () => {
+  it("lets its forms go to this server, GitHub and Microsoft's sign-in page, and nowhere else", async () => {
+    const { app } = buildMicrosoftApp();
+    const page = await request(app).get("/sign-in");
+    const policy = String(page.headers["content-security-policy"]).split(";");
+    expect(
+      policy.map((rule) => rule.trim()).filter((rule) => rule.startsWith("form-action")),
+    ).toEqual(["form-action 'self' https://github.com https://login.microsoftonline.com"]);
+  });
+
+  it("allows only a few Microsoft starts a minute from one address", async () => {
+    const { app } = buildMicrosoftApp();
+    for (let i = 0; i < SIGN_IN_LIMIT; i++) {
+      expect((await visitor(app).post("/sign-in/microsoft")).status).toBe(303);
+    }
+    const res = await visitor(app).post("/sign-in/microsoft");
+    expect(res.status).toBe(429);
+    expect(res.text).toContain("Too many requests.");
   });
 });
 
@@ -346,6 +368,33 @@ describe("the whole Microsoft sign-in", () => {
     // An address Microsoft lists as verified is accepted, without the domain claim.
     const listed = { ...mia, claims: { xms_edov: false, verified_primary_email: [mia.email] } };
     expect((await signInThroughMicrosoft(app, listed)).signedInAs).toBe("Mia Microsoft (customer)");
+  });
+
+  it("still lets a returning person in when Microsoft no longer calls their address verified", async () => {
+    const { app, db } = buildMicrosoftApp();
+    expect((await signInThroughMicrosoft(app, mia)).signedInAs).toBe("Mia Microsoft (customer)");
+    const unverified = { ...mia, claims: { xms_edov: false } };
+    expect((await signInThroughMicrosoft(app, unverified)).signedInAs).toBe(
+      "Mia Microsoft (customer)",
+    );
+    // A newcomer with the same answer from Microsoft is still refused.
+    const newcomer = { oid: "oid-new", name: "New", email: "new@corp.example" };
+    const refused = await signInThroughMicrosoft(app, { ...newcomer, claims: { xms_edov: false } });
+    expect(refused.signedInAs).toBeNull();
+    expect(refused.location).toBe("/sign-in?via=microsoft&error=email_not_found");
+    expect(count(db, "user")).toBe(1);
+  });
+
+  it("keeps at most 100 characters of a Microsoft name, and the sign-in name when it is empty", async () => {
+    const { app } = buildMicrosoftApp();
+    const long = { oid: "oid-long", name: "N".repeat(150), email: "long@corp.example" };
+    expect((await signInThroughMicrosoft(app, long)).signedInAs).toBe(
+      `${"N".repeat(100)} (customer)`,
+    );
+    const nameless = { oid: "oid-nameless", name: "  ", email: "nameless@corp.example" };
+    expect((await signInThroughMicrosoft(app, nameless)).signedInAs).toBe(
+      "nameless@corp.example (customer)",
+    );
   });
 
   it("never links a Microsoft account to a person who signed in with GitHub, or back", async () => {
@@ -473,5 +522,25 @@ describe("roles for people who sign in with Microsoft", () => {
     expect(account.text).toContain(
       "From your Microsoft account; your organization changes it there.",
     );
+  });
+});
+
+describe("a site with GitHub sign-in alone", () => {
+  it("does not say how each person signed in, on People or the account page", async () => {
+    const { app } = buildTestApp({ ...SIGN_IN_ENV, DEV_SIGN_IN: "off", ADMIN_GITHUB_IDS: "1001" });
+    const admin = await signInThroughGithub(app, ada);
+    const grace = { id: 2002, login: "grace", name: "Grace", email: "grace@corp.example" };
+    await signInThroughGithub(app, grace);
+
+    const people = parse((await visitor(app).set("Cookie", admin.cookie).get("/people")).text);
+    expect(people.querySelectorAll(".person-name").map((cell) => cell.text)).toHaveLength(2);
+    expect(people.querySelectorAll(".person-way")).toEqual([]);
+
+    const account = parse(
+      (await request(app).get("/account").set("Cookie", admin.cookie).set(FROM_THIS_SITE)).text,
+    );
+    expect(account.querySelector(".account-email")?.text).toBe(ada.email);
+    expect(account.querySelector(".account-way")).toBeNull();
+    expect(account.text).not.toContain("Signed in with");
   });
 });

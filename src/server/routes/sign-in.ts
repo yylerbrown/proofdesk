@@ -14,9 +14,9 @@ import {
 import { parseKey } from "../tickets/keys.js";
 
 // The sign-in page and its ways in: GitHub, when its settings are present, Microsoft beside
-// it when its settings are present too, and the development entrance, when DEV_SIGN_IN is on. The configuration refuses the development
-// entrance in production, and on any server with the GitHub settings, so the two never
-// appear together.
+// it when its settings are present too, and the development entrance, when DEV_SIGN_IN is
+// on. The configuration refuses the development entrance in production, and on any server
+// with the GitHub settings, so the entrance never appears beside the other two.
 /**
  * Where to go after signing in. Only an address on this site is accepted, such as
  * "/tickets/SUP-1". Anything else, for example "https://elsewhere" or "//elsewhere", falls

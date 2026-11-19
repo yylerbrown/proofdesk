@@ -83,6 +83,11 @@ All of them are in `.env.example`, with comments.
 3. Set `DEV_SIGN_IN=off`. To make yourself an admin, put your GitHub user ID (the `id` at
    `https://api.github.com/users/<your user name>`) in `ADMIN_GITHUB_IDS`.
 
+The `.env` file and the http address are for `npm run dev`. A production build (`npm start`)
+does not read `.env` and refuses an http address: pass the four settings as real environment
+variables, with an https `BETTER_AUTH_URL` and its own `DATABASE_PATH`, such as
+`./data/app.db`.
+
 ### Microsoft sign-in, beside GitHub
 
 Optional, for the people of one organization. It needs the four GitHub settings too.
@@ -100,11 +105,6 @@ Optional, for the people of one organization. It needs the four GitHub settings 
 Proofdesk asks only for `openid`, `profile` and `email`, so the default `User.Read` permission
 can be removed. Newcomers are customers; an admin chooses roles on **People**, which shows how
 each person signed in. An email address used one way cannot sign in the other way.
-
-The `.env` file and the http address are for `npm run dev`. A production build (`npm start`)
-does not read `.env` and refuses an http address: pass the four settings as real environment
-variables, with an https `BETTER_AUTH_URL` and its own `DATABASE_PATH`, such as
-`./data/app.db`.
 
 ## Fly.io
 
@@ -159,9 +159,9 @@ Done once, already done:
    The server refuses to start in production without the four sign-in settings, or with an
    address that does not start with `https://`.
 
-3. **Microsoft sign-in, not set yet.** Register an app as above with the redirect URI
-   `https://proofdesk.fly.dev/api/auth/callback/microsoft`, then set the three Microsoft
-   settings with `fly secrets set --app proofdesk`, which restarts the site with both buttons.
+Not done yet: **Microsoft sign-in.** Register an app as above with the redirect URI
+`https://proofdesk.fly.dev/api/auth/callback/microsoft`, then set the three Microsoft settings
+with `fly secrets set --app proofdesk`; the site restarts with both buttons.
 
 The commands below name the demo app; for the real site use `--app proofdesk`.
 

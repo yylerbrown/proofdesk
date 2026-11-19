@@ -181,8 +181,8 @@ const NAME_LIMIT = 100;
 const readerCharacters = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 
 /**
- * The name kept for a person: their GitHub display name cut to NAME_LIMIT characters, or
- * their GitHub login when the display name is empty or only spaces. The cut counts the
+ * The name kept for a person: their display name cut to NAME_LIMIT characters, or their
+ * GitHub login or Microsoft sign-in name when the display name is empty or only spaces. The cut counts the
  * characters a reader sees, so it never leaves half of one, such as half a flag.
  */
 function shownName(name: string | null, login: string): string {

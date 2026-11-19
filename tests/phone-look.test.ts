@@ -29,9 +29,9 @@ describe("the look", () => {
     expect(css).toMatch(/content: "\\2192";\s*content: "\\2192" \/ "";/);
   });
 
-  it("keeps GitHub's mark visible in forced colours", () => {
+  it("keeps GitHub's and Microsoft's marks visible in forced colours", () => {
     expect(css).toMatch(
-      /@media \(forced-colors: active\) \{\s*\.github-mark \{[^}]*background-color: ButtonText;[^}]*forced-color-adjust: none;/,
+      /@media \(forced-colors: active\) \{\s*\.github-mark,\s*\.microsoft-mark \{[^}]*background-color: ButtonText;[^}]*forced-color-adjust: none;/,
     );
   });
 

@@ -50,7 +50,7 @@ const GITHUB_BESIDE_MICROSOFT: Record<string, string> = {
 };
 
 const MICROSOFT_NO_EMAIL =
-  "Microsoft did not share a verified email address for this account. Ask whoever runs your organization's Microsoft accounts to add one, then sign in again.";
+  "Microsoft did not share a verified email address for this account. Ask whoever runs this site or your organization's Microsoft accounts, then sign in again.";
 
 const MICROSOFT_EXPIRED = "That sign-in expired before Microsoft sent you back. Sign in again.";
 
