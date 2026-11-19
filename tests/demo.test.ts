@@ -112,7 +112,7 @@ describe("the sample data", () => {
     const sample = list.body.find((t: { key: string }) => t.key === "SUP-1");
     const recorded = list.body.find((t: { key: string }) => t.key === "SUP-2");
     expect(sample.title).toBe("Sample for your AI assistant: the total adds tax twice");
-    expect(recorded.title).toMatch(/^Recorded example of a real assistant run/);
+    expect(recorded.title).toBe("The checkout total adds tax twice");
     // Every status is there, so each filter changes the list.
     const statuses = new Set(list.body.map((t: { status: string }) => t.status));
     expect([...statuses].sort()).toEqual(["in_progress", "new", "resolved"]);

@@ -64,7 +64,7 @@ export function seedDemo(service: TicketService): void {
   // Owned and in progress, so an assistant's request for review reaches a named person.
   service.takeAndStart(assistantSample.key, team);
 
-  const recorded = seedRecordedRun(service, team, second, assistantSample.key);
+  const recorded = seedRecordedRun(service, team, second);
 
   const login = service.createTicket(
     {
@@ -190,25 +190,16 @@ export const RECORDED_ASSISTANT: Actor = {
 
 /**
  * A recorded example of a real assistant run on 18 Nov 2026, on the sample made for assistants.
- * The spec, the evidence and the review request are what that assistant sent, copied from its
- * transcript in docs/assistant-run; nothing is written by hand. Nobody accepted the spec or
- * asked the customer, as in the run.
+ * The ticket's title and description are the customer's problem alone; where the run came from
+ * is told on the run's own page. The spec, the evidence and the review request are what that
+ * assistant sent, copied from its transcript in docs/assistant-run; nothing is written by hand.
+ * Nobody accepted the spec or asked the customer, as in the run.
  */
-function seedRecordedRun(
-  service: TicketService,
-  team: Actor,
-  customer: Actor,
-  sampleKey: string,
-): string {
+function seedRecordedRun(service: TicketService, team: Actor, customer: Actor): string {
   const ticket = service.createTicket(
     {
-      title: "Recorded example of a real assistant run on 18 Nov 2026: the total adds tax twice",
+      title: "The checkout total adds tax twice",
       description:
-        `A recorded example: what one real AI assistant did on ${RECORDED_SAMPLE_KEY}, the sample ` +
-        `ticket for assistants in an earlier copy of this demo, on 18 Nov 2026, so its words name ` +
-        `${RECORDED_SAMPLE_KEY}. Here that sample is ${sampleKey}. Its spec, evidence and ` +
-        "review request, which the team sees, are exactly what it sent, copied from its " +
-        "transcript (see its transcript and files above).\n\n" +
         "The checkout total is too high. This is the code that computes it:\n\n" +
         "function total(price, taxRate) {\n  return price + price * taxRate + price * taxRate;\n}\n\n" +
         "total(100, 0.1) returns 120.",
