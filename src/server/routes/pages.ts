@@ -280,6 +280,42 @@ const BOX_NAMES: [keyof typeof emptyForm, string][] = [
   ["where_url", "Page where it happened"],
 ];
 
+/** The four boxes of the edit form, filled in with the ticket as it is now. */
+function ticketValues(ticket: Ticket): typeof emptyForm {
+  return {
+    title: ticket.title,
+    description: ticket.description,
+    where_url: ticket.where_url ?? "",
+    fix_check: ticket.fix_check ?? "",
+  };
+}
+
+/**
+ * What the edit form held when it was opened, from its hidden "loaded_" boxes, or null when it
+ * has none. These come from the browser, so they only word the message after a refused save:
+ * the save itself is checked against the ticket's version, never against these.
+ */
+function readLoaded(body: Record<string, unknown> | undefined): typeof emptyForm | null {
+  const sent = BOX_NAMES.some(([field]) => typeof body?.[`loaded_${field}`] === "string");
+  if (!sent) return null;
+  return {
+    title: asText(body?.loaded_title),
+    description: asText(body?.loaded_description),
+    where_url: asText(body?.loaded_where_url),
+    fix_check: asText(body?.loaded_fix_check),
+  };
+}
+
+/**
+ * The boxes someone else changed since the form was opened, each with the text it holds now, so
+ * the person need not compare the ticket and their draft box by box. Compared like differingBoxes.
+ */
+function changedSinceLoaded(ticket: Ticket, loaded: typeof emptyForm) {
+  return BOX_NAMES.filter(
+    ([field]) => !sameText((ticket[field] ?? "").trim(), loaded[field].trim()),
+  ).map(([field, name]) => ({ name, now: (ticket[field] ?? "").trim() }));
+}
+
 /**
  * The names of the boxes whose text differs from the ticket as it is now. They are compared the
  * way a ticket stores them: trimmed, and with a browser's CR LF line breaks the same as plain ones.
@@ -681,15 +717,12 @@ export function pagesRouter(service: TicketService): Router {
       res.redirect(303, `/tickets/${ticket.key}`);
       return;
     }
-    const values = {
-      title: ticket.title,
-      description: ticket.description,
-      where_url: ticket.where_url ?? "",
-      fix_check: ticket.fix_check ?? "",
-    };
+    const values = ticketValues(ticket);
     res.render("ticket-form", {
       ...editForm(ticket.key),
       values,
+      // What the form was opened with, so a refused save can say what someone else changed.
+      loaded: values,
       errors: {},
       checkLocked: ticket.created_by !== actor.id,
       version: ticket.version,
@@ -699,6 +732,7 @@ export function pagesRouter(service: TicketService): Router {
   router.post("/tickets/:key/edit", (req, res) => {
     const actor = signedIn(req);
     const values = readTicketForm(req.body);
+    const loaded = readLoaded(req.body);
     const expectedVersion = asText(req.body?.expected_version);
     try {
       const ticket = service.editTicket(
@@ -726,9 +760,13 @@ export function pagesRouter(service: TicketService): Router {
         ...editForm(current.key),
         values: shown,
         errors,
-        // The boxes whose text on the ticket now differs from what the form holds, so a second
-        // save does not put old text back unnoticed.
-        differ: changed ? differingBoxes(current, shown) : [],
+        // What someone else changed since the form was opened, with the text it holds now. A
+        // form sent without what it was opened with names the boxes that differ instead.
+        changedByOthers: changed && loaded !== null ? changedSinceLoaded(current, loaded) : null,
+        differ: changed && loaded === null ? differingBoxes(current, shown) : [],
+        // After a refusal for a newer version the form is now based on the ticket as it is;
+        // after a mistake in a box it is still based on what it was opened with.
+        loaded: changed ? ticketValues(current) : loaded,
         // The hidden version has no box of its own, so a problem with it is said at the top.
         versionUnreadable: errors.expected_version !== undefined,
         checkLocked,
