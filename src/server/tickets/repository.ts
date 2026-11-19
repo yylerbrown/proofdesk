@@ -423,6 +423,20 @@ export function latestAnswer(
 }
 
 /**
+ * The ids of the evidence the owner chose to show the customer in any question asked on a
+ * ticket, the open one included.
+ */
+export function evidenceChosenForCustomer(db: Db, ticketId: number): Set<number> {
+  const rows = db
+    .prepare(
+      `SELECT DISTINCT chosen.value AS id FROM ticket_events e, json_each(e.data, '$.evidence_ids') chosen
+       WHERE e.ticket_id = ? AND e.type = 'ready_for_customer'`,
+    )
+    .all(ticketId) as { id: number }[];
+  return new Set(rows.map((row) => row.id));
+}
+
+/**
  * True when the customer's latest word on a ticket says it is not fixed: their latest answer
  * or reopening is a reopening, or an answer of no.
  */
@@ -480,6 +494,19 @@ export function handedTicketIds(db: Db, connectionId: number): number[] {
         "SELECT ticket_id FROM ticket_agent_handoffs WHERE connection_id = ? AND ended_at IS NULL",
       )
       .all(connectionId) as { ticket_id: number }[]
+  ).map((row) => row.ticket_id);
+}
+
+/** The ids of the tickets still handed to a connection that has been revoked. */
+export function ticketsHandedToEndedConnections(db: Db): number[] {
+  return (
+    db
+      .prepare(
+        `SELECT h.ticket_id FROM ticket_agent_handoffs h
+         JOIN agent_connections c ON c.id = h.connection_id
+         WHERE h.ended_at IS NULL AND c.revoked_at IS NOT NULL`,
+      )
+      .all() as { ticket_id: number }[]
   ).map((row) => row.ticket_id);
 }
 

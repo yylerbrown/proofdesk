@@ -47,7 +47,7 @@ const ticketPage = async (app: Express, who = teamActor) =>
 describe("the resolve form", () => {
   it("starts on an empty, required choice while the customer's No stands", async () => {
     const { app } = await setup();
-    // Otherwise it starts on "Fixed, not yet confirmed" (status-row-reads-as-one-control).
+    // Otherwise it starts on the "Fixed." reason (status-row-reads-as-one-control).
     await customerSaysNo(app, "Still jams on page two.");
     const select = (await ticketPage(app)).querySelector('details.resolve select[name="reason"]')!;
     expect(select.hasAttribute("required")).toBe(true);
@@ -148,7 +148,9 @@ describe("a long text with line breaks", () => {
       Number(form.querySelector(`[name="${name}"]`)!.getAttribute("maxlength"));
     const shape = createTicketSchema.shape;
     expect(limit("title")).toBe(shape.title.maxLength);
-    expect(limit("description")).toBe(shape.description.maxLength);
+    // The description counts against the limit instead, so a long paste is never cut off.
+    const description = form.querySelector('[name="description"]')!;
+    expect(Number(description.getAttribute("data-count-limit"))).toBe(shape.description.maxLength);
     expect(limit("fix_check")).toBe(shape.fix_check.unwrap().maxLength);
     expect(limit("where_url")).toBe(500);
   });

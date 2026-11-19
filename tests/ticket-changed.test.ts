@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  describeChange,
   differs,
   readStamp,
   ticketAddress,
@@ -16,6 +17,7 @@ import {
 function standIns(answer: () => Stamp | null, inView = () => true) {
   let shown = 0;
   let asked = 0;
+  const lines: string[] = [];
   const timers: (() => void)[] = [];
   const returns: (() => void)[] = [];
   const watch: Watch = {
@@ -23,8 +25,9 @@ function standIns(answer: () => Stamp | null, inView = () => true) {
       asked++;
       return answer();
     },
-    show: () => {
+    show: (words) => {
       shown++;
+      lines.push(words);
     },
     visible: inView,
     every: (check) => timers.push(check),
@@ -34,12 +37,13 @@ function standIns(answer: () => Stamp | null, inView = () => true) {
     watch,
     shown: () => shown,
     asked: () => asked,
+    lines,
     timers,
     returns,
   };
 }
 
-const page: Stamp = { version: 3, entries: 2, handoffs: 0 };
+const page: Stamp = { version: 3, entries: 2, handoffs: 0, status: "in_progress" };
 
 describe("the ticket-changed notice", () => {
   it("stays quiet while the ticket is as the page shows it", async () => {
@@ -52,9 +56,9 @@ describe("the ticket-changed notice", () => {
 
   it("shows its line once when the version, the conversation or an assistant's work changed", async () => {
     for (const now of [
-      { version: 4, entries: 2, handoffs: 0 },
-      { version: 3, entries: 3, handoffs: 0 },
-      { version: 3, entries: 2, handoffs: 1 },
+      { version: 4, entries: 2, handoffs: 0, status: "in_progress" },
+      { version: 3, entries: 3, handoffs: 0, status: "in_progress" },
+      { version: 3, entries: 2, handoffs: 1, status: "in_progress" },
     ]) {
       const t = standIns(() => now);
       const check = watchTicket(page, t.watch);
@@ -69,7 +73,7 @@ describe("the ticket-changed notice", () => {
   it("asks only while the tab is in view, and says nothing when the read fails", async () => {
     let inView = false;
     const hidden = standIns(
-      () => ({ version: 9, entries: 9, handoffs: 9 }),
+      () => ({ version: 9, entries: 9, handoffs: 9, status: "resolved" }),
       () => inView,
     );
     const check = watchTicket(page, hidden.watch);
@@ -89,12 +93,24 @@ describe("the ticket-changed notice", () => {
   });
 
   it("reads only a well-formed stamp from the server", () => {
-    const stamp = { version: 2, entries: 0, handoffs: 0 };
+    const stamp = { version: 2, entries: 0, handoffs: 0, status: "new" };
     expect(readStamp(stamp)).toEqual(stamp);
     expect(readStamp({ ...stamp, version: "2" })).toBeNull();
+    expect(readStamp({ version: 2, entries: 0, handoffs: 0 })).toBeNull();
     expect(readStamp({ version: 2, entries: 0 })).toBeNull();
     expect(readStamp(null)).toBeNull();
-    expect(differs(page, { version: 3, entries: 2, handoffs: 0 })).toBe(false);
+    expect(differs(page, { ...page })).toBe(false);
+  });
+
+  it("says what kind of change it was when the reading can tell", async () => {
+    const moved = standIns(() => ({ ...page, version: 4, status: "resolved" }));
+    await watchTicket(page, moved.watch)();
+    expect(moved.lines).toEqual(["This ticket is now Resolved."]);
+    expect(describeChange(page, { ...page, version: 4, entries: 3 })).toBe(
+      "This ticket has a new message.",
+    );
+    expect(describeChange(page, { ...page, version: 4 })).toBe("This ticket changed.");
+    expect(describeChange(page, { ...page, handoffs: 1 })).toBe("This ticket changed.");
   });
 
   it("sends Refresh to the ticket's own address, wherever the page was drawn", () => {

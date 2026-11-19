@@ -63,7 +63,7 @@ describe("an assistant that is blocked", () => {
     await note({ body: "Blocked on access.", blocked: true });
     await note({ body: "Access granted, carrying on." });
     expect(await blockedLine(app, teamActor)).toBeUndefined();
-    expect(await waitingCell(app)).toBe("Team");
+    expect(await waitingCell(app)).toBe("Support team");
   });
 
   it("is a mark only an assistant can make", async () => {

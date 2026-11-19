@@ -27,3 +27,26 @@ describe("the guided sample on the demo", () => {
     expect(form.querySelector("input[name=where_url]")?.getAttribute("value")).toBe("");
   });
 });
+
+describe("the line above the guided sample", () => {
+  async function newForm(address: string) {
+    const { app, db, config } = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
+    seedDemo(createTicketService(db, config.ticketPrefix));
+    return parse(
+      (await visitor(app).set("Cookie", `${DEV_COOKIE}=demo-customer`).get(address).redirects(1))
+        .text,
+    );
+  }
+
+  it("says the boxes hold a sample that can be filed as it is or changed", async () => {
+    const form = await newForm("/tickets/new?try=1");
+    expect(form.querySelector(".sample-note")?.text.trim()).toBe(
+      "These boxes hold a sample. File it as it is, or change it first.",
+    );
+  });
+
+  it("is not shown on an empty form", async () => {
+    const form = await newForm("/tickets/new");
+    expect(form.querySelector(".sample-note")).toBeNull();
+  });
+});

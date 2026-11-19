@@ -1,7 +1,12 @@
 import { parse } from "node-html-parser";
 import type { Express } from "express";
 import { describe, expect, it } from "vitest";
-import { wireQuickAnswers, type Field, type QuickButton } from "../src/browser/quick.js";
+import {
+  relabelQuickAnswers,
+  wireQuickAnswers,
+  type Field,
+  type QuickButton,
+} from "../src/browser/quick.js";
 import { admin, as, buildTestApp, customerOne, teamActor } from "./helpers.js";
 
 // Quick answers are plain words on ordinary buttons. Without scripts each sends its words as an
@@ -66,6 +71,30 @@ describe("the quick-answer script", () => {
     let prevented = false;
     click({ preventDefault: () => (prevented = true) });
     expect(prevented).toBe(false);
+  });
+});
+
+describe("the line above the quick No answers", () => {
+  it("says they send a No without scripts, and the script changes it to say they only start one", async () => {
+    const app = await asked();
+    const page = parse((await as(app, customerOne).get("/tickets/SUP-1")).text);
+    const line = page.querySelector("#quick-answers-label small")!;
+    expect(line.text).toBe("Or answer No in a few words:");
+    expect(page.querySelector(".quick-answers")?.getAttribute("aria-labelledby")).toBe(
+      "quick-answers-label",
+    );
+    const label = {
+      dataset: { filledLabel: line.getAttribute("data-filled-label") },
+      textContent: line.text,
+    };
+    relabelQuickAnswers([label]);
+    expect(label.textContent).toBe("Or start your answer with one of these:");
+  });
+
+  it("leaves a line with no other words as it is", () => {
+    const label = { dataset: {}, textContent: "Quick replies" };
+    relabelQuickAnswers([label]);
+    expect(label.textContent).toBe("Quick replies");
   });
 });
 

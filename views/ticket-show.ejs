@@ -65,21 +65,21 @@
 <%# Wide screens: what the ticket is about on the left, what a person acts on in the panel on
     the right, the conversation and history under the left part. Narrow screens: one column,
     with the panel between the description and the conversation. %>
-<div class="ticket-layout" data-ticket-key="<%= ticket.key %>" data-ticket-version="<%= stamp.version %>" data-ticket-entries="<%= stamp.entries %>" data-ticket-handoffs="<%= stamp.handoffs %>">
+<div class="ticket-layout" data-ticket-key="<%= ticket.key %>" data-ticket-version="<%= stamp.version %>" data-ticket-entries="<%= stamp.entries %>" data-ticket-handoffs="<%= stamp.handoffs %>" data-ticket-status="<%= ticket.status %>">
 <div class="ticket-summary">
 <%# The customer said it is not fixed, with a No or by reopening it: shown first, until the team
-    asks them again. Their latest word is the one shown. %>
-<% if (notFixed) { %>
+    asks them again, resolves it or reopens it. Their latest word is the one shown. %>
+<% if (notFixedCard) { %>
 <article class="customer-said-no" id="customer-said-no">
   <% if (viewerRole === "customer") { %>
-  <h2><%= notFixed.reopened ? "You reopened it" : "You said it is not fixed" %></h2>
+  <h2><%= notFixedCard.reopened ? "You reopened it" : "You said it is not fixed" %></h2>
   <% } else { %>
-  <h2><%= notFixed.reopened ? "The customer reopened it" : "The customer says it is not fixed" %></h2>
+  <h2><%= notFixedCard.reopened ? "The customer reopened it" : "The customer says it is not fixed" %></h2>
   <% } %>
-  <% if (notFixed.words) { %>
-  <blockquote class="user-text"><%= notFixed.words %></blockquote>
+  <% if (notFixedCard.words) { %>
+  <blockquote class="user-text"><%= notFixedCard.words %></blockquote>
   <% } %>
-  <p><small><%= notFixed.reopened ? "Reopened" : "Answered" %> <%- include("time", { iso: notFixed.at }) %>.</small></p>
+  <p><small><%= notFixedCard.reopened ? "Reopened" : "Answered" %> <%- include("time", { iso: notFixedCard.at }) %>.</small></p>
   <% if (viewerRole === "customer") { %>
   <p>The team has your words. You will be asked again when they think it is fixed.</p>
   <% } else { %>
@@ -168,9 +168,11 @@
     <button type="submit" class="secondary large">No, send it back</button>
   </form>
   <%# Common answers, as plain words. With scripts, each fills the box above, to change before
-      sending; without, each sends its words as an ordinary answer. %>
-  <p class="quick-label"><small>Or answer No in a few words:</small></p>
-  <div class="quick-answers" role="group" aria-label="Quick answers">
+      sending, and the script changes the line above them to say so: a No is then sent only by
+      "No, send it back", never by one press on a chip. Without scripts, each sends its words as
+      an ordinary answer, as this line says. %>
+  <p class="quick-label" id="quick-answers-label"><small data-filled-label="Or start your answer with one of these:">Or answer No in a few words:</small></p>
+  <div class="quick-answers" role="group" aria-labelledby="quick-answers-label">
     <% for (const words of ["Still happening", "Partly fixed", "Something else broke"]) { %>
     <form method="post" action="/tickets/<%= ticket.key %>/answer">
       <input type="hidden" name="fixed" value="no" />
@@ -253,7 +255,8 @@
   <div class="quick-answers status-row">
     <% for (const choice of statusRow.choices) { %>
     <% if (choice.kind === "current") { %>
-    <span aria-current="true"><%- include("status-badge", { status: choice.status }) %></span>
+    <%# Marked the way the list marks its selected filter, so "this is the current one" looks the same in both places. %>
+    <span aria-current="true" class="status-current"><%- include("status-badge", { status: choice.status }) %></span>
     <% } else if (choice.kind === "press") { %>
     <form method="post" action="<%= choice.action %>">
       <%- versionField %>
@@ -272,6 +275,7 @@
       <summary role="button" class="secondary outline"><%= statusLabels[choice.status] %></summary>
       <form method="post" action="/tickets/<%= ticket.key %>/resolve">
         <%- versionField %>
+        <p class="resolve-lead"><small>Resolves the ticket now, with the reason you pick. The customer sees it and can reopen it.</small></p>
         <label>
           Reason
           <select name="reason" required <%= focusIf("resolve", "reason") %>>
@@ -294,7 +298,6 @@
           <textarea name="note" rows="2" maxlength="500" <%= focusIf("resolve", "note") %>><%= resolving.note ?? "" %></textarea>
         </label>
         <% if (problem?.form === "resolve") { %><p><small id="resolve-error" role="alert"><%= problem.message %></small></p><% } %>
-        <p><small>The customer sees your reason and can reopen it.</small></p>
         <button type="submit" class="secondary compact" <% if (problem?.form === "resolve") { %>aria-describedby="resolve-error"<% } %>>Resolve</button>
       </form>
     </details>
@@ -552,6 +555,11 @@
 </article>
 <% } %>
 
+<%# Just after a message was sent: the line saying so, under the message it sent, where the
+    browser lands. The landing script gives it focus. %>
+<% if (locals.sent) { %>
+<p role="status" class="saved" id="sent"><%= sent %></p>
+<% } %>
 <% if (allowed.reply) { %>
 <form method="post" action="/tickets/<%= ticket.key %>/entries">
   <% if (allowed.note) { %>

@@ -32,6 +32,20 @@ export function wireQuickAnswers(
   }
 }
 
+/** The line above a row of quick buttons. */
+export type QuickLabel = { dataset: { filledLabel?: string }; textContent: string | null };
+
+/**
+ * Once the buttons fill a box instead of sending, the line above them says so, with the words
+ * the page gave it for that. A line without such words is left as it is.
+ */
+export function relabelQuickAnswers(labels: Iterable<QuickLabel>) {
+  for (const label of labels) {
+    const words = label.dataset.filledLabel;
+    if (words !== undefined) label.textContent = words;
+  }
+}
+
 if (typeof document !== "undefined") {
   // A real button has all the parts QuickButton names; its event types are only wider.
   const buttons = document.querySelectorAll(
@@ -46,4 +60,8 @@ if (typeof document !== "undefined") {
       }
     },
   );
+  // The No answers fill their box only when it is on the page, which is always where they are.
+  if (document.getElementById("answer-comment") !== null) {
+    relabelQuickAnswers(document.querySelectorAll<HTMLElement>("[data-filled-label]"));
+  }
 }

@@ -79,11 +79,13 @@ export function createEvidenceAndSpecs(shared: Shared) {
           scenario: evidence.scenario ?? null,
           created_at: now,
         });
+        // The history entry names the evidence and holds none of its text. The customer sees
+        // this entry, and sees an assistant's words only once the owner chooses to show them.
         log(
           ticket.id,
           actor,
           "evidence_added",
-          { kind: evidence.kind, summary: evidence.summary },
+          { kind: evidence.kind, evidence_id: saved.id },
           now,
         );
         return saved;
@@ -93,23 +95,25 @@ export function createEvidenceAndSpecs(shared: Shared) {
 
     /**
      * The evidence on a ticket, oldest first. Whoever may read the ticket may read it, with
-     * these limits: a customer sees an assistant's evidence only once the owner has asked them,
-     * and never a raw report; a demo connection sees only its own.
+     * these limits: a customer sees an assistant's evidence only when the owner chose it in a
+     * question to them, and never a raw report; a demo connection sees only its own.
      */
     listEvidence(key: string, actor: Actor): TicketEvidence[] {
       const ticket = requireRow(key, actor);
       // A raw report is for the team. The customer sees the summary, link and stages.
       const forTeam = can(actor, "read_notes", ticket);
       const customer = actor.kind === "person" && actor.role === "customer";
-      // An assistant's evidence reaches the customer only once the owner has asked them, having
-      // reviewed it. A scenario number means nothing to them until the team accepts the spec.
-      const asked =
-        ticket.ready_at !== null || repository.latestAnswer(db, ticket.id) !== undefined;
+      // An assistant's evidence reaches the customer only when the owner chose it in a question
+      // to them, now or earlier. A person's evidence is theirs to show. A scenario number means
+      // nothing to the customer until the team accepts the spec.
+      const chosen = customer
+        ? repository.evidenceChosenForCustomer(db, ticket.id)
+        : new Set<number>();
       const specAccepted = repository.findActiveSpec(db, ticket.id)?.state === "accepted";
       const evidence = repository
         .listEvidence(db, ticket.id, THREAD_LIMIT)
         .map(toEvidence)
-        .filter((item) => !customer || asked || item.reported_by.kind !== "agent")
+        .filter((item) => !customer || item.reported_by.kind !== "agent" || chosen.has(item.id))
         .map((item) => (forTeam ? item : { ...item, report: null }))
         .map((item) => (customer && !specAccepted ? { ...item, scenario: null } : item));
       // No sample ticket comes with evidence, so a demo connection sees only its own.

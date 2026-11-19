@@ -18,7 +18,11 @@ import type { Ticket } from "./types.js";
 // The team resolving a ticket with a reason, and reopening a resolved ticket. The customer's
 // own Yes, the other way a ticket is resolved, is in customer-question.ts.
 
-export function createResolveAndReopen(shared: Shared) {
+/**
+ * isOnTeam answers whether a person may own a ticket now. A ticket reopened while its owner is
+ * not goes back to New with no owner.
+ */
+export function createResolveAndReopen(shared: Shared, isOnTeam: (personId: string) => boolean) {
   const { db, prefix, budget, requireRow, log, setOwner, endAgent, toTicket } = shared;
 
   return {
@@ -122,7 +126,8 @@ export function createResolveAndReopen(shared: Shared) {
 
     /**
      * The customer who filed a resolved ticket says it is still happening. It goes back to
-     * its owner, in progress, or to the inbox if it has none. Their reason is a public reply,
+     * its owner, in progress, or to the inbox if it has none. An owner who is no longer on the
+     * team cannot work on it, so then it goes to the inbox with no owner, which the history says. Their reason is a public reply,
      * and their earlier Yes stays in the history.
      *
      * The ticket's owner, or an admin, may also reopen a ticket the team resolved, to undo a
@@ -171,7 +176,11 @@ export function createResolveAndReopen(shared: Shared) {
           );
         }
         requireVersion(key, before, expected_version);
-        const status = before.owner_id === null ? "new" : "in_progress";
+        let reopened = before;
+        if (reopened.owner_id !== null && !isOnTeam(reopened.owner_id)) {
+          reopened = setOwner(reopened, null, null, actor);
+        }
+        const status = reopened.owner_id === null ? "new" : "in_progress";
         const now = new Date().toISOString();
         repository.updateTicketStatus(db, before.id, status, now);
         if (byCustomer) {
@@ -185,17 +194,23 @@ export function createResolveAndReopen(shared: Shared) {
             author_name: actor.name,
             created_at: now,
           });
-          log(before.id, actor, "reopened", { reason, to: status, owner: before.owner_name }, now);
+          log(
+            before.id,
+            actor,
+            "reopened",
+            { reason, to: status, owner: reopened.owner_name },
+            now,
+          );
         } else {
           log(
             before.id,
             actor,
             "reopened_by_team",
-            { reason, to: status, owner: before.owner_name },
+            { reason, to: status, owner: reopened.owner_name },
             now,
           );
         }
-        return { ...before, status, ...noQuestion, updated_at: now } as repository.TicketRow;
+        return { ...reopened, status, ...noQuestion, updated_at: now } as repository.TicketRow;
       })();
       return toTicket(saved(db, row), actor);
     },

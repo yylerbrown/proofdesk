@@ -5,6 +5,7 @@ import type { Config } from "../config.js";
 import type { Db } from "../db.js";
 import { HttpError } from "../errors.js";
 import { can } from "../permissions.js";
+import { endHandoffsToEndedConnections } from "../tickets/ended-connections.js";
 import { buildKey } from "../tickets/keys.js";
 import { parse } from "../validation.js";
 import * as connectionsRepository from "../connections/repository.js";
@@ -243,6 +244,7 @@ export function createPeopleService(db: Db, config: Config) {
         // loses the ones they issued, in the same step. The key would stop working anyway.
         if (before === "admin") {
           connectionsRepository.revokeIssuedBy(db, person.id, now, endedWhenNotAdmin(person.name));
+          endHandoffsToEndedConnections(db, actor.id);
         }
         repository.recordChange(db, {
           personId: person.id,
@@ -317,6 +319,7 @@ export function endConnectionsOfFormerAdmins(db: Db, config: Config): number {
       const reason = endedWhenNotAdmin(issuer?.name);
       ended += connectionsRepository.revokeIssuedBy(db, issuerId, now, reason);
     }
+    endHandoffsToEndedConnections(db, SETTINGS_CHANGER.id);
     return ended;
   });
   return end.immediate();
