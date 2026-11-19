@@ -240,7 +240,7 @@ describe("the page that shows a demo key", () => {
     expect(html.querySelector("main a[href='/connections']")).toBeNull();
   });
 
-  /** A production build of the demo, as the README's Docker command runs it, with these settings. */
+  /** A production build of the demo, as the Docker command in docs/DEPLOY.md runs it, with these settings. */
   function productionDemo(env: Record<string, string> = {}) {
     const built = buildTestApp({
       NODE_ENV: "production",
