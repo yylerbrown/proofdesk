@@ -325,6 +325,7 @@ describe("a customer's list", () => {
       ownerId: null,
       unassigned: 0,
       search: null,
+      match: null,
     }) as {
       detail: string;
     }[];

@@ -410,7 +410,14 @@ describe("how the team's sorted list reads the table", () => {
       repository.listTickets(built.db, { kind: "everyone" }, null, { by, direction }, page);
       const sql = String(spy.mock.calls.at(-1)![0]);
       spy.mockRestore();
-      const values = { status: null, ownerId: null, unassigned: 0, search: null, ...page };
+      const values = {
+        status: null,
+        ownerId: null,
+        unassigned: 0,
+        search: null,
+        match: null,
+        ...page,
+      };
       const steps = (
         built.db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(values) as { detail: string }[]
       ).map((row) => row.detail);
