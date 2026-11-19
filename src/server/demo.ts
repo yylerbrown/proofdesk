@@ -35,6 +35,32 @@ export function seedDemo(service: TicketService): void {
   // a second set.
   if (!service.hasNoTickets()) return;
 
+  // The other customers file some samples, so the demo customer's own list stays short.
+  const [second, third] = OTHER_DEMO_CUSTOMERS as [Actor, Actor];
+
+  // The two samples for AI assistants are filed first, so they are the oldest tickets and sit
+  // low in the default list, under the plain support samples a visitor sees first. Their keys
+  // come from this seed, which records them, so nothing else names a fixed number for them.
+  // A sample made for a visitor's own AI assistant to work on: a clear check and a small,
+  // complete example it can reproduce on its own machine. Another customer filed it, so it
+  // stays out of the demo customer's list.
+  const assistantSample = service.createTicket(
+    {
+      title: "Sample for your AI assistant: the total adds tax twice",
+      description:
+        "This is a sample ticket for trying an AI assistant. The checkout total is too high. " +
+        "This is the code that computes it:\n\n" +
+        "function total(price, taxRate) {\n  return price + price * taxRate + price * taxRate;\n}\n\n" +
+        "total(100, 0.1) returns 120.",
+      fix_check: "total(100, 0.1) returns 110, and a test shows it",
+    },
+    second,
+  );
+  // Owned and in progress, so an assistant's request for review reaches a named person.
+  service.takeAndStart(assistantSample.key, team);
+
+  const recorded = seedRecordedRun(service, team, second, assistantSample.key);
+
   const login = service.createTicket(
     {
       title: "Cannot sign in on my phone",
@@ -78,27 +104,6 @@ export function seedDemo(service: TicketService): void {
     customer,
   );
 
-  // The other customers file some samples, so the demo customer's own list stays short.
-  const [second, third] = OTHER_DEMO_CUSTOMERS as [Actor, Actor];
-
-  // A sample made for a visitor's own AI assistant to work on: a clear check and a small,
-  // complete example it can reproduce on its own machine. Another customer filed it, so it
-  // stays out of the demo customer's list.
-  const assistantSample = service.createTicket(
-    {
-      title: "Sample for your AI assistant: the total adds tax twice",
-      description:
-        "This is a sample ticket for trying an AI assistant. The checkout total is too high. " +
-        "This is the code that computes it:\n\n" +
-        "function total(price, taxRate) {\n  return price + price * taxRate + price * taxRate;\n}\n\n" +
-        "total(100, 0.1) returns 120.",
-      fix_check: "total(100, 0.1) returns 110, and a test shows it",
-    },
-    second,
-  );
-  // Owned and in progress, so an assistant's request for review reaches a named person.
-  service.takeAndStart(assistantSample.key, team);
-
   // Every status in the samples, so each filter changes the list: one the customer confirmed,
   // and one where another customer said No and it went back to its owner.
   const receipt = service.createTicket(
@@ -133,8 +138,6 @@ export function seedDemo(service: TicketService): void {
     third,
   );
 
-  const recorded = seedRecordedRun(service, team, second, assistantSample.key);
-
   // Record what was seeded, so a visitor's assistant is shown only this, never what other
   // visitors write.
   service.recordDemoSeed(assistantSample.key, recorded);
@@ -161,6 +164,12 @@ function askAndAnswer(
   );
   service.answer(key, { ...answer, ready_token: asked.ready_token }, customer);
 }
+
+/**
+ * The key the sample for assistants had when the recorded run happened. The run's own words,
+ * copied unchanged from its transcript, name it. The sample's key now comes from the seed.
+ */
+export const RECORDED_SAMPLE_KEY = "SUP-4";
 
 /**
  * The assistant of the recorded run: a demo visitor's connection, named plainly. It writes only
@@ -190,8 +199,9 @@ function seedRecordedRun(
     {
       title: "Recorded example of a real assistant run on 18 Nov 2026: the total adds tax twice",
       description:
-        `A recorded example: what one real AI assistant did on ${sampleKey}, the sample ticket ` +
-        `for assistants, on 18 Nov 2026, so its words name ${sampleKey}. Its spec, evidence and ` +
+        `A recorded example: what one real AI assistant did on ${RECORDED_SAMPLE_KEY}, the sample ` +
+        `ticket for assistants in an earlier copy of this demo, on 18 Nov 2026, so its words name ` +
+        `${RECORDED_SAMPLE_KEY}. Here that sample is ${sampleKey}. Its spec, evidence and ` +
         "review request, which the team sees, are exactly what it sent, copied from its " +
         "transcript (see its transcript and files above).\n\n" +
         "The checkout total is too high. This is the code that computes it:\n\n" +

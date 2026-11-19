@@ -1,6 +1,7 @@
 import { Router, type Request, type RequestHandler, type Response } from "express";
 import type { Actor } from "../actor.js";
 import { DEMO_ACTORS, signedIn } from "../actor.js";
+import { RECORDED_SAMPLE_KEY } from "../demo.js";
 import { forbidden, HttpError, onTicketPage, ValidationError } from "../errors.js";
 import { can } from "../permissions.js";
 import {
@@ -344,6 +345,7 @@ export function pagesRouter(service: TicketService): Router {
       statusRow: statusControl(ticket, allowed, actor),
       recordedRun: service.recordedRunKey() === ticket.key,
       assistantSampleKey: service.assistantSampleKey(),
+      recordedSampleKey: RECORDED_SAMPLE_KEY,
       handOffTo: service.handOffCandidates(ticket),
       agentHelp,
       entries,

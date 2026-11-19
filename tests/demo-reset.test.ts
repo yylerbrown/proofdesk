@@ -226,10 +226,17 @@ describe("the demo resetting itself", () => {
     const key = /class="key"[^>]*value="([^"]+)"|value="([^"]+)"[^>]*class="key"/.exec(res.text);
     const token = key?.[1] ?? key?.[2];
     expect(token).toBeDefined();
+    // The one ticket it lists is the sample, whatever key the seed gave it.
+    const listed = await request(demo.reset.handler)
+      .get("/api/tickets")
+      .set("Authorization", `Bearer ${token}`);
+    expect(listed.status, listed.text).toBe(200);
+    expect(listed.body).toHaveLength(1);
     const sample = await request(demo.reset.handler)
-      .get("/api/tickets/SUP-4")
+      .get(`/api/tickets/${listed.body[0].key}`)
       .set("Authorization", `Bearer ${token}`);
     expect(sample.status, sample.text).toBe(200);
+    expect(sample.body.title).toBe("Sample for your AI assistant: the total adds tax twice");
   });
 
   it("resets as it starts when its samples are already old, and its timer stops", () => {
