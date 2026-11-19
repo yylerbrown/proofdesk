@@ -5,9 +5,10 @@ import { STATUS_LABELS } from "./format.js";
 
 // After the ticket list changes many tickets at once, the browser is sent back to the list,
 // which then says in one line what happened: how many moved, and which were not changed and why.
-// The cookie holds only the change, a count and each unchanged ticket's key with its error code,
-// never text from the form or a message, so nobody can make the list show words of their own.
-// The words come from the table below. It lives a minute and is read once.
+// The cookie holds only the change, a count, and the keys asked for with an error code each.
+// It never holds free text such as a note or an error message: every sentence comes from the
+// table below. A key is shown as it was asked, upper-cased, at most 20 characters and escaped
+// by the page, and only to the person who sent it. The cookie lives a minute and is read once.
 
 const COOKIE = "bulk_outcome";
 
