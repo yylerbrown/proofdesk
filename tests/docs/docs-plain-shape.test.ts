@@ -69,7 +69,7 @@ describe("the guides' shape", () => {
 
   it.each([
     ["README.md", 175],
-    ["docs/API.md", 95],
+    ["docs/API.md", 96],
     ["docs/AGENTS_GUIDE.md", 174],
     ["docs/TOUR.md", 57],
     ["docs/DEPLOY.md", 326],
