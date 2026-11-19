@@ -2596,9 +2596,10 @@ pre.paste.command {
 }
 
 /*
- * Changing ticked tickets from the list: a tick box before each key, and one quiet bar above the
- * table with the count and two changes, each with its own Apply. Its boxes are a size smaller
- * than a form's. With scripts on, the bar shows only while something is ticked.
+ * Changing ticked tickets from the list: a tick box before each key, and one quiet bar with the
+ * count, a status, an owner, one Apply and a Clear, on one line. Without scripts the bar sits
+ * above the table and is always shown. With scripts it floats at the bottom of the window,
+ * centred, only while something is ticked, so ticking a row moves nothing on the page.
  */
 /* The form holds the whole list, so it is as wide as the list, not a form page's column. */
 main > form.bulk {
@@ -2609,8 +2610,8 @@ main > form.bulk {
   --pico-form-element-spacing-horizontal: 0.75rem;
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--pd-space-3) var(--pd-space-5);
+  align-items: center;
+  gap: var(--pd-space-2) var(--pd-space-3);
   margin-bottom: var(--pd-space-3);
   padding: var(--pd-space-3) var(--pd-space-4);
   border: var(--pd-hairline);
@@ -2620,43 +2621,58 @@ main > form.bulk {
 .bulk-bar[hidden] {
   display: none;
 }
+/* Pico stretches each part of a group to fill the row; here each keeps its own width. */
+.bulk-bar > *,
+.bulk-bar :is(select, input:not([type="checkbox"]), button) {
+  flex: none;
+}
+.bulk-bar :is(select, input, button) {
+  width: auto;
+  max-width: 100%;
+  margin: 0;
+  font-size: var(--pd-text-sm);
+}
 .bulk-count {
-  align-self: center;
   margin: 0;
   color: var(--pd-text);
   font-size: var(--pd-text-sm);
   font-weight: var(--pd-weight-medium);
 }
-.bulk-control {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--pd-space-2);
+.bulk-clear[hidden] {
+  display: none;
 }
-.bulk-control label {
-  margin: 0;
-  color: var(--pd-muted);
-  font-size: var(--pd-text-xs);
-}
-.bulk-control label > :where(input, select) {
-  width: auto;
-  max-width: 100%;
-  margin-top: 2px;
-  font-size: var(--pd-text-sm);
-}
-.bulk-control button {
-  margin: 0;
+/* The reason for Resolved sits in the line, after the status. A longer line wraps, and since the
+   bar is held at the bottom of the window, it grows upward. */
+.bulk-reasons {
+  display: contents;
 }
 .bulk-error {
   flex-basis: 100%;
   margin: 0;
   color: var(--pd-danger);
 }
+/* With scripts on: one bar fixed to the bottom of the window, above the page's content. */
+form.bulk[data-floating] .bulk-bar {
+  position: fixed;
+  z-index: 20;
+  bottom: var(--pd-space-4);
+  left: 50%;
+  width: max-content;
+  max-width: calc(100% - 2 * var(--pd-gutter));
+  margin: 0;
+  transform: translateX(-50%);
+  box-shadow: var(--pd-shadow);
+}
+/* Room at the very end of the page while the bar shows, so it never covers the last row. */
+body:has(form.bulk[data-floating] .bulk-bar:not([hidden])) {
+  padding-bottom: 7rem;
+}
+body:has(form.bulk[data-floating] select[name="status"] option[value="resolved"]:checked) {
+  padding-bottom: 10rem;
+}
 /* The reason shows only for Resolved, "Duplicate of" only for a duplicate and the note only for
    Other, as on the ticket page. A browser that cannot read :has shows them all, which still works. */
-.bulk:not(:has(select[name="status"] option[value="resolved"]:checked)) .bulk-reason,
-.bulk:not(:has(select[name="status"] option[value="resolved"]:checked)) .bulk-duplicate,
-.bulk:not(:has(select[name="status"] option[value="resolved"]:checked)) .bulk-note,
+.bulk:not(:has(select[name="status"] option[value="resolved"]:checked)) .bulk-reasons,
 .bulk:not(:has(select[name="reason"] option[value="duplicate"]:checked)) .bulk-duplicate,
 .bulk:not(:has(select[name="reason"] option[value="other"]:checked)) .bulk-note {
   display: none;
@@ -2695,5 +2711,22 @@ table.tickets .bulk-tick[hidden] {
   }
   .bulk-bar {
     padding: var(--pd-space-3);
+  }
+  /* On a phone the floating bar spans the width at the bottom and wraps to two lines at most. */
+  form.bulk[data-floating] .bulk-bar {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    max-width: none;
+    border-width: 1px 0 0;
+    border-radius: 0;
+    transform: none;
+  }
+  body:has(form.bulk[data-floating] .bulk-bar:not([hidden])) {
+    padding-bottom: 9rem;
+  }
+  body:has(form.bulk[data-floating] select[name="status"] option[value="resolved"]:checked) {
+    padding-bottom: 13rem;
   }
 }

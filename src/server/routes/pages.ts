@@ -596,23 +596,27 @@ export function pagesRouter(service: TicketService): Router {
   router.post("/tickets/bulk", (req, res) => {
     const actor = signedIn(req);
     const body = (req.body ?? {}) as Record<string, unknown>;
-    // The bar has one Apply for the status and one for the owner; only the pressed one counts.
+    // The bar has one Apply. It sends whichever of the status and the owner was chosen, and
+    // both when both were: each as its own change by the same rules, the status first. With
+    // neither chosen, the status change is sent alone, and its rules ask for a choice.
     // The page shows the note box only for Other, so a note left there for another reason is
     // not sent, as on the ticket page.
-    const input = {
+    const chosen = (value: unknown) => typeof value === "string" && value.trim() !== "";
+    const statusInput = {
       keys: body.keys,
-      ...(body.apply === "owner"
-        ? { owner: body.owner }
-        : {
-            status: body.status,
-            reason: body.reason,
-            duplicate_of: body.duplicate_of,
-            ...(body.reason === "other" ? { note: body.note } : {}),
-          }),
+      status: body.status,
+      reason: body.reason,
+      duplicate_of: body.duplicate_of,
+      ...(body.reason === "other" ? { note: body.note } : {}),
     };
+    const ownerInput = { keys: body.keys, owner: body.owner };
+    const inputs = [
+      ...(chosen(body.status) || !chosen(body.owner) ? [statusInput] : []),
+      ...(chosen(body.owner) ? [ownerInput] : []),
+    ];
     try {
-      const outcome = service.changeTickets(input, actor);
-      rememberBulkOutcome(res, outcome);
+      const outcomes = inputs.map((input) => service.changeTickets(input, actor));
+      rememberBulkOutcome(res, outcomes);
       const view = listView(req, actor);
       res.redirect(303, listHref(view, view.page > 1 ? view.page : undefined));
     } catch (err) {

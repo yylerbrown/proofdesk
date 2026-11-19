@@ -75,44 +75,35 @@
   </small>
 </nav>
 <% if (bulk) { %>
-<%# The team ticks tickets, then changes them together: one form, so it works without scripts. With
-    scripts on, the bar shows only while something is ticked and counts what is. %>
+<%# The team ticks tickets, then changes them together: one form, so it works without scripts.
+    Without scripts the bar sits here, above the table, always shown. With scripts it floats at
+    the bottom of the window only while something is ticked, so ticking a row moves nothing. %>
 <form method="post" action="<%= bulk.action %>" class="bulk" data-bulk>
 <div class="bulk-bar" role="group" aria-labelledby="bulk-count" data-bulk-bar>
   <p id="bulk-count" class="bulk-count" aria-live="polite" data-bulk-count>Change the ticked tickets:</p>
-  <div class="bulk-control">
-    <label>Status
-      <select name="status">
-        <option value="">Choose</option>
-        <% for (const status of statuses) { %><option value="<%= status %>" <% if (bulk.values.status === status) { %>selected<% } %>><%= statusLabels[status] %></option><% } %>
-      </select>
-    </label>
-    <%# The stylesheet shows the reason only for Resolved, and each box after it only for the reason that needs it. %>
-    <label class="bulk-reason">Reason
-      <select name="reason">
-        <option value="">Choose a reason</option>
-        <% for (const [value, label] of Object.entries(bulk.resolveReasons)) { %><option value="<%= value %>" <% if (bulk.values.reason === value) { %>selected<% } %>><%= label %></option><% } %>
-      </select>
-    </label>
-    <label class="bulk-duplicate">Duplicate of
-      <input type="text" name="duplicate_of" placeholder="SUP-3" maxlength="20" value="<%= bulk.values.duplicate_of ?? "" %>" />
-    </label>
-    <label class="bulk-note">Why?
-      <input type="text" name="note" maxlength="500" value="<%= bulk.values.note ?? "" %>" />
-    </label>
-    <button type="submit" name="apply" value="status" class="secondary compact" aria-label="Apply status">Apply</button>
+  <%# Each choice names itself in its first option, so the bar needs no labels above them. %>
+  <select name="status" aria-label="Status">
+    <option value="">Set status</option>
+    <% for (const status of statuses) { %><option value="<%= status %>" <% if (bulk.values.status === status) { %>selected<% } %>><%= statusLabels[status] %></option><% } %>
+  </select>
+  <%# The stylesheet shows the reason only for Resolved, right after the status, and each box after it only for the reason that needs it. %>
+  <div class="bulk-reasons">
+    <select name="reason" aria-label="Reason" class="bulk-reason">
+      <option value="">Choose a reason</option>
+      <% for (const [value, label] of Object.entries(bulk.resolveReasons)) { %><option value="<%= value %>" <% if (bulk.values.reason === value) { %>selected<% } %>><%= label %></option><% } %>
+    </select>
+    <input type="text" name="duplicate_of" aria-label="Duplicate of" placeholder="Duplicate of SUP-3" maxlength="20" class="bulk-duplicate" value="<%= bulk.values.duplicate_of ?? "" %>" />
+    <input type="text" name="note" aria-label="Why?" placeholder="Why?" maxlength="500" class="bulk-note" value="<%= bulk.values.note ?? "" %>" />
   </div>
-  <div class="bulk-control">
-    <label>Assign to
-      <select name="owner">
-        <option value="">Choose</option>
-        <option value="me" <% if (bulk.values.owner === "me") { %>selected<% } %>>Me</option>
-        <% for (const member of bulk.members) { %><option value="<%= member.id %>" <% if (bulk.values.owner === member.id) { %>selected<% } %>><%= member.name %></option><% } %>
-        <option value="nobody" <% if (bulk.values.owner === "nobody") { %>selected<% } %>>Nobody</option>
-      </select>
-    </label>
-    <button type="submit" name="apply" value="owner" class="secondary compact" aria-label="Apply owner">Apply</button>
-  </div>
+  <select name="owner" aria-label="Assign to">
+    <option value="">Assign to</option>
+    <option value="me" <% if (bulk.values.owner === "me") { %>selected<% } %>>Me</option>
+    <% for (const member of bulk.members) { %><option value="<%= member.id %>" <% if (bulk.values.owner === member.id) { %>selected<% } %>><%= member.name %></option><% } %>
+    <option value="nobody" <% if (bulk.values.owner === "nobody") { %>selected<% } %>>Nobody</option>
+  </select>
+  <button type="submit" class="compact">Apply</button>
+  <%# Shown by the script, which unticks every row. %>
+  <button type="button" class="link bulk-clear" hidden data-bulk-clear>Clear</button>
   <% if (bulk.message) { %><p class="bulk-error" role="alert" data-bulk-error><small><%= bulk.message %></small></p><% } %>
 </div>
 <p class="bulk-all-phone" hidden data-bulk-phone><label><input type="checkbox" class="bulk-tick" data-bulk-all /> Tick all shown</label></p>

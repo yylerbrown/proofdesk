@@ -25,8 +25,13 @@ function page(keepOpen = false) {
   const bar = { hidden: false };
   const phone = { hidden: true };
   const count = { textContent: "" as string | null };
-  wireBulk({ rows, all: [all], bar, reveal: [phone], count, keepOpen });
-  return { rows, all, bar, phone, count };
+  const pressed: (() => void)[] = [];
+  const clear = {
+    addEventListener: (_type: "click", listener: () => void) => pressed.push(listener),
+    press: () => pressed.forEach((listener) => listener()),
+  };
+  wireBulk({ rows, all: [all], bar, reveal: [phone], count, clear, keepOpen });
+  return { rows, all, bar, phone, count, clear };
 }
 
 describe("the ticket list's bar", () => {
@@ -55,6 +60,16 @@ describe("the ticket list's bar", () => {
     expect(all.indeterminate).toBe(true);
     all.change(false);
     expect(rows.some((row) => row.checked)).toBe(false);
+  });
+
+  it("unticks every row and hides again when Clear is pressed", () => {
+    const { rows, all, bar, clear } = page();
+    all.change(true);
+    expect(bar.hidden).toBe(false);
+    clear.press();
+    expect(rows.some((row) => row.checked)).toBe(false);
+    expect(all.checked).toBe(false);
+    expect(bar.hidden).toBe(true);
   });
 
   it("stays shown when it came back with an error", () => {

@@ -1,7 +1,9 @@
 // The ticket list's tick boxes and the bar that changes the ticked tickets. Without this script
-// the bar is always shown and every box is ticked by hand; the form posts the same either way.
-// With it, the bar shows only while something is ticked and says how many are, and "Tick every
-// ticket shown" ticks or clears them all. A bar that came back with an error stays shown.
+// the bar sits above the table, always shown, and every box is ticked by hand; the form posts
+// the same either way. With it, the bar floats at the bottom of the window and shows only while
+// something is ticked, so ticking a row moves nothing on the page. It says how many are ticked,
+// "Tick every ticket shown" ticks or clears them all, and Clear unticks every row. A bar that
+// came back with an error stays shown.
 
 // An element's hidden property, which the browser may also give as "until-found".
 type Hideable = { hidden: boolean | string };
@@ -23,6 +25,8 @@ export type BulkParts = {
   bar: Hideable;
   reveal: Hideable[];
   count: { textContent: string | null };
+  /** The button that unticks every row. */
+  clear: { addEventListener(type: "click", listener: () => void): void } | null;
   /** True when the bar came back with an error, so it stays in view. */
   keepOpen: boolean;
 };
@@ -34,7 +38,7 @@ export function selectedWords(ticked: number): string {
 
 /** Wires the boxes to the bar, and returns the function that brings the bar up to date. */
 export function wireBulk(parts: BulkParts): () => void {
-  const { rows, all, bar, reveal, count, keepOpen } = parts;
+  const { rows, all, bar, reveal, count, clear, keepOpen } = parts;
   const update = () => {
     const ticked = rows.filter((row) => row.checked).length;
     bar.hidden = ticked === 0 && !keepOpen;
@@ -52,6 +56,10 @@ export function wireBulk(parts: BulkParts): () => void {
       update();
     });
   }
+  clear?.addEventListener("click", () => {
+    for (const row of rows) row.checked = false;
+    update();
+  });
   for (const part of reveal) part.hidden = false;
   update();
   return update;
@@ -62,14 +70,26 @@ if (typeof document !== "undefined") {
   const bar = form?.querySelector<HTMLElement>("[data-bulk-bar]");
   const count = form?.querySelector<HTMLElement>("[data-bulk-count]");
   if (form && bar && count) {
+    const rows = [
+      ...form.querySelectorAll<HTMLInputElement>('input[type="checkbox"][name="keys"]'),
+    ];
+    const clear = bar.querySelector<HTMLButtonElement>("[data-bulk-clear]");
+    // The stylesheet takes the bar out of the page's flow and fixes it to the bottom.
+    form.setAttribute("data-floating", "");
     const update = wireBulk({
-      rows: [...form.querySelectorAll<HTMLInputElement>('input[type="checkbox"][name="keys"]')],
+      rows,
       all: [...form.querySelectorAll<HTMLInputElement>("input[data-bulk-all]")],
       bar,
-      reveal: [...form.querySelectorAll<HTMLElement>("[data-bulk-phone]")],
+      reveal: [
+        ...form.querySelectorAll<HTMLElement>("[data-bulk-phone]"),
+        ...(clear ? [clear] : []),
+      ],
       count,
+      clear,
       keepOpen: bar.querySelector("[data-bulk-error]") !== null,
     });
+    // Clear hides the bar it sits in, so focus goes back to the first row's box.
+    clear?.addEventListener("click", () => rows[0]?.focus());
     // Back and Forward can bring the page back with boxes still ticked.
     window.addEventListener("pageshow", update);
   }
