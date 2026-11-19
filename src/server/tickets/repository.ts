@@ -1,5 +1,11 @@
 import type { Db } from "../db.js";
-import type { EntryKind, ListOrder, ResolveReason, TicketStatus } from "./schemas.js";
+import type {
+  EntryKind,
+  ListSort,
+  ListSortColumn,
+  ResolveReason,
+  TicketStatus,
+} from "./schemas.js";
 
 // The SQL for tickets lives in this file. Every statement here is a fixed string with ?
 // placeholders, so no user input is ever joined into SQL text.
@@ -162,15 +168,28 @@ const NARROWED = `AND (@ownerId IS NULL OR owner_id = @ownerId)
        AND (@unassigned = 0 OR owner_id IS NULL)
        AND (@search IS NULL OR title LIKE @search ESCAPE '\\' OR description LIKE @search ESCAPE '\\')`;
 
-// Each order as SQL. Each ends on the id, so the order is total and a page never repeats or
-// skips a ticket that did not change.
-// Migration 0032 has an index for each, so the team's list never sorts the whole table.
-const ORDER_SQL: Record<ListOrder, string> = {
-  // Open tickets first, newest first, then resolved ones, newest first.
-  open_first: "status = 'resolved', id DESC",
-  oldest: "id ASC",
-  updated: "updated_at DESC, id DESC",
+// Each column's sort as SQL terms, each ending on the id, so the order is total and a page never
+// repeats or skips a ticket that did not change. Descending runs every term the other way, so it
+// is the exact reverse. Migrations 0032 and 0034 have an index for each, read forwards or
+// backwards, so the team's list never sorts the whole table.
+const SORT_TERMS: Record<ListSortColumn, string[]> = {
+  key: ["id"],
+  title: ["title COLLATE NOCASE", "id"],
+  // The workflow's order: New, then In Progress, then Resolved.
+  status: ["(CASE status WHEN 'new' THEN 0 WHEN 'in_progress' THEN 1 ELSE 2 END)", "id"],
+  // Owners A to Z, then the tickets nobody owns.
+  owner: ["(owner_name IS NULL)", "owner_name COLLATE NOCASE", "id"],
+  filed: ["created_at", "id"],
+  updated: ["updated_at", "id"],
 };
+
+/** The ORDER BY for a sort, built only from the fixed terms above. */
+function orderBy(sort: ListSort): string {
+  // The default: open tickets first, newest first, then resolved ones, newest first.
+  if (sort === "open_first") return "status = 'resolved', id DESC";
+  const way = sort.direction === "asc" ? "ASC" : "DESC";
+  return SORT_TERMS[sort.by].map((term) => `${term} ${way}`).join(", ");
+}
 
 /** The values the statements above bind, with only the ones this scope names. */
 function bound(scope: ListScope, narrow: Narrowing) {
@@ -184,12 +203,12 @@ function bound(scope: ListScope, narrow: Narrowing) {
   return values;
 }
 
-/** One page of the tickets in this scope, of one status or of every status, in this order. */
+/** One page of the tickets in this scope, of one status or of every status, sorted this way. */
 export function listTickets(
   db: Db,
   scope: ListScope,
   status: TicketStatus | null,
-  order: ListOrder,
+  sort: ListSort,
   page: Page,
   narrow: Narrowing = NO_NARROWING,
 ): TicketRow[] {
@@ -198,7 +217,7 @@ export function listTickets(
       `SELECT * FROM tickets
        WHERE ${SCOPE_SQL[scope.kind]} AND (@status IS NULL OR status = @status)
        ${NARROWED}
-       ORDER BY ${ORDER_SQL[order]} LIMIT @limit OFFSET @offset`,
+       ORDER BY ${orderBy(sort)} LIMIT @limit OFFSET @offset`,
     )
     .all({ ...bound(scope, narrow), status, ...page }) as TicketRow[];
 }

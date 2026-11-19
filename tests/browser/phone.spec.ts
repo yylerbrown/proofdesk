@@ -95,11 +95,11 @@ test("on a phone the small controls are 44-pixel tap targets", async ({ page }) 
   await page.setViewportSize({ width: 390, height: 844 });
   await signInAsTeam(page);
 
-  await test.step("the list's filter chips and Sign out", async () => {
+  await test.step("the list's filter chips, sort links and Sign out", async () => {
     await page.goto("/tickets");
     await expectTapTargets(page, 'nav[aria-label="Filter by status"] li a');
     await expectTapTargets(page, 'nav[aria-label="Filter by owner"] li a');
-    await expectTapTargets(page, 'nav[aria-label="Order"] a');
+    await expectTapTargets(page, 'nav[aria-label="Sort by"] a');
     await expectTapTargets(page, ".site-header .sign-out button");
   });
 

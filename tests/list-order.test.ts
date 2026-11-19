@@ -1,11 +1,12 @@
 import { parse } from "node-html-parser";
 import { describe, expect, it, vi } from "vitest";
 import * as repository from "../src/server/tickets/repository.js";
+import { ORDER_SORTS } from "../src/server/tickets/schemas.js";
 import { LIST_PAGE_SIZE } from "../src/server/tickets/service.js";
 import { as, buildTestApp, teamActor } from "./helpers.js";
 
-// The list's order: open first and newest first (the default), oldest first, or recently
-// updated, kept in the address and the API's cursor. Each order reads one page at a time from
+// The API's list orders: open first and newest first (the default), oldest first, or recently
+// updated, kept in the API's cursor. The page sorts by its column headers instead. Each order reads one page at a time from
 // an index, so a long list never sorts the whole table.
 
 type Built = ReturnType<typeof buildTestApp>;
@@ -95,33 +96,6 @@ describe("each order the list offers", () => {
     expect(keys).toEqual(["SUP-5", "SUP-4", "SUP-2", "SUP-1", "SUP-3"]);
   });
 
-  it("is a quiet choice under the table on the page, kept in the filter links and the search", async () => {
-    const built = buildTestApp();
-    fill(built.db, 5);
-    const html = parse(
-      (await as(built.app, teamActor).get("/tickets?order=updated&status=new")).text,
-    );
-    const order = html.querySelector("nav[aria-label='Order']")!;
-    expect(order.querySelectorAll("a").map((a) => [a.text, a.getAttribute("href")])).toEqual([
-      ["Open first", "/tickets?status=new"],
-      ["Oldest first", "/tickets?status=new&order=oldest"],
-      ["Recently updated", "/tickets?status=new&order=updated"],
-    ]);
-    expect(order.querySelector("a[aria-current]")?.text).toBe("Recently updated");
-    // It comes after the table, so the first look is the tickets.
-    const main = html.querySelector("main")!.toString();
-    expect(main.indexOf('table class="tickets"')).toBeLessThan(main.indexOf('aria-label="Order"'));
-    const resolved = html
-      .querySelectorAll("nav[aria-label='Filter by status'] a")
-      .find((a) => a.text.startsWith("Resolved"))!;
-    expect(resolved.getAttribute("href")).toBe("/tickets?status=resolved&order=updated");
-    expect(html.querySelector("form.list-search input[name=order]")?.getAttribute("value")).toBe(
-      "updated",
-    );
-    // The last column says which time it shows.
-    expect(html.querySelectorAll("table.tickets thead th").at(-1)?.text).toBe("Updated");
-  });
-
   it("is described in the API's OpenAPI document, from the action table", async () => {
     const { app } = buildTestApp();
     const doc = (await as(app, teamActor).get("/api/openapi.json")).body;
@@ -141,7 +115,7 @@ describe("how the team's list reads the table", () => {
       fill(built.db);
       const spy = vi.spyOn(built.db, "prepare");
       const page = { limit: LIST_PAGE_SIZE, offset: 0 };
-      repository.listTickets(built.db, { kind: "everyone" }, null, order, page);
+      repository.listTickets(built.db, { kind: "everyone" }, null, ORDER_SORTS[order], page);
       const sql = String(spy.mock.calls.at(-1)![0]);
       spy.mockRestore();
       const values = { status: null, ownerId: null, unassigned: 0, search: null, ...page };

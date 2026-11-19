@@ -6,7 +6,7 @@ import { isDemoAgent, narrowed } from "./access.js";
 import { requirePermission } from "./checks.js";
 import { parseKey } from "./keys.js";
 import * as repository from "./repository.js";
-import type { ListOrder, TicketListFilter, TicketStatus } from "./schemas.js";
+import type { ListSort, TicketListFilter, TicketStatus } from "./schemas.js";
 import type { Shared } from "./shared.js";
 import {
   LIST_PAGE_SIZE,
@@ -61,7 +61,7 @@ export function createReads(shared: Shared, options: ServiceOptions) {
       actor: Actor,
       pageNumber = 1,
       narrowing: ListNarrowing = {},
-      order: ListOrder = "open_first",
+      sort: ListSort = "open_first",
     ): Ticket[] {
       const page = { limit: LIST_PAGE_SIZE, offset: (pageNumber - 1) * LIST_PAGE_SIZE };
       if (filter === "archived") requirePermission(actor, "list_archived");
@@ -71,7 +71,7 @@ export function createReads(shared: Shared, options: ServiceOptions) {
         db,
         scope,
         status,
-        order,
+        sort,
         page,
         narrowed(narrowing, actor),
       );

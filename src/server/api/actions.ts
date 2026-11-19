@@ -82,15 +82,15 @@ export const ACTIONS: ApiAction[] = [
     method: "get",
     path: "/tickets",
     summary:
-      "List tickets: open ones newest first, then resolved ones, unless order says otherwise. A customer sees only their own. An assistant gets a short row per ticket handed to it; get_ticket reads one in full.",
+      "List tickets: open ones newest first, then resolved ones, unless sort or order says otherwise. A customer sees only their own. An assistant gets a short row per ticket handed to it; get_ticket reads one in full.",
     needs: "read",
     query: listQuerySchema,
     paged: true,
     run: ({ service, actor, query }) => {
       const checked = parse(listQuerySchema, query);
-      const { page, order } = listPosition(checked);
+      const { page, sort } = listPosition(checked);
       const { status, owner, q } = checked;
-      const tickets = service.listTickets(status ?? "all", actor, page, { owner, q }, order);
+      const tickets = service.listTickets(status ?? "all", actor, page, { owner, q }, sort);
       if (actor.kind !== "agent") return tickets;
       return tickets.map((ticket) => ({
         key: ticket.key,
@@ -438,8 +438,8 @@ export const ACTIONS: ApiAction[] = [
  */
 export function nextCursor(query: unknown, items: unknown[]): string | null {
   if (items.length < LIST_PAGE_SIZE) return null;
-  const { page, order } = listPosition(parse(listQuerySchema, query));
-  return cursorFor(page + 1, order);
+  const { page, sort } = listPosition(parse(listQuerySchema, query));
+  return cursorFor(page + 1, sort);
 }
 
 /** "/tickets/:key" in the form the documentation uses: "/tickets/{key}". */

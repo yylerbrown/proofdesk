@@ -1,9 +1,15 @@
 import { z } from "zod";
 import {
+  FIRST_DIRECTION,
   LIST_ORDERS,
+  LIST_SORTS,
   listQuerySchema,
+  ORDER_SORTS,
+  SORT_DIRECTIONS,
   TICKET_LIST_FILTERS,
-  type ListOrder,
+  type ListSort,
+  type ListSortColumn,
+  type SortDirection,
   type TicketListFilter,
 } from "../tickets/schemas.js";
 
@@ -26,15 +32,33 @@ const listPageSchema = z.object({
   status: z.preprocess(filterName, z.enum(TICKET_LIST_FILTERS)).catch("all"),
   owner: z.preprocess(filterName, z.enum(["me", "none"]).optional()).catch(undefined),
   q: listQuerySchema.shape.q.catch(undefined),
-  order: z.preprocess(filterName, z.enum(LIST_ORDERS)).catch("open_first"),
+  // The orders the list offered before it sorted by its headers, so old links still work.
+  order: z.preprocess(filterName, z.enum(LIST_ORDERS).optional()).catch(undefined),
+  sort: z.preprocess(filterName, z.enum(LIST_SORTS).optional()).catch(undefined),
+  direction: z.preprocess(filterName, z.enum(SORT_DIRECTIONS).optional()).catch(undefined),
   page: z.coerce.number().int().min(1).max(100000).catch(1),
 });
 
-export type ListPageQuery = z.infer<typeof listPageSchema>;
+/** The list page's filters and sort, as the route uses them. */
+export type ListPageQuery = {
+  status: TicketListFilter;
+  owner: "me" | "none" | undefined;
+  q: string | undefined;
+  sort: ListSort;
+  page: number;
+};
 
 /** The list page's filters from its address, with anything unreadable left at its default. */
 export function readListPageQuery(query: unknown): ListPageQuery {
-  return listPageSchema.parse(query ?? {});
+  const read = listPageSchema.parse(query ?? {});
+  // A column sort wins over an old order link; with neither, the default list.
+  let sort: ListSort = "open_first";
+  if (read.sort !== undefined) {
+    sort = { by: read.sort, direction: read.direction ?? FIRST_DIRECTION[read.sort] };
+  } else if (read.order !== undefined) {
+    sort = ORDER_SORTS[read.order];
+  }
+  return { status: read.status, owner: read.owner, q: read.q, sort, page: read.page };
 }
 
 /** The status tab in the empty-result sentence: "No resolved tickets ...". */
@@ -70,9 +94,57 @@ export function noMatchWords(
   return { sentence, clear };
 }
 
-/** The orders the list offers, in the words of its Order links. */
-export const LIST_ORDER_LABELS: Record<ListOrder, string> = {
-  open_first: "Open first",
-  oldest: "Oldest first",
-  updated: "Recently updated",
+/** Each sortable column's header, as the list shows it. */
+const SORT_LABELS: Record<ListSortColumn, string> = {
+  key: "Key",
+  title: "Title",
+  status: "Status",
+  owner: "Owner",
+  filed: "Filed",
+  updated: "Updated",
 };
+
+/** What each column's sort puts first, in words: "Title, A to Z". */
+const DIRECTION_WORDS: Record<ListSortColumn, Record<SortDirection, string>> = {
+  key: { asc: "lowest first", desc: "highest first" },
+  title: { asc: "A to Z", desc: "Z to A" },
+  status: { asc: "New first", desc: "Resolved first" },
+  owner: { asc: "A to Z", desc: "Z to A" },
+  filed: { asc: "oldest first", desc: "newest first" },
+  updated: { asc: "oldest first", desc: "newest first" },
+};
+
+/** One column header that sorts: its words, whether it is the sort now, and what a press does. */
+export type SortHeader = {
+  column: ListSortColumn;
+  label: string;
+  /** The header cell's aria-sort, only on the column the list is sorted by. */
+  ariaSort: "ascending" | "descending" | undefined;
+  /** The sort a press on this header gives: this column the other way, or its first way. */
+  next: ListSort;
+  /** The link's accessible name, saying what the next press does: "Title, sort Z to A". */
+  name: string;
+};
+
+/**
+ * The headers that sort, in the table's order. The time column shows when each ticket was filed,
+ * or when it was updated while the list is sorted by that. Who a ticket waits on is worked out
+ * from its history and its assistant's notes, not stored, so it does not sort.
+ */
+export function sortHeaders(sort: ListSort): SortHeader[] {
+  const time: ListSortColumn = sort !== "open_first" && sort.by === "updated" ? "updated" : "filed";
+  const columns: ListSortColumn[] = ["key", "title", "status", "owner", time];
+  return columns.map((column) => {
+    const current = sort !== "open_first" && sort.by === column ? sort.direction : undefined;
+    const direction =
+      current === undefined ? FIRST_DIRECTION[column] : current === "asc" ? "desc" : "asc";
+    const label = SORT_LABELS[column];
+    return {
+      column,
+      label,
+      ariaSort: current === undefined ? undefined : current === "asc" ? "ascending" : "descending",
+      next: { by: column, direction },
+      name: `${label}, sort ${DIRECTION_WORDS[column][direction]}`,
+    };
+  });
+}

@@ -60,6 +60,7 @@ const ALL = [
   "0031_connection_end_reason.sql",
   "0032_ticket_list_order_indexes.sql",
   "0033_github_account_index.sql",
+  "0034_ticket_list_sort_indexes.sql",
 ];
 
 describe("runMigrations", () => {
