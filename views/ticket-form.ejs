@@ -47,7 +47,8 @@
   <% if (locals.formId) { %><input type="hidden" name="form" value="<%= formId %>" /><% } %>
   <%# The version of the ticket this form was filled from, so a save over a newer one is refused. %>
   <% if (locals.version) { %><input type="hidden" name="expected_version" value="<%= version %>" /><% } %>
-  <%# Each box's maxlength is the server's limit for it, so the browser stops at the same length. %>
+  <%# Each box's maxlength is the server's limit for it, so the browser stops at the same length.
+      The description is the one exception, below. %>
   <%# Each hint sits inside its label, so the box is named by the label words alone and the hint is read once, as its description. %>
   <label>
     <span id="title-label">Title</span>
@@ -56,9 +57,13 @@
   </label>
   <% if (errors.title) { %><small id="title-error"><%= errors.title.join(" ") %></small><% } %>
 
+  <%# The description has no maxlength: the browser would cut a long paste off without a word.
+      The count under it shows as the text nears the limit, and the server says how far over it is. %>
   <label>
-    Description
-    <textarea name="description" rows="3" required maxlength="5000" <% if (errors.description) { %>aria-invalid="true" aria-describedby="description-error"<% } %> <%= focusIf("description") %>><%= values.description %></textarea>
+    <span id="description-label">Description</span>
+    <small id="description-hint" class="hint">Up to <%= descriptionLimit.toLocaleString("en") %> characters.</small>
+    <textarea name="description" rows="3" required aria-labelledby="description-label" data-count-limit="<%= descriptionLimit %>" data-count-into="description-count" <% if (errors.description) { %>aria-invalid="true" aria-describedby="description-error description-hint description-count"<% } else { %>aria-describedby="description-hint description-count"<% } %> <%= focusIf("description") %>><%= values.description %></textarea>
+    <small id="description-count" class="hint char-count" aria-live="polite" hidden></small>
   </label>
   <% if (errors.description) { %><small id="description-error"><%= errors.description.join(" ") %></small><% } %>
 

@@ -26,6 +26,7 @@ import {
 import { LIST_ORDER_LABELS, noMatchWords, readListPageQuery } from "../pages/list-query.js";
 import { sameText, type ListOrder } from "../tickets/schemas.js";
 import { statusControl } from "../pages/status-control.js";
+import { DESCRIPTION_LIMIT, withHowFarOver } from "../pages/text-limit.js";
 import {
   rememberSaved,
   SAVED_MESSAGES,
@@ -225,10 +226,21 @@ const emptyEntry: EntryForm = { kind: "reply", body: "" };
 const emptyForm = { title: "", description: "", where_url: "", fix_check: "" };
 
 // What differs between the two uses of the ticket form: its heading, where it posts, its button.
-const newForm = { title: "New ticket", action: "/tickets", submitLabel: "File ticket" };
+// Both show the description's limit.
+const newForm = {
+  title: "New ticket",
+  action: "/tickets",
+  submitLabel: "File ticket",
+  descriptionLimit: DESCRIPTION_LIMIT,
+};
 
 function editForm(key: string) {
-  return { title: `Edit ${key}`, action: `/tickets/${key}/edit`, submitLabel: "Save changes" };
+  return {
+    title: `Edit ${key}`,
+    action: `/tickets/${key}/edit`,
+    submitLabel: "Save changes",
+    descriptionLimit: DESCRIPTION_LIMIT,
+  };
 }
 
 // The heading of each list, for the page title.
@@ -591,9 +603,12 @@ export function pagesRouter(service: TicketService): Router {
     } catch (err) {
       if (!(err instanceof ValidationError)) throw err;
       // Show the form again with what was typed and one message under each wrong box.
-      res
-        .status(400)
-        .render("ticket-form", { ...newForm, formId, values, errors: err.fieldErrors });
+      res.status(400).render("ticket-form", {
+        ...newForm,
+        formId,
+        values,
+        errors: withHowFarOver(err.fieldErrors, values.description),
+      });
     }
   });
 
@@ -689,7 +704,8 @@ export function pagesRouter(service: TicketService): Router {
       const checkLocked = current.created_by !== actor.id;
       // What the person typed stays. A check they may not change shows as it is now.
       const shown = checkLocked ? { ...values, fix_check: current.fix_check ?? "" } : values;
-      const errors = err instanceof ValidationError ? err.fieldErrors : {};
+      const errors =
+        err instanceof ValidationError ? withHowFarOver(err.fieldErrors, values.description) : {};
       res.status(changed ? 409 : 400).render("ticket-form", {
         ...editForm(current.key),
         values: shown,
