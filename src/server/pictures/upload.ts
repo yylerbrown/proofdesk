@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import type { Request, RequestHandler, Response } from "express";
+import type { NextFunction, Request, RequestHandler, Response } from "express";
 import multer from "multer";
 import type { Actor } from "../actor.js";
 import { HttpError } from "../errors.js";
@@ -15,9 +15,10 @@ import { NO_PICTURES, type PictureUpload } from "./service.js";
 //
 // Pictures are held in memory while a request is read, so more rules keep that small: a
 // visitor who may add nothing (signed out, or the read-only preview) never has theirs read,
-// the whole server reads only a few large uploads at a time, and each large upload must finish
-// arriving within a deadline. A form no larger than an ordinary one is not counted, so a reply
-// with text only is never turned away while pictures are being sent.
+// the whole server reads only two large uploads at a time, one person reads only one of them,
+// and each large upload must finish arriving within a deadline. A form no larger than an
+// ordinary one is not counted, so a form that declares a length of at most 100 KB is never
+// turned away while pictures are being sent.
 
 /** The field a form sends its pictures in. */
 export const PICTURES_FIELD = "pictures";
@@ -30,8 +31,11 @@ export const PICTURES_FIELD = "pictures";
 const MOST_FIELDS = 12;
 const LARGEST_FIELD = 100 * 1024;
 
-/** The most large uploads this server reads at once. Each holds a few pictures in memory. */
-export const UPLOADS_AT_ONCE = 6;
+/**
+ * The most large uploads this server reads at once. Each holds up to four pictures in memory,
+ * and a finished one waits for the garbage collector, so this stays small.
+ */
+export const UPLOADS_AT_ONCE = 2;
 
 /**
  * How long a large upload may take to arrive. After that it is cut off and its place freed.
@@ -53,6 +57,8 @@ function isLarge(req: Request): boolean {
 
 export const UPLOAD_REFUSALS = {
   busy: "Many pictures are being sent right now. Wait a minute and send the form again.",
+  yoursArriving:
+    "Your other pictures are still being sent. Wait for them to finish, then send this form again.",
   unreadable: "That form could not be read. Send it again.",
   notAPictureField: "Only pictures can be sent with this form.",
   tooLarge: "That form is too large to send.",
@@ -69,6 +75,42 @@ function refusalFor(err: multer.MulterError, limits: PictureLimits): string | nu
   return null;
 }
 
+/** Who is sending a form, so one person reads only one large upload at a time. */
+export type PersonOf = (req: Request) => string;
+
+/** By default a person is their account. app.ts counts demo visitors by address instead. */
+const accountOf: PersonOf = (req) => req.actor?.id ?? "";
+
+export type ReadPicturesOptions = {
+  personOf?: PersonOf;
+  atOnce?: number;
+  deadlineMs?: number;
+};
+
+/**
+ * Refuses a large form without keeping any of it. Its body is still taken in and thrown
+ * away, so the sender gets the sentence instead of a dropped connection. A sender that never
+ * finishes is cut off at the deadline.
+ */
+function refuseUnread(
+  req: Request,
+  next: NextFunction,
+  error: HttpError,
+  deadlineMs: number,
+): void {
+  const deadline = setTimeout(() => req.destroy(), deadlineMs);
+  let answered = false;
+  const answer = () => {
+    clearTimeout(deadline);
+    if (answered) return;
+    answered = true;
+    next(error);
+  };
+  req.once("end", answer);
+  req.once("close", answer);
+  req.resume();
+}
+
 /**
  * Reads a multipart form's text into req.body and its pictures into res.locals.pictures. A
  * picture the limits refuse is not an error here: the route shows the form again with the
@@ -76,9 +118,11 @@ function refusalFor(err: multer.MulterError, limits: PictureLimits): string | nu
  */
 export function readPictures(
   limits: PictureLimits,
-  atOnce = UPLOADS_AT_ONCE,
-  deadlineMs = UPLOAD_DEADLINE_MS,
+  options: ReadPicturesOptions = {},
 ): RequestHandler {
+  const personOf = options.personOf ?? accountOf;
+  const atOnce = options.atOnce ?? UPLOADS_AT_ONCE;
+  const deadlineMs = options.deadlineMs ?? UPLOAD_DEADLINE_MS;
   const upload = multer({
     storage: multer.memoryStorage(),
     limits: {
@@ -89,8 +133,9 @@ export function readPictures(
       parts: limits.perMessage + MOST_FIELDS,
     },
   }).array(PICTURES_FIELD, limits.perMessage);
-  // How many large uploads are being read now, across the whole server.
-  let reading = 0;
+  // The people whose large upload is being read now, across the whole server. Its size is how
+  // many are being read.
+  const reading = new Set<string>();
 
   return (req, res, next) => {
     if (!req.is("multipart/form-data")) {
@@ -105,18 +150,29 @@ export function readPictures(
     }
     let deadline: NodeJS.Timeout | undefined;
     if (isLarge(req)) {
-      if (reading >= atOnce) {
-        next(new HttpError(503, "busy", UPLOAD_REFUSALS.busy));
+      const person = personOf(req);
+      // A person's second upload is refused before the count, so it never takes a place.
+      if (reading.has(person)) {
+        refuseUnread(
+          req,
+          next,
+          new HttpError(429, "pictures_arriving", UPLOAD_REFUSALS.yoursArriving),
+          deadlineMs,
+        );
         return;
       }
-      reading += 1;
+      if (reading.size >= atOnce) {
+        refuseUnread(req, next, new HttpError(503, "busy", UPLOAD_REFUSALS.busy), deadlineMs);
+        return;
+      }
+      reading.add(person);
       // An upload that is still arriving at the deadline is cut off. Its connection then
       // closes, which gives its place back.
       deadline = setTimeout(() => req.destroy(), deadlineMs);
       // A response always closes, whether it was sent or the connection dropped.
       res.once("close", () => {
         clearTimeout(deadline);
-        reading -= 1;
+        reading.delete(person);
       });
     }
 

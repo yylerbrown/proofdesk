@@ -9,11 +9,19 @@ import { PICTURE_REFUSALS, type PictureLimits } from "../src/server/pictures/lim
 import { samplePicture } from "../src/server/pictures/sample.js";
 import { readPictures, UPLOAD_REFUSALS } from "../src/server/pictures/upload.js";
 import { createTicketService } from "../src/server/tickets/service.js";
-import { as, buildTestApp, customerOne, FROM_THIS_SITE, visitor } from "./helpers.js";
+import {
+  as,
+  buildTestApp,
+  customerOne,
+  customerTwo,
+  FROM_THIS_SITE,
+  teamActor,
+  visitor,
+} from "./helpers.js";
 
 // Reading the pictures a form sends. Pictures are held in memory while they are read, so the
 // parser cuts a picture off at the size limit, stops at the count, reads nothing for someone who
-// may add nothing, and reads only a few uploads at a time across the server.
+// may add nothing, and reads only two uploads at a time across the server, one per person.
 
 const PNG = samplePicture();
 const SMALL: PictureLimits = {
@@ -30,7 +38,7 @@ const [demoCustomer, , demoAdmin] = DEMO_ACTORS as [Actor, Actor, Actor];
 /**
  * A small app around readPictures alone. Each request is made by the actor given, and answers
  * with what the parser left in res.locals.pictures. arrived is called as each request reaches
- * the parser.
+ * the parser. The parser knows the person sending by the X-Person header, or "someone".
  */
 function parserApp(
   limits: PictureLimits,
@@ -47,7 +55,12 @@ function parserApp(
     options.arrived?.();
     next();
   });
-  app.post("/form", readPictures(limits, options.atOnce, options.deadlineMs), (_req, res) => {
+  const parser = readPictures(limits, {
+    personOf: (req) => req.get("X-Person") ?? "someone",
+    atOnce: options.atOnce,
+    deadlineMs: options.deadlineMs,
+  });
+  app.post("/form", parser, (_req, res) => {
     const read = res.locals.pictures as { files: Buffer[]; refused: string | null } | undefined;
     res.json(
       read === undefined
@@ -160,13 +173,14 @@ describe("pictures from someone who may add nothing", () => {
   });
 });
 
-/** Starts a large upload that never finishes arriving. */
-function holdUpload(address: string): http.ClientRequest {
+/** Starts a large upload, from the person named, that never finishes arriving. */
+function holdUpload(address: string, person = "someone"): http.ClientRequest {
   const held = http.request(`${address}/form`, {
     method: "POST",
     headers: {
       "Content-Type": "multipart/form-data; boundary=held",
       "Content-Length": "1000000",
+      "X-Person": person,
     },
   });
   held.on("error", () => {});
@@ -175,11 +189,16 @@ function holdUpload(address: string): http.ClientRequest {
 }
 
 /** Sends a large upload, retrying for a while if the server is busy, and gives its status. */
-async function largeUploadStatus(address: string, tries = 1): Promise<number> {
+async function largeUploadStatus(address: string, tries = 1, person = "another"): Promise<number> {
   let status = 0;
   for (let attempt = 0; attempt < tries; attempt += 1) {
     if (attempt > 0) await new Promise((done) => setTimeout(done, 20));
-    status = (await request(address).post("/form").attach("pictures", LARGE, "big.png")).status;
+    status = (
+      await request(address)
+        .post("/form")
+        .set("X-Person", person)
+        .attach("pictures", LARGE, "big.png")
+    ).status;
     if (status !== 503) break;
   }
   return status;
@@ -201,7 +220,10 @@ describe("how many uploads the server reads at once", () => {
     const held = holdUpload(address);
     await firstArrived;
 
-    const refused = await request(address).post("/form").attach("pictures", LARGE, "b.png");
+    const refused = await request(address)
+      .post("/form")
+      .set("X-Person", "another")
+      .attach("pictures", LARGE, "b.png");
     expect(refused.status).toBe(503);
     expect(refused.body).toEqual({ error: UPLOAD_REFUSALS.busy });
 
@@ -234,6 +256,152 @@ describe("how many uploads the server reads at once", () => {
     // The held upload never stops on its own: only the deadline ends it.
     await cutOff;
     expect(await largeUploadStatus(address, 50)).toBe(200);
+  });
+});
+
+describe("one person's uploads, and two at once", () => {
+  /** A server with the parser's own count, which resolves arrivals as uploads reach it. */
+  async function counting(atOnce?: number) {
+    let arrivals = 0;
+    const waiting: { count: number; done: () => void }[] = [];
+    const port = await listen(
+      parserApp(SMALL, {
+        atOnce,
+        arrived: () => {
+          arrivals += 1;
+          for (const wait of waiting) if (arrivals >= wait.count) wait.done();
+        },
+      }),
+    );
+    const arrived = (count: number) =>
+      arrivals >= count
+        ? Promise.resolve()
+        : new Promise<void>((done) => waiting.push({ count, done }));
+    return { address: `http://127.0.0.1:${port}`, arrived };
+  }
+
+  it("reads two large uploads at once and refuses a third", async () => {
+    const { address, arrived } = await counting();
+    const first = holdUpload(address, "one");
+    const second = holdUpload(address, "two");
+    await arrived(2);
+    const third = await request(address)
+      .post("/form")
+      .set("X-Person", "three")
+      .attach("pictures", LARGE, "c.png");
+    expect(third.status).toBe(503);
+    expect(third.body).toEqual({ error: UPLOAD_REFUSALS.busy });
+    first.destroy();
+    second.destroy();
+  });
+
+  it("refuses a person's second upload while their first arrives, without taking a place", async () => {
+    const { address, arrived } = await counting(2);
+    const held = holdUpload(address, "one");
+    await arrived(1);
+
+    const again = await request(address)
+      .post("/form")
+      .set("X-Person", "one")
+      .attach("pictures", LARGE, "b.png");
+    expect(again.status).toBe(429);
+    expect(again.body).toEqual({ error: UPLOAD_REFUSALS.yoursArriving });
+
+    // The second place is still free for someone else.
+    expect(await largeUploadStatus(address, 1, "two")).toBe(200);
+    // A form with no picture from the same person is read as usual.
+    const textOnly = await request(address)
+      .post("/form")
+      .set("X-Person", "one")
+      .field("body", "Here is what I see.");
+    expect(textOnly.body).toEqual({ read: true, files: [], refused: null });
+
+    held.destroy();
+    expect(await largeUploadStatus(address, 50, "one")).toBe(200);
+  });
+
+  it("counts a form that does not say how large it is", async () => {
+    const { address, arrived } = await counting(1);
+    const held = holdUpload(address, "one");
+    await arrived(1);
+
+    const chunked = await new Promise<{ status: number; body: string }>((done, fail) => {
+      const post = http.request(`${address}/form`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "multipart/form-data; boundary=sent",
+          "Transfer-Encoding": "chunked",
+          "X-Person": "two",
+        },
+      });
+      post.on("error", fail);
+      post.on("response", (answer) => {
+        let body = "";
+        answer.on("data", (chunk: Buffer) => (body += chunk.toString()));
+        answer.on("end", () => done({ status: answer.statusCode ?? 0, body }));
+      });
+      post.end(
+        '--sent\r\nContent-Disposition: form-data; name="body"\r\n\r\nHello\r\n--sent--\r\n',
+      );
+    });
+    expect(chunked.status).toBe(503);
+    expect(JSON.parse(chunked.body)).toEqual({ error: UPLOAD_REFUSALS.busy });
+    held.destroy();
+  });
+
+  it("answers a refused large upload with its sentence after reading it, not a dropped connection", async () => {
+    const { app } = buildTestApp();
+    await as(app, customerOne).post("/api/tickets").send({
+      title: "Printer jams",
+      description: "On page two",
+      fix_check: "Ten pages print",
+    });
+    const address = `http://127.0.0.1:${await listen(app)}`;
+    /** A large reply to SUP-1 from the person given, with the body given. */
+    const post = (who: Actor, body: Buffer, length: number) => {
+      const sent = http.request(`${address}/tickets/SUP-1/entries`, {
+        method: "POST",
+        agent: false,
+        headers: {
+          ...FROM_THIS_SITE,
+          Cookie: `${DEV_COOKIE}=${who.id}`,
+          "Content-Type": "multipart/form-data; boundary=sent",
+          "Content-Length": String(length),
+        },
+      });
+      sent.on("error", () => {});
+      sent.write(body);
+      return sent;
+    };
+    // Two people hold the server's two places.
+    const opening = Buffer.from(
+      '--sent\r\nContent-Disposition: form-data; name="pictures"; filename="a.png"\r\n\r\n',
+    );
+    const held = [customerOne, customerTwo].map((who) => post(who, opening, 1_000_000));
+    await new Promise((done) => setTimeout(done, 100));
+
+    // Larger than a connection buffers, so an answer sent before reading it is often lost.
+    const body = Buffer.alloc(12 * 1024 * 1024, 7);
+    const answers = await Promise.all(
+      Array.from(
+        { length: 6 },
+        () =>
+          new Promise<string>((done) => {
+            const sent = post(teamActor, body, body.length);
+            sent.on("error", (err: NodeJS.ErrnoException) => done(err.code ?? "error"));
+            sent.on("response", (reply) => {
+              let text = "";
+              reply.on("data", (chunk: Buffer) => (text += chunk.toString()));
+              reply.on("end", () =>
+                done(`${reply.statusCode} ${text.includes(UPLOAD_REFUSALS.busy)}`),
+              );
+            });
+            sent.end();
+          }),
+      ),
+    );
+    expect(answers).toEqual(Array(6).fill("503 true"));
+    for (const request of held) request.destroy();
   });
 });
 

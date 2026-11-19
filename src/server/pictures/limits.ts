@@ -26,7 +26,7 @@ export type PictureLimits = {
 const MB = 1024 * 1024;
 
 export const PICTURE_LIMITS: PictureLimits = {
-  maxBytes: 3 * MB,
+  maxBytes: 2 * MB,
   perMessage: 4,
   perTicket: 20,
   personTotalBytes: 40 * MB,
@@ -49,7 +49,7 @@ export function pictureLimitsFor(demo: boolean): PictureLimits {
   return demo ? DEMO_PICTURE_LIMITS : PICTURE_LIMITS;
 }
 
-/** The size limit in words, such as "3 MB". */
+/** The size limit in words, such as "2 MB". */
 export function sizeInWords(bytes: number): string {
   return `${Math.round((bytes / MB) * 10) / 10} MB`;
 }

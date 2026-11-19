@@ -143,12 +143,16 @@ export function createApp(config: Config, db: Db, options: { log?: LogLine } = {
     legacyHeaders: false,
     // A real person is counted by their account. Demo visitors share three made-up
     // identities, so they are counted by address, like someone not signed in.
-    keyGenerator: (req) =>
-      req.actor && req.actor.demo !== true ? req.actor.id : ipKeyGenerator(clientAddress(req)),
+    keyGenerator: personOf,
     handler: (_req, _res, next) => {
       next(new HttpError(429, "too_many_requests", "Too many requests. Try again in a while."));
     },
   };
+  // Who is asking, for the limits below and for the pictures being read. A real person is
+  // their account; demo visitors and anyone signed out are their address.
+  function personOf(req: express.Request): string {
+    return req.actor && req.actor.demo !== true ? req.actor.id : ipKeyGenerator(clientAddress(req));
+  }
   // The visitor's address: from the proxy's header when one is configured, otherwise from
   // the connection.
   function clientAddress(req: express.Request): string {
@@ -270,7 +274,10 @@ export function createApp(config: Config, db: Db, options: { log?: LogLine } = {
   // pictures. Those come as multipart/form-data, which only these two addresses read. The
   // checks above, of who is asking, where the request comes from and how often, have already
   // run, so pictures are never read for someone who may not add them.
-  app.post(["/tickets", "/tickets/:key/entries"], readPictures(pictureLimitsFor(config.demo)));
+  app.post(
+    ["/tickets", "/tickets/:key/entries"],
+    readPictures(pictureLimitsFor(config.demo), { personOf }),
+  );
   app.use(assistantRunRouter(rootDir, () => tickets.recordedRunKey()));
   app.use(signInRouter(config, auth, db, () => tickets.hasDemoSeed()));
   // Before the pages, so "similar" is never read as a ticket key.

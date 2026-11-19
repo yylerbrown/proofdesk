@@ -135,9 +135,9 @@ describe("a refused picture", () => {
     ["an SVG", [[SVG, "drawing.svg"]], "must be a PNG, JPEG, GIF or WebP"],
     ["an HTML file named .png", [[HTML, "page.png"]], "must be a PNG, JPEG, GIF or WebP"],
     [
-      "one over 3 MB",
-      [[Buffer.concat([PNG, Buffer.alloc(3 * 1024 * 1024)]), "big.png"]],
-      "at most 3 MB",
+      "one over 2 MB",
+      [[Buffer.concat([PNG, Buffer.alloc(2 * 1024 * 1024)]), "big.png"]],
+      "at most 2 MB",
     ],
     ["five at once", Array(5).fill([PNG, "a.png"]) as Picture[], "at most 4 pictures at a time"],
   ];
@@ -373,7 +373,7 @@ describe("the page's data for pictures", () => {
       "/tickets/SUP-1/pictures/2",
     ]);
     expect(service.pictureLimits).toEqual({
-      maxBytes: 3 * 1024 * 1024,
+      maxBytes: 2 * 1024 * 1024,
       perMessage: 4,
       perTicket: 20,
       personTotalBytes: 40 * 1024 * 1024,
