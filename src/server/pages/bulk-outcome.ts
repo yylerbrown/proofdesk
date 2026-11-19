@@ -5,7 +5,8 @@ import { STATUS_LABELS } from "./format.js";
 
 // After the ticket list changes many tickets at once, the browser is sent back to the list,
 // which then says in one line what happened: how many moved, and which were not changed and why.
-// The cookie holds only the change, a count, and the keys asked for with an error code each.
+// One Apply can make two changes, a status and an owner, and the line says both, in order.
+// The cookie holds only each change, a count, and the keys asked for with an error code each.
 // It never holds free text such as a note or an error message: every sentence comes from the
 // table below. A key is shown as it was asked, upper-cased, at most 20 characters and escaped
 // by the page, and only to the person who sent it. The cookie lives a minute and is read once.
@@ -22,18 +23,21 @@ const rememberedSchema = z.object({
 });
 type Remembered = z.infer<typeof rememberedSchema>;
 
-/** Remembers what a change to many tickets did, for the list the browser opens next. */
-export function rememberBulkOutcome(res: Response, outcome: BulkOutcome): void {
+/** The parts of one change the line needs. */
+function remember(outcome: BulkOutcome): Remembered {
   const kept: Record<string, string[]> = {};
   for (const item of outcome.not_changed) {
     kept[item.code] = [...(kept[item.code] ?? []), item.key];
   }
   const { change } = outcome;
-  const remembered: Remembered =
-    "status" in change
-      ? { status: change.status, reason: change.reason, changed: outcome.changed.length, kept }
-      : { owner: change.owner, changed: outcome.changed.length, kept };
-  res.cookie(COOKIE, JSON.stringify(remembered), {
+  return "status" in change
+    ? { status: change.status, reason: change.reason, changed: outcome.changed.length, kept }
+    : { owner: change.owner, changed: outcome.changed.length, kept };
+}
+
+/** Remembers what the changes to many tickets did, for the list the browser opens next. */
+export function rememberBulkOutcome(res: Response, outcomes: BulkOutcome[]): void {
+  res.cookie(COOKIE, JSON.stringify(outcomes.map(remember)), {
     httpOnly: true,
     sameSite: "lax",
     maxAge: 60_000,
@@ -60,14 +64,19 @@ export function takeBulkOutcome(
   } catch {
     return null;
   }
-  const checked = rememberedSchema.safeParse(parsed);
-  return checked.success ? bulkOutcomeLine(checked.data, nameOf) : null;
+  const checked = z.array(rememberedSchema).max(2).safeParse(parsed);
+  if (!checked.success) return null;
+  // With two changes, each one's "not changed" sentence names its change, so a ticket that
+  // moved but kept its owner never reads as both changed and not changed.
+  const both = checked.data.length === 2;
+  return checked.data.map((outcome) => bulkOutcomeLine(outcome, nameOf, both)).join(" ");
 }
 
 /** "7 moved to Resolved. 2 were not changed: SUP-4 (only its owner ...); SUP-9 (already resolved)." */
 export function bulkOutcomeLine(
   outcome: Remembered,
   nameOf: (id: string) => string | undefined,
+  both = false,
 ): string {
   const parts: string[] = [];
   if (outcome.changed > 0) parts.push(changedWords(outcome, nameOf));
@@ -77,7 +86,13 @@ export function bulkOutcomeLine(
     const list = groups
       .map(([code, keys]) => `${keys.join(", ")} (${whyKept(outcome, code)})`)
       .join("; ");
-    parts.push(`${keptCount} ${keptCount === 1 ? "was" : "were"} not changed: ${list}.`);
+    const one = keptCount === 1;
+    const notChanged = !both
+      ? `${one ? "was" : "were"} not changed`
+      : outcome.status !== undefined
+        ? "did not move"
+        : `kept ${one ? "its" : "their"} owner`;
+    parts.push(`${keptCount} ${notChanged}: ${list}.`);
   }
   return parts.join(" ");
 }

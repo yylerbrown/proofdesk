@@ -175,8 +175,8 @@ describe("the customer's answer", () => {
       .post("/api/tickets/SUP-1/ready")
       .send({ try_url: "https://example.com/print", tried: "Printed.", result: "No jam." });
     const box = (await page(app, customerOne)).querySelector("#did-this-fix-it")!;
-    // The two answers; the quick answers below them are small, plain words.
-    const buttons = box.querySelectorAll("button").filter((b) => !b.classList.contains("quick"));
+    // The two answers, and nothing else to press.
+    const buttons = box.querySelectorAll("button");
     expect(buttons.map((b) => b.text)).toEqual(["Yes, resolve ticket", "No, send it back"]);
     for (const button of buttons) expect(button.classList.contains("large")).toBe(true);
     expect(box.querySelector("button.danger")).toBeNull();

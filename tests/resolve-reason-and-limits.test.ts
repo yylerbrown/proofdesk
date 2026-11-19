@@ -159,16 +159,14 @@ describe("a long text with line breaks", () => {
 });
 
 describe("a resolved ticket", () => {
-  it("offers no quick replies for an open ticket and no new change link", async () => {
+  it("offers no new change link once resolved", async () => {
     const { app } = await setup();
     const before = await ticketPage(app);
-    expect(before.querySelector('[aria-label="Quick replies"]')).not.toBeNull();
     expect(before.querySelector("form#change-link")).not.toBeNull();
     await as(app, teamActor)
       .post("/api/tickets/SUP-1/resolve")
       .send({ reason: "cannot_reproduce" });
     const after = await ticketPage(app);
-    expect(after.querySelector('[aria-label="Quick replies"]')).toBeNull();
     expect(after.querySelector("form#change-link")).toBeNull();
     // The plain reply box stays, for a word to the customer after resolving.
     expect(after.querySelector("#entry-body")).not.toBeNull();

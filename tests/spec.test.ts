@@ -204,9 +204,16 @@ describe("deciding on a spec", () => {
       .type("form")
       .send({ decision: "accept" });
     expect(accepted.status).toBe(303);
-    const after = await as(app, customerOne).get("/tickets/SUP-1");
-    expect(after.text).toContain("Agreed way to test");
-    expect(after.text).toContain("Accepted by Team Member");
+    // After the decision the card says how it ended in one line, with nothing left to press.
+    for (const who of [customerOne, teamActor]) {
+      const card = parse((await as(app, who).get("/tickets/SUP-1")).text).querySelector(
+        ".assistant-card",
+      )!;
+      expect(card.querySelector(".card-outcome")?.text).toBe(
+        "Accepted as the way to test by Team Member.",
+      );
+      expect(card.querySelectorAll("form")).toHaveLength(0);
+    }
   });
 
   it("can be discarded, and the ticket then offers to ask for a new one", async () => {
@@ -218,12 +225,36 @@ describe("deciding on a spec", () => {
       .type("form")
       .send({ decision: "discard" });
     expect((await admin(app).get("/api/tickets/SUP-1")).body.spec).toBeNull();
+    const card = parse((await as(app, teamActor).get("/tickets/SUP-1")).text).querySelector(
+      ".assistant-card",
+    )!;
+    expect(card.querySelector(".card-outcome")?.text).toBe(
+      "The suggested test was discarded by Team Member.",
+    );
+    expect(card.querySelectorAll("form")).toHaveLength(0);
     // While the ticket is handed to the assistant, the team asks it directly; once its work
-    // ends, the line offers to ask for a new spec.
-    const prompt = "Want better results? Ask your assistant to spec this ticket";
+    // ends, the line under More options offers to ask for a new spec.
+    const prompt = "Ask your assistant to spec this ticket";
     expect((await as(app, teamActor).get("/tickets/SUP-1")).text).not.toContain(prompt);
     await as(app, teamActor).post("/tickets/SUP-1/agent/end").type("form").send({});
     expect((await as(app, teamActor).get("/tickets/SUP-1")).text).toContain(prompt);
+  });
+});
+
+describe("a spec a person proposed", () => {
+  it("is headed with their name, before and after it is discarded", async () => {
+    const { app } = await setup();
+    await as(app, teamActor).post("/api/tickets/SUP-1/spec").send(spec()).expect(201);
+    const from = async () =>
+      parse((await as(app, teamActor).get("/tickets/SUP-1")).text).querySelector(
+        ".assistant-card .card-from",
+      )?.text;
+    expect(await from()).toBe("From Team Member");
+    await as(app, teamActor)
+      .post("/tickets/SUP-1/spec/decision")
+      .type("form")
+      .send({ decision: "discard" });
+    expect(await from()).toBe("From Team Member");
   });
 });
 
@@ -233,8 +264,8 @@ describe("the spec on the ticket page", () => {
     const team = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     const line = team.querySelector(".spec-prompt")!;
     expect(line.text).toContain("Using Proofdesk, write a test spec for SUP-1");
-    // Under the conversation, not in the panel that holds what a person acts on.
-    expect(team.querySelector(".ticket-thread .spec-prompt")).not.toBeNull();
+    // Under More options, not in the panel that holds what a person acts on.
+    expect(team.querySelector(".ticket-thread .more-options .spec-prompt")).not.toBeNull();
     expect(team.querySelector(".ticket-panel .spec-prompt")).toBeNull();
     // A team member cannot connect an assistant, so the line does not offer it; an admin can.
     expect(line.querySelectorAll("a").map((a) => a.getAttribute("href"))).toEqual([
@@ -248,17 +279,27 @@ describe("the spec on the ticket page", () => {
     expect(customer.text).not.toContain("spec-prompt");
   });
 
-  it("shows the summary collapsed, with the count and who proposed it, as reported", async () => {
+  it("is one card with no headings: one sentence, the decision, and the rest under Details", async () => {
     const { app } = await setup();
     const client = await connect(app);
     await call(client, "propose_spec", { key: "SUP-1", ...spec() });
     const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    const details = page.querySelector(".spec details")!;
+    const card = page.querySelector(".ticket-summary .assistant-card")!;
+    expect(card.querySelectorAll("h2, h3")).toHaveLength(0);
+    expect(card.querySelector(".card-from")?.text).toBe("From the AI assistant");
+    expect(card.querySelector(".card-proposal")?.text).toContain(
+      "Printing ten pages in a row works",
+    );
+    expect(card.querySelectorAll(".card-decision button").map((b) => b.text)).toEqual([
+      "Accept as the way to test",
+      "Discard",
+    ]);
+    const details = card.querySelector("details.card-details")!;
     expect(details.hasAttribute("open")).toBe(false);
-    const summary = details.querySelector("summary")!.text;
-    expect(summary).toContain("Printing ten pages in a row works");
-    expect(summary).toContain("2 scenarios");
-    expect(summary).toContain("Proposed by Helper (AI agent) (reported, not verified)");
+    expect(details.querySelector("summary")?.text).toBe("Details");
+    expect(details.text).toContain(
+      "2 scenarios, proposed by Helper (AI agent). Reported, not verified by Proofdesk.",
+    );
     expect(details.querySelectorAll(".scenarios li")).toHaveLength(2);
     expect(page.querySelector(".spec-prompt")).toBeNull();
   });
@@ -365,7 +406,7 @@ describe("test specs on the demo", () => {
       .set("Cookie", `${DEV_COOKIE}=demo-team`)
       .get(`/tickets/${sample}`);
     expect(page.text).toContain(marker);
-    expect(page.text).toContain("(reported, not verified)");
+    expect(page.text).toContain("Reported, not verified");
   });
 
   it("offers the demo's team the line only on the sample a demo key can read, never the customer", async () => {

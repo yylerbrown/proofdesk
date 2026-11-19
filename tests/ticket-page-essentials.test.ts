@@ -84,7 +84,9 @@ describe("the team's ticket page", () => {
     expect(more.firstElementChild?.tagName).toBe("SUMMARY");
     expect(more.firstElementChild?.text).toBe("More options");
     expect(more.hasAttribute("open")).toBe(false);
-    expect(more.querySelector("details > summary")?.text).toBe("Offer a clearer check");
+    expect(more.querySelector("details > summary")?.text).toBe(
+      "Ask your assistant to spec this ticket",
+    );
     // The owner's one control is in the panel, and nothing secondary is.
     expect(panel.querySelectorAll("section form[action$='/take']")).toHaveLength(1);
     expect(panel.querySelector("details.more-options, a[href$='/edit']")).toBeNull();
@@ -98,7 +100,7 @@ describe("the team's ticket page", () => {
     const html = await page(app, teamActor);
     const evidence = html.querySelector("details.evidence-list")!;
     expect(evidence.hasAttribute("open")).toBe(false);
-    expect(evidence.querySelector("summary")?.text).toBe("1 piece, as reported");
+    expect(evidence.querySelector("summary")?.text).toBe("Evidence (1)");
     expect(evidence.text).toContain("Printed ten pages twice");
     const change = html.querySelector("details.change-link")!;
     expect(change.querySelector("summary")?.text).toBe("Change the link");

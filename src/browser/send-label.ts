@@ -1,5 +1,5 @@
 // The team's message box has one button under a choice of who sees the message: "Reply to the
-// customer" or "Internal note, for the team only". Without this script the button reads "Send".
+// customer" or "Internal note". Without this script the button reads "Send".
 // With it, the button names the audience chosen, "Send reply to customer" or "Save internal
 // note", so the last thing a person reads before pressing it says who will read the message.
 // The page gives the two labels on the button, as data-label-reply and data-label-note.

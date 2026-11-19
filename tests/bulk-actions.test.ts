@@ -61,7 +61,6 @@ describe("changing ticked tickets from the list", () => {
 
     const posted = await postForm(app, teamActor, "?q=export", {
       keys,
-      apply: "status",
       status: "resolved",
       reason: "wont_fix",
       owner: "",
@@ -95,7 +94,6 @@ describe("changing ticked tickets from the list", () => {
 
     const posted = await postForm(app, teamActor, "", {
       keys: ["SUP-1", "SUP-2", "SUP-3"],
-      apply: "status",
       status: "resolved",
       reason: "duplicate",
       duplicate_of: "SUP-9",
@@ -107,7 +105,6 @@ describe("changing ticked tickets from the list", () => {
 
     const again = await postForm(app, teamActor, "", {
       keys: ["SUP-1", "SUP-2", "SUP-3"],
-      apply: "status",
       status: "resolved",
       reason: "wont_fix",
     });
@@ -123,26 +120,19 @@ describe("changing ticked tickets from the list", () => {
     await file(app, ["One", "Two", "Three"]);
     await admin(app).post("/api/tickets/SUP-3/take-and-start");
 
-    const mine = await postForm(app, teamActor, "", {
-      keys: ["SUP-1", "SUP-2"],
-      apply: "owner",
-      owner: "me",
-      status: "resolved",
-    });
+    const mine = await postForm(app, teamActor, "", { keys: ["SUP-1", "SUP-2"], owner: "me" });
     expect(savedLine(await listAfter(app, teamActor, mine))).toBe("2 assigned to you.");
     expect((await eventTypes(app, "SUP-1")).at(-1)).toBe("owner_changed");
 
     // The admin hands one to the team member by name, and SUP-3, in progress, keeps its owner.
     const named = await postForm(app, adminActor, "", {
       keys: ["SUP-3"],
-      apply: "owner",
       owner: teamActor.id,
     });
     expect(savedLine(await listAfter(app, adminActor, named))).toBe("1 assigned to Team Member.");
 
     const nobody = await postForm(app, teamActor, "", {
       keys: ["SUP-1", "SUP-3"],
-      apply: "owner",
       owner: "nobody",
     });
     expect(savedLine(await listAfter(app, teamActor, nobody))).toBe(
@@ -188,12 +178,71 @@ describe("changing ticked tickets from the list", () => {
     ]);
   });
 
+  it("applies the status and the owner together when one Apply sends both", async () => {
+    const { app } = buildTestApp();
+    await file(app, ["One", "Two"]);
+    const posted = await postForm(app, teamActor, "", {
+      keys: ["SUP-1", "SUP-2"],
+      status: "in_progress",
+      owner: adminActor.id,
+    });
+    expect(savedLine(await listAfter(app, teamActor, posted))).toBe(
+      "2 moved to In Progress. 2 assigned to Admin.",
+    );
+    for (const key of ["SUP-1", "SUP-2"]) {
+      const after = (await admin(app).get(`/api/tickets/${key}`)).body;
+      expect(after).toMatchObject({ status: "in_progress", owner_id: adminActor.id });
+    }
+  });
+
+  it("checks the owner before it changes any status when one Apply sends both", async () => {
+    const { app } = buildTestApp();
+    await file(app, ["One"]);
+    // An owner who is not a member, as a page left open after someone was removed would send.
+    const res = await postForm(app, teamActor, "", {
+      keys: "SUP-1",
+      status: "in_progress",
+      owner: "not-a-member",
+    });
+    expect(res.status).toBe(400);
+    const page = parse(res.text);
+    expect(page.querySelector(".bulk-error")?.text).toBe("Choose a team member.");
+    expect(page.querySelector('input[value="SUP-1"]')?.hasAttribute("checked")).toBe(true);
+    // The form was refused, so no ticket changed.
+    expect((await admin(app).get("/api/tickets/SUP-1")).body).toMatchObject({
+      status: "new",
+      owner_id: null,
+    });
+    expect(await eventTypes(app, "SUP-1")).toEqual(["created"]);
+  });
+
+  it("names which change left a ticket as it was when one Apply sends both", async () => {
+    const { app } = buildTestApp();
+    await file(app, ["One", "Two"]);
+    // Starting work takes each ticket, so letting it go then is refused by the usual rule.
+    const posted = await postForm(app, teamActor, "", {
+      keys: ["SUP-1", "SUP-2"],
+      status: "in_progress",
+      owner: "nobody",
+    });
+    expect(savedLine(await listAfter(app, teamActor, posted))).toBe(
+      "2 moved to In Progress. 2 kept their owner: SUP-1, SUP-2 (in progress, so it keeps an owner).",
+    );
+  });
+
+  it("asks for a choice when Apply is pressed with neither chosen", async () => {
+    const { app } = buildTestApp();
+    await file(app, ["One"]);
+    const res = await postForm(app, teamActor, "", { keys: "SUP-1", status: "", owner: "" });
+    expect(res.status).toBe(400);
+    expect(parse(res.text).querySelector(".bulk-error")?.text).toBe("Choose a status or an owner.");
+  });
+
   it("keeps the boxes ticked and says what is missing when the form is incomplete", async () => {
     const { app } = buildTestApp();
     await file(app, ["One", "Two"]);
     const res = await postForm(app, teamActor, "", {
       keys: "SUP-2",
-      apply: "status",
       status: "resolved",
       reason: "",
     });
@@ -204,7 +253,7 @@ describe("changing ticked tickets from the list", () => {
     expect(page.querySelector('input[value="SUP-1"]')?.hasAttribute("checked")).toBe(false);
     expect((await admin(app).get("/api/tickets/SUP-2")).body.status).toBe("new");
 
-    const none = await postForm(app, teamActor, "", { apply: "owner", owner: "me" });
+    const none = await postForm(app, teamActor, "", { owner: "me" });
     expect(parse(none.text).querySelector(".bulk-error")?.text).toBe("Tick at least one ticket.");
   });
 
@@ -213,7 +262,6 @@ describe("changing ticked tickets from the list", () => {
     await file(app, ["One"]);
     const posted = await postForm(app, teamActor, "", {
       keys: "SUP-1",
-      apply: "status",
       status: "resolved",
       reason: "wont_fix",
       note: "typed before the reason changed",
@@ -238,7 +286,6 @@ describe("changing ticked tickets from the list", () => {
     await file(app, ["One"]);
     const posted = await postForm(app, teamActor, "", {
       keys: ["nope", "SUP-1"],
-      apply: "owner",
       owner: "me",
     });
     expect(savedLine(await listAfter(app, teamActor, posted))).toBe(
@@ -271,7 +318,6 @@ describe("who may change tickets from the list", () => {
     await file(app, ["One"]);
     const res = await postForm(app, customerOne, "", {
       keys: "SUP-1",
-      apply: "status",
       status: "resolved",
       reason: "wont_fix",
     });
@@ -289,7 +335,7 @@ describe("who may change tickets from the list", () => {
     const res = await preview()
       .post("/tickets/bulk")
       .type("form")
-      .send({ keys: "SUP-1", apply: "owner", owner: "me" });
+      .send({ keys: "SUP-1", owner: "me" });
     expect(res.status).toBe(403);
     expect((await preview().get("/api/tickets/SUP-1")).body).toEqual(before);
   });
@@ -326,7 +372,7 @@ describe("who may change tickets from the list", () => {
       .set("Cookie", `${DEV_COOKIE}=${teamActor.id}`)
       .set("Sec-Fetch-Site", "cross-site")
       .type("form")
-      .send({ keys: "SUP-1", apply: "owner", owner: "me" });
+      .send({ keys: "SUP-1", owner: "me" });
     expect(res.status).toBe(403);
     expect((await admin(app).get("/api/tickets/SUP-1")).body.owner_id).toBeNull();
   });
