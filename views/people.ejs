@@ -26,18 +26,21 @@
         <td>
           <% if (person.locked) { %>
           <%= person.locked %><% if (person.locked === "You") { %>, <%= roleLabels[person.role] %><% } %>
+          <% } else if (!canChange) { %>
+          <%# The read-only preview: the role in words, with nothing to press. %>
+          <%= roleLabels[person.role] %>
           <% } else { %>
           <form method="post" action="/people" class="inline role-choice">
             <input type="hidden" name="person" value="<%= person.id %>" />
             <label>
               <span class="visually-hidden">Role of <%= person.name %></span>
-              <select name="role" <% if (!canChange) { %>disabled<% } %>>
+              <select name="role">
                 <% for (const role of roles) { %>
                 <option value="<%= role %>" <% if (role === person.role) { %>selected<% } %>><%= roleLabels[role] %></option>
                 <% } %>
               </select>
             </label>
-            <button type="submit" <% if (!canChange) { %>disabled<% } %>>Save</button>
+            <button type="submit">Save</button>
           </form>
           <% } %>
         </td>
