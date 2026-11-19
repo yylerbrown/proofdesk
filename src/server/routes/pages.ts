@@ -25,8 +25,8 @@ import {
   ticketFiledWith,
 } from "../pages/form-id.js";
 import { fingerprint } from "../pages/loaded-text.js";
-import { LIST_ORDER_LABELS, noMatchWords, readListPageQuery } from "../pages/list-query.js";
-import { sameText, type ListOrder } from "../tickets/schemas.js";
+import { noMatchWords, readListPageQuery, sortHeaders } from "../pages/list-query.js";
+import { sameText, type ListSort } from "../tickets/schemas.js";
 import { statusControl } from "../pages/status-control.js";
 import { DESCRIPTION_LIMIT, withHowFarOver } from "../pages/text-limit.js";
 import {
@@ -130,8 +130,8 @@ function demoNext(ticket: Ticket, actor: Actor) {
   return null;
 }
 
-/** The ticket list's filters and order, as they stand in its address. */
-type ListFilters = { status: string; owner?: "me" | "none"; q?: string; order?: ListOrder };
+/** The ticket list's filters and sort, as they stand in its address. */
+type ListFilters = { status: string; owner?: "me" | "none"; q?: string; sort: ListSort };
 
 /** The address of the ticket list with these filters, leaving out the ones at their default. */
 function listHref(filters: ListFilters, page?: number): string {
@@ -139,7 +139,10 @@ function listHref(filters: ListFilters, page?: number): string {
   if (filters.status !== "all") params.set("status", filters.status);
   if (filters.owner) params.set("owner", filters.owner);
   if (filters.q) params.set("q", filters.q);
-  if (filters.order && filters.order !== "open_first") params.set("order", filters.order);
+  if (filters.sort !== "open_first") {
+    params.set("sort", filters.sort.by);
+    params.set("direction", filters.sort.direction);
+  }
   if (page !== undefined) params.set("page", String(page));
   const query = params.toString();
   return query ? `/tickets?${query}` : "/tickets";
@@ -533,12 +536,12 @@ export function pagesRouter(service: TicketService): Router {
       return;
     }
     const pageNumber = query.page;
-    const order = query.order;
-    const tickets = service.listTickets(current, actor, pageNumber, { owner, q }, order);
+    const sort = query.sort;
+    const tickets = service.listTickets(current, actor, pageNumber, { owner, q }, sort);
     // Beside each status filter: how many tickets it holds with the same owner filter and search.
     const counts = service.countTickets(actor, { owner, q });
     // Every link on the list keeps the other filters, so a filtered view can be shared.
-    const filters: ListFilters = { status: current, owner, q, order };
+    const filters: ListFilters = { status: current, owner, q, sort };
     const signals = service.assistantSignals(tickets, actor);
     const reopened =
       actor.role === "customer" ? new Set<string>() : service.reopenedByCustomer(tickets);
@@ -580,7 +583,11 @@ export function pagesRouter(service: TicketService): Router {
       narrowed: owner !== undefined || q !== undefined,
       noMatch: noMatchWords(current, owner, q),
       counts,
-      orders: LIST_ORDER_LABELS,
+      // Each header that sorts, with the address a press opens. A new sort starts on page one.
+      sortHeaders: sortHeaders(sort).map((header) => ({
+        ...header,
+        href: listHref({ ...filters, sort: header.next }),
+      })),
       // Nobody archives on the demo, so its Archived tab would always be empty. The address
       // still works there, and says why it is empty.
       showArchivedFilter: can(actor, "list_archived") && actor.demo !== true,

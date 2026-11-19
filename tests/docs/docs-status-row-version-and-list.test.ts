@@ -75,14 +75,7 @@ describe("the tour's steps for changing a status", () => {
 });
 
 describe("what is new, as the tour says it", () => {
-  const readme = flat("docs/TOUR.md");
-
-  it("names the list's order choices and counts with the page's own words", () => {
-    const labels = fs.readFileSync("src/server/pages/list-query.ts", "utf8");
-    for (const label of ["Oldest first", "Recently updated"]) {
-      expect(labels).toContain(`"${label}"`);
-      expect(readme).toContain(`**${label}**`);
-    }
+  it("names the list's counts and key search with the page's own words", () => {
     expect(feature("Ticket list with filters")).toContain("A typed key opens that ticket");
     expect(feature("Ticket list with filters")).toContain("count beside each status");
   });

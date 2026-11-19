@@ -47,7 +47,7 @@
 <form method="get" action="/tickets" role="search" class="list-search">
   <% if (current !== "all") { %><input type="hidden" name="status" value="<%= current %>" /><% } %>
   <% if (filters.owner) { %><input type="hidden" name="owner" value="<%= filters.owner %>" /><% } %>
-  <% if (filters.order !== "open_first") { %><input type="hidden" name="order" value="<%= filters.order %>" /><% } %>
+  <% if (filters.sort !== "open_first") { %><input type="hidden" name="sort" value="<%= filters.sort.by %>" /><input type="hidden" name="direction" value="<%= filters.sort.direction %>" /><% } %>
   <input type="search" name="q" value="<%= filters.q ?? "" %>" placeholder="Search titles, descriptions or a key" aria-label="Search titles and descriptions, or open a ticket by its key" maxlength="100" />
   <button type="submit" class="secondary">Search</button>
 </form>
@@ -59,16 +59,29 @@
 <% } else if (tickets.length === 0) { %>
 <p class="empty"><%= empty[current] %><% if (current !== "archived") { %> <a href="/tickets/new">File a ticket</a>.<% } %></p>
 <% } else { %>
+<%
+  // A header that sorts: a link whose name says what the next press does. The arrow repeats
+  // what aria-sort on the cell says, for the eye.
+  const arrow = (header) => header.ariaSort === "ascending" ? "↑" : header.ariaSort === "descending" ? "↓" : "";
+  const byUpdated = filters.sort !== "open_first" && filters.sort.by === "updated";
+%>
+<%# On a phone the list is stacked with no header row, so the same choices sit above it there, shown by the stylesheet. %>
+<nav aria-label="Sort by" class="list-sort">
+  <small>Sort by:
+  <% for (const header of sortHeaders) { %>
+    <a href="<%= header.href %>" aria-label="<%= header.name %>" <% if (header.ariaSort) { %>aria-current="true"<% } %>><%= header.label %><% if (arrow(header)) { %> <span aria-hidden="true"><%= arrow(header) %></span><% } %></a>
+  <% } %>
+  </small>
+</nav>
 <div class="overflow-auto">
   <table class="tickets">
     <thead>
       <tr>
-        <th scope="col">Key</th>
-        <th scope="col">Title</th>
-        <th scope="col">Status</th>
-        <th scope="col">Owner</th>
-        <th scope="col">Waiting on</th>
-        <th scope="col"><%= filters.order === "updated" ? "Updated" : "Filed" %></th>
+        <% sortHeaders.forEach((header, index) => { %>
+        <% if (index === 4) { %><th scope="col">Waiting on</th><% } %>
+        <%# The plain name stands in for the link on a phone, where the header row is not drawn, so no keyboard stop hides there. %>
+        <th scope="col" <% if (header.ariaSort) { %>aria-sort="<%= header.ariaSort %>"<% } %>><a href="<%= header.href %>" class="sort-link" aria-label="<%= header.name %>"><%= header.label %><span class="sort-arrow" aria-hidden="true"><%= arrow(header) %></span></a><span class="sort-label"><%= header.label %></span></th>
+        <% }) %>
       </tr>
     </thead>
     <tbody>
@@ -80,7 +93,7 @@
         <td><%- include("status-badge", { status: ticket.status }) %><% if (teamSaysFixed(ticket, viewerRole)) { %><small class="resolution-label">The team says it is fixed</small><small class="resolution-label">You have not confirmed it</small><% } else if (ticket.resolution) { %><small class="resolution-label"><%= ticket.resolution.by === "team" ? `By the team: ${ticket.resolution.reason_label}` : "Customer confirmed" %></small><% } %></td>
         <td><%= ticket.owner_name ?? "Unassigned" %></td>
         <td><%= ticket.waiting %></td>
-        <% const when = filters.order === "updated" ? ticket.updated_at : ticket.created_at; %>
+        <% const when = byUpdated ? ticket.updated_at : ticket.created_at; %>
         <td><time datetime="<%= when %>" data-relative title="<%= formatTime(when) %>"><%= timeAgo(when) %></time></td>
       </tr>
       <% } %>
@@ -90,14 +103,6 @@
 <% if (nextPage) { %>
 <p><a href="<%= nextPage %>">Next page</a></p>
 <% } %>
-<%# The order is a quiet choice under the table, kept in the address like the filters. %>
-<nav aria-label="Order" class="list-order">
-  <small>Order:
-  <% for (const [order, label] of Object.entries(orders)) { %>
-    <a href="<%= href({ order }) %>" <% if (filters.order === order) { %>aria-current="true"<% } %>><%= label %></a>
-  <% } %>
-  </small>
-</nav>
 <% } %>
 <%- include("assistant-invite", { invite }) %>
 <%- include("footer") %>

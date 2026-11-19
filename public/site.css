@@ -894,14 +894,39 @@ form.list-search button:focus-visible {
   font-size: var(--pd-text-xs);
   font-variant-numeric: tabular-nums;
 }
-/* The list's order: a quiet line under the table, its current choice in plain text weight. */
-.list-order {
+/*
+ * The list sorts by its column headers. Each header is a link in the header's own quiet grey,
+ * and the sorted one is in the text colour with its arrow.
+ */
+table.tickets thead a.sort-link {
+  color: inherit;
+  text-decoration: none;
+}
+table.tickets thead a.sort-link:hover {
+  color: var(--pd-text);
+  text-decoration: underline;
+}
+table.tickets thead th[aria-sort] a.sort-link {
+  color: var(--pd-text);
+  font-weight: var(--pd-weight-semibold);
+}
+.sort-arrow:not(:empty) {
+  margin-left: 0.25em;
+}
+/* The header's plain name, shown only on a phone in place of its link. */
+table.tickets thead .sort-label {
+  display: none;
+}
+/* On a phone the list is stacked with no header row, so the same sort links sit above it. */
+.list-sort {
+  display: none;
+  margin-bottom: var(--pd-space-3);
   color: var(--pd-muted);
 }
-.list-order a {
+.list-sort a {
   margin-left: var(--pd-space-2);
 }
-.list-order a[aria-current] {
+.list-sort a[aria-current] {
   color: var(--pd-text);
   font-weight: var(--pd-weight-semibold);
   text-decoration: none;
@@ -910,6 +935,9 @@ form.list-search button:focus-visible {
   form.list-search {
     max-width: none;
     margin-left: 0;
+  }
+  .list-sort {
+    display: block;
   }
 }
 
@@ -2501,7 +2529,7 @@ dl.run-facts dd {
 /* On a phone each link keeps a 44-pixel tap area without making the line taller. */
 @media (max-width: 639px) {
   .invite-actions :is(a, button.link),
-  .list-order a {
+  .list-sort a {
     display: inline-block;
     margin-block: -12px;
     padding-block: 12px;
@@ -2575,6 +2603,13 @@ ol.first-steps li {
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
+  }
+  /* The header row is not drawn here, so its sort links leave the tab order and the names stay. */
+  table.tickets thead a.sort-link {
+    display: none;
+  }
+  table.tickets thead .sort-label {
+    display: inline;
   }
   table.tickets tbody tr {
     display: grid;

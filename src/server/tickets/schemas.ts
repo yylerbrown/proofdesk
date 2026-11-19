@@ -190,10 +190,61 @@ export type TicketListFilter = (typeof TICKET_LIST_FILTERS)[number];
 
 /**
  * The orders a list can be read in: open tickets first and newest first (the default), oldest
- * first, or the most recently changed first.
+ * first, or the most recently changed first. The API keeps these words; each is also a sort.
  */
 export const LIST_ORDERS = ["open_first", "oldest", "updated"] as const;
 export type ListOrder = (typeof LIST_ORDERS)[number];
+
+/** The columns a list can be sorted by. Who a ticket waits on is worked out, not stored. */
+export const LIST_SORTS = ["key", "title", "status", "owner", "filed", "updated"] as const;
+export type ListSortColumn = (typeof LIST_SORTS)[number];
+
+export const SORT_DIRECTIONS = ["asc", "desc"] as const;
+export type SortDirection = (typeof SORT_DIRECTIONS)[number];
+
+/** How a list is sorted: the default (open first, newest first), or one column one way. */
+export type ListSort = "open_first" | { by: ListSortColumn; direction: SortDirection };
+
+/**
+ * The way each column sorts when it is first chosen without a direction: times newest first,
+ * everything else from the start (lowest key, A to Z, New first).
+ */
+export const FIRST_DIRECTION: Record<ListSortColumn, SortDirection> = {
+  key: "asc",
+  title: "asc",
+  status: "asc",
+  owner: "asc",
+  filed: "desc",
+  updated: "desc",
+};
+
+/** The sort each order names. */
+export const ORDER_SORTS: Record<ListOrder, ListSort> = {
+  open_first: "open_first",
+  oldest: { by: "filed", direction: "asc" },
+  updated: { by: "updated", direction: "desc" },
+};
+
+/**
+ * The sort that a column, a direction and an order name together, or undefined when they name
+ * none. A column wins over an order, and a direction without a column is not used. The API
+ * refuses those two cases before it asks; the page and a cursor take them as they come.
+ */
+export function sortFrom(
+  by: ListSortColumn | undefined,
+  direction: SortDirection | undefined,
+  order: ListOrder | undefined,
+): ListSort | undefined {
+  if (by !== undefined) return { by, direction: direction ?? FIRST_DIRECTION[by] };
+  if (order !== undefined) return ORDER_SORTS[order];
+  return undefined;
+}
+
+/** True when two sorts are the same column the same way, or both the default. */
+export function sameSort(a: ListSort, b: ListSort): boolean {
+  if (a === "open_first" || b === "open_first") return a === b;
+  return a.by === b.by && a.direction === b.direction;
+}
 
 export const listQuerySchema = z.object({
   status: z.enum(TICKET_LIST_FILTERS).optional(),
@@ -209,7 +260,15 @@ export const listQuerySchema = z.object({
     .meta({ description: "Words to find in the title or description, in any case." }),
   order: z.enum(LIST_ORDERS).optional().meta({
     description:
-      "open_first (the default): open tickets newest first, then resolved ones. oldest: oldest first. updated: the most recently changed first. Pages are counted by position, so a ticket that changes while you page through may move onto a page you already read; oldest is the order that never moves.",
+      "open_first (the default): open tickets newest first, then resolved ones. oldest: oldest first. updated: the most recently changed first. Pages are counted by position, so a ticket that changes while you page through may move onto a page you already read; oldest is the order that never moves. Pass order or sort, not both.",
+  }),
+  sort: z.enum(LIST_SORTS).optional().meta({
+    description:
+      "Sort by one column instead: key, title, status (New, In Progress, Resolved), owner (unassigned last), filed or updated. Ties are broken by the key, so pages never repeat or skip a ticket that did not change.",
+  }),
+  direction: z.enum(SORT_DIRECTIONS).optional().meta({
+    description:
+      "The way the sort runs, asc or desc. Without it, filed and updated run newest first and the others asc. It needs sort.",
   }),
   page: z.coerce.number().int().min(1).max(100000).optional(),
   cursor: z.string().max(100).optional().meta({
@@ -218,22 +277,44 @@ export const listQuerySchema = z.object({
   }),
 });
 
-/** A cursor names the next page and its order. It is opaque to callers: pass back what you were given. */
-export function cursorFor(page: number, order: ListOrder): string {
-  return Buffer.from(JSON.stringify({ page, order })).toString("base64url");
+type ListQuery = z.infer<typeof listQuerySchema>;
+
+/** The sort a list query names, or undefined when it names none. */
+function requestedSort(query: ListQuery): ListSort | undefined {
+  if (query.order !== undefined && query.sort !== undefined) {
+    throw new ValidationError("Pass order or sort, not both.", {
+      sort: ["Leave out order when you pass sort."],
+    });
+  }
+  if (query.direction !== undefined && query.sort === undefined) {
+    throw new ValidationError("A direction needs a sort.", {
+      direction: ["Pass sort with direction, or leave direction out."],
+    });
+  }
+  return sortFrom(query.sort, query.direction, query.order);
 }
 
-/** The page and order a cursor names, or a validation error for one that was not made here. */
-function readCursor(cursor: string): { page: number; order: ListOrder } {
+/** A cursor names the next page and its sort. It is opaque to callers: pass back what you were given. */
+export function cursorFor(page: number, sort: ListSort): string {
+  const named = sort === "open_first" ? { page } : { page, by: sort.by, direction: sort.direction };
+  return Buffer.from(JSON.stringify(named)).toString("base64url");
+}
+
+/** The page and sort a cursor names, or a validation error for one that was not made here. */
+function readCursor(cursor: string): { page: number; sort: ListSort } {
   try {
-    const { page, order } = z
+    const named = z
       .object({
         page: z.number().int().min(1).max(100000),
-        // A cursor made before orders existed names none: it is the default order.
+        // A cursor made before sorts existed may name an order instead, or nothing at all.
         order: z.enum(LIST_ORDERS).default("open_first"),
+        by: z.enum(LIST_SORTS).optional(),
+        direction: z.enum(SORT_DIRECTIONS).optional(),
       })
       .parse(JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")));
-    return { page, order };
+    // The order defaults to open_first, so a cursor always names a sort.
+    const sort = sortFrom(named.by, named.direction, named.order) ?? "open_first";
+    return { page: named.page, sort };
   } catch {
     throw new ValidationError("That cursor was not made here.", {
       cursor: ["Pass back the next_cursor you were given, unchanged."],
@@ -242,21 +323,23 @@ function readCursor(cursor: string): { page: number; order: ListOrder } {
 }
 
 /**
- * Which page of the list to read, and in which order, from a list query already checked by
- * listQuerySchema. A cursor keeps its own order, so the next page is read the same way as the
- * one before it. An order that differs from the cursor's is refused, not guessed.
+ * Which page of the list to read, and how it is sorted, from a list query already checked by
+ * listQuerySchema. A cursor keeps its own sort, so the next page is read the same way as the
+ * one before it. A sort or order that differs from the cursor's is refused, not guessed.
  */
-export function listPosition(query: z.infer<typeof listQuerySchema>): {
-  page: number;
-  order: ListOrder;
-} {
+export function listPosition(query: ListQuery): { page: number; sort: ListSort } {
+  const asked = requestedSort(query);
   if (query.cursor === undefined) {
-    return { page: query.page ?? 1, order: query.order ?? "open_first" };
+    return { page: query.page ?? 1, sort: asked ?? "open_first" };
   }
   const position = readCursor(query.cursor);
-  if (query.order !== undefined && query.order !== position.order) {
-    throw new ValidationError("That cursor was made for another order.", {
-      order: ["Leave out order when you pass a cursor, or pass the order the cursor was made for."],
+  if (asked !== undefined && !sameSort(asked, position.sort)) {
+    // Name the field the caller passed: sort, or the older order.
+    const field = query.sort !== undefined ? "sort" : "order";
+    throw new ValidationError(`That cursor was made for another ${field}.`, {
+      [field]: [
+        "Leave out order and sort when you pass a cursor, or pass the ones it was made for.",
+      ],
     });
   }
   return position;

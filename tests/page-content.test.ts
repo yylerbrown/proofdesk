@@ -99,7 +99,10 @@ describe("the ticket list", () => {
     await as(app, teamActor).post("/api/tickets/SUP-2/take");
 
     const html = await page(as(app, teamActor), "/tickets");
-    const headings = html.querySelectorAll("thead th").map((th) => th.text);
+    // A sortable header also holds its name as plain words for the phone layout; read those.
+    const headings = html
+      .querySelectorAll("thead th")
+      .map((th) => (th.querySelector("span.sort-label") ?? th).text);
     expect(headings).toEqual(["Key", "Title", "Status", "Owner", "Waiting on", "Filed"]);
     const rows = html.querySelectorAll("tbody tr").map((tr) => tr.querySelectorAll("td"));
     expect(rows[0]?.[3]?.text).toBe("Team Member");
