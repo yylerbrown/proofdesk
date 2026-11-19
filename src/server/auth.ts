@@ -1,13 +1,23 @@
 import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
-import { type GithubOptions, type GithubProfile, github } from "better-auth/social-providers";
+import { parseStringBoolean, verifyProviderIdToken } from "better-auth/oauth2";
+import {
+  type GithubOptions,
+  type GithubProfile,
+  github,
+  type MicrosoftEntraIDProfile,
+  type MicrosoftOptions,
+  microsoft,
+} from "better-auth/social-providers";
 import type { Role } from "./actor.js";
-import type { Config, SignInConfig } from "./config.js";
+import type { Config, MicrosoftConfig, SignInConfig } from "./config.js";
 import type { Db } from "./db.js";
+import type { SignInWay } from "./sign-in-notice.js";
 
 /**
- * Builds the sign-in library (Better Auth) with GitHub as the only way in. It keeps people
- * and sessions in the same database, in the tables of migration 0006.
+ * Builds the sign-in library (Better Auth) with GitHub as the way in, and Microsoft beside it
+ * when its settings are present. It keeps people and sessions in the same database, in the
+ * tables of migration 0006.
  */
 export function createAuth(db: Db, signIn: SignInConfig, clientIpHeader: string | undefined) {
   const githubSettings = {
@@ -37,7 +47,7 @@ export function createAuth(db: Db, signIn: SignInConfig, clientIpHeader: string 
   async function whoCameBack(token: Parameters<typeof askGithub.getUserInfo>[0]) {
     const info = await askGithub.getUserInfo(token);
     if (info === null || info.user.emailVerified === true) return info;
-    if (hasGithubAccount(db, String(info.data.id))) return info;
+    if (hasAccount(db, "github", String(info.data.id))) return info;
     return { ...info, user: { ...info.user, email: null } };
   }
 
@@ -47,6 +57,7 @@ export function createAuth(db: Db, signIn: SignInConfig, clientIpHeader: string 
     baseURL: signIn.baseUrl,
     socialProviders: {
       github: { ...githubSettings, getUserInfo: whoCameBack },
+      ...(signIn.microsoft === null ? {} : { microsoft: microsoftProvider(db, signIn.microsoft) }),
     },
     // One person, one GitHub account. By default the library would attach a second GitHub
     // account to an existing person when both show the same verified email address. Roles
@@ -101,6 +112,60 @@ export function createAuth(db: Db, signIn: SignInConfig, clientIpHeader: string 
 
 export type Auth = ReturnType<typeof createAuth>;
 
+/**
+ * Microsoft sign-in for one organization: the tenant in the settings. The library's own
+ * Microsoft provider asks that tenant's sign-in page and token address, never the shared
+ * ones that take any Microsoft account.
+ */
+function microsoftProvider(db: Db, settings: MicrosoftConfig) {
+  const microsoftSettings = {
+    clientId: settings.clientId,
+    clientSecret: settings.clientSecret,
+    tenantId: settings.tenantId,
+    // Only who the person is, their name and their email address. The library's default
+    // also asks to read their Microsoft profile and to keep signing in without them
+    // (offline_access), which the app never does.
+    disableDefaultScope: true,
+    scope: ["openid", "profile", "email"],
+    // Reading the profile picture needs a further permission, so there is no picture.
+    disableProfilePhoto: true,
+    mapProfileToUser: (profile: MicrosoftEntraIDProfile) => ({
+      name: shownName(profile.name, profile.preferred_username ?? ""),
+    }),
+  } satisfies MicrosoftOptions;
+  // Microsoft asked the library's own way, so the app can check the answer before the library.
+  const askMicrosoft = microsoft(microsoftSettings);
+
+  /**
+   * Who came back from Microsoft. Microsoft's answer holds an ID token, signed by Microsoft,
+   * that says who the person is and which organization signed them in. It is checked here:
+   * Microsoft's signature, that it was made for this app, by the tenant in the settings,
+   * within the last hour. Anything else signs nobody in, and the browser goes to the sign-in
+   * page with error=unable_to_get_user_info.
+   *
+   * As with GitHub, an email address Microsoft has not verified is withheld, so the library
+   * sends the browser to the sign-in page with error=email_not_found. Microsoft calls an
+   * address verified with an optional claim of the app registration: email_verified, the
+   * verified address lists, or xms_edov, which says the organization owns the address's
+   * domain.
+   */
+  async function whoCameBack(token: Parameters<typeof askMicrosoft.getUserInfo>[0]) {
+    if (token.idToken === undefined) return null;
+    const genuine = await verifyProviderIdToken(askMicrosoft, token.idToken);
+    if (!genuine) return null;
+    const info = await askMicrosoft.getUserInfo(token);
+    if (info === null || info.data.tid !== settings.tenantId) return null;
+    const domainOwned = parseStringBoolean(info.data.xms_edov) === true;
+    if (info.user.emailVerified === true || domainOwned) {
+      return { ...info, user: { ...info.user, emailVerified: true } };
+    }
+    if (hasAccount(db, "microsoft", info.data.oid)) return info;
+    return { ...info, user: { ...info.user, email: null } };
+  }
+
+  return { ...microsoftSettings, getUserInfo: whoCameBack };
+}
+
 /** What an account hook writes over GitHub's tokens, in place of what the library would. */
 function withoutTokens() {
   return { data: { accessToken: null, refreshToken: null, idToken: null } };
@@ -128,12 +193,23 @@ function shownName(name: string | null, login: string): string {
     .join("");
 }
 
-/** True when someone here has already signed in with this GitHub user number. */
-function hasGithubAccount(db: Db, githubId: string): boolean {
+/**
+ * True when someone here has already signed in this way with this account: a GitHub user
+ * number, or a Microsoft account's object id.
+ */
+function hasAccount(db: Db, way: SignInWay, accountId: string): boolean {
   const row = db
-    .prepare(`SELECT 1 FROM "account" WHERE "providerId" = 'github' AND "accountId" = ?`)
-    .get(githubId);
+    .prepare(`SELECT 1 FROM "account" WHERE "providerId" = ? AND "accountId" = ?`)
+    .get(way, accountId);
   return row !== undefined;
+}
+
+/** How a signed-in person signed in, or undefined for someone with no account here. */
+export function signInWayOf(db: Db, userId: string): SignInWay | undefined {
+  const row = db.prepare(`SELECT "providerId" FROM "account" WHERE "userId" = ?`).get(userId) as
+    { providerId: string } | undefined;
+  if (row?.providerId === "github" || row?.providerId === "microsoft") return row.providerId;
+  return undefined;
 }
 
 /** The GitHub user number of a signed-in person, or undefined if they have no GitHub account. */

@@ -6,9 +6,13 @@
   <dd class="user-text account-name"><%= name %></dd>
   <dt>Email address</dt>
   <% if (email) { %>
-  <dd><span class="user-text account-email"><%= email %></span><br /><small>From your GitHub account; change it on GitHub.</small></dd>
+  <dd><span class="user-text account-email"><%= email %></span><% if (emailFrom) { %><br /><small><%= emailFrom %></small><% } %></dd>
   <% } else { %>
   <dd><small class="account-email"><%= madeUpLine %></small></dd>
+  <% } %>
+  <% if (signedInWith) { %>
+  <dt>Signed in with</dt>
+  <dd class="account-way"><%= signedInWith %></dd>
   <% } %>
   <dt>Role</dt>
   <dd><span class="account-role"><%= roleWord %></span><br /><small class="account-allows"><%= roleAllows %></small>

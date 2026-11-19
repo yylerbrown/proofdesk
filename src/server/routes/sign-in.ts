@@ -1,14 +1,20 @@
 import { fromNodeHeaders } from "better-auth/node";
-import { Router } from "express";
+import { type Request, type Response, Router } from "express";
 import { DEV_COOKIE, entrancePeople } from "../actor.js";
-import type { Auth } from "../auth.js";
+import { type Auth, signInWayOf } from "../auth.js";
 import type { Config } from "../config.js";
+import type { Db } from "../db.js";
 import { HttpError } from "../errors.js";
-import { noticeForError, rememberSignInNotice, takeSignInNotice } from "../sign-in-notice.js";
+import {
+  noticeForError,
+  rememberSignInNotice,
+  type SignInWay,
+  takeSignInNotice,
+} from "../sign-in-notice.js";
 import { parseKey } from "../tickets/keys.js";
 
-// The sign-in page and its two ways in: GitHub, when its settings are present, and the
-// development entrance, when DEV_SIGN_IN is on. The configuration refuses the development
+// The sign-in page and its ways in: GitHub, when its settings are present, Microsoft beside
+// it when its settings are present too, and the development entrance, when DEV_SIGN_IN is on. The configuration refuses the development
 // entrance in production, and on any server with the GitHub settings, so the two never
 // appear together.
 /**
@@ -35,12 +41,26 @@ export function ticketFromNext(next: string, prefix: string): string | null {
   return parseKey(prefix, key) === null ? null : key;
 }
 
+/**
+ * Which way a failed return started, from "?via=..." on the sign-in page's address. Only a
+ * site with both ways in adds it. Without it, a site with GitHub alone means GitHub, and a
+ * site with both cannot tell.
+ */
+function wayOfReturn(via: unknown, bothWays: boolean): SignInWay | null {
+  if (!bothWays) return "github";
+  if (via === "github" || via === "microsoft") return via;
+  return null;
+}
+
 export function signInRouter(
   config: Config,
   auth: Auth | null,
+  db: Db,
   demoReady: () => boolean = () => false,
 ): Router {
   const router = Router();
+  // True on a site that offers Microsoft beside GitHub.
+  const bothWays = auth !== null && config.signIn?.microsoft != null;
 
   router.get("/sign-in", (req, res) => {
     const people = entrancePeople(config);
@@ -53,8 +73,11 @@ export function signInRouter(
     // shown to them.
     const kept = takeSignInNotice(req, res);
     const signedOut = req.actor === null;
+    const way = wayOfReturn(req.query.via, bothWays);
     const failed =
-      auth === null || !signedOut ? null : noticeForError(req.query.error, config.signIn?.baseUrl);
+      auth === null || !signedOut
+        ? null
+        : noticeForError(req.query.error, config.signIn?.baseUrl, way, bothWays);
     const notice = failed ?? kept;
     // On the demo this page is about the demo. Elsewhere it welcomes someone already signed in.
     let title = req.actor !== null ? "Welcome" : "Sign in";
@@ -63,6 +86,7 @@ export function signInRouter(
       title,
       people,
       github: auth !== null,
+      microsoft: bothWays,
       next,
       // When the visitor followed a link to one ticket, the page names it.
       nextTicket: ticketFromNext(next, config.ticketPrefix),
@@ -80,21 +104,25 @@ export function signInRouter(
     });
   });
 
-  // Starts a GitHub sign-in. The library answers with the GitHub address to go to and a
-  // short-lived cookie it uses to recognise the browser when GitHub sends it back to
-  // /api/auth/callback/github. The library handles that return itself.
-  router.post("/sign-in/github", async (req, res) => {
-    if (auth === null) {
+  // Starts a GitHub or Microsoft sign-in. The library answers with the address to go to and
+  // a short-lived cookie it uses to recognise the browser when GitHub or Microsoft sends it
+  // back to /api/auth/callback/github or /api/auth/callback/microsoft. The library handles
+  // that return itself.
+  async function startSignIn(way: SignInWay, req: Request, res: Response) {
+    if (auth === null || (way === "microsoft" && !bothWays)) {
       throw new HttpError(404, "not_found", "There is no page at this address.");
     }
     const next = safeNext(req.body?.next);
     // A failed return comes back to the sign-in page with the same next, so signing in again
     // still opens the page the visitor wanted. The ticket list needs no next: it is the default.
-    const errorPage =
-      next === "/tickets" ? "/sign-in" : `/sign-in?next=${encodeURIComponent(next)}`;
+    // On a site with both ways in, it also says which way failed, so the message names it.
+    const back = new URLSearchParams();
+    if (next !== "/tickets") back.set("next", next);
+    if (bothWays) back.set("via", way);
+    const errorPage = back.size === 0 ? "/sign-in" : `/sign-in?${back.toString()}`;
     const started = await auth.api.signInSocial({
       body: {
-        provider: "github",
+        provider: way,
         callbackURL: next,
         errorCallbackURL: errorPage,
       },
@@ -107,7 +135,10 @@ export function signInRouter(
     // ended session.
     res.append("Set-Cookie", started.headers.getSetCookie());
     res.redirect(303, started.response.url);
-  });
+  }
+
+  router.post("/sign-in/github", (req, res) => startSignIn("github", req, res));
+  router.post("/sign-in/microsoft", (req, res) => startSignIn("microsoft", req, res));
 
   // The development entrance and the demo entrance share this route. Each offers its own
   // people, and neither is open unless its setting is on.
@@ -133,10 +164,10 @@ export function signInRouter(
 
   // Ends both kinds of sign-in. The library deletes the session row and clears its cookie.
   router.post("/sign-out", async (req, res) => {
-    // Only someone signed in with GitHub gets the signed-out message: it is about GitHub
-    // accounts. The configuration never offers made-up people where GitHub sign-in is on,
-    // so on a GitHub site anyone signed in came through GitHub.
-    const wasGithub = auth !== null && req.actor !== null;
+    // Only someone signed in with GitHub or Microsoft gets the signed-out message: it is
+    // about their account there. The configuration never offers made-up people where GitHub
+    // sign-in is on, so on such a site anyone signed in came through one of the two.
+    const way = auth !== null && req.actor !== null ? signInWayOf(db, req.actor.id) : undefined;
     if (auth !== null) {
       const ended = await auth.api.signOut({
         headers: fromNodeHeaders(req.headers),
@@ -145,7 +176,8 @@ export function signInRouter(
       res.append("Set-Cookie", ended.headers.getSetCookie());
     }
     res.clearCookie(DEV_COOKIE);
-    if (wasGithub) rememberSignInNotice(res, "signedOut");
+    if (way === "github") rememberSignInNotice(res, "signedOut");
+    if (way === "microsoft") rememberSignInNotice(res, "signedOutMicrosoft");
     res.redirect(303, "/sign-in");
   });
 

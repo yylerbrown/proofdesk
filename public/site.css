@@ -1918,6 +1918,23 @@ main > p:is([role="status"], [role="alert"])[tabindex="-1"]:focus {
   -webkit-mask: url("/assets/github-mark.svg") center / contain no-repeat;
   mask: url("/assets/github-mark.svg") center / contain no-repeat;
 }
+/* Microsoft's mark on its sign-in button, drawn the same way. */
+.microsoft-mark {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: var(--pd-space-2);
+  vertical-align: -0.12em;
+  background-color: currentColor;
+  -webkit-mask: url("/assets/microsoft-mark.svg") center / contain no-repeat;
+  mask: url("/assets/microsoft-mark.svg") center / contain no-repeat;
+}
+@media (forced-colors: active) {
+  .microsoft-mark {
+    background-color: ButtonText;
+    forced-color-adjust: none;
+  }
+}
 /* In forced colours the browser would paint the fill as the button's background, hiding it. */
 @media (forced-colors: active) {
   .github-mark {

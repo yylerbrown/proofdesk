@@ -23,6 +23,11 @@ const schema = z.object({
   BETTER_AUTH_URL: z.url({ protocol: /^https?$/ }).optional(),
   GITHUB_CLIENT_ID: z.string().min(1).optional(),
   GITHUB_CLIENT_SECRET: z.string().min(1).optional(),
+  // Microsoft sign-in, beside GitHub: the app registration's two ids and its secret. The
+  // tenant is the directory id, a GUID, so only that one organization's people can sign in.
+  MICROSOFT_CLIENT_ID: z.guid("must be the app registration's Application (client) ID").optional(),
+  MICROSOFT_CLIENT_SECRET: z.string().min(1).optional(),
+  MICROSOFT_TENANT_ID: z.guid("must be the Directory (tenant) ID, a GUID").optional(),
   CLIENT_IP_HEADER: z
     .string()
     .regex(/^[a-z0-9-]+$/, "must be a header name in lower case, for example fly-client-ip")
@@ -57,6 +62,12 @@ const SIGN_IN_NAMES = [
   "GITHUB_CLIENT_SECRET",
 ] as const;
 
+const MICROSOFT_NAMES = [
+  "MICROSOFT_CLIENT_ID",
+  "MICROSOFT_CLIENT_SECRET",
+  "MICROSOFT_TENANT_ID",
+] as const;
+
 /** The two settings email notices need. They are set together or not at all. */
 export type MailConfig = {
   /** The mail server's address. It may hold a password, so it is never logged or shown. */
@@ -71,6 +82,16 @@ export type SignInConfig = {
   baseUrl: string;
   githubClientId: string;
   githubClientSecret: string;
+  /** Microsoft sign-in, beside GitHub, or null when its settings are not set. */
+  microsoft: MicrosoftConfig | null;
+};
+
+/** The three settings Microsoft sign-in needs. They are set together or not at all. */
+export type MicrosoftConfig = {
+  clientId: string;
+  clientSecret: string;
+  /** The one organization whose people may sign in, in lower case. */
+  tenantId: string;
 };
 
 export type Config = {
@@ -118,6 +139,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     BETTER_AUTH_URL: env.BETTER_AUTH_URL || undefined,
     GITHUB_CLIENT_ID: env.GITHUB_CLIENT_ID || undefined,
     GITHUB_CLIENT_SECRET: env.GITHUB_CLIENT_SECRET || undefined,
+    MICROSOFT_CLIENT_ID: env.MICROSOFT_CLIENT_ID || undefined,
+    MICROSOFT_CLIENT_SECRET: env.MICROSOFT_CLIENT_SECRET || undefined,
+    MICROSOFT_TENANT_ID: env.MICROSOFT_TENANT_ID || undefined,
     CLIENT_IP_HEADER: env.CLIENT_IP_HEADER || undefined,
     TEAM_GITHUB_IDS: env.TEAM_GITHUB_IDS || undefined,
     ADMIN_GITHUB_IDS: env.ADMIN_GITHUB_IDS || undefined,
@@ -145,6 +169,18 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const missing = SIGN_IN_NAMES.filter((name) => data[name] === undefined);
   if (missing.length > 0 && missing.length < SIGN_IN_NAMES.length) {
     throw new Error(`Invalid environment configuration: also set ${missing.join(", ")}.`);
+  }
+  // The Microsoft settings come as a set too, and only beside the four above: Microsoft is a
+  // second way in on a site that already signs people in with GitHub.
+  const microsoftMissing = MICROSOFT_NAMES.filter((name) => data[name] === undefined);
+  if (microsoftMissing.length > 0 && microsoftMissing.length < MICROSOFT_NAMES.length) {
+    throw new Error(`Invalid environment configuration: also set ${microsoftMissing.join(", ")}.`);
+  }
+  if (microsoftMissing.length === 0 && missing.length > 0) {
+    throw new Error(
+      `Invalid environment configuration: Microsoft sign-in is offered beside GitHub sign-in. ` +
+        `Also set ${missing.join(", ")}.`,
+    );
   }
   // The development entrance lets anyone pick who they are, the admin included. A server
   // that signs real people in through GitHub never offers it, whatever NODE_ENV says.
@@ -191,6 +227,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
           baseUrl: data.BETTER_AUTH_URL!,
           githubClientId: data.GITHUB_CLIENT_ID!,
           githubClientSecret: data.GITHUB_CLIENT_SECRET!,
+          microsoft:
+            microsoftMissing.length > 0
+              ? null
+              : {
+                  clientId: data.MICROSOFT_CLIENT_ID!,
+                  clientSecret: data.MICROSOFT_CLIENT_SECRET!,
+                  tenantId: data.MICROSOFT_TENANT_ID!.toLowerCase(),
+                },
         };
 
   return {

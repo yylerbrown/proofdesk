@@ -63,6 +63,7 @@ All of them are in `.env.example`, with comments.
 | `DEV_SIGN_IN`                                                                       | `on` offers four made-up people. Development only.                                                                                                                         |
 | `DEMO`                                                                              | `on` makes this server the demo: sample data, three demo people, no GitHub sign-in.                                                                                        |
 | `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | GitHub sign-in. All four or none. Required in production unless `DEMO=on`.                                                                                                 |
+| `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `MICROSOFT_TENANT_ID`             | Optional: Microsoft sign-in beside GitHub, for one organization. All three or none, and only with the four above.                                                          |
 | `TEAM_GITHUB_IDS`, `ADMIN_GITHUB_IDS`                                               | GitHub user IDs, separated by commas. These people keep that role and show as locked on **People**; an admin chooses everyone else's, a customer by default.               |
 | `CLIENT_IP_HEADER`                                                                  | Behind a proxy, the header with the visitor's address, for rate limits. Fly.io: `fly-client-ip`.                                                                           |
 | `DEMO_URL`                                                                          | Optional, on the production site: the demo's https address, linked from the sign-in page as "Try the demo without signing in".                                             |
@@ -81,6 +82,24 @@ All of them are in `.env.example`, with comments.
    address and `BETTER_AUTH_SECRET` set to the output of `openssl rand -base64 32`.
 3. Set `DEV_SIGN_IN=off`. To make yourself an admin, put your GitHub user ID (the `id` at
    `https://api.github.com/users/<your user name>`) in `ADMIN_GITHUB_IDS`.
+
+### Microsoft sign-in, beside GitHub
+
+Optional, for the people of one organization. It needs the four GitHub settings too.
+
+1. In the Microsoft Entra admin center, **App registrations → New registration**, single
+   tenant, with the redirect URI (platform **Web**) your address followed by
+   `/api/auth/callback/microsoft`.
+2. Copy the **Application (client) ID** into `MICROSOFT_CLIENT_ID`, the **Directory (tenant)
+   ID** into `MICROSOFT_TENANT_ID`, and a new client secret's **Value** (under **Certificates &
+   secrets**; note when it expires) into `MICROSOFT_CLIENT_SECRET`.
+3. **Token configuration → Add optional claim → ID**: tick `email` and `xms_edov`, which says
+   the organization owns the address's domain. Without them everyone is refused for want of a
+   verified email address.
+
+Proofdesk asks only for `openid`, `profile` and `email`, so the default `User.Read` permission
+can be removed. Newcomers are customers; an admin chooses roles on **People**, which shows how
+each person signed in. An email address used one way cannot sign in the other way.
 
 The `.env` file and the http address are for `npm run dev`. A production build (`npm start`)
 does not read `.env` and refuses an http address: pass the four settings as real environment
@@ -139,6 +158,10 @@ Done once, already done:
 
    The server refuses to start in production without the four sign-in settings, or with an
    address that does not start with `https://`.
+
+3. **Microsoft sign-in, not set yet.** Register an app as above with the redirect URI
+   `https://proofdesk.fly.dev/api/auth/callback/microsoft`, then set the three Microsoft
+   settings with `fly secrets set --app proofdesk`, which restarts the site with both buttons.
 
 The commands below name the demo app; for the real site use `--app proofdesk`.
 

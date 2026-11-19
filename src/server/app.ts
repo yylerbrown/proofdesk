@@ -105,8 +105,12 @@ export function createApp(config: Config, db: Db, options: { log?: LogLine } = {
         directives: {
           "style-src": ["'self'"],
           // Forms post only to this server. The GitHub sign-in form is answered with a
-          // redirect to GitHub, which browsers also count, so GitHub is allowed too.
-          "form-action": ["'self'", "https://github.com"],
+          // redirect to GitHub, which browsers also count, so GitHub is allowed too, and
+          // Microsoft's sign-in page when Microsoft sign-in is on.
+          "form-action":
+            config.signIn?.microsoft == null
+              ? ["'self'", "https://github.com"]
+              : ["'self'", "https://github.com", "https://login.microsoftonline.com"],
           // Browsers are told to switch to HTTPS only in production. On a development
           // machine the server speaks plain HTTP and the switch would break the page.
           "upgrade-insecure-requests": config.nodeEnv === "production" ? [] : null,
@@ -162,13 +166,16 @@ export function createApp(config: Config, db: Db, options: { log?: LogLine } = {
   // so the library's own API (which can rename a person, hand out their GitHub token or list
   // their sessions) is never offered. The return is a GET, and the library reads no body then.
   const auth = config.signIn === null ? null : createAuth(db, config.signIn, config.clientIpHeader);
+  // Microsoft's return, /api/auth/callback/microsoft, is let through the same way when
+  // Microsoft sign-in is on.
   if (auth !== null) {
-    const githubReturn = "/api/auth/callback/github";
+    const returns = ["/api/auth/callback/github"];
+    if (config.signIn?.microsoft != null) returns.push("/api/auth/callback/microsoft");
     const library = toNodeHandler(auth);
-    app.get(githubReturn, (req, res, next) => {
+    app.get(returns, (req, res, next) => {
       // Express also matches HEAD, other letter cases and a trailing slash here. Only the
-      // return exactly as GitHub sends it goes on to the library.
-      if (req.method !== "GET" || req.path !== githubReturn) {
+      // return exactly as GitHub or Microsoft sends it goes on to the library.
+      if (req.method !== "GET" || !returns.includes(req.path)) {
         next();
         return;
       }
@@ -232,10 +239,11 @@ export function createApp(config: Config, db: Db, options: { log?: LogLine } = {
   app.use(writeLimit);
   app.post("/tickets", filingLimit);
   app.post("/sign-in/github", signInLimit);
+  app.post("/sign-in/microsoft", signInLimit);
   app.post("/demo/connection", demoConnectionLimit);
   app.use(express.urlencoded({ extended: false, limit: BODY_LIMIT }));
   app.use(assistantRunRouter(rootDir, () => tickets.recordedRunKey()));
-  app.use(signInRouter(config, auth, () => tickets.hasDemoSeed()));
+  app.use(signInRouter(config, auth, db, () => tickets.hasDemoSeed()));
   app.use(pagesRouter(tickets));
   app.use(peopleRouter(createPeopleService(db, config)));
   app.use(noticesRouter(tickets, db, config.ticketPrefix));

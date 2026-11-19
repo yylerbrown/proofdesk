@@ -71,6 +71,7 @@ describe("loadConfig", () => {
       baseUrl: SIGN_IN_ENV.BETTER_AUTH_URL,
       githubClientId: SIGN_IN_ENV.GITHUB_CLIENT_ID,
       githubClientSecret: SIGN_IN_ENV.GITHUB_CLIENT_SECRET,
+      microsoft: null,
     });
     expect(() => loadConfig({ ...SIGN_IN_ENV, GITHUB_CLIENT_SECRET: "" })).toThrow(
       /also set GITHUB_CLIENT_SECRET/,
