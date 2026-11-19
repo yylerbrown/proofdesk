@@ -19,6 +19,23 @@ import type { Ticket } from "./types.js";
 // own Yes, the other way a ticket is resolved, is in customer-question.ts.
 
 /**
+ * Checks what a resolve with a reason sends: a reason from the list, a note for Other and the
+ * other ticket for a duplicate. The change to many tickets at once checks it once up front.
+ */
+export function readResolveInput(input: unknown) {
+  const fields = parse(resolveSchema, input);
+  if (fields.reason === "other" && !fields.note) {
+    throw new ValidationError("Say why, for Other.", { note: ["Say why, for Other."] });
+  }
+  if (fields.reason === "duplicate" && !fields.duplicate_of) {
+    throw new ValidationError("Name the ticket this one duplicates.", {
+      duplicate_of: ["Name the ticket this one duplicates, such as SUP-3."],
+    });
+  }
+  return fields;
+}
+
+/**
  * isOnTeam answers whether a person may own a ticket now. A ticket reopened while its owner is
  * not goes back to New with no owner.
  */
@@ -40,15 +57,7 @@ export function createResolveAndReopen(shared: Shared, isOnTeam: (personId: stri
       const row = db.transaction(() => {
         let before = requireRow(key, actor);
         requirePermission(actor, "resolve_with_reason", before);
-        const { reason, note, duplicate_of, expected_version } = parse(resolveSchema, input);
-        if (reason === "other" && !note) {
-          throw new ValidationError("Say why, for Other.", { note: ["Say why, for Other."] });
-        }
-        if (reason === "duplicate" && !duplicate_of) {
-          throw new ValidationError("Name the ticket this one duplicates.", {
-            duplicate_of: ["Name the ticket this one duplicates, such as SUP-3."],
-          });
-        }
+        const { reason, note, duplicate_of, expected_version } = readResolveInput(input);
         requireNotArchived(key, before);
         if (before.owner_id !== null && before.owner_id !== actor.id && actor.role !== "admin") {
           throw new HttpError(

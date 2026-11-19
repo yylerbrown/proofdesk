@@ -260,3 +260,30 @@ export const errorOutput = z
     }),
   })
   .meta({ id: "Error" });
+
+/** What a change to many tickets did: the change, the keys changed, and why each other one was not. */
+export const bulkOutput = z.strictObject({
+  change: z.union([
+    z.strictObject({
+      status: z.enum(TICKET_STATUSES),
+      reason: z.enum(RESOLVE_REASONS).optional(),
+      note: z.string().optional(),
+      duplicate_of: z.string().optional(),
+    }),
+    z.strictObject({ owner: z.string() }),
+  ]),
+  changed: z.array(z.string()).meta({ description: "The keys of the tickets changed." }),
+  not_changed: z
+    .array(
+      z.strictObject({
+        key: z.string(),
+        status: z.number().int().meta({
+          description:
+            "What the same change to this one ticket answers; 200 when it was already so.",
+        }),
+        code: z.string(),
+        message: z.string(),
+      }),
+    )
+    .meta({ description: "Each ticket left as it was, and why." }),
+});
