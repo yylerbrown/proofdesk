@@ -1,0 +1,37 @@
+import { describe, expect, it } from "vitest";
+import { agentPaste } from "../src/server/connections/agent-paste.js";
+
+// The one message a person pastes into their AI agent when a key is made.
+
+const address = "https://desk.example";
+const key = "pd_12345678_abcdefghijklmnopqrstuvwxyz012345";
+
+describe("the message for an AI agent", () => {
+  it("on the real site, names the page for assistants, the key, and to list the handed tickets", () => {
+    expect(agentPaste({ address, key, demo: false })).toBe(
+      [
+        "Please connect to Proofdesk, our support desk.",
+        "",
+        "1. Read https://desk.example/llms.txt first. It explains the API and the rules.",
+        `2. Send this header on every request to https://desk.example/api: Authorization: Bearer ${key}`,
+        "3. List the tickets handed to you with GET https://desk.example/api/tickets, and tell me what each one needs. Change nothing yet.",
+      ].join("\n"),
+    );
+  });
+
+  it("on the demo, names the sample ticket and asks for a test spec for its owner to review", () => {
+    const message = agentPaste({ address, key, demo: true, sampleKey: "SUP-4" });
+    expect(message).toContain("Proofdesk demo");
+    expect(message).toContain("GET https://desk.example/api/tickets (there is one, SUP-4).");
+    expect(message).toContain(
+      "propose a test spec for it, and write a short note asking its owner to review the spec",
+    );
+    expect(message).not.toContain("Change nothing yet");
+  });
+
+  it("on the demo without a recorded sample, still says to list the handed tickets", () => {
+    const message = agentPaste({ address, key, demo: true, sampleKey: null });
+    expect(message).toContain("GET https://desk.example/api/tickets.");
+    expect(message).not.toContain("there is one");
+  });
+});

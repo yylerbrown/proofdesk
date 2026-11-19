@@ -5,6 +5,7 @@ import type { Express } from "express";
 import { parse } from "node-html-parser";
 import request from "supertest";
 import { afterEach, describe, expect, it } from "vitest";
+import { keyOnPage } from "./key-on-page.js";
 import {
   admin,
   as,
@@ -29,7 +30,7 @@ afterEach(async () => {
 
 async function issue(app: Express, scopes: string[], name = "Night shift") {
   const res = await admin(app).post("/connections").type("form").send({ name, scopes });
-  const key = parse(res.text).querySelector("input.key")!.getAttribute("value")!;
+  const key = keyOnPage(res.text);
   // The owner hands SUP-1 to this connection, when there is one: agents see only those.
   if ((await admin(app).get("/api/tickets/SUP-1")).status === 200) {
     await handToAgent(app, "SUP-1", key);

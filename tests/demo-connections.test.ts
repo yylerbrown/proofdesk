@@ -11,6 +11,7 @@ import { DEMO_CONNECTION_LIMIT } from "../src/server/connections/service.js";
 import { seedDemo } from "../src/server/demo.js";
 import { createTicketService, LIST_PAGE_SIZE } from "../src/server/tickets/service.js";
 import { buildTestApp, closeServers, listenLocally, visitor } from "./helpers.js";
+import { keyOnPage } from "./key-on-page.js";
 
 // A visitor's own demo connection: what it is given, and that it never reads what another
 // visitor or another connection wrote.
@@ -38,7 +39,7 @@ const asDemo = (app: Express, id: string) => visitor(app).set("Cookie", `${DEV_C
 async function getConnection(app: Express) {
   const res = await visitor(app).post("/demo/connection");
   expect(res.status, res.text).toBe(200);
-  return parse(res.text).querySelector("input.key")!.getAttribute("value")!;
+  return keyOnPage(res.text);
 }
 
 const api = (app: Express, key: string) => ({
@@ -74,9 +75,6 @@ describe("getting a demo connection", () => {
     const res = await visitor(app).post("/demo/connection");
     const page = parse(res.text);
     expect(page.querySelector("h1")?.text).toBe("Your demo connection");
-    expect(page.querySelector("main")?.text).toContain(
-      "never receives what other visitors' assistants write",
-    );
     const expires = page.querySelector("main time")?.getAttribute("datetime");
     const hours = (Date.parse(expires!) - Date.now()) / 3600000;
     expect(hours).toBeGreaterThan(23);
@@ -231,12 +229,12 @@ describe("a demo connection asking to resolve", () => {
 });
 
 describe("the page that shows a demo key", () => {
-  it("leads back to the page about the demo, which a demo visitor can open, not to Connections", async () => {
+  it("leaves the way back to the footer's About this demo, which a demo visitor can open, not to Connections", async () => {
     const { app } = buildDemo();
     const html = parse(
       (await visitor(app).post("/demo/connection").set("Sec-Fetch-Site", "same-origin")).text,
     );
-    expect(html.querySelector("a[href='/sign-in']")?.text).toBe("Back to About this demo");
+    expect(html.querySelector("footer a[href='/sign-in']")?.text).toBe("About this demo");
     expect(html.querySelector("main a[href='/connections']")).toBeNull();
   });
 
@@ -303,36 +301,45 @@ describe("the key page's address, opened again", () => {
     const again = await visitor(app).get("/demo/connection");
     expect([again.status, again.headers.location]).toEqual([303, "/sign-in#connect"]);
     const welcome = parse((await visitor(app).get("/sign-in")).text);
-    expect(welcome.querySelector("#connect")?.text).toContain("A key is shown only once");
+    expect(welcome.querySelector("#connect form[action='/demo/connection']")).not.toBeNull();
     // Not on the real site, which has no demo keys.
     expect((await visitor(buildTestApp().app).get("/demo/connection")).status).toBe(404);
   });
 });
 
 describe("the demo key page", () => {
-  it("says what to do next: check the connection, ask on the sample, and where to see the result", async () => {
+  it("is one message to paste, one sentence about the key, and the manual setup folded away", async () => {
     const { app, sample } = buildDemo();
-    const page = parse((await visitor(app).post("/demo/connection")).text, {
-      blockTextElements: { script: true, style: true },
-    });
-    const steps = page
-      .querySelectorAll("ol.first-steps li")
-      .map((li) => li.text.replace(/\s+/g, " ").trim());
-    expect(steps[0]).toBe("Start Claude Code there and type /mcp to see proofdesk connected.");
-    expect(steps[1]).toContain(`Then ask: Using Proofdesk, write a test spec for ${sample}`);
-    expect(steps[2]).toBe(
-      `To see what it wrote, view as Demo Team Member with Switch role at the top and open ${sample}.`,
+    const res = await visitor(app).post("/demo/connection");
+    const page = parse(res.text, { blockTextElements: { script: true, style: true } });
+    const column = page.querySelector(".connection-created")!;
+    // In order: the heading, the one line, the box, its Copy button, the sentence, the fold.
+    expect(
+      column.childNodes.filter((n) => n.nodeType === 1).map((n) => (n as typeof column).tagName),
+    ).toEqual(["H1", "P", "PRE", "BUTTON", "P", "DETAILS"]);
+    expect(column.querySelector("h1 + p")?.text).toBe("Paste this into your AI agent:");
+    const message = page.querySelector("#agent-paste code")!.text;
+    expect(message).toContain(`Authorization: Bearer ${keyOnPage(res.text)}`);
+    expect(message).toMatch(/http:\/\/127\.0\.0\.1(:\d+)?\/llms\.txt/);
+    expect(message).toContain(`(there is one, ${sample})`);
+    expect(message).toContain("propose a test spec for it");
+    expect(column.querySelector(".key-once")?.text).toMatch(
+      /^The key is shown only once, on this page, and stops working .+\.$/,
     );
-    const text = page.querySelector("main")!.text;
-    expect(text).toContain("add --scope user to use it everywhere");
-    expect(text).toContain("run claude mcp remove proofdesk first");
-    expect(page.querySelector("a[href='/api']")?.text).toBe("The API guide");
-    expect(page.querySelector("a[href='/assistant-run']")?.text).toBe("See an assistant's work");
-    // Commands keep their lines, so a flag is never split across two.
-    expect(page.querySelectorAll("pre.paste.command").map((p) => p.id)).toEqual([
+    // The fold starts closed and holds the three manual ways in, then where to see the result.
+    const help = column.querySelector("details.connection-help")!;
+    expect(help.hasAttribute("open")).toBe(false);
+    expect(help.querySelector("summary")?.text).toBe("If that did not work");
+    expect(help.querySelectorAll("pre.paste.command").map((p) => p.id)).toEqual([
       "claude-code",
       "mcp-json",
       "curl-command",
     ]);
+    expect(help.querySelector(".see-what-it-wrote")?.text).toBe(
+      `To see what it wrote, view as Demo Team Member with Switch role at the top and open ${sample}.`,
+    );
+    // Nothing else: no numbered steps, no scope list, no links away.
+    expect(page.querySelector("ol")).toBeNull();
+    expect(column.querySelectorAll("a")).toHaveLength(0);
   });
 });

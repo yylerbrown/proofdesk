@@ -195,12 +195,15 @@ describe("the About page's assistant setup", () => {
     expect(folded.tagName).toBe("DETAILS");
     expect(folded.hasAttribute("open")).toBe(false);
     expect(folded.querySelector("summary")?.text).toBe("Connect your own AI assistant");
-    // The key button, its explanation and the recorded run are all folded away.
-    expect(folded.querySelector("form[action='/demo/connection'] button")?.text).toBe(
+    // Inside it, one sentence and the one button, and nothing else.
+    const inside = folded.querySelector("#connect")!;
+    expect(inside.childNodes.filter((n) => n.nodeType === 1).map((n) => n.rawTagName)).toEqual([
+      "p",
+      "form",
+    ]);
+    expect(inside.querySelector("form[action='/demo/connection'] button")?.text).toBe(
       "Get a demo connection",
     );
-    expect(folded.text).toContain("A key is shown only once");
-    expect(folded.querySelector("a[href='/assistant-run']")).not.toBeNull();
     // Outside it, nothing on the page speaks of a key or an assistant.
     const outside = html.querySelector("main")!.text.replace(folded.text, "");
     expect(outside).not.toMatch(/key|assistant/i);
@@ -212,7 +215,9 @@ describe("the About page's assistant setup", () => {
   it("explains itself, once opened, in muted small print like the rest of the page", async () => {
     const html = await page(demo().app);
     const explanation = html.querySelector("#connect > p");
-    expect(explanation?.text).toContain("Get a key for your own assistant");
+    expect(explanation?.text).toBe(
+      "Get a one-day key and one message to paste into your own AI agent, so it can work on the sample ticket made for it.",
+    );
     expect(explanation?.classNames).not.toContain("notice");
     const css = fs.readFileSync("public/site.css", "utf8");
     expect(css).toMatch(

@@ -2,6 +2,7 @@ import { parse } from "node-html-parser";
 import request from "supertest";
 import type { Express } from "express";
 import { describe, expect, it } from "vitest";
+import { keyOnPage } from "./key-on-page.js";
 import { AGENT_SCOPES } from "../src/server/permissions.js";
 import { admin, as, buildTestApp, customerOne, handToAgent, teamActor } from "./helpers.js";
 
@@ -21,7 +22,7 @@ async function agentWithEveryScope(app: Express) {
     .post("/connections")
     .type("form")
     .send({ name: "Helper", scopes: [...AGENT_SCOPES] });
-  const key = parse(res.text).querySelector("input.key")!.getAttribute("value")!;
+  const key = keyOnPage(res.text);
   return key;
 }
 

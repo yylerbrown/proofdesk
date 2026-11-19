@@ -2,9 +2,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { Express } from "express";
-import { parse } from "node-html-parser";
 import request from "supertest";
 import { afterEach, describe, expect, it } from "vitest";
+import { keyOnPage } from "./key-on-page.js";
 import { createApp } from "../src/server/app.js";
 import { loadConfig } from "../src/server/config.js";
 import type { Db } from "../src/server/db.js";
@@ -112,7 +112,7 @@ async function issueConnection(app: Express, db: Db, cookie: string) {
     .type("form")
     .send({ name: "Night shift", scopes: ["read_tickets", "read_notes"] });
   expect(page.status, page.text).toBe(200);
-  const key = parse(page.text).querySelector("input.key")!.getAttribute("value")!;
+  const key = keyOnPage(page.text);
   const row = db.prepare("SELECT id FROM agent_connections ORDER BY id DESC LIMIT 1").get() as {
     id: number;
   };

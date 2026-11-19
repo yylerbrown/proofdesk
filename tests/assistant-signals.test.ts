@@ -2,6 +2,7 @@ import { parse } from "node-html-parser";
 import request from "supertest";
 import type { Express } from "express";
 import { describe, expect, it } from "vitest";
+import { keyOnPage } from "./key-on-page.js";
 import { DEV_COOKIE } from "../src/server/actor.js";
 import { seedDemo } from "../src/server/demo.js";
 import { createTicketService } from "../src/server/tickets/service.js";
@@ -28,7 +29,7 @@ async function handed() {
     .post("/connections")
     .type("form")
     .send({ name: "Helper", scopes: ["read_tickets", "write_notes"] });
-  const key = parse(page.text).querySelector("input.key")!.getAttribute("value")!;
+  const key = keyOnPage(page.text);
   await handToAgent(app, "SUP-1", key);
   return { app, key };
 }
@@ -104,7 +105,7 @@ describe("who a ticket is handed to", () => {
       "Handed to the AI assistant demo assistants",
     );
     const page = parse((await visitor(built.app).post("/demo/connection")).text);
-    const key = page.querySelector("input.key")!.getAttribute("value")!;
+    const key = keyOnPage(page.toString());
     const own = await request(built.app)
       .get(`/api/tickets/${sample}`)
       .set("Authorization", `Bearer ${key}`);

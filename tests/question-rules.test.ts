@@ -2,6 +2,7 @@ import { parse } from "node-html-parser";
 import request from "supertest";
 import type { Express } from "express";
 import { describe, expect, it } from "vitest";
+import { keyOnPage } from "./key-on-page.js";
 import { admin, as, buildTestApp, customerOne, handToAgent, teamActor } from "./helpers.js";
 
 // The question to the customer: the same ask again is a retry; a different one waits for the
@@ -107,7 +108,7 @@ describe("what reaches the customer", () => {
       .post("/connections")
       .type("form")
       .send({ name: "Helper", scopes: ["read_tickets", "write_notes", "attach_evidence"] });
-    const key = parse(res.text).querySelector("input.key")!.getAttribute("value")!;
+    const key = keyOnPage(res.text);
     await handToAgent(app, "SUP-1", key);
     const agent = (path: string, body: object) =>
       request(app).post(path).set("Authorization", `Bearer ${key}`).send(body);

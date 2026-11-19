@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import request from "supertest";
 import { afterEach, describe, expect, it } from "vitest";
+import { keyOnPage } from "./key-on-page.js";
 import { DEMO_ACTORS, DEV_COOKIE } from "../src/server/actor.js";
 import { loadConfig } from "../src/server/config.js";
 import { openDatabase } from "../src/server/db.js";
@@ -243,9 +244,7 @@ describe("the demo resetting itself", () => {
     const res = await request(demo.reset.handler).post("/demo/connection").set(FROM_THIS_SITE);
     expect(res.status, res.text).toBe(200);
     // The key it shows reads the fresh sample made for assistants.
-    const key = /class="key"[^>]*value="([^"]+)"|value="([^"]+)"[^>]*class="key"/.exec(res.text);
-    const token = key?.[1] ?? key?.[2];
-    expect(token).toBeDefined();
+    const token = keyOnPage(res.text);
     // The one ticket it lists is the sample, whatever key the seed gave it.
     const listed = await request(demo.reset.handler)
       .get("/api/tickets")

@@ -1,60 +1,35 @@
 <%- include("header") %>
-<div class="column-form">
+<%# The page that shows a new key: one message to paste into an AI agent, and the manual setup folded away under it. %>
+<div class="column-form connection-created">
+<h1><%= connection.demo ? "Your demo connection" : "Connection issued" %></h1>
+<p>Paste this into your AI agent:</p>
+<pre class="paste" id="agent-paste"><code><%= paste %></code></pre>
+<button type="button" class="copy" data-copy="<%= paste %>" aria-label="Copy the message for your AI agent" hidden>Copy</button>
 <% if (connection.demo) { %>
-<h1>Your demo connection</h1>
-<p class="callout"><strong>Copy the key now.</strong> It is shown only on this page. It stops working <%- include("time", { iso: connection.expires_at }) %>; you can get another from About this demo.</p>
-<p>Your assistant sees only the sample ticket made for assistants, as it was first written, and what it writes itself. It never receives what other visitors' assistants write, and theirs never receive what yours writes. On this demo everyone shares one team view, so anyone who views as Demo Team Member can see what your assistant wrote.</p>
+<p class="key-once">The key is shown only once, on this page, and stops working <%- include("time", { iso: connection.expires_at }) %>.</p>
 <% } else { %>
-<h1>Connection issued</h1>
-<p class="callout"><strong>Copy the key now.</strong> It is shown only on this page. If it is lost, revoke the connection and issue a new one.</p>
+<p class="key-once">The key is shown only once, on this page.</p>
 <% } %>
 
-<p class="can-read">It can read: <%= connection.demo ? "the sample ticket made for assistants" : "the tickets handed to it" %>, <%= connection.scopes.includes("read_notes") ? "with the team's internal notes" : "without internal notes" %>.</p>
-<p>It may: <%= connection.scopes.map((s) => scopeLabels[s]).join("; ") %>.</p>
-
-<label>
-  Key for <span class="user-text"><%= connection.name %></span>
-  <input type="text" readonly value="<%= key %>" class="key" />
-</label>
-<button type="button" class="copy secondary" data-copy="<%= key %>" aria-label="Copy the key" hidden>Copy</button>
-
-<h2>Connect Claude Code</h2>
-<p>Paste this in a terminal:</p>
-<% const claudeCode = `claude mcp add --transport http proofdesk ${address}/mcp --header "Authorization: Bearer ${key}"`; %>
-<pre class="paste command" id="claude-code"><code>claude mcp add --transport http proofdesk <%= address %>/mcp --header "Authorization: Bearer <%= key %>"</code></pre>
-<button type="button" class="copy secondary" data-copy="<%= claudeCode %>" aria-label="Copy the Claude Code command" hidden>Copy</button>
-<p><small>Run it in the folder or repository where you start Claude Code, or add <code>--scope user</code> to use it everywhere. For a new key later, run <code>claude mcp remove proofdesk</code> first.</small></p>
-<%# On the demo, the first thing to do with the key: check it, ask on the one ticket it reads, and see the result. %>
-<% if (connection.demo && locals.sampleKey) { %>
-<% const firstAsk = `Using Proofdesk, write a test spec for ${sampleKey}`; %>
-<ol class="first-steps">
-  <li>Start Claude Code there and type <code>/mcp</code> to see proofdesk connected.</li>
-  <li>
-    Then ask:
-    <pre class="paste" id="first-ask"><code><%= firstAsk %></code></pre>
-    <button type="button" class="copy secondary" data-copy="<%= firstAsk %>" aria-label="Copy the request" hidden>Copy</button>
-  </li>
-  <li>To see what it wrote, view as Demo Team Member with Switch role at the top and open <%= sampleKey %>.</li>
-</ol>
-<% } %>
-
-<h2>Other assistants</h2>
-<p>An assistant that speaks MCP over HTTP connects to <code><%= address %>/mcp</code> with the header <code>Authorization</code> set to <code>Bearer</code> and this key. For example, in a project's <code>.mcp.json</code>:</p>
-<% const mcpJson = JSON.stringify({ mcpServers: { proofdesk: { type: "http", url: `${address}/mcp`, headers: { Authorization: `Bearer ${key}` } } } }, null, 2); %>
-<pre class="paste command" id="mcp-json"><code><%= mcpJson %></code></pre>
-<button type="button" class="copy secondary" data-copy="<%= mcpJson %>" aria-label="Copy the .mcp.json entry" hidden>Copy</button>
-<p><small>In Claude Desktop, a custom connector can take that address with no sign-in and the request header <code>Authorization</code> with the value <code>Bearer</code> and the key. Request headers on custom connectors are in beta and not offered to every organization.</small></p>
-<p>An assistant that runs commands can also call the JSON API directly:</p>
-<% const curlCommand = `curl -H "Authorization: Bearer ${key}" "${address}/api/tickets"`; %>
-<pre class="paste command" id="curl-command"><code>curl -H "Authorization: Bearer <%= key %>" "<%= address %>/api/tickets"</code></pre>
-<button type="button" class="copy secondary" data-copy="<%= curlCommand %>" aria-label="Copy the curl command" hidden>Copy</button>
-<p><small><a href="/llms.txt">One page for assistants</a> has everything an assistant needs in one read.</small></p>
-<p><small><a href="/api">The API guide</a>, which needs no key, lists every action. <a href="/assistant-run">See an assistant's work</a> shows one real run.</small></p>
-
-<% if (connection.demo) { %>
-<p><a href="/sign-in">Back to About this demo</a></p>
-<% } else { %>
-<p><a href="/connections">Back to connections</a></p>
-<% } %>
+<details class="connection-help">
+  <summary>If that did not work</summary>
+  <p>Add it to Claude Code by pasting this in a terminal:</p>
+  <% const claudeCode = `claude mcp add --transport http proofdesk ${address}/mcp --header "Authorization: Bearer ${key}"`; %>
+  <pre class="paste command" id="claude-code"><code>claude mcp add --transport http proofdesk <%= address %>/mcp --header "Authorization: Bearer <%= key %>"</code></pre>
+  <button type="button" class="copy secondary" data-copy="<%= claudeCode %>" aria-label="Copy the Claude Code command" hidden>Copy</button>
+  <p>Or add it to a project's <code>.mcp.json</code>:</p>
+  <% const mcpJson = JSON.stringify({ mcpServers: { proofdesk: { type: "http", url: `${address}/mcp`, headers: { Authorization: `Bearer ${key}` } } } }, null, 2); %>
+  <pre class="paste command" id="mcp-json"><code><%= mcpJson %></code></pre>
+  <button type="button" class="copy secondary" data-copy="<%= mcpJson %>" aria-label="Copy the .mcp.json entry" hidden>Copy</button>
+  <p>Check the key works:</p>
+  <% const curlCommand = `curl -H "Authorization: Bearer ${key}" "${address}/api/tickets"`; %>
+  <pre class="paste command" id="curl-command"><code>curl -H "Authorization: Bearer <%= key %>" "<%= address %>/api/tickets"</code></pre>
+  <button type="button" class="copy secondary" data-copy="<%= curlCommand %>" aria-label="Copy the curl command" hidden>Copy</button>
+  <% if (connection.demo) { %>
+  <p class="see-what-it-wrote">To see what it wrote, view as Demo Team Member with Switch role at the top<%= locals.sampleKey ? ` and open ${sampleKey}` : "" %>.</p>
+  <% } else { %>
+  <p class="see-what-it-wrote">What it writes shows on each ticket's page, and everything it asks for is on <a href="/connections/<%= connection.id %>">this connection's page</a>.</p>
+  <% } %>
+</details>
 </div>
 <%- include("footer") %>
