@@ -69,6 +69,50 @@ test("a team member searches, ticks every row shown and resolves them with one r
   await expect(bar).toBeHidden();
 });
 
+test("at the bottom of a scrolled list, ticking and unticking the last row moves nothing", async ({
+  page,
+}) => {
+  const marker = "Scrollmark";
+  await page.goto("/sign-in");
+  await page.getByRole("button", { name: "View as Customer One" }).click();
+  for (const n of [1, 2, 3, 4]) {
+    await page.goto("/tickets/new");
+    await page.getByLabel("Title").fill(`${marker} report ${n} is late`);
+    await page.getByLabel("Description").fill("It happens every time.");
+    await page.getByRole("button", { name: "File ticket" }).click();
+    await expect(page).toHaveURL(/\/tickets\/SUP-\d+$/);
+  }
+  await page.context().clearCookies();
+  await page.goto("/sign-in");
+  await page.getByRole("button", { name: "View as Team Member" }).click();
+  // A short window, so the list scrolls and the end of the page is the end of the scroll.
+  await page.setViewportSize({ width: 1280, height: 400 });
+  await page.goto(`/tickets?q=${marker}`);
+  const bar = page.locator("[data-bulk-bar]");
+  const last = page.locator('input[name="keys"]').last();
+  const lastTop = () => last.evaluate((box) => box.getBoundingClientRect().top);
+  const toEnd = () => page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+
+  await toEnd();
+  const before = await lastTop();
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  await last.check();
+  await expect(bar).toBeVisible();
+  await toEnd();
+  const ticked = await lastTop();
+  expect(ticked).toBe(before);
+  // Resolved grows the bar upward, and choosing another status again shrinks it.
+  const status = bar.getByRole("combobox", { name: "Status" });
+  await status.selectOption("resolved");
+  await toEnd();
+  expect(await lastTop()).toBe(ticked);
+  await status.selectOption("new");
+  expect(await lastTop()).toBe(ticked);
+  await last.uncheck();
+  await expect(bar).toBeHidden();
+  expect(await lastTop()).toBe(ticked);
+});
+
 test("without scripts the bar sits above the table, always shown", async ({ browser }) => {
   const context = await browser.newContext({ javaScriptEnabled: false });
   const page = await context.newPage();

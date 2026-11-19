@@ -2649,11 +2649,11 @@ form.bulk[data-floating] .bulk-bar {
   transform: translateX(-50%);
   box-shadow: var(--pd-shadow);
 }
-/* Room at the very end of the page while the bar shows, so it never covers the last row. */
-body:has(form.bulk[data-floating] .bulk-bar:not([hidden])) {
-  padding-bottom: 7rem;
-}
-body:has(form.bulk[data-floating] select[name="status"] option[value="resolved"]:checked) {
+/* Room at the very end of the page, so the bar never covers the last row. It is the room the
+   tallest bar needs, Resolved with its reason, and it stays the whole time the list floats its
+   bar: room that came and went with the bar would shorten the page at the bottom of a scroll,
+   and the browser would pull the rows down. */
+body:has(form.bulk[data-floating]) {
   padding-bottom: 10rem;
 }
 /* The reason shows only for Resolved, "Duplicate of" only for a duplicate and the note only for
@@ -2709,10 +2709,7 @@ table.tickets .bulk-tick[hidden] {
     border-radius: 0;
     transform: none;
   }
-  body:has(form.bulk[data-floating] .bulk-bar:not([hidden])) {
-    padding-bottom: 9rem;
-  }
-  body:has(form.bulk[data-floating] select[name="status"] option[value="resolved"]:checked) {
+  body:has(form.bulk[data-floating]) {
     padding-bottom: 13rem;
   }
 }
