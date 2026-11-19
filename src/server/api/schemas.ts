@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PICTURE_TYPES } from "../pictures/kinds.js";
 import { EVIDENCE_KINDS } from "../tickets/evidence.js";
 import { RESOLVE_REASONS, TICKET_STATUSES } from "../tickets/schemas.js";
 
@@ -157,6 +158,32 @@ export const entryOutput = z
   })
   .meta({ id: "Entry" });
 
+/** One picture on a ticket or a message, without its bytes. */
+export const pictureOutput = z
+  .strictObject({
+    id: z.number().int(),
+    entry_id: z.number().int().nullable().meta({
+      description: "The message it came with, or null for the ticket's own description.",
+    }),
+    type: z.enum(PICTURE_TYPES).meta({ description: "Read from the picture's own bytes." }),
+    size: z.number().int().meta({ description: "In bytes." }),
+    created_at: time,
+    url: z.string().nullable().meta({
+      description:
+        "Where a signed-in person's browser loads it, on the site itself, not under /api. A connection key cannot load it. Null when this viewer gets no bytes.",
+    }),
+    hidden: z.string().nullable().meta({
+      description:
+        "Why there are no bytes for this viewer, in words a page can show; null when url is set.",
+    }),
+  })
+  .meta({ id: "Picture" });
+
+/** An entry as the conversation lists it, with the pictures that came with it. */
+export const listedEntryOutput = entryOutput
+  .extend({ pictures: z.array(pictureOutput) })
+  .meta({ id: "EntryWithPictures" });
+
 export const eventOutput = z
   .strictObject({
     id: z.number().int(),
@@ -238,6 +265,9 @@ export const ticketReadOutput = ticketOutput
   .extend({
     spec: specOutput.nullable().meta({
       description: "The ticket's test spec, or null when it has none yet.",
+    }),
+    pictures: z.array(pictureOutput).meta({
+      description: "The pictures filed with the description. Each message lists its own.",
     }),
   })
   .meta({ id: "TicketWithSpec" });

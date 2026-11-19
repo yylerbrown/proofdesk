@@ -38,6 +38,8 @@ import { roleNowOf } from "./people/role-now.js";
 import { peopleRouter } from "./routes/people.js";
 import { guide, openApiDocument } from "./api/describe.js";
 import { siteAddress } from "./routes/connections.js";
+import { pictureLimitsFor } from "./pictures/limits.js";
+import { readPictures } from "./pictures/upload.js";
 import { noticeCountFor } from "./notify/view.js";
 import { parseKey } from "./tickets/keys.js";
 // The limits live in limits.ts, where the API's guide reads them too.
@@ -53,7 +55,9 @@ import {
 // run from source) and in dist/server (when run after a build).
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 // The largest request body the server reads, for JSON and for forms. A larger one is
-// refused with 413 before it is parsed. The biggest valid ticket is about 6 KB. The sign-in
+// refused with 413 before it is parsed. The biggest valid ticket is about 6 KB. The one
+// exception is the two forms that may send pictures, filing a ticket and writing a message:
+// their limits are in pictures/limits.ts and pictures/upload.ts. The sign-in
 // library reads no request body at all: the only request it is given is GitHub's return,
 // a GET, and every other address under /api/auth answers 404 before reading anything.
 const BODY_LIMIT = "100kb";
@@ -113,6 +117,8 @@ export function createApp(config: Config, db: Db, options: { log?: LogLine } = {
       // Origin header on this site's own forms.
       referrerPolicy: { policy: "same-origin" },
       contentSecurityPolicy: {
+        // The library's default img-src, 'self' and data:, already lets a page show the
+        // pictures on its tickets, which this server serves itself. Nothing else is added.
         directives: {
           "style-src": ["'self'"],
           // Forms post only to this server. The GitHub sign-in form is answered with a
@@ -137,12 +143,16 @@ export function createApp(config: Config, db: Db, options: { log?: LogLine } = {
     legacyHeaders: false,
     // A real person is counted by their account. Demo visitors share three made-up
     // identities, so they are counted by address, like someone not signed in.
-    keyGenerator: (req) =>
-      req.actor && req.actor.demo !== true ? req.actor.id : ipKeyGenerator(clientAddress(req)),
+    keyGenerator: personOf,
     handler: (_req, _res, next) => {
       next(new HttpError(429, "too_many_requests", "Too many requests. Try again in a while."));
     },
   };
+  // Who is asking, for the limits below and for the pictures being read. A real person is
+  // their account; demo visitors and anyone signed out are their address.
+  function personOf(req: express.Request): string {
+    return req.actor && req.actor.demo !== true ? req.actor.id : ipKeyGenerator(clientAddress(req));
+  }
   // The visitor's address: from the proxy's header when one is configured, otherwise from
   // the connection.
   function clientAddress(req: express.Request): string {
@@ -260,13 +270,23 @@ export function createApp(config: Config, db: Db, options: { log?: LogLine } = {
   app.post("/demo/connection", demoConnectionLimit);
   app.post(SIMILAR_PATH, similarLimit);
   app.use(express.urlencoded({ extended: false, limit: BODY_LIMIT }));
+  // The two forms that take text, filing a ticket and writing a reply or a note, may also send
+  // pictures. Those come as multipart/form-data, which only these two addresses read. The
+  // checks above, of who is asking, where the request comes from and how often, have already
+  // run, so pictures are never read for someone who may not add them.
+  app.post(
+    ["/tickets", "/tickets/:key/entries"],
+    readPictures(pictureLimitsFor(config.demo), { personOf }),
+  );
   app.use(assistantRunRouter(rootDir, () => tickets.recordedRunKey()));
   app.use(signInRouter(config, auth, db, () => tickets.hasDemoSeed()));
   // Before the pages, so "similar" is never read as a ticket key.
   app.use(similarRouter(tickets));
   app.use(
-    pagesRouter(tickets, (key, actor) =>
-      noticeCountFor(db, parseKey(config.ticketPrefix, key)!, actor),
+    pagesRouter(
+      tickets,
+      (key, actor) => noticeCountFor(db, parseKey(config.ticketPrefix, key)!, actor),
+      { secureCookies: config.nodeEnv === "production" },
     ),
   );
   app.use(peopleRouter(createPeopleService(db, config)));

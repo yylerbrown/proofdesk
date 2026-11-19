@@ -29,6 +29,8 @@ export type NoticeInput = {
   resolvedReason?: string | null;
   /** For a ticket marked fixed: how the customer said they will know, in their own words. */
   customerCheck?: string | null;
+  /** For a reply: how many pictures came with it. A notice names them and never carries them. */
+  pictureCount?: number;
 };
 
 export type ComposedNotice = { subject: string; body: string };
@@ -74,7 +76,7 @@ function whatHappened(input: NoticeInput, title: string, link: string): string[]
       return lines;
     }
     case "team_replied":
-      return [`${who} replied on ${about}:`, "", quoted];
+      return [`${who} replied on ${about}:`, "", quoted, ...picturesLine(input.pictureCount)];
     case "resolved_by_team": {
       // A reason that is a sentence of its own already ends with its full stop.
       const why = input.resolvedReason ? oneLine(input.resolvedReason).replace(/\.$/, "") : "";
@@ -104,10 +106,16 @@ function whatHappened(input: NoticeInput, title: string, link: string): string[]
     case "customer_said_no":
       return [`${who} says ${about} is not fixed yet:`, "", quoted];
     case "customer_replied":
-      return [`${who} replied on ${about}:`, "", quoted];
+      return [`${who} replied on ${about}:`, "", quoted, ...picturesLine(input.pictureCount)];
     case "customer_reopened":
       return [`${who} reopened ${about}. It is still happening:`, "", quoted];
   }
+}
+
+/** The line that says a reply came with pictures, such as "(2 pictures attached to the ticket)". */
+function picturesLine(count: number | undefined): string[] {
+  if (count === undefined || count === 0) return [];
+  return [`(${count} ${count === 1 ? "picture" : "pictures"} attached to the ticket)`];
 }
 
 /** The last line: why this person got the notice. */

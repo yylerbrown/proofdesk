@@ -1,4 +1,5 @@
 import type { Role } from "../actor.js";
+import type { PictureLimits } from "../pictures/limits.js";
 import type { StageReading } from "./evidence.js";
 import type * as repository from "./repository.js";
 import type { ResolveReason, TicketStatus } from "./schemas.js";
@@ -168,6 +169,8 @@ export type Budget = {
   eventsPerTicket?: number;
   evidencePerTicket?: number;
   specsPerTicket?: number;
+  /** How many pictures, and how large. Without it, a real site's limits apply. */
+  pictures?: PictureLimits;
 };
 
 /** How many tickets a list page shows. */

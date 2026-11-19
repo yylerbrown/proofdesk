@@ -32,6 +32,7 @@ import {
   entryOutput,
   eventOutput,
   evidenceOutput,
+  listedEntryOutput,
   specOutput,
   ticketOutput,
   ticketReadOutput,
@@ -124,11 +125,15 @@ export const ACTIONS: ApiAction[] = [
     path: "/tickets/:key",
     summary:
       "One ticket, led by done_when: what the customer will accept as fixed. spec is its test " +
-      "spec, or null when it has none yet; then you may offer one with propose_spec.",
+      "spec, or null when it has none yet; then you may offer one with propose_spec. pictures " +
+      "lists the description's pictures; an assistant sees the list but cannot load or add pictures.",
     needs: "read",
     run: ({ service, actor, key }) => ({
       ...service.getTicket(key, actor),
       spec: service.getSpec(key, actor),
+      // The API carries no demo visitor's cookie, so a demo visitor's own pictures are listed
+      // here as hidden; their page shows them.
+      pictures: service.listPictures(key, actor, null).description,
     }),
   },
   {
@@ -356,12 +361,18 @@ export const ACTIONS: ApiAction[] = [
   },
   {
     name: "list_entries",
-    output: z.array(entryOutput),
+    output: z.array(listedEntryOutput),
     method: "get",
     path: "/tickets/:key/entries",
-    summary: "The conversation. A customer never sees internal notes.",
+    summary:
+      "The conversation. A customer never sees internal notes. Each message lists its pictures; an assistant sees the list but cannot load or add pictures.",
     needs: "read",
-    run: ({ service, actor, key }) => service.listEntries(key, actor),
+    run: ({ service, actor, key }) => {
+      const pictures = service.listPictures(key, actor, null).byEntry;
+      return service
+        .listEntries(key, actor)
+        .map((entry) => ({ ...entry, pictures: pictures.get(entry.id) ?? [] }));
+    },
   },
   {
     name: "add_entry",

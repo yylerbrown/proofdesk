@@ -25,13 +25,14 @@ function page(keepOpen = false) {
   const bar = { hidden: false };
   const phone = { hidden: true };
   const count = { textContent: "" as string | null };
+  const filters = { inert: false };
   const pressed: (() => void)[] = [];
   const clear = {
     addEventListener: (_type: "click", listener: () => void) => pressed.push(listener),
     press: () => pressed.forEach((listener) => listener()),
   };
-  wireBulk({ rows, all: [all], bar, reveal: [phone], count, clear, keepOpen });
-  return { rows, all, bar, phone, count, clear };
+  wireBulk({ rows, all: [all], bar, reveal: [phone], count, covered: [filters], clear, keepOpen });
+  return { rows, all, bar, phone, count, filters, clear };
 }
 
 describe("the ticket list's bar", () => {
@@ -72,8 +73,22 @@ describe("the ticket list's bar", () => {
     expect(bar.hidden).toBe(true);
   });
 
-  it("stays shown when it came back with an error", () => {
-    expect(page(true).bar.hidden).toBe(false);
+  it("stays shown when it came back with an error, until Clear", () => {
+    const { bar, filters, clear } = page(true);
+    expect(bar.hidden).toBe(false);
+    expect(filters.inert).toBe(true);
     expect(selectedWords(0)).toBe("Change the ticked tickets:");
+    clear.press();
+    expect(bar.hidden).toBe(true);
+    expect(filters.inert).toBe(false);
+  });
+
+  it("puts the filters it covers out of reach while it shows, and gives them back after", () => {
+    const { rows, filters } = page();
+    expect(filters.inert).toBe(false);
+    rows[1]!.change(true);
+    expect(filters.inert).toBe(true);
+    rows[1]!.change(false);
+    expect(filters.inert).toBe(false);
   });
 });

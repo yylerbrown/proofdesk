@@ -70,7 +70,7 @@ export function lastOwnerChangeData(db: Db, ticketId: number, eventId: number): 
 }
 
 /** A public reply, by who wrote it. */
-export type PublicReply = { body: string; author_name: string };
+export type PublicReply = { id: number; body: string; author_name: string };
 
 /**
  * The public reply that a reply_added event recorded: same ticket, same author, same moment.
@@ -79,7 +79,7 @@ export type PublicReply = { body: string; author_name: string };
 export function publicReplyOf(db: Db, event: EventRow): PublicReply | undefined {
   return db
     .prepare(
-      `SELECT body, author_name FROM ticket_entries
+      `SELECT id, body, author_name FROM ticket_entries
        WHERE ticket_id = ? AND author = ? AND created_at = ? AND kind = 'reply'
        ORDER BY id DESC LIMIT 1`,
     )
