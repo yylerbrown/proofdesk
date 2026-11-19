@@ -1160,6 +1160,25 @@ label small.hint {
   color: var(--pd-muted);
   font-weight: var(--pd-weight-regular);
 }
+/*
+ * The new ticket form's "Similar ticket" line under the Title box: one line in the hint's grey,
+ * a long title cut with an ellipsis, so it is as tall at phone width as on a desktop. It is
+ * pulled up as far as it pushes down, so the boxes below move by exactly its one line. It holds
+ * its link's hidden words, so they never stick out past the cut.
+ */
+small.similar-ticket {
+  position: relative;
+  display: block;
+  margin: calc(var(--pd-space-2) * -1) 0 var(--pd-space-2);
+  overflow: hidden;
+  color: var(--pd-muted);
+  font-size: var(--pd-text-sm);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+small.similar-ticket[hidden] {
+  display: none;
+}
 /* A message under a box: red, 13px. */
 :where(input, select, textarea) + small {
   margin-top: 6px;

@@ -207,15 +207,20 @@ function orderBy(sort: ListSort): string {
 
 /** The values the statements above bind, with only the ones this scope names. */
 function bound(scope: ListScope, narrow: Narrowing) {
-  const values: Record<string, unknown> = {
+  return {
     ownerId: narrow.ownerId,
     unassigned: narrow.unassigned ? 1 : 0,
     search: narrow.search,
     match: narrow.match,
+    ...scopeValues(scope),
   };
-  if (scope.kind === "among") values.ids = JSON.stringify(scope.ids);
-  if (scope.kind === "filed_by") values.createdBy = scope.createdBy;
-  return values;
+}
+
+/** The values one scope's condition binds. */
+function scopeValues(scope: ListScope): Record<string, unknown> {
+  if (scope.kind === "among") return { ids: JSON.stringify(scope.ids) };
+  if (scope.kind === "filed_by") return { createdBy: scope.createdBy };
+  return {};
 }
 
 /** One page of the tickets in this scope, of one status or of every status, sorted this way. */
@@ -257,6 +262,37 @@ export function countTicketsByStatus(
   const counts: Record<TicketStatus, number> = { new: 0, in_progress: 0, resolved: 0 };
   for (const row of rows) counts[row.status] = row.n;
   return counts;
+}
+
+/** A ticket a similar title names: its id, its title and its status. */
+export type SimilarRow = { id: number; title: string; status: TicketStatus };
+
+/**
+ * The one ticket in this scope whose title holds at least `need` of these words, in any form:
+ * the one holding the most, then an open one before a resolved one, then the newest. Each word
+ * is looked for in the title only, inside double quotes, so it is never read as query syntax.
+ * The words hold only letters and digits. Only the count of matched words decides, never a
+ * score from the index, so the answer depends on the tickets in this scope alone.
+ */
+export function similarTitle(
+  db: Db,
+  scope: ListScope,
+  words: string[],
+  need: number,
+): SimilarRow | undefined {
+  return db
+    .prepare(
+      `WITH seen AS (SELECT id, title, status FROM tickets WHERE ${SCOPE_SQL[scope.kind]})
+       SELECT seen.id AS id, seen.title AS title, seen.status AS status
+       FROM json_each(@words) AS word
+       JOIN ticket_search ON ticket_search MATCH ('{title} : "' || word.value || '"')
+       JOIN seen ON seen.id = ticket_search.rowid
+       GROUP BY seen.id
+       HAVING COUNT(*) >= @need
+       ORDER BY COUNT(*) DESC, seen.status = 'resolved', seen.id DESC
+       LIMIT 1`,
+    )
+    .get({ ...scopeValues(scope), words: JSON.stringify(words), need }) as SimilarRow | undefined;
 }
 
 export type TicketText = {
