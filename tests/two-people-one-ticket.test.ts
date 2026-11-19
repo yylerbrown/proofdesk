@@ -948,11 +948,13 @@ describe("the cheap read a page left open asks", () => {
       version,
       entries: 1,
       handoffs: 0,
+      status: "new",
     });
     expect((await as(app, teamActor).get("/tickets/SUP-1/version")).body).toEqual({
       version,
       entries: 2,
       handoffs: 0,
+      status: "new",
     });
   });
 
@@ -991,6 +993,7 @@ describe("the cheap read a page left open asks", () => {
     expect(Number(layout.getAttribute("data-ticket-version"))).toBe(stamp.version);
     expect(Number(layout.getAttribute("data-ticket-entries"))).toBe(stamp.entries);
     expect(Number(layout.getAttribute("data-ticket-handoffs"))).toBe(stamp.handoffs);
+    expect(layout.getAttribute("data-ticket-status")).toBe(stamp.status);
   });
 });
 

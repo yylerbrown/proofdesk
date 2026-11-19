@@ -272,8 +272,13 @@ export function pagesRouter(service: TicketService): Router {
   // A cheap read for a ticket page left open, which asks it now and then to notice a change made
   // elsewhere. It is registered before the middleware below, so asking never uses up the
   // message a page shows once after a save. Reading is not counted against the write limit.
+  // The status rides along, so the page can say what kind of change it was; the viewer sees the
+  // status on the ticket page anyway.
   router.get("/tickets/:key/version", (req, res) => {
-    res.json(service.ticketStamp(req.params.key, signedIn(req)));
+    const actor = signedIn(req);
+    const stamp = service.ticketStamp(req.params.key, actor);
+    const { status } = service.getTicket(req.params.key, actor);
+    res.json({ ...stamp, status });
   });
 
   // A page opened just after a save says what was saved.
