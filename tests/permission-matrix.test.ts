@@ -345,10 +345,11 @@ const TABLE: Record<string, Row> = {
     handedAgent: whileHanded(NO),
     ...outsiders,
   },
-  // The owner hands an in-progress ticket to an agent connection.
+  // The owner hands an in-progress ticket to an agent connection, but not while the customer
+  // is answering.
   give_to_agent: {
     filer: [NO, NO, NO, NO, NO, NO, HIDDEN],
-    owner: [REFUSED, NOT_NOW, OK, OK, NOT_NOW, NOT_NOW, NOT_NOW],
+    owner: [REFUSED, NOT_NOW, OK, NOT_NOW, NOT_NOW, NOT_NOW, NOT_NOW],
     teamNotOwner: [REFUSED, REFUSED, NO, NO, REFUSED, REFUSED, REFUSED],
     demoTeam: [REFUSED, REFUSED, NO, NO, REFUSED, REFUSED, REFUSED],
     admin: [REFUSED, REFUSED, NO, NO, REFUSED, REFUSED, REFUSED],

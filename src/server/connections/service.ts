@@ -4,6 +4,7 @@ import type { Actor } from "../actor.js";
 import type { Db } from "../db.js";
 import { HttpError } from "../errors.js";
 import { AGENT_SCOPES, can, type AgentScope } from "../permissions.js";
+import { endHandoffsToEndedConnections } from "../tickets/ended-connections.js";
 import { parse } from "../validation.js";
 import * as repository from "./repository.js";
 
@@ -221,6 +222,7 @@ export function createConnectionService(db: Db, issuerMayIssue: (personId: strin
         throw new HttpError(404, "not_found", "There is no such connection.");
       }
       repository.markRevoked(db, id, new Date().toISOString());
+      endHandoffsToEndedConnections(db, actor.id);
       return toConnection(repository.findById(db, id)!);
     },
 

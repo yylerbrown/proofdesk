@@ -27,7 +27,8 @@ export function allowedActions(ticket: Ticket, actor: Actor) {
       !archived &&
       can(actor, "hand_to_agent", ticket) &&
       ticket.owner_id === actor.id &&
-      ticket.status === "in_progress",
+      ticket.status === "in_progress" &&
+      ticket.ready_at === null,
     endAgentWork:
       !archived &&
       can(actor, "hand_to_agent", ticket) &&

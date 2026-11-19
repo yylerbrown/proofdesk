@@ -71,7 +71,9 @@ function whatHappened(input: NoticeInput, title: string, link: string): string[]
     case "team_replied":
       return [`${who} replied on ${about}:`, "", quoted];
     case "resolved_by_team": {
-      const reason = input.resolvedReason ? ` The reason: ${oneLine(input.resolvedReason)}.` : "";
+      // A reason that is a sentence of its own already ends with its full stop.
+      const why = input.resolvedReason ? oneLine(input.resolvedReason).replace(/\.$/, "") : "";
+      const reason = why ? ` The reason: ${why}.` : "";
       const lines = [`${who} resolved ${about}.${reason}`];
       // The team's note with a resolution is public: the ticket page shows it to the customer.
       if (input.publicText) lines.push("", quoted);

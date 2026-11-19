@@ -9,7 +9,7 @@ import { createTicketService } from "../src/server/tickets/service.js";
 // On a ticket page the status row and the button at the top read as one control: when pressing
 // In Progress would also make the viewer the owner, a short line under the row says so, and both
 // controls post to the same place, so the same message follows either press. Resolving starts on
-// "Fixed, not yet confirmed" when that reason is offered. A More menu that would hold a single
+// the "Fixed." reason when that reason is offered. A More menu that would hold a single
 // item shows that item directly, and the list's empty search names only what is set.
 
 const valid = {
@@ -66,7 +66,7 @@ describe("In Progress on a ticket nobody owns", () => {
 });
 
 describe("the resolve form's first choice", () => {
-  it("is 'Fixed, not yet confirmed', so resolving takes two presses", async () => {
+  it("is the 'Fixed.' reason, so resolving takes two presses", async () => {
     const { app } = await filed();
     const select = (await page(app)).querySelector('details.resolve select[name="reason"]')!;
     expect(select.hasAttribute("required")).toBe(true);
