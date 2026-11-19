@@ -2170,6 +2170,31 @@ p.ask-blocked {
 .try-steps {
   margin-bottom: var(--pd-space-5);
 }
+/* Under the steps, one quiet line to a ticket an AI assistant worked. It is small print and
+   reads as a link, whether it is a link or the button that switches to the team's view. */
+.try-steps:has(+ .recorded-run-entry) {
+  margin-bottom: var(--pd-space-2);
+}
+.welcome .recorded-run-entry {
+  margin: 0;
+  font-size: var(--pd-text-sm);
+}
+.welcome .recorded-run-entry button.link,
+.welcome .recorded-run-entry button.link:is(:hover, :active) {
+  width: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--pd-text);
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+}
 /* On the demo, the next role to view a ticket as, just under its title. */
 .demo-next {
   margin-bottom: var(--pd-space-5);

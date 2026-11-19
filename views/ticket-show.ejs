@@ -34,7 +34,8 @@
 
 <%# Another demo customer filed the recorded run, so only the team opens it. %>
 <% if (locals.recordedRun && viewerRole !== "customer") { %>
-<p class="recorded-run">A recorded example of a real assistant run: what it sent is shown here as it sent it. The run worked on the assistant sample when it was <%= recordedSampleKey %>, in an earlier copy of this demo, so its own words name <%= recordedSampleKey %>.<% if (locals.assistantSampleKey && assistantSampleKey !== recordedSampleKey) { %> Here that sample is <%= assistantSampleKey %>.<% } %> <a href="/assistant-run">See its transcript and files</a></p>
+<%# One short line. The description below says why the run's own words name another key. %>
+<p class="recorded-run">A recorded run: a real AI assistant worked this ticket on 18 Nov 2026, and what it sent is shown as it sent it. <a href="/assistant-run#how-it-was-run">How this was run</a></p>
 <% } %>
 <%# On the demo: the next role to view this same ticket as, or where resolved tickets are listed. %>
 <% if (locals.demoNext) { %>

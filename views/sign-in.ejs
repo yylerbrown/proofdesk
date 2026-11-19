@@ -65,6 +65,20 @@
     <button type="submit" class="large" aria-describedby="try-steps">Try the ticket workflow</button>
   </form>
   <p class="try-steps" id="try-steps"><small>File a ticket as the customer, work on it as the team, then say whether it is fixed as the customer. The same ticket stays open as you switch. About two minutes.</small></p>
+  <%# One quiet line to the result of a real assistant run, for a visitor asking where the AI is.
+      The ticket is the team's, so anyone else switches to the team member in the same press. %>
+  <% if (locals.recordedRun) { %>
+  <% const recordedLabel = "Or see a ticket an AI assistant worked (a recorded run)"; %>
+  <% if (recordedRun.switchTo) { %>
+  <form method="post" action="/sign-in/dev" class="recorded-run-entry">
+    <input type="hidden" name="id" value="<%= recordedRun.switchTo.id %>" />
+    <input type="hidden" name="next" value="<%= recordedRun.href %>" />
+    <button type="submit" class="link"><%= recordedLabel %></button>
+  </form>
+  <% } else { %>
+  <p class="recorded-run-entry"><a href="<%= recordedRun.href %>"><%= recordedLabel %></a></p>
+  <% } %>
+  <% } %>
   <h3>Or look around as</h3>
   <% } %>
   <% } else { %>

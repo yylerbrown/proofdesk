@@ -1,6 +1,6 @@
 import { fromNodeHeaders } from "better-auth/node";
 import { Router } from "express";
-import { DEV_COOKIE, entrancePeople } from "../actor.js";
+import { type Actor, DEV_COOKIE, entrancePeople } from "../actor.js";
 import type { Auth } from "../auth.js";
 import type { Config } from "../config.js";
 import { HttpError } from "../errors.js";
@@ -35,10 +35,36 @@ export function ticketFromNext(next: string, prefix: string): string | null {
   return parseKey(prefix, key) === null ? null : key;
 }
 
+/** How the demo welcome page opens the recorded run's ticket. */
+export type RecordedRunEntry = {
+  href: string;
+  /** The team member to switch to first, or null when the visitor can open it as they are. */
+  switchTo: Actor | null;
+};
+
+/**
+ * The welcome page's way to the recorded run's ticket, or null when there is none. Someone
+ * already on the team, or the admin, opens it as they are. Anyone else, signed in or not, is
+ * switched to the demo team member, the same way the assistant page's button does it.
+ */
+export function recordedRunEntry(
+  key: string | null,
+  people: Actor[],
+  viewer: Actor | null,
+): RecordedRunEntry | null {
+  if (key === null) return null;
+  const href = `/tickets/${key}`;
+  if (viewer !== null && viewer.role !== "customer") return { href, switchTo: null };
+  const teamMember = people.find((person) => person.role === "team");
+  if (teamMember === undefined) return null;
+  return { href, switchTo: teamMember };
+}
+
 export function signInRouter(
   config: Config,
   auth: Auth | null,
   demoReady: () => boolean = () => false,
+  recordedRunKey: () => string | null = () => null,
 ): Router {
   const router = Router();
 
@@ -71,6 +97,10 @@ export function signInRouter(
       demoAgents: config.demo && demoReady(),
       // The demo's walk-through starts as its customer, on a new ticket filled with a sample.
       walkthrough: config.demo ? people.find((person) => person.role === "customer") : undefined,
+      // On the demo, the ticket an AI assistant worked in a recorded run, by the key the seed
+      // kept, and the team member whose view opens it. Another customer filed it, so a visitor
+      // who is not on the team switches to the team to see it.
+      recordedRun: config.demo ? recordedRunEntry(recordedRunKey(), people, req.actor) : null,
       // The real site links to the demo, so a visitor can try it without signing in.
       demoUrl: config.demoUrl,
       // The real site, from the demo, where GitHub sign-in with roles runs; and the source.
