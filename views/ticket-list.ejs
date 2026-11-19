@@ -17,8 +17,11 @@
 <% if (viewer && viewer.readOnly) { %>
 <p class="role-note"><small>Read-only preview. On the real site an admin also restores archived tickets, deletes tickets permanently and manages assistant connections.</small></p>
 <% } %>
+<%# The list, from its filters to its last row. With scripts on, the bar for ticked tickets is moved into the dock at its top, so it lies over the filter row without moving anything and stays in view while the list scrolls. %>
+<div class="list-area">
+<% if (bulk && tickets.length > 0) { %><div class="bulk-dock" data-bulk-dock></div><% } %>
 <%# The filters: by status, by owner for the team, and words to find. Each is a plain link or a GET form, and each keeps the others, so the address names the view and can be shared. %>
-<div class="list-filters">
+<div class="list-filters" data-list-filters>
 <%# A lit status filter is a toggle like the owner filters: pressing it again goes back to All. %>
 <nav aria-label="Filter by status">
   <ul>
@@ -78,28 +81,29 @@
 </nav>
 <% if (bulk) { %>
 <%# The team ticks tickets, then changes them together: one form, so it works without scripts.
-    Without scripts the bar sits here, above the table, always shown. With scripts it floats at
-    the bottom of the window only while something is ticked, so ticking a row moves nothing. %>
-<form method="post" action="<%= bulk.action %>" class="bulk" data-bulk>
+    Without scripts the bar sits here, above the table, always shown. With scripts it lies over
+    the filter row only while something is ticked, so ticking a row moves nothing. Its controls
+    name the form, so they still send it from there. %>
+<form method="post" action="<%= bulk.action %>" class="bulk" id="bulk-form" data-bulk>
 <div class="bulk-bar" role="group" aria-labelledby="bulk-count" data-bulk-bar>
   <p id="bulk-count" class="bulk-count" aria-live="polite" data-bulk-count>Change the ticked tickets:</p>
   <%# Each choice names itself in its first option, so the bar needs no labels above them. %>
-  <select name="status" aria-label="Status">
+  <select name="status" aria-label="Status" form="bulk-form">
     <option value="">Set status</option>
     <% for (const status of statuses) { %><option value="<%= status %>" <% if (bulk.values.status === status) { %>selected<% } %>><%= statusLabels[status] %></option><% } %>
   </select>
   <%# The stylesheet shows the reason only for Resolved, right after the status. Only reasons that need no more words are offered, so the bar never holds a text box. %>
-  <select name="reason" aria-label="Reason" class="bulk-reason">
+  <select name="reason" aria-label="Reason" class="bulk-reason" form="bulk-form">
     <option value="">Reason</option>
     <% for (const [value, label] of Object.entries(bulk.resolveReasons)) { %><option value="<%= value %>" <% if (bulk.values.reason === value) { %>selected<% } %>><%= label %></option><% } %>
   </select>
-  <select name="owner" aria-label="Assign to">
+  <select name="owner" aria-label="Assign to" form="bulk-form">
     <option value="">Assign to</option>
     <option value="me" <% if (bulk.values.owner === "me") { %>selected<% } %>>Me</option>
     <% for (const member of bulk.members) { %><option value="<%= member.id %>" <% if (bulk.values.owner === member.id) { %>selected<% } %>><%= member.name %></option><% } %>
     <option value="nobody" <% if (bulk.values.owner === "nobody") { %>selected<% } %>>Unassigned</option>
   </select>
-  <button type="submit" class="compact">Apply</button>
+  <button type="submit" class="compact" form="bulk-form">Apply</button>
   <%# Shown by the script, which unticks every row. %>
   <button type="button" class="link bulk-clear" hidden data-bulk-clear>Clear</button>
   <% if (bulk.message) { %><p class="bulk-error" role="alert" data-bulk-error><small><%= bulk.message %></small></p><% } %>
@@ -137,5 +141,6 @@
 <p><a href="<%= nextPage %>">Next page</a></p>
 <% } %>
 <% } %>
+</div>
 <%- include("assistant-invite", { invite }) %>
 <%- include("footer") %>
