@@ -10,7 +10,8 @@ import type { Shared } from "./shared.js";
 import { THREAD_LIMIT, type Ticket } from "./types.js";
 
 // The question "Did this fix it?": the owner asks it, may withdraw it, and the customer
-// answers it. The customer's Yes is the one way a ticket shows as "Customer confirmed".
+// answers it. The customer may also confirm a ticket the team marked fixed. The customer's Yes,
+// by either door, is the one way a ticket shows as "Customer confirmed".
 
 export function createCustomerQuestion(shared: Shared) {
   const { db, requireRow, log, endAgent, toTicket } = shared;
@@ -190,6 +191,43 @@ export function createCustomerQuestion(shared: Shared) {
           now,
         );
         return { ...before, status, ...noQuestion, updated_at: now } as repository.TicketRow;
+      })();
+      return toTicket(saved(db, row), actor);
+    },
+
+    /**
+     * The customer confirms a ticket the team resolved as fixed. Only the customer who filed it
+     * may, as for answer. The ticket ends exactly as a Yes to the question leaves it: resolved,
+     * with no team reason, so it shows as "Customer confirmed". Pressing it again on a ticket
+     * the customer already confirmed changes nothing.
+     */
+    confirmFix(key: string, input: unknown, actor: Actor): Ticket {
+      const row = db.transaction(() => {
+        const before = requireRow(key, actor);
+        requirePermission(actor, "answer", before);
+        const { expected_version } = parse(versionOnlySchema, input ?? {});
+        requireNotArchived(key, before);
+        // Already confirmed by the customer: a resolved ticket with no team reason.
+        if (before.status === "resolved" && before.resolved_reason === null) return before;
+        if (before.status !== "resolved" || before.resolved_reason !== "fixed_no_reply") {
+          throw new HttpError(409, "not_waiting", `Ticket ${key} is not waiting for your answer.`);
+        }
+        requireVersion(key, before, expected_version);
+        const now = new Date().toISOString();
+        // Setting the status again clears the team's reason, which makes it the customer's.
+        repository.updateTicketStatus(db, before.id, "resolved", now);
+        log(before.id, actor, "customer_answered", { fixed: true }, now);
+        return {
+          ...before,
+          ...noQuestion,
+          resolved_reason: null,
+          resolved_note: null,
+          resolved_duplicate_of: null,
+          resolved_by: null,
+          resolved_by_name: null,
+          resolved_at: null,
+          updated_at: now,
+        } as repository.TicketRow;
       })();
       return toTicket(saved(db, row), actor);
     },

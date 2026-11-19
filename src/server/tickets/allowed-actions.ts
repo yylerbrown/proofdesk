@@ -82,6 +82,13 @@ export function allowedActions(ticket: Ticket, actor: Actor) {
       ticket.owner_id === actor.id &&
       ticket.ready_at !== null,
     answer: !archived && can(actor, "answer", ticket) && ticket.ready_at !== null,
+    // The same rules as confirmFix: a ticket the team resolved as fixed.
+    confirmFix:
+      !archived &&
+      can(actor, "answer", ticket) &&
+      ticket.status === "resolved" &&
+      ticket.resolution?.by === "team" &&
+      ticket.resolution.reason === "fixed_no_reply",
     // The same rules as resolveWithReason.
     resolveWithReason:
       !archived &&

@@ -10,13 +10,13 @@ import { adminActor, as, buildTestApp, visitor } from "./helpers.js";
 const DEMO = { DEMO: "on", DEV_SIGN_IN: "off" };
 
 describe("the account page", () => {
-  it("has one heading, with the email switch as the list's last row", async () => {
+  it("has one heading, with the email switch as the card's last row", async () => {
     const { app } = buildTestApp();
     const main = parse((await as(app, adminActor).get("/account")).text).querySelector("main")!;
     expect(main.querySelectorAll("h1, h2, h3").map((h) => h.text)).toEqual(["Your account"]);
-    const terms = main.querySelectorAll("dl > dt").map((dt) => dt.text);
-    expect(terms.at(-1)).toBe("Email notices");
-    expect(main.querySelector("dl > dd:last-child form.email-me")).not.toBeNull();
+    const rows = main.querySelectorAll("dl.account-card > .account-row");
+    expect(rows.at(-1)?.querySelector("dt")?.text).toBe("Email notices");
+    expect(rows.at(-1)?.querySelector("dd form.email-me")).not.toBeNull();
   });
 
   it("names the demo admin as read-only", async () => {

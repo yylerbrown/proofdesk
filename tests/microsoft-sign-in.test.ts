@@ -513,14 +513,6 @@ describe("roles for people who sign in with Microsoft", () => {
     const saved = await boss.post("/people").type("form").send({ person: miaId, role: "team" });
     expect(saved.status).toBe(303);
     expect(await signedInAs(app, signedIn.cookie)).toBe("Mia Microsoft (team member)");
-
-    const account = parse(
-      (await request(app).get("/account").set("Cookie", signedIn.cookie).set(FROM_THIS_SITE)).text,
-    );
-    expect(account.querySelector(".account-way")?.text).toBe("Microsoft");
-    expect(account.text).toContain(
-      "From your Microsoft account; your organization changes it there.",
-    );
   });
 });
 

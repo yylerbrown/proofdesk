@@ -139,9 +139,7 @@ function whyKept(outcome: Remembered, code: string): string {
     case "invalid_key":
       return "no such ticket";
     case "validation_error":
-      return outcome.reason === "fixed_no_reply"
-        ? "its customer said it is not fixed"
-        : "that reason does not fit it";
+      return "that reason does not fit it";
     default:
       return "not allowed";
   }

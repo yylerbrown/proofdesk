@@ -19,6 +19,7 @@
 <% } %>
 <%# The filters: by status, by owner for the team, and words to find. Each is a plain link or a GET form, and each keeps the others, so the address names the view and can be shared. %>
 <div class="list-filters">
+<%# A lit status filter is a toggle like the owner filters: pressing it again goes back to All. %>
 <nav aria-label="Filter by status">
   <ul>
     <li>
@@ -26,12 +27,12 @@
     </li>
     <% for (const status of statuses) { %>
     <li>
-      <a href="<%= href({ status }) %>" <% if (current === status) { %>aria-current="page"<% } %>><%= statusLabels[status] %> <span class="filter-count"><%= counts[status] %></span></a>
+      <a href="<%= href({ status: current === status ? "all" : status }) %>" <% if (current === status) { %>aria-current="page"<% } %>><%= statusLabels[status] %> <span class="filter-count"><%= counts[status] %></span></a>
     </li>
     <% } %>
     <% if (showArchivedFilter) { %>
     <li>
-      <a href="<%= href({ status: "archived" }) %>" <% if (current === "archived") { %>aria-current="page"<% } %>>Archived</a>
+      <a href="<%= href({ status: current === "archived" ? "all" : "archived" }) %>" <% if (current === "archived") { %>aria-current="page"<% } %>>Archived</a>
     </li>
     <% } %>
   </ul>

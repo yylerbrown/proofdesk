@@ -151,13 +151,27 @@ blockquote {
   border-left: 2px solid var(--pd-border);
   font-style: normal;
 }
-/* Quiet narrow columns for pages with one job: forms, confirmations, errors. */
+/*
+ * The one centred column for pages with one job: the ticket forms, Account, the email notices,
+ * About this demo, the archive and delete questions and the error pages. Its title starts at
+ * the column's left edge. The ticket list and People keep the full width.
+ */
+:root {
+  --pd-column: 640px;
+}
+.column,
+.column-narrow {
+  max-width: var(--pd-column);
+  margin-inline: auto;
+}
+/* The saved or refused line at the top of such a page starts at the column's left edge too. */
+main:has(> :is(.column, .column-narrow, .welcome)) > p:is(.saved, .refused) {
+  max-width: var(--pd-column);
+  margin-left: max(0px, calc((100% - var(--pd-column)) / 2));
+}
 main > form,
 .column-form {
   max-width: 640px;
-}
-.column-narrow {
-  max-width: 560px;
 }
 .column-wide {
   max-width: 720px;
@@ -690,10 +704,63 @@ table.people .person-email {
 table.people .person-since {
   color: var(--pd-muted);
 }
-/* The account page's email switch, as the last row of its list, keeps the rows' spacing. */
-.account dd form.email-me fieldset,
-.account dd form.email-me .mail-line {
-  margin-bottom: var(--pd-space-2);
+/*
+ * The account page: one quiet card. Each row is a small grey label on the left and its value on
+ * the right, on one line; on a phone the label sits above the value.
+ */
+.account-card {
+  margin: 0;
+  padding: var(--pd-space-1) var(--pd-space-4);
+  border: var(--pd-hairline);
+  border-radius: var(--pd-radius);
+  background: var(--pd-surface);
+}
+.account-row {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr);
+  column-gap: var(--pd-space-4);
+  align-items: baseline;
+  padding: var(--pd-space-3) 0;
+}
+.account-row + .account-row {
+  border-top: var(--pd-hairline);
+}
+.account-row dt {
+  margin: 0;
+  color: var(--pd-muted);
+  font-size: var(--pd-text-sm);
+  font-weight: var(--pd-weight-regular);
+}
+.account-row dd {
+  margin: 0;
+}
+.account .account-quiet {
+  color: var(--pd-muted);
+  font-size: var(--pd-text-sm);
+}
+/* The switch, the quiet line and Save share one row and wrap only when they must. */
+.account form.email-me {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pd-space-2) var(--pd-space-4);
+  margin: 0;
+}
+.account form.email-me fieldset,
+.account form.email-me label,
+.account form.email-me .mail-line {
+  width: auto;
+  margin: 0;
+}
+.account form.email-me button {
+  width: auto;
+  margin: 0;
+}
+@media (max-width: 639px) {
+  .account-row {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--pd-space-1);
+  }
 }
 /* The three role lines under the table: quiet print, no bullets. */
 ul.role-lines {
@@ -1908,9 +1975,9 @@ main > p:is([role="status"], [role="alert"])[tabindex="-1"]:focus {
 
 /* ---------- The welcome page ---------- */
 
-/* Wide enough that each role's line fits on one row, so all three show on the first screen. */
+/* The shared centred column, so the welcome page lines up with the other one-job pages. */
 .welcome {
-  max-width: 520px;
+  max-width: var(--pd-column);
   margin: var(--pd-space-5) auto 0;
 }
 @media (max-width: 639px) {
@@ -2070,6 +2137,56 @@ main > p:is([role="status"], [role="alert"])[tabindex="-1"]:focus {
 pre.paste {
   padding: var(--pd-space-3);
   background: var(--pd-subtle);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/*
+ * The email notices page: each email is a quiet card that reads like an email. Who it went to,
+ * with its state and date at the right, then the subject in bold, then the words in the page's
+ * own type with their line breaks.
+ */
+.notices-lead {
+  color: var(--pd-muted);
+}
+article.email {
+  margin: 0 0 var(--pd-space-4);
+  padding: var(--pd-space-4);
+  border: var(--pd-hairline);
+  border-radius: var(--pd-radius);
+  background: var(--pd-surface);
+  box-shadow: none;
+}
+article.email > header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--pd-space-1) var(--pd-space-3);
+  margin: 0 0 var(--pd-space-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: var(--pd-text-sm);
+}
+article.email .email-when {
+  color: var(--pd-muted);
+}
+article.email .email-state {
+  margin-right: var(--pd-space-2);
+  padding: 0 6px;
+  border: var(--pd-hairline);
+  border-radius: var(--pd-radius-sm);
+  font-size: var(--pd-text-xs);
+  font-weight: var(--pd-weight-medium);
+}
+article.email .email-subject {
+  margin-bottom: var(--pd-space-2);
+  font-weight: var(--pd-weight-semibold);
+  overflow-wrap: anywhere;
+}
+article.email .email-body {
+  margin: 0;
+  line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }

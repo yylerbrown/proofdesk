@@ -51,7 +51,8 @@ export function createResolveAndReopen(shared: Shared, isOnTeam: (personId: stri
      * <reason>" wherever the ticket does, apart from "Customer confirmed". An open question to
      * the customer is withdrawn first, with its own history entry, and any assistant's work on
      * the ticket ends. The customer who filed it can reopen it, as after their own Yes. An agent
-     * never resolves, by this or any door.
+     * never resolves, by this or any door. The reason Fixed is allowed after the customer's No
+     * too: it tells the customer, who may confirm it or say No again, so it overrides nothing.
      */
     resolveWithReason(key: string, input: unknown, actor: Actor): Ticket {
       const row = db.transaction(() => {
@@ -68,17 +69,6 @@ export function createResolveAndReopen(shared: Shared, isOnTeam: (personId: stri
         }
         if (before.status === "resolved") {
           throw new HttpError(409, "not_open", `Ticket ${key} is already resolved.`);
-        }
-        // The customer's standing word is that it is not fixed (a No, or their reopening it,
-        // and nobody has asked them again since): then that reason would not be true.
-        if (
-          reason === "fixed_no_reply" &&
-          before.ready_at === null &&
-          repository.customerSaysNotFixed(db, before.id)
-        ) {
-          throw new ValidationError("The customer said it is not fixed. Choose another reason.", {
-            reason: ["The customer said it is not fixed. Choose another reason."],
-          });
         }
         let duplicateOf: string | null = null;
         if (reason === "duplicate") {

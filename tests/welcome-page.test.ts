@@ -204,9 +204,9 @@ describe("the page about the demo", () => {
     expect(out.headers.location).toBe("/sign-in");
   });
 
-  it("keeps the old welcome page's width", () => {
+  it("is as wide as the other one-job pages, centred", () => {
     const css = fs.readFileSync("public/site.css", "utf8");
-    expect(css).toMatch(/\.welcome \{\s*max-width: 520px;/);
+    expect(css).toMatch(/\.welcome \{\s*max-width: var\(--pd-column\);\s*margin: [^;]* auto 0;/);
   });
 });
 
