@@ -67,6 +67,8 @@ async function postThenRead(app: Express, who: Actor, path: string, fields: obje
   return {
     status: res.status,
     saved: html.querySelector("p.saved")?.text.trim(),
+    // Just after asking, the ticket's card says so in place of the page's saved line.
+    asked: html.querySelector(".ticket-card [role=status]")?.text.trim(),
     refused: html.querySelector("p.refused")?.text.trim(),
   };
 }
@@ -872,10 +874,10 @@ describe("the ticket page's own forms", () => {
     const version = await formVersion(app, teamActor, "/tickets/SUP-1");
     const fields = { expected_version: version! };
     const first = await postThenRead(app, teamActor, "/tickets/SUP-1/ready", fields);
-    expect(first.saved).toBe("The customer has been asked to check the fix.");
+    expect(first.asked).toBe("Asked the customer: Did this fix it?");
     const second = await postThenRead(app, teamActor, "/tickets/SUP-1/ready", fields);
     expect(second.status).toBe(303);
-    expect(second.saved).toBe("The customer has been asked to check the fix.");
+    expect(second.asked).toBe("Asked the customer: Did this fix it?");
     expect(second.refused).toBeUndefined();
   });
 

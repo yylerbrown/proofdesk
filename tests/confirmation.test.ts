@@ -98,8 +98,8 @@ describe("from merged to confirmed", () => {
 
     const team = await as(app, teamActor).get("/tickets/SUP-1");
     expect(team.text).not.toContain('action="/tickets/SUP-1/answer"');
-    expect(parse(team.text).querySelector(".waiting-line")?.text).toBe(
-      "Waiting for the customer's answer.",
+    expect(parse(team.text).querySelector(".ticket-card .card-line")?.text.trim()).toMatch(
+      /^Waiting for the customer's answer\. Asked \d{1,2} [A-Z][a-z]{2} \d{4}\.$/,
     );
   });
 

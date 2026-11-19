@@ -289,7 +289,7 @@ describe("the spec on the ticket page", () => {
     expect(page.querySelector(".spec-prompt")).toBeNull();
   });
 
-  it("counts the scenarios with evidence in the customer's box, plainly", async () => {
+  it("keeps the scenario count out of the customer's box, which is one quote and two buttons", async () => {
     const { app } = await setup();
     const client = await connect(app);
     await call(client, "propose_spec", { key: "SUP-1", ...spec() });
@@ -321,9 +321,8 @@ describe("the spec on the ticket page", () => {
     const box = parse((await as(app, customerOne).get("/tickets/SUP-1")).text).querySelector(
       "#did-this-fix-it",
     )!;
-    expect(box.text).toContain(
-      "1 of 2 scenarios in the agreed test spec have evidence naming them, as reported.",
-    );
+    // The question stays one quote and two buttons: the count stays in the API, not in the box.
+    expect(box.text).not.toContain("scenarios in the agreed test spec");
     expect(box.innerHTML).not.toMatch(/✓|badge|passed all/i);
   });
 

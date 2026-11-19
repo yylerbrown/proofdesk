@@ -92,9 +92,12 @@ describe("the agreed check", () => {
     const customer = await as(app, customerOne).get("/tickets/SUP-1");
     expect(customer.text).toContain("Team's check");
     expect(customer.text).toContain(`${tighter} &lt;b&gt;now&lt;/b&gt;`);
-    // The customer reads their own words as theirs.
-    expect(customer.text).toContain("In your words");
-    expect(customer.text).toContain(words);
+    // The customer's own words are the card's check; the team's is one quiet line under them.
+    const card = parse(customer.text).querySelector(".ticket-card")!;
+    expect(card.querySelector(".card-label")?.text).toBe("How will we know it's fixed?");
+    expect(card.querySelector("blockquote")?.text).toBe(words);
+    expect(card.querySelector("blockquote + .card-team-check")?.text).toContain("Team's check:");
+    expect(customer.text).not.toContain("In your words");
     expect(customer.text).not.toContain('action="/tickets/SUP-1/agreed-check"');
 
     const team = await as(app, teamActor).get("/tickets/SUP-1");

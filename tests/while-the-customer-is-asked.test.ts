@@ -1,3 +1,4 @@
+import { parse } from "node-html-parser";
 import { describe, expect, it } from "vitest";
 import { admin, as, buildTestApp, customerOne, teamActor } from "./helpers.js";
 
@@ -26,18 +27,19 @@ async function waiting() {
 
 /** Only the "Did this fix it?" box of a page. */
 function box(html: string): string {
-  const start = html.indexOf('<article id="did-this-fix-it">');
+  const start = html.indexOf('<article class="ticket-card" id="did-this-fix-it">');
   return start === -1 ? "" : html.slice(start, html.indexOf("</article>", start));
 }
 
 describe("the 'Did this fix it?' box", () => {
-  it("shows the agreed check and the customer's own words, each labelled", async () => {
+  it("quotes the customer's own words, with the team's check as one quiet line under them", async () => {
     const { app } = await waiting();
     const shown = box((await as(app, customerOne).get("/tickets/SUP-1")).text);
-    expect(shown).toContain("Team's check:");
-    expect(shown).toContain(tighter);
-    expect(shown).toContain("In your words:");
     expect(shown).toContain(words);
+    expect(shown).not.toContain("In your words");
+    expect(shown).not.toContain("Use these words as my check");
+    const quiet = parse(`<div>${shown}</div>`).querySelector("blockquote + .card-team-check");
+    expect(quiet?.text).toBe(`Team's check: ${tighter}`);
   });
 
   it("keeps a refused comment and says why, instead of an error page", async () => {

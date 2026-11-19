@@ -3,9 +3,9 @@ import type { Express } from "express";
 import { describe, expect, it } from "vitest";
 import { as, buildTestApp, customerOne, teamActor } from "./helpers.js";
 
-// The card at the top of a ticket shows the customer's latest word that it is not fixed. Once
-// the team resolved the ticket after that word and then reopened it, the old No is no longer
-// the customer's latest word, so the card is not shown, to the customer or to the team.
+// The card at the top of a ticket says when the customer's latest word is that it is not fixed.
+// Once the team resolved the ticket after that word and then reopened it, the old No is no
+// longer the customer's latest word, so the card's line does not say it, to either of them.
 
 const valid = { title: "Printer jams", description: "It jams.", fix_check: "Ten pages print" };
 
@@ -28,13 +28,16 @@ async function saidNo() {
   return app;
 }
 
+/** The line on the ticket's card, or null when the card has none. */
 const card = async (app: Express, who = teamActor) =>
-  parse((await as(app, who).get("/tickets/SUP-1")).text).querySelector("#customer-said-no");
+  parse((await as(app, who).get("/tickets/SUP-1")).text)
+    .querySelector(".ticket-card .card-line")
+    ?.text.trim() ?? null;
 
 describe("the customer's No at the top of the ticket", () => {
   it("shows while it is their latest word", async () => {
     const app = await saidNo();
-    expect((await card(app))?.querySelector("blockquote")?.text).toBe("Still happening");
+    expect(await card(app)).toMatch(/^The customer said no on /);
   });
 
   it("is not shown after the team resolved and then reopened the ticket", async () => {
@@ -59,6 +62,8 @@ describe("the customer's No at the top of the ticket", () => {
     await as(app, customerOne)
       .post("/api/tickets/SUP-1/answer")
       .send({ fixed: "no", comment: "Partly fixed", ready_token: token });
-    expect((await card(app, customerOne))?.querySelector("blockquote")?.text).toBe("Partly fixed");
+    expect(await card(app, customerOne)).toMatch(
+      /^You said no on .+\. The team will ask you again\.$/,
+    );
   });
 });

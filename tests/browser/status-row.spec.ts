@@ -41,7 +41,10 @@ test("Resolved opens its form under the row, and a reason must be chosen", async
   await expect(reason).toHaveValue("");
   await reason.selectOption("fixed_no_reply");
   await row.getByRole("button", { name: "Resolve", exact: true }).click();
-  await expect(page.locator("article.resolved-by-team strong")).toHaveText(
-    "Resolved by the team: Fixed. Not customer-confirmed.",
+  await expect(page.locator(".ticket-card .card-line")).toContainText(
+    "Resolved by the team: Fixed.",
+  );
+  await expect(page.locator(".ticket-card .card-line")).toContainText(
+    "Not confirmed by the customer.",
   );
 });

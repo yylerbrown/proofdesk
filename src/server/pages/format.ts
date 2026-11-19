@@ -151,6 +151,100 @@ export function confirmedAt(ticket: Ticket, events: TicketEvent[]): string | nul
   return parsed.success ? answer.created_at : null;
 }
 
+const dayFormat = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" });
+
+/** Turns a stored time such as "2026-11-17T19:56:00.000Z" into "17 Nov 2026". */
+export function formatDay(iso: string): string {
+  return dayFormat.format(new Date(iso));
+}
+
+/** What the ticket page knows besides the ticket, for the card's line. */
+export type CardFacts = {
+  /** When the customer's Yes resolved it, from confirmedAt. */
+  confirmed: string | null;
+  /** The customer's standing word that it is not fixed, from notFixedCard. */
+  notFixed: NotFixed | null;
+  /** The name of the assistant that asks for a review, for a viewer who may read notes. */
+  reviewBy: string | null;
+};
+
+/** The one line on the card under the customer's check. */
+export type CardLine = {
+  text: string;
+  /** Only the customer's Yes shows the tick. */
+  tick: boolean;
+  /** When the customer's own message about it was written, so the line can link to it. */
+  messageAt: string | null;
+};
+
+/**
+ * The line the card at the top of the ticket page shows under the customer's check: where the
+ * ticket stands, for this viewer. Null when there is nothing to say, which is most of the time:
+ * a ticket that is simply with the team needs no sentence. The customer's own words are never
+ * repeated here: they stand in the conversation, and the line links to them.
+ */
+export function cardLine(ticket: Ticket, viewer: Role, facts: CardFacts): CardLine | null {
+  const team = viewer !== "customer";
+  const line = (text: string, messageAt: string | null = null): CardLine => ({
+    text,
+    tick: false,
+    messageAt,
+  });
+
+  if (ticket.archived_at !== null) {
+    if (!team) return null;
+    return line(
+      `Archived on ${formatDay(ticket.archived_at)}. Hidden from the lists until restored.`,
+    );
+  }
+
+  if (ticket.status === "resolved") {
+    if (facts.confirmed !== null) {
+      return {
+        text: `Customer confirmed it is fixed. ${formatDay(facts.confirmed)}`,
+        tick: true,
+        messageAt: null,
+      };
+    }
+    const resolution = ticket.resolution;
+    if (resolution === null || resolution.by !== "team") return null;
+    // The reason's label for "Fixed" also says it is not confirmed, which the line says itself.
+    const reason = resolution.reason === "fixed_no_reply" ? "Fixed" : resolution.reason_label;
+    const note = resolution.note ? ` (${resolution.note})` : "";
+    if (!team) {
+      const said = teamSaysFixed(ticket, viewer)
+        ? "The team says it is fixed"
+        : `Resolved by the team: ${reason}`;
+      return line(`${said}${note}. You have not confirmed it.`);
+    }
+    // Who resolved it and when, such as "Demo Team Member, 19 Nov 2026".
+    const byWhom = [resolution.resolved_by_name, resolution.at ? formatDay(resolution.at) : null]
+      .filter((part) => part !== null)
+      .join(", ");
+    const byline = byWhom === "" ? "" : ` ${byWhom}.`;
+    return line(`Resolved by the team: ${reason}${note}.${byline} Not confirmed by the customer.`);
+  }
+
+  // Asked: the customer has the question itself, as the card's heading.
+  if (ticket.ready_at !== null) {
+    if (!team) return null;
+    return line(`Waiting for the customer's answer. Asked ${formatDay(ticket.ready_at)}.`);
+  }
+
+  if (facts.notFixed !== null) {
+    const day = formatDay(facts.notFixed.at);
+    if (facts.notFixed.reopened) {
+      return team ? line(`The customer reopened it on ${day}.`, facts.notFixed.at) : null;
+    }
+    return team
+      ? line(`The customer said no on ${day}.`, facts.notFixed.at)
+      : line(`You said no on ${day}. The team will ask you again.`, facts.notFixed.at);
+  }
+
+  if (team && facts.reviewBy !== null) return line(`${facts.reviewBy} asks for your review.`);
+  return null;
+}
+
 const statusChangeSchema = z.object({
   from: z.enum(TICKET_STATUSES),
   to: z.enum(TICKET_STATUSES),

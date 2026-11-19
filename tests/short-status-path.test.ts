@@ -42,8 +42,10 @@ describe("asking the customer to verify", () => {
     const plain = parse((await as(app, customerOne).get("/tickets/SUP-1")).text).querySelector(
       "#did-this-fix-it",
     )!;
-    expect(plain.querySelector("p")?.text).toBe("The team says it is fixed. Please check it.");
-    expect(plain.text).not.toMatch(/tried:|What happened/);
+    // The question, the customer's check and the two answers: no sentence before them.
+    expect(plain.querySelector("h2")?.text).toBe("Did this fix it?");
+    expect(plain.text).not.toContain("The team says it is fixed");
+    expect(plain.text).not.toMatch(/tried:|What happened|Check it here/);
   });
 
   it("is still refused to anyone but the owner, and before work starts", async () => {

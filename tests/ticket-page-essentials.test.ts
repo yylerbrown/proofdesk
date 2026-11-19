@@ -43,11 +43,13 @@ describe("the customer's ticket page", () => {
     expect(panel.querySelectorAll(".panel-label, h2").map((h) => h.text)).toEqual([
       "Status",
       "Owner",
-      "How will we know it's fixed?",
     ]);
     expect(
       panel.querySelectorAll("p:not(.panel-label), blockquote").map((el) => el.text.trim()),
-    ).toEqual(["In Progress", "Team Member", words, "Edit ticket"]);
+    ).toEqual(["In Progress", "Team Member", "Edit ticket"]);
+    // Their words are on the card, once.
+    expect(html.querySelector(".ticket-card blockquote")?.text).toBe(words);
+    expect(shown(html, words)).toBe(1);
     expect(html.querySelector("main")!.text).not.toContain("Printed ten pages twice");
     expect(panel.querySelector(".panel-edit a.edit-link")?.text).toBe("Edit ticket");
     expect(

@@ -130,18 +130,19 @@ describe("how a team resolution shows", () => {
     const { app } = await setup();
     await resolve(app, { reason: "wont_fix", note: "Works as designed." });
     const page = parse((await as(app, customerOne).get("/tickets/SUP-1")).text);
-    const block = page.querySelector("article.resolved-by-team")!;
-    expect(block.querySelector("strong")?.text).toBe("Resolved by the team: Won't fix");
-    expect(block.text).toContain("Works as designed.");
-    expect(block.text).toContain("If it is still happening, you can reopen it.");
-    // The team sees the same label at the top, said once and not again in the panel.
+    const card = page.querySelector(".ticket-card")!;
+    expect(card.querySelector(".card-line")?.text.trim()).toBe(
+      "Resolved by the team: Won't fix (Works as designed.). You have not confirmed it.",
+    );
+    expect(card.querySelector("details#reopen summary")?.text).toBe("Still happening?");
+    // The team reads the same reason on its card, with who and when, and not again in the panel.
     const teamPage = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    expect(teamPage.querySelector("article.resolved-by-team strong")?.text).toBe(
-      "Resolved by the team: Won't fix",
+    expect(teamPage.querySelector(".ticket-card .card-line")?.text.trim()).toMatch(
+      /^Resolved by the team: Won't fix \(Works as designed\.\)\. Team Member, \d{1,2} [A-Z][a-z]{2} \d{4}\. Not confirmed by the customer\.$/,
     );
     expect(teamPage.querySelector("aside.ticket-panel")!.text).not.toContain("Won't fix");
     // Never the tick or "Customer confirmed": the customer did not say so.
-    expect(page.querySelector(".confirmed")).toBeNull();
+    expect(page.querySelector(".ticket-card .tick")).toBeNull();
     expect(page.querySelector("main")!.text).not.toContain("Customer confirmed");
 
     // In the list the status is one word, and the reason stays on the ticket's page.
@@ -175,7 +176,9 @@ describe("how a team resolution shows", () => {
     const mark = list.querySelector("table.tickets .confirmed-mark");
     expect(mark?.getAttribute("aria-label")).toBe("Customer confirmed");
     expect(
-      parse((await as(app, customerOne).get("/tickets/SUP-1")).text).querySelector(".confirmed"),
+      parse((await as(app, customerOne).get("/tickets/SUP-1")).text).querySelector(
+        ".ticket-card .tick",
+      ),
     ).not.toBeNull();
   });
 

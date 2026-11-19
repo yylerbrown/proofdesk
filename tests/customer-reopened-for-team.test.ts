@@ -29,7 +29,7 @@ async function savedAfter(app: Express, who: Actor, path: string, fields: object
 }
 
 describe("a ticket the customer reopened", () => {
-  it("shows the team a callout with their reason, and the list says the customer reopened it", async () => {
+  it("tells the team on the card, linked to their reason, and the list says the customer reopened it", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
     await resolveTicket(app, "SUP-1", customerOne);
@@ -38,9 +38,12 @@ describe("a ticket the customer reopened", () => {
     );
 
     const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    const box = page.querySelector("#customer-said-no")!;
-    expect(box.querySelector("h2")?.text).toBe("The customer reopened it");
-    expect(box.querySelector("blockquote")?.text).toBe(reason);
+    // The card says so in one line, linked to their words, which stand once, in the conversation.
+    const line = page.querySelector(".ticket-card .card-line")!;
+    expect(line.text.trim()).toMatch(/^The customer reopened it on \d{1,2} [A-Z][a-z]{2} \d{4}\.$/);
+    expect(page.querySelector(".ticket-card")!.text).not.toContain(reason);
+    const href = line.querySelector("a")!.getAttribute("href")!;
+    expect(page.querySelector(href)?.text).toContain(reason);
     expect(await listTag(app, teamActor)).toBe("Customer reopened it");
     expect(await listTag(app, customerOne)).toBeNull();
     // The history keeps their reason too.

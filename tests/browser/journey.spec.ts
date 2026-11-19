@@ -50,6 +50,11 @@ function savedMessage(page: Page) {
   return page.locator("p.saved[role=status]");
 }
 
+/** Just after asking, the ticket's card says so once, in place of the saved line. */
+function askedLine(page: Page) {
+  return page.locator(".ticket-card [role=status]");
+}
+
 test("the short path: file, take, ask the customer, and their Yes resolves it", async ({
   browser,
 }) => {
@@ -71,7 +76,7 @@ test("the short path: file, take, ask the customer, and their Yes resolves it", 
     .locator(".next-action")
     .getByRole("button", { name: "Ask the customer to verify" })
     .click();
-  await expect(savedMessage(team)).toContainText("asked to check the fix");
+  await expect(askedLine(team)).toHaveText("Asked the customer: Did this fix it?");
 
   await customer.goto(`/tickets/${key}`);
   const question = customer
@@ -82,7 +87,9 @@ test("the short path: file, take, ask the customer, and their Yes resolves it", 
   await expectTicketStatus(customer, key, "Resolved");
   // Only the customer's Yes reads as "Customer confirmed".
   await team.goto(`/tickets/${key}`);
-  await expect(team.locator("article.confirmed")).toContainText("Customer confirmed it is fixed.");
+  await expect(team.locator(".ticket-card .card-line")).toContainText(
+    "Customer confirmed it is fixed.",
+  );
 
   await customer.context().close();
   await team.context().close();
@@ -110,8 +117,8 @@ test("the plain path: the status row's In Progress, then Resolved with a reason"
   await expect(savedMessage(team)).toContainText("Resolved, with your reason");
   await expectTicketStatus(team, key, "Resolved");
   // The team's resolution is never shown as the customer's confirmation.
-  await expect(team.locator("article.resolved-by-team strong")).toHaveText(
-    "Resolved by the team: Cannot reproduce",
+  await expect(team.locator(".ticket-card .card-line")).toContainText(
+    "Resolved by the team: Cannot reproduce.",
   );
 
   await customer.context().close();
@@ -198,7 +205,7 @@ test("the long path: a check, a change link and evidence, a No, then the custome
       .fill("The file downloaded with every row.");
     await team.getByRole("checkbox", { name: evidence }).check();
     await team.locator("#ask form").getByRole("button", { name: "Ask with these details" }).click();
-    await expect(savedMessage(team)).toContainText("asked to check the fix");
+    await expect(askedLine(team)).toHaveText("Asked the customer: Did this fix it?");
   });
 
   await test.step("the customer sees the reply, never the note, and answers No", async () => {
@@ -216,9 +223,12 @@ test("the long path: a check, a change link and evidence, a No, then the custome
     await expect(question.getByText(ticket.check)).toBeVisible();
     await expect(question.getByRole("link", { name: tryUrl })).toBeVisible();
     await expect(question.getByText("Exported the report as CSV.")).toBeVisible();
+    // The evidence the team showed is one closed line in the question.
+    await question.getByText("What the team showed (1)").click();
     await expect(question.getByText(evidence)).toBeVisible();
 
-    await question.getByLabel("No, it is not fixed. What is still wrong?").fill(notFixedComment);
+    await question.getByText("No, it is not fixed", { exact: true }).click();
+    await question.getByLabel("What is still wrong?").fill(notFixedComment);
     await question.getByRole("button", { name: "No, send it back" }).click();
     await expect(savedMessage(customer)).toContainText("back with the team");
     await expect(customer.getByRole("heading", { name: "Did this fix it?" })).toHaveCount(0);
@@ -228,12 +238,11 @@ test("the long path: a check, a change link and evidence, a No, then the custome
   await test.step("the ticket is back with the team member, with the customer's words", async () => {
     await team.goto(`/tickets/${key}`);
     await expectTicketStatus(team, key, "In Progress");
-    // The customer's No comes first on the ticket, with their words. The owner is in the panel.
-    const saidNo = team.locator("#customer-said-no");
-    await expect(
-      saidNo.getByRole("heading", { name: "The customer says it is not fixed" }),
-    ).toBeVisible();
-    await expect(saidNo.getByText(notFixedComment)).toBeVisible();
+    // The card says the customer said no, and links to their words in the conversation.
+    const saidNo = team.locator(".ticket-card .card-line");
+    await expect(saidNo).toContainText("The customer said no on");
+    await saidNo.getByRole("link").click();
+    await expect(team.locator("article.entry", { hasText: notFixedComment })).toBeVisible();
     await expect(team.locator(".ticket-panel .panel-owner")).toContainText("Team Member");
     await team.goto("/tickets");
     // Still owned by the same team member, and the list says why it is back with the team.
@@ -257,7 +266,7 @@ test("the long path: a check, a change link and evidence, a No, then the custome
       .getByRole("textbox", { name: "What changed since the customer said it still fails?" })
       .fill("Empty exports are fixed too.");
     await team.locator("#ask form").getByRole("button", { name: "Ask with these details" }).click();
-    await expect(savedMessage(team)).toContainText("asked to check the fix");
+    await expect(askedLine(team)).toHaveText("Asked the customer: Did this fix it?");
 
     await customer.goto(`/tickets/${key}`);
     const question = customer

@@ -32,7 +32,7 @@ export const SAVED_MESSAGES = {
   check: "Team's check saved.",
   evidence: "Evidence attached. It is shown as reported by you; it does not resolve the ticket.",
   link: "Change link saved.",
-  ready: "The customer has been asked to check the fix.",
+  ready: "Asked the customer: Did this fix it?",
   fixed: "Thank you. The ticket is resolved.",
   notFixed: "Thank you. The ticket is back with the team.",
   specAccepted: "Test spec accepted as the way to test.",

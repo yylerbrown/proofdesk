@@ -45,7 +45,7 @@ describe("the tick", () => {
     for (const who of [as(app, customerOne), admin(app)]) {
       const main = parse((await who.get("/tickets/SUP-1")).text).querySelector("main")!;
       expect(ticks(main)).toHaveLength(0);
-      expect(main.querySelector(".confirmed")).toBeNull();
+      expect(main.text).not.toContain("Customer confirmed");
       // Nothing says it is resolved. The team's status row, which names all three statuses,
       // is the exception, so it is left out of the check.
       main.querySelector(".status-control")?.remove();
@@ -59,8 +59,12 @@ describe("the tick", () => {
     await resolveTicket(app, "SUP-1", customerOne);
     const main = await ticketMain(app);
     expect(ticks(main)).toHaveLength(1);
-    expect(main.querySelector(".confirmed")?.text).toContain("Customer confirmed it is fixed.");
-    expect(main.querySelector(".confirmed time")?.getAttribute("datetime")).toMatch(/Z$/);
+    // On the ticket's card, with the day it was confirmed.
+    const line = main.querySelector(".ticket-card .card-line")!;
+    expect(line.querySelector(".tick")).not.toBeNull();
+    expect(line.text.trim()).toMatch(
+      /^Customer confirmed it is fixed\. \d{1,2} [A-Z][a-z]{2} \d{4}$/,
+    );
     expect(ticks(await ticketMain(app, "/tickets"))).toHaveLength(0);
   });
 

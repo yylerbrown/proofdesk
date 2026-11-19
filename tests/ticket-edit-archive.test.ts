@@ -1,3 +1,4 @@
+import { parse } from "node-html-parser";
 import { describe, expect, it } from "vitest";
 import { ValidationError } from "../src/server/errors.js";
 import { createTicketService } from "../src/server/tickets/service.js";
@@ -310,8 +311,13 @@ describe("edit, archive and restore on the pages", () => {
     expect(archivedList.text).toContain(original.title);
 
     const page = await admin(app).get("/tickets/SUP-1");
-    expect(page.text).toContain("This ticket was archived");
-    expect(page.text).toContain('action="/tickets/SUP-1/restore"');
+    const card = parse(page.text).querySelector(".ticket-card")!;
+    expect(card.querySelector(".card-line")?.text.trim()).toMatch(
+      /^Archived on \d{1,2} [A-Z][a-z]{2} \d{4}\. Hidden from the lists until restored\.$/,
+    );
+    expect(card.querySelector("form[action='/tickets/SUP-1/restore'] button")?.text).toBe(
+      "Restore ticket",
+    );
     expect(page.text).not.toContain('action="/tickets/SUP-1/status"');
     expect(page.text).not.toContain('href="/tickets/SUP-1/edit"');
     expect(page.text).toContain("<td>Archived</td>");
@@ -324,7 +330,7 @@ describe("edit, archive and restore on the pages", () => {
     expect(res.status).toBe(303);
 
     const page = await admin(app).get("/tickets/SUP-1");
-    expect(page.text).not.toContain("This ticket was archived");
+    expect(page.text).not.toContain("Archived on");
     expect(page.text).toContain('action="/tickets/SUP-1/take-and-start"');
     expect(page.text).toContain("<td>Restored</td>");
     expect((await admin(app).get("/tickets")).text).toContain(original.title);

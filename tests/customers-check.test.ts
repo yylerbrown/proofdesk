@@ -99,9 +99,9 @@ describe("the customer's own changes", () => {
     expect((await as(app, teamActor).post("/api/tickets/SUP-1/adopt-check")).status).toBe(403);
     expect((await admin(app).post("/api/tickets/SUP-1/adopt-check")).status).toBe(403);
     const page = parse((await as(app, customerOne).get("/tickets/SUP-1")).text);
-    expect(page.querySelector("form[action$='/adopt-check'] button")?.text).toBe(
-      "Use these words as my check",
-    );
+    // The page no longer offers it: the customer's question is one quote and two buttons. The
+    // rule stays, for the API and the page's own route.
+    expect(page.querySelector("form[action$='/adopt-check']")).toBeNull();
     const adopted = await as(app, customerOne).post("/tickets/SUP-1/adopt-check");
     expect(adopted.status).toBe(303);
     expect(await reread(app)).toMatchObject({
