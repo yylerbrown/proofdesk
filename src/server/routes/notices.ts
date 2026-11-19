@@ -2,6 +2,7 @@ import { Router } from "express";
 import { signedIn } from "../actor.js";
 import type { Db } from "../db.js";
 import { noticeStateWords, noticesNewestFirst } from "../notify/view.js";
+import { emailBodyParts } from "../pages/email-body.js";
 import { formatTime } from "../pages/format.js";
 import { parseKey } from "../tickets/keys.js";
 import type { TicketService } from "../tickets/service.js";
@@ -30,7 +31,7 @@ export function noticesRouter(service: TicketService, db: Db, ticketPrefix: stri
         when: notice.sent_at ?? notice.created_at,
         state: noticeStateWords(notice),
         subject: notice.subject,
-        body: notice.body,
+        bodyParts: emailBodyParts(notice.body, ticket.key),
       })),
     });
   });

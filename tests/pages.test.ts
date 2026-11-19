@@ -57,8 +57,9 @@ describe("ticket list page", () => {
   it("marks the chosen filter as the current one", async () => {
     const { app } = buildTestApp();
     const res = await admin(app).get("/tickets?status=in_progress");
-    expect(res.text).toContain('href="/tickets?status=in_progress" aria-current="page"');
-    expect(res.text).not.toContain('href="/tickets" aria-current="page"');
+    // The lit filter clears on a second press, so it leads back to the whole list.
+    expect(res.text).toContain('href="/tickets" aria-current="page">In Progress');
+    expect(res.text).not.toContain('aria-current="page">All');
   });
 
   it("shows the whole list for an unknown status, not an error page", async () => {

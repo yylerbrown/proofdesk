@@ -67,7 +67,7 @@ export function createAccountService(db: Db, config: Config) {
 
   /** The line under the switch: true for this site, or null when email is sent. */
   function mailLine(): string | null {
-    if (config.demo) return "This demo never sends email.";
+    if (config.demo) return "The demo sends no email";
     if (config.mail === null)
       return "This site has no mail server set up, so no email is sent yet.";
     return null;
@@ -90,7 +90,7 @@ export function createAccountService(db: Db, config: Config) {
       let madeUpLine: string | null = null;
       if (email === null) {
         madeUpLine = config.demo
-          ? "Made up for the demo, so Proofdesk holds no address."
+          ? "None on the demo"
           : "Made up for development, so Proofdesk holds no address.";
       }
       return {
