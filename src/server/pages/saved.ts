@@ -5,7 +5,8 @@ import type { Request, Response } from "express";
 // nobody can make the page show a message of their own. It lives a minute and is read once.
 
 export const SAVED_MESSAGES = {
-  filed: "Ticket filed. The team will see it in their list.",
+  // The ticket page puts the key in this line; see filedMessage below.
+  filed: "Ticket filed. The support team has it now; come back to this page for updates.",
   alreadyFiled: "You already filed this form, so nothing new was filed. This is that ticket.",
   edited: "Changes saved.",
   status: "Status changed.",
@@ -36,6 +37,15 @@ export const SAVED_MESSAGES = {
 } as const;
 
 export type SavedKey = keyof typeof SAVED_MESSAGES;
+
+/**
+ * The receipt after filing, on the new ticket's own page: it names the ticket, so the person
+ * knows which one is theirs, and says what happens next. It says nothing about email, which
+ * the real site may also send.
+ */
+export function filedMessage(key: string): string {
+  return `Ticket ${key} filed. The support team has it now; come back to this page for updates.`;
+}
 
 const COOKIE = "saved";
 

@@ -28,6 +28,7 @@ import { sameText, type ListOrder } from "../tickets/schemas.js";
 import { statusControl } from "../pages/status-control.js";
 import { DESCRIPTION_LIMIT, withHowFarOver } from "../pages/text-limit.js";
 import {
+  filedMessage,
   rememberSaved,
   SAVED_MESSAGES,
   takeProblem,
@@ -321,6 +322,8 @@ export function pagesRouter(service: TicketService): Router {
   ): void {
     const actor = signedIn(req);
     const ticket = service.getTicket(req.params.key as string, actor);
+    // Just after filing, the receipt names this ticket.
+    if (res.locals.saved === SAVED_MESSAGES.filed) res.locals.saved = filedMessage(ticket.key);
     const entries = service.listEntries(ticket.key, actor);
     const events = service.listEvents(ticket.key, actor);
     const names = service.peopleNames(events.map((event) => event.actor));

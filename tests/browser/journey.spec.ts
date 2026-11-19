@@ -59,7 +59,7 @@ test("the short path: file, take, ask the customer, and their Yes resolves it", 
   await customer.getByLabel("Title").fill("The report page is blank");
   await customer.getByLabel("Description").fill("The reports page shows nothing since Monday.");
   await customer.getByRole("button", { name: "File ticket" }).click();
-  await expect(savedMessage(customer)).toContainText("Ticket filed");
+  await expect(savedMessage(customer)).toContainText(/Ticket [A-Z]{2,6}-\d+ filed\./);
   const key = /\/tickets\/([A-Z]{2,6}-\d+)$/.exec(new URL(customer.url()).pathname)![1]!;
 
   await team.goto(`/tickets/${key}`);
@@ -131,7 +131,7 @@ test("the long path: a check, a change link and evidence, a No, then the custome
     await customer.getByLabel("How will we know it's fixed?").fill(ticket.check);
     await customer.getByRole("button", { name: "File ticket" }).click();
 
-    await expect(savedMessage(customer)).toContainText("Ticket filed");
+    await expect(savedMessage(customer)).toContainText(/Ticket [A-Z]{2,6}-\d+ filed\./);
     const match = /\/tickets\/([A-Z]{2,6}-\d+)$/.exec(new URL(customer.url()).pathname);
     expect(match, "the ticket page address ends in its key").not.toBeNull();
     key = match![1]!;

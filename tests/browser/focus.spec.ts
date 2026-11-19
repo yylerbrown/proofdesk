@@ -34,7 +34,9 @@ test("focus starts from the saved line, the sent line or the search box", async 
 
   await test.step("after filing, the saved line has focus and Tab goes on below it", async () => {
     const saved = page.locator('main > p[role="status"]');
-    await expect(saved).toHaveText("Ticket filed. The team will see it in their list.");
+    await expect(saved).toHaveText(
+      /^Ticket SUP-\d+ filed\. The support team has it now; come back to this page for updates\.$/,
+    );
     await expect(saved).toBeFocused();
     await expect(saved).toHaveAttribute("tabindex", "-1");
     await page.keyboard.press("Tab");
