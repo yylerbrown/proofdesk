@@ -6,6 +6,7 @@ import type { Express } from "express";
 import { parse } from "node-html-parser";
 import request from "supertest";
 import { afterEach, describe, expect, it } from "vitest";
+import { keyOnPage } from "./key-on-page.js";
 import { DEV_COOKIE } from "../src/server/actor.js";
 import { seedDemo } from "../src/server/demo.js";
 import { createTicketService } from "../src/server/tickets/service.js";
@@ -61,7 +62,7 @@ async function issue(app: Express): Promise<string> {
     .post("/connections")
     .type("form")
     .send({ name: "Helper", scopes: ["read_tickets", "attach_evidence", "propose_specs"] });
-  const key = parse(res.text).querySelector("input.key")!.getAttribute("value")!;
+  const key = keyOnPage(res.text);
   // The owner hands SUP-1 to this connection, when there is one: agents see only those.
   if ((await admin(app).get("/api/tickets/SUP-1")).status === 200) {
     await handToAgent(app, "SUP-1", key);
@@ -166,7 +167,7 @@ describe("proposing a spec", () => {
       .post("/connections")
       .type("form")
       .send({ name: "Reader", scopes: ["read_tickets"] });
-    const key = parse(res.text).querySelector("input.key")!.getAttribute("value")!;
+    const key = keyOnPage(res.text);
     await handToAgent(app, "SUP-1", key);
     const refused = await request(app)
       .post("/api/tickets/SUP-1/spec")
@@ -342,7 +343,7 @@ describe("test specs on the demo", () => {
   }
   async function demoKey(app: Express): Promise<string> {
     const res = await visitor(app).post("/demo/connection");
-    return parse(res.text).querySelector("input.key")!.getAttribute("value")!;
+    return keyOnPage(res.text);
   }
   it("never shows one connection the spec another proposed", async () => {
     const { app, sample } = buildDemo();

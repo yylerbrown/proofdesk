@@ -2,6 +2,7 @@ import { parse } from "node-html-parser";
 import request from "supertest";
 import type { Express } from "express";
 import { describe, expect, it } from "vitest";
+import { keyOnPage } from "./key-on-page.js";
 import { AGENT_SCOPES } from "../src/server/permissions.js";
 import {
   admin,
@@ -24,7 +25,7 @@ const valid = {
 
 async function issue(app: Express, scopes: string[]) {
   const res = await admin(app).post("/connections").type("form").send({ name: "Helper", scopes });
-  return parse(res.text).querySelector("input.key")!.getAttribute("value")!;
+  return keyOnPage(res.text);
 }
 
 const reread = async (app: Express) => (await admin(app).get("/api/tickets/SUP-1")).body;

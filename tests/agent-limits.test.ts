@@ -2,9 +2,9 @@ import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import type { Express } from "express";
-import { parse } from "node-html-parser";
 import request from "supertest";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { keyOnPage } from "./key-on-page.js";
 import {
   ACTIVITY_KEPT,
   createConnectionService,
@@ -64,7 +64,7 @@ afterEach(async () => {
 
 async function issue(app: Express, scopes: string[], name = "Helper") {
   const res = await admin(app).post("/connections").type("form").send({ name, scopes });
-  return parse(res.text).querySelector("input.key")!.getAttribute("value")!;
+  return keyOnPage(res.text);
 }
 
 /** Starts the app on a free port and connects the SDK's client with this key. */
@@ -235,7 +235,7 @@ describe("the page that shows a new key", () => {
     const demo = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
     seedDemo(createTicketService(demo.db, demo.config.ticketPrefix));
     const shown = await visitor(demo.app).post("/demo/connection");
-    expect(shown.text).toMatch(/value="pd_/);
+    expect(shown.text).toMatch(/Bearer pd_/);
     expect(shown.headers["cache-control"]).toBe("no-store");
   });
 });

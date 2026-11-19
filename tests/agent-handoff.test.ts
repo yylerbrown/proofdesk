@@ -5,6 +5,7 @@ import { parse } from "node-html-parser";
 import request from "supertest";
 import type { Express } from "express";
 import { afterEach, describe, expect, it } from "vitest";
+import { keyOnPage } from "./key-on-page.js";
 import { LIST_PAGE_SIZE } from "../src/server/tickets/service.js";
 import {
   admin,
@@ -38,7 +39,7 @@ async function issue(app: Express, name = "Helper") {
     .post("/connections")
     .type("form")
     .send({ name, scopes: ["read_tickets", "write_notes", "attach_evidence"] });
-  return parse(res.text).querySelector("input.key")!.getAttribute("value")!;
+  return keyOnPage(res.text);
 }
 
 const asAgent = (app: Express, key: string) => ({

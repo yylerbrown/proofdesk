@@ -5,6 +5,7 @@ import { parse } from "node-html-parser";
 import request from "supertest";
 import type { Express } from "express";
 import { afterEach, describe, expect, it } from "vitest";
+import { keyOnPage } from "./key-on-page.js";
 import { DEV_COOKIE, type Actor } from "../src/server/actor.js";
 import type { Db } from "../src/server/db.js";
 import { WRITE_LIMIT } from "../src/server/limits.js";
@@ -482,7 +483,7 @@ const CASES: Case[] = [
 /** Issues an assistant connection and returns its key. */
 async function issueKey(app: Express, scopes = ["read_tickets", "write_notes"]) {
   const res = await admin(app).post("/connections").type("form").send({ name: "Helper", scopes });
-  return parse(res.text).querySelector("input.key")!.getAttribute("value")!;
+  return keyOnPage(res.text);
 }
 
 describe("every action that accepts a version", () => {

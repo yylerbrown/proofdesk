@@ -1,7 +1,7 @@
-import { parse } from "node-html-parser";
 import request from "supertest";
 import type { Express } from "express";
 import { expect } from "vitest";
+import { keyOnPage } from "./key-on-page.js";
 import type { Db } from "../src/server/db.js";
 import {
   admin,
@@ -40,7 +40,7 @@ async function issueKey(app: Express): Promise<string> {
     .post("/connections")
     .type("form")
     .send({ name: "Helper", scopes: ["read_tickets", "attach_evidence", "write_notes"] });
-  return parse(res.text).querySelector("input.key")!.getAttribute("value")!;
+  return keyOnPage(res.text);
 }
 
 /**

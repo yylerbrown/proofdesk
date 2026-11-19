@@ -2,6 +2,7 @@ import { parse } from "node-html-parser";
 import request from "supertest";
 import type { Express } from "express";
 import { describe, expect, it } from "vitest";
+import { keyOnPage } from "./key-on-page.js";
 import { ACTIONS } from "../src/server/api/actions.js";
 import { TOOL_ACTIONS } from "../src/server/mcp.js";
 import { CAPABILITIES } from "../src/server/permissions.js";
@@ -101,7 +102,7 @@ describe("returning a ticket to New", () => {
       .post("/connections")
       .type("form")
       .send({ name: "Helper", scopes: ["read_tickets", "write_notes"] });
-    const key = parse(issued.text).querySelector("input.key")!.getAttribute("value")!;
+    const key = keyOnPage(issued.text);
     await handToAgent(app, "SUP-1", key);
     await toNew(app, teamActor).expect(200);
     expect(await history(app)).toContain("agent_handoff_ended");
@@ -115,7 +116,7 @@ describe("returning a ticket to New", () => {
       .post("/connections")
       .type("form")
       .send({ name: "Helper", scopes: ["read_tickets", "write_notes"] });
-    const key = parse(issued.text).querySelector("input.key")!.getAttribute("value")!;
+    const key = keyOnPage(issued.text);
     await handToAgent(app, "SUP-1", key);
     const res = await request(app)
       .patch("/api/tickets/SUP-1")
