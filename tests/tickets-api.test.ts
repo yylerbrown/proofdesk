@@ -116,8 +116,8 @@ describe("create and get", () => {
     const created = await admin(app).post("/api/tickets").send(valid);
     const res = await admin(app).get(`/api/tickets/${created.body.key}`);
     expect(res.status).toBe(200);
-    // Reading one ticket also says whether it has a test spec.
-    expect(res.body).toEqual({ ...created.body, spec: null });
+    // Reading one ticket also says whether it has a test spec, and lists its pictures.
+    expect(res.body).toEqual({ ...created.body, spec: null, pictures: [] });
   });
 
   it("uses the configured prefix", async () => {

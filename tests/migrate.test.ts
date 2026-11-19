@@ -63,6 +63,7 @@ const ALL = [
   "0033_github_account_index.sql",
   "0034_ticket_list_sort_indexes.sql",
   "0035_ticket_search.sql",
+  "0036_ticket_pictures.sql",
 ];
 
 describe("runMigrations", () => {

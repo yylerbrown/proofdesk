@@ -8,6 +8,7 @@ import { createCustomerQuestion } from "./customer-question.js";
 import { createEvidenceAndSpecs } from "./evidence-and-specs.js";
 import { createFiling } from "./filing.js";
 import { createOnce } from "./once.js";
+import { createPictures } from "../pictures/service.js";
 import { createReads } from "./reads.js";
 import * as repository from "./repository.js";
 import { createResolveAndReopen } from "./resolve-and-reopen.js";
@@ -79,6 +80,8 @@ export function createTicketService(
   const reads = createReads(shared, options);
   const workflow = createWorkflow(shared, teamMembers);
   const resolveAndReopen = createResolveAndReopen(shared, isOnTeam);
+  const filing = createFiling(shared);
+  const conversation = createConversation(shared);
 
   return {
     // reads.ts: listTickets, countTickets, visibleKey, getTicket, ticketStamp, listEvents,
@@ -86,7 +89,7 @@ export function createTicketService(
     ...reads,
     // filing.ts: createTicket, editTicket, adoptCheck, agreeCheck, linkChange, archiveTicket,
     // restoreTicket, deleteTicket
-    ...createFiling(shared),
+    ...filing,
     // workflow.ts: changeStatus, takeTicket, takeAndStart, releaseTicket, handOff,
     // handOffCandidates
     ...workflow,
@@ -99,7 +102,10 @@ export function createTicketService(
     // customer-question.ts: markReady, withdrawQuestionAsked, answer, confirmFix
     ...createCustomerQuestion(shared),
     // conversation.ts: addEntry, addNote, askOwnerToReview, requestReview, listEntries
-    ...createConversation(shared),
+    ...conversation,
+    // ../pictures/service.ts: pictureLimits, createTicketWithPictures, addEntryWithPictures,
+    // listPictures, readPicture
+    ...createPictures(shared, { ...filing, ...conversation }),
     // evidence-and-specs.ts: addEvidence, listEvidence, getSpec, proposeSpec, decideSpec
     ...createEvidenceAndSpecs(shared),
     // assistants.ts: giveToAgent, endAgentWork, connectedAssistants, agentHelp, assistantSignals

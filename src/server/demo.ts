@@ -1,6 +1,8 @@
 import { DEMO_ACTORS, type Actor } from "./actor.js";
 import type { Db } from "./db.js";
 import { demoNotReady } from "./errors.js";
+import { DEMO_PICTURE_LIMITS } from "./pictures/limits.js";
+import { samplePicture } from "./pictures/sample.js";
 import { buildKey, parseKey } from "./tickets/keys.js";
 import * as repository from "./tickets/repository.js";
 import type { TicketService } from "./tickets/service.js";
@@ -129,13 +131,17 @@ export function seedDemo(service: TicketService): void {
     comment: "Still nothing when the title has a comma in it.",
   });
 
-  service.createTicket(
+  // The one sample with a picture: a drawing of the settings panel the customer means. The
+  // demo seeds it, so everyone who can open this ticket sees it.
+  service.createTicketWithPictures(
     {
       title: "Settings page text is hard to read in dark mode",
       description: "In dark mode the labels on the settings page are dark grey on black.",
       fix_check: "I can read every label on the settings page in dark mode",
     },
+    { files: [samplePicture()], refused: null },
     third,
+    null,
   );
 
   // Record what was seeded, so a visitor's assistant is shown only this, never what other
@@ -263,6 +269,7 @@ export const DEMO_BUDGET: Budget = {
   eventsPerTicket: 100,
   evidencePerTicket: 20,
   specsPerTicket: 20,
+  pictures: DEMO_PICTURE_LIMITS,
 };
 
 // ---- The record of what seeding wrote ----------------------------------------------------
