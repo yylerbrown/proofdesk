@@ -66,13 +66,17 @@ export function takeBulkOutcome(
   }
   const checked = z.array(rememberedSchema).max(2).safeParse(parsed);
   if (!checked.success) return null;
-  return checked.data.map((outcome) => bulkOutcomeLine(outcome, nameOf)).join(" ");
+  // With two changes, each one's "not changed" sentence names its change, so a ticket that
+  // moved but kept its owner never reads as both changed and not changed.
+  const both = checked.data.length === 2;
+  return checked.data.map((outcome) => bulkOutcomeLine(outcome, nameOf, both)).join(" ");
 }
 
 /** "7 moved to Resolved. 2 were not changed: SUP-4 (only its owner ...); SUP-9 (already resolved)." */
 export function bulkOutcomeLine(
   outcome: Remembered,
   nameOf: (id: string) => string | undefined,
+  both = false,
 ): string {
   const parts: string[] = [];
   if (outcome.changed > 0) parts.push(changedWords(outcome, nameOf));
@@ -82,7 +86,13 @@ export function bulkOutcomeLine(
     const list = groups
       .map(([code, keys]) => `${keys.join(", ")} (${whyKept(outcome, code)})`)
       .join("; ");
-    parts.push(`${keptCount} ${keptCount === 1 ? "was" : "were"} not changed: ${list}.`);
+    const one = keptCount === 1;
+    const notChanged = !both
+      ? `${one ? "was" : "were"} not changed`
+      : outcome.status !== undefined
+        ? "did not move"
+        : `kept ${one ? "its" : "their"} owner`;
+    parts.push(`${keptCount} ${notChanged}: ${list}.`);
   }
   return parts.join(" ");
 }

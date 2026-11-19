@@ -195,6 +195,41 @@ describe("changing ticked tickets from the list", () => {
     }
   });
 
+  it("checks the owner before it changes any status when one Apply sends both", async () => {
+    const { app } = buildTestApp();
+    await file(app, ["One"]);
+    // An owner who is not a member, as a page left open after someone was removed would send.
+    const res = await postForm(app, teamActor, "", {
+      keys: "SUP-1",
+      status: "in_progress",
+      owner: "not-a-member",
+    });
+    expect(res.status).toBe(400);
+    const page = parse(res.text);
+    expect(page.querySelector(".bulk-error")?.text).toBe("Choose a team member.");
+    expect(page.querySelector('input[value="SUP-1"]')?.hasAttribute("checked")).toBe(true);
+    // The form was refused, so no ticket changed.
+    expect((await admin(app).get("/api/tickets/SUP-1")).body).toMatchObject({
+      status: "new",
+      owner_id: null,
+    });
+    expect(await eventTypes(app, "SUP-1")).toEqual(["created"]);
+  });
+
+  it("names which change left a ticket as it was when one Apply sends both", async () => {
+    const { app } = buildTestApp();
+    await file(app, ["One", "Two"]);
+    // Starting work takes each ticket, so letting it go then is refused by the usual rule.
+    const posted = await postForm(app, teamActor, "", {
+      keys: ["SUP-1", "SUP-2"],
+      status: "in_progress",
+      owner: "nobody",
+    });
+    expect(savedLine(await listAfter(app, teamActor, posted))).toBe(
+      "2 moved to In Progress. 2 kept their owner: SUP-1, SUP-2 (in progress, so it keeps an owner).",
+    );
+  });
+
   it("asks for a choice when Apply is pressed with neither chosen", async () => {
     const { app } = buildTestApp();
     await file(app, ["One"]);

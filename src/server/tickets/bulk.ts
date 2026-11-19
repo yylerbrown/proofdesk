@@ -152,6 +152,15 @@ export function createBulk(
 
   return {
     /**
+     * Checks a change as changeTickets would, and touches no ticket. The list's one Apply can
+     * send two changes, and checks both before it makes either.
+     */
+    checkChange(input: unknown, actor: Actor): void {
+      requirePermission(actor, "bulk_change");
+      readChange(input, actor);
+    },
+
+    /**
      * Makes one change to each ticket named, at most one page of the list. The team only; an
      * assistant connection never. Each ticket is changed, or left as it is with the reason the
      * same change on its own page would give. One ticket's refusal never stops the others.

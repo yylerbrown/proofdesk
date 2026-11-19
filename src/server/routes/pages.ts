@@ -473,6 +473,15 @@ export function pagesRouter(service: TicketService): Router {
       staff && !specPanel.spec && lastSpecEvent?.type === "spec_discarded"
         ? describeActor(lastSpecEvent, names)
         : null;
+    // A person on the team can propose a spec too. The card then names them, and still does
+    // after someone discards it.
+    const lastProposal = events.filter((event) => event.type === "spec_proposed").at(-1);
+    const proposedBy =
+      specPanel.spec?.proposed_by.kind === "person"
+        ? specPanel.spec.proposed_by.name
+        : discardedBy !== null && lastProposal?.actor_kind === "person"
+          ? describeActor(lastProposal, names)
+          : null;
     const agentEvidence = evidence.some((item) => item.reported_by.kind === "agent");
     const showCard = staff
       ? signal !== null || specPanel.spec !== null || agentEvidence || discardedBy !== null
@@ -480,10 +489,7 @@ export function pagesRouter(service: TicketService): Router {
     const assistantCard = showCard
       ? {
           key: ticket.key,
-          from:
-            specPanel.spec?.proposed_by.kind === "person"
-              ? `From ${specPanel.spec.proposed_by.name}`
-              : "From the AI assistant",
+          from: proposedBy === null ? "From the AI assistant" : `From ${proposedBy}`,
           reviewBy: signal?.label === "Review requested by" ? signal.text : null,
           blocked: signal?.label === "Assistant blocked:" ? signal.text : null,
           spec: specPanel.spec,
@@ -644,6 +650,9 @@ export function pagesRouter(service: TicketService): Router {
       ...(chosen(body.owner) ? [ownerInput] : []),
     ];
     try {
+      // Both changes are checked before either is made, so a refused owner never leaves the
+      // status changed behind a page that says the form was refused.
+      for (const input of inputs) service.checkChange(input, actor);
       const outcomes = inputs.map((input) => service.changeTickets(input, actor));
       rememberBulkOutcome(res, outcomes);
       const view = listView(req, actor);

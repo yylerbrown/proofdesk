@@ -241,6 +241,23 @@ describe("deciding on a spec", () => {
   });
 });
 
+describe("a spec a person proposed", () => {
+  it("is headed with their name, before and after it is discarded", async () => {
+    const { app } = await setup();
+    await as(app, teamActor).post("/api/tickets/SUP-1/spec").send(spec()).expect(201);
+    const from = async () =>
+      parse((await as(app, teamActor).get("/tickets/SUP-1")).text).querySelector(
+        ".assistant-card .card-from",
+      )?.text;
+    expect(await from()).toBe("From Team Member");
+    await as(app, teamActor)
+      .post("/tickets/SUP-1/spec/decision")
+      .type("form")
+      .send({ decision: "discard" });
+    expect(await from()).toBe("From Team Member");
+  });
+});
+
 describe("the spec on the ticket page", () => {
   it("offers one quiet line to the team while there is no spec, and nothing to the customer", async () => {
     const { app } = await setup();
