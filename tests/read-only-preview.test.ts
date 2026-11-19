@@ -68,7 +68,7 @@ describe("the ticket list for the read-only admin preview", () => {
 });
 
 describe("a refusal the read-only admin preview meets on an error page", () => {
-  it("says the preview is read-only and points to Switch role", async () => {
+  it("says the preview is read-only and points to the menu at the top right", async () => {
     const { app } = buildDemo();
     // A form left open from another role, sent after switching to the preview.
     const res = await asDemo(app, "demo-admin")
@@ -77,7 +77,7 @@ describe("a refusal the read-only admin preview meets on an error page", () => {
       .send({ title: "Printer is broken", description: "It jams on every page." });
     expect(res.status).toBe(403);
     expect(mainText(res.text)).toContain(
-      "The admin preview is read-only. Use Switch role at the top of the page to act as the customer or the team.",
+      "The admin preview is read-only. Use the menu at the top right to act as the customer or the team.",
     );
   });
 

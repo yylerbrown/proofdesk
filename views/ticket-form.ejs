@@ -76,12 +76,14 @@
   <% } %>
 
   <label>
+    <% if (locals.checkLocked) { %>
+    <%# Greyed for the team: only its label and whose words they are. %>
+    <span id="fix_check-label">How will we know it's fixed?</span>
+    <textarea rows="3" readonly aria-labelledby="fix_check-label" aria-describedby="fix_check-locked"><%= values.fix_check %></textarea>
+    <small id="fix_check-locked">The customer's own words. Only they can change them.</small>
+    <% } else { %>
     <span id="fix_check-label">How will we know it's fixed? (optional)</span>
     <small id="fix_check-hint" class="hint">One thing you can check yourself, like "I can sign in on my phone". The team asks you to confirm the fix against it.</small>
-    <% if (locals.checkLocked) { %>
-    <textarea rows="3" readonly aria-labelledby="fix_check-label" aria-describedby="fix_check-locked"><%= values.fix_check %></textarea>
-    <small id="fix_check-locked">The customer's own words. Only they can change them; offer a clearer check on the ticket instead.</small>
-    <% } else { %>
     <textarea name="fix_check" rows="3" maxlength="500" aria-labelledby="fix_check-label" aria-describedby="<%= fixCheckDescribedBy %>" <% if (errors.fix_check) { %>aria-invalid="true"<% } %> <%= focusIf("fix_check") %>><%= values.fix_check %></textarea>
     <% } %>
   </label>
@@ -95,9 +97,6 @@
   <small id="where_url-error"><%= errors.where_url.join(" ") %></small>
   <% } %>
 
-  <% if (editKey && viewer && viewer.role !== "customer") { %>
-  <p class="status-rule"><small>The customer confirms a fix with Yes; the team can also resolve with a reason.</small></p>
-  <% } %>
   <div class="form-actions">
     <button type="submit"><%= submitLabel %></button>
     <a href="<%= editKey ? `/tickets/${editKey}` : "/tickets" %>">Cancel</a>

@@ -69,7 +69,7 @@ describe("the card's line", () => {
   it("tells the team the customer says it is not fixed, linked to their message", () => {
     const facts = { ...nothing, notFixed: { reopened: false, words: "Still jams.", at } };
     expect(cardLine(ticket(mine), "team", facts)).toEqual({
-      text: "The customer says it is not fixed, since ",
+      text: "The customer said it is not fixed on ",
       day: at,
       after: ".",
       tick: false,
@@ -87,7 +87,7 @@ describe("the card's line", () => {
   it("says a reopening with the same words as a No, linked to their message", () => {
     const facts = { ...nothing, notFixed: { reopened: true, words: "Again.", at } };
     expect(cardLine(ticket(mine), "team", facts)).toEqual({
-      text: "The customer says it is not fixed, since ",
+      text: "The customer said it is not fixed on ",
       day: at,
       after: ".",
       tick: false,
@@ -114,7 +114,7 @@ describe("the card's line", () => {
     }
   });
 
-  it("names the team's reason, who and when, and that the customer did not confirm it", () => {
+  it("names the team's reason, who and when, then that the customer can reopen it", () => {
     const resolved = ticket({
       status: "resolved",
       resolution: {
@@ -130,7 +130,7 @@ describe("the card's line", () => {
     });
     const line = cardLine(resolved, "team", nothing);
     expect(words(line)).toBe(
-      "Resolved by the team: Cannot reproduce. Demo Team Member, 19 Nov 2026. Not confirmed by the customer.",
+      "Resolved by the team: Cannot reproduce. Demo Team Member, 19 Nov 2026. The customer can reopen it.",
     );
     expect(line).toMatchObject({ day: at, tick: false, messageAt: null });
   });
@@ -165,7 +165,7 @@ describe("the card's line", () => {
     expect(
       words(cardLine(byTeam("fixed_no_reply", "Fixed. Not customer-confirmed."), "team", nothing)),
     ).toBe(
-      "Resolved by the team: Fixed. Not customer-confirmed. Demo Team Member, 19 Nov 2026. The customer did not confirm it, and can reopen it.",
+      "Resolved by the team: Fixed. Demo Team Member, 19 Nov 2026. The customer has not confirmed it.",
     );
     expect(
       words(
@@ -176,7 +176,7 @@ describe("the card's line", () => {
         ),
       ),
     ).toBe(
-      "Resolved by the team: Fixed. Not customer-confirmed. Fixed in: version 4.2.1. Demo Team Member, 19 Nov 2026. The customer did not confirm it, and can reopen it.",
+      "Resolved by the team: Fixed. Fixed in: version 4.2.1. Demo Team Member, 19 Nov 2026. The customer has not confirmed it.",
     );
   });
 
@@ -225,7 +225,7 @@ describe("a note on the team's resolution", () => {
       },
     });
     expect(words(cardLine(resolved, "team", nothing))).toBe(
-      "Resolved by the team: Other (Out of scope. See the policy). Demo Team Member, 19 Nov 2026. Not confirmed by the customer.",
+      "Resolved by the team: Other (Out of scope. See the policy). Demo Team Member, 19 Nov 2026. The customer can reopen it.",
     );
     expect(words(cardLine(resolved, "customer", nothing))).toBe(
       "Other (Out of scope. See the policy). You have not confirmed it.",

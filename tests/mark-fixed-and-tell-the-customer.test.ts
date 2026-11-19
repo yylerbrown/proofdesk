@@ -64,11 +64,11 @@ describe("Mark fixed and tell the customer", () => {
     expect(form.querySelector("textarea")).toBeNull();
   });
 
-  it("resolves it with nothing typed, and says the customer has been told", async () => {
+  it("resolves it with nothing typed, and says what the customer was asked", async () => {
     const app = await inProgress();
     const { action, fields } = nextStepFields(await ticketPage(app, teamActor));
     expect(await savedAfter(app, teamActor, action, fields)).toBe(
-      "Marked fixed. The customer has been told.",
+      "Marked fixed. The customer was asked: Did this fix it?",
     );
     const ticket = (await as(app, teamActor).get("/api/tickets/SUP-1")).body;
     expect(ticket.status).toBe("resolved");
@@ -174,7 +174,7 @@ describe("the customer's answer to a ticket marked fixed", () => {
     expect(ticket).toMatchObject({ status: "in_progress", owner_name: "Team Member" });
     const team = await ticketPage(app, teamActor);
     expect(team.querySelector(".card-line")?.text.trim()).toMatch(
-      /^The customer says it is not fixed, since /,
+      /^The customer said it is not fixed on /,
     );
     const again = nextStepFields(team);
     expect(team.querySelector(".next-action button")?.text).toBe(
@@ -223,8 +223,12 @@ describe("the Status menu's Resolved form", () => {
     const label = form.querySelector("label.resolve-fixed-in")!;
     expect(label.text.trim()).toBe("Fixed in (optional)");
     expect(label.querySelector("input")?.getAttribute("name")).toBe("fixed_in");
-    // "Why?" keeps its own box, for Other.
-    expect(form.querySelector("label.resolve-note")?.text.trim()).toBe("Why?");
+    // "Why?" keeps its own box, for Other; the same box is an optional note for the customer
+    // with Won't fix or Cannot reproduce.
+    expect(form.querySelector("label.resolve-note .resolve-note-why")?.text).toBe("Why?");
+    expect(form.querySelector("label.resolve-note .resolve-note-customer")?.text).toBe(
+      "Note for the customer (optional)",
+    );
     // The Fixed choice says itself that the customer is told, so the button never changes.
     const fixed = form.querySelector("input[value=fixed_no_reply]")!.parentNode!;
     expect(fixed.text.trim()).toBe("Fixed (the customer is told)");

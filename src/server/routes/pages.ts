@@ -273,11 +273,13 @@ function nextStep(
 type TicketAction = (key: string, input: unknown, actor: Actor) => Ticket;
 
 /**
- * What a resolve form sends to the rules. A note goes with Fixed, as where it is fixed, and with
- * Other, as why. The Status menu's form has a box for each, so its Fixed box is named fixed_in;
- * the box for the other reason, hidden and perhaps left with words in it, is not sent. A note
- * with any other reason is not sent either.
+ * What a resolve form sends to the rules. A note goes with Fixed, as where it is fixed, with
+ * Other, as why, and with Won't fix or Cannot reproduce, as a note for the customer. The Status
+ * menu's form has a box for each, so its Fixed box is named fixed_in; the box for the other
+ * reasons, hidden and perhaps left with words in it, is not sent with Fixed. A duplicate names
+ * its ticket instead, and sends no note.
  */
+const NOTE_REASONS = new Set(["other", "wont_fix", "cannot_reproduce"]);
 function resolveFields(input: unknown): Record<string, unknown> {
   const fields = { ...(input as Record<string, unknown>) };
   const fixedIn = fields.fixed_in;
@@ -286,7 +288,7 @@ function resolveFields(input: unknown): Record<string, unknown> {
   delete fields.fixed_in;
   if (fields.reason === "fixed_no_reply") {
     if (fixedIn !== undefined) fields.note = fixedIn;
-  } else if (fields.reason !== "other") {
+  } else if (!NOTE_REASONS.has(String(fields.reason))) {
     delete fields.note;
   }
   return fields;
@@ -346,9 +348,10 @@ const RESOLVE_FORM_LABELS = {
 
 // The reasons the list's bar offers for resolving many tickets at once: the three that need no
 // more words, so the bar never holds a text box. A duplicate or an odd case is one ticket's
-// judgement, made on its own page. The rules and the JSON API keep all five.
+// judgement, made on its own page. The rules and the JSON API keep all five. Fixed has the
+// resolve form's words, so the two places name it the same.
 const BULK_RESOLVE_REASONS = {
-  fixed_no_reply: RESOLVE_REASON_LABELS.fixed_no_reply,
+  fixed_no_reply: RESOLVE_FORM_LABELS.fixed_no_reply,
   wont_fix: RESOLVE_REASON_LABELS.wont_fix,
   cannot_reproduce: RESOLVE_REASON_LABELS.cannot_reproduce,
 };
@@ -598,10 +601,14 @@ export function pagesRouter(
     const reviewBy = signal?.label === "Review requested by" ? signal.text : null;
     const notFixed = notFixedCard(ticket, events);
     const confirmed = confirmedAt(ticket, events);
+    // While the assistant's card waits for a decision, it sits directly under the line and is
+    // the request itself, so the line does not say it again.
+    const reviewOnCard =
+      assistantCard !== null && assistantCard.canDecide && assistantCard.spec?.state === "proposed";
     const line = cardLine(ticket, actor.role, {
       confirmed,
       notFixed,
-      reviewBy,
+      reviewBy: reviewOnCard ? null : reviewBy,
     });
     // The ask is outlined only while the card's line is the request for review. The customer's
     // No comes first on that line, and then the ask is the thing to do.

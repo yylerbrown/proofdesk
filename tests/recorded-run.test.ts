@@ -4,6 +4,7 @@ import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { DEV_COOKIE } from "../src/server/actor.js";
 import { RECORDED_ASSISTANT, seedDemo } from "../src/server/demo.js";
+import { formatDay } from "../src/server/pages/format.js";
 import { createTicketService } from "../src/server/tickets/service.js";
 import { buildTestApp, visitor } from "./helpers.js";
 
@@ -112,7 +113,13 @@ describe("the recorded run on the demo", () => {
     // The title and the description are the customer's problem alone, so this one line in the
     // assistant's card is the one place on the ticket that says a recorded run is shown, and
     // under which key the assistant knew the sample.
-    expect(note.text).toBe("Recorded on 18 Nov 2026, when this sample was SUP-4. How this was run");
+    // The day is in the page's own style, and SUP-4 is named as the key on an earlier copy, so
+    // nobody takes it for today's SUP-4.
+    const day = note.querySelector("time[data-day]")!;
+    expect(day.text).toBe(formatDay(day.getAttribute("datetime")!));
+    expect(note.text).toBe(
+      `Recorded on ${day.text} on an earlier copy of this demo, where this ticket was SUP-4. How this was run`,
+    );
     expect(html.querySelectorAll(".card-recorded")).toHaveLength(1);
     expect(html.querySelector(".recorded-run")).toBeNull();
     const link = note.querySelector("a")!;
@@ -126,21 +133,22 @@ describe("the recorded run on the demo", () => {
     expect(target.parentNode?.querySelector("summary")?.text).toBe("How this was run");
   });
 
-  it("says the review request once, on the ticket's card, apart from the assistant's card", async () => {
+  it("lets the assistant's card be the review request, with no line saying it again", async () => {
     const { asTeam, recorded } = demo();
     const html = parse((await asTeam().get(`/tickets/${recorded}`)).text);
-    // The ticket's card holds the customer's words and the one line about the request.
+    // The ticket's card holds the customer's words, then the assistant's card directly under
+    // them. No standing line repeats the request the card itself makes.
     const card = html.querySelector(".ticket-card")!;
     expect(card.querySelector(".card-label")?.text).toBe("How will we know it's fixed?");
     expect(card.querySelector("blockquote")).not.toBeNull();
-    expect(card.querySelector(".card-line")?.text.trim()).toBe(
-      "Demo visitor's assistant asks for your review.",
-    );
+    expect(card.querySelector(".card-line")).toBeNull();
+    expect(html.querySelector("main")!.text).not.toContain("asks for your review");
     // While its suggested test waits for a decision, the assistant's card sits between the
     // check and the next step.
     const parts = card.childNodes.filter((node) => node.nodeType === 1) as typeof card.childNodes;
     const classes = parts.map((node) => (node as unknown as { classNames: string }).classNames);
-    expect(classes.indexOf("card-line")).toBeLessThan(classes.indexOf("assistant-card"));
+    expect(classes.indexOf("user-text")).toBeGreaterThan(-1);
+    expect(classes.indexOf("user-text")).toBeLessThan(classes.indexOf("assistant-card"));
     expect(classes.indexOf("assistant-card")).toBeLessThan(
       classes.indexOf("card-step next-action"),
     );

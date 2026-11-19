@@ -31,13 +31,13 @@ async function saidNo() {
 /** The line on the ticket's card, or null when the card has none. */
 const card = async (app: Express, who = teamActor) =>
   parse((await as(app, who).get("/tickets/SUP-1")).text)
-    .querySelector(".ticket-card .card-line")
+    .querySelector(".ticket-card .card-line > span")
     ?.text.trim() ?? null;
 
 describe("the customer's No at the top of the ticket", () => {
   it("shows while it is their latest word", async () => {
     const app = await saidNo();
-    expect(await card(app)).toMatch(/^The customer says it is not fixed, since /);
+    expect(await card(app)).toMatch(/^The customer said it is not fixed on /);
   });
 
   it("is not shown after the team resolved and then reopened the ticket", async () => {

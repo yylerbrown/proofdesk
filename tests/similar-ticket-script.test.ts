@@ -237,6 +237,11 @@ describe("the line", () => {
     expect(link.tag).toBe("a");
     expect(link.attributes).toEqual({ href: "/tickets/SUP-3", target: "_blank", rel: "noopener" });
     expect((link.children[0] as Fake).className).toBe("visually-hidden");
+    // The words before the link and the status after it are pieces of their own, so on a narrow
+    // screen only the title shortens and the status always shows whole.
+    const [before, , status] = line.nodes as Fake[];
+    expect([before!.tag, before!.textContent]).toEqual(["span", "Similar ticket: "]);
+    expect([status!.tag, status!.textContent]).toEqual(["span", " (In Progress)"]);
   });
 
   it("puts a title in as text, never as markup", () => {

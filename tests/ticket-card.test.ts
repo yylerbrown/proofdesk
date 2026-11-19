@@ -72,7 +72,7 @@ describe("the ticket's card", () => {
       "team, In Progress after the customer's No": ["label", "check", "line", "step"],
       "team, Resolved by the customer": ["label", "check", "line"],
       // The assistant's suggested test waits for review, so its card comes before the step.
-      "team, the ticket an assistant worked": ["label", "check", "line", "assistant-card", "step"],
+      "team, the ticket an assistant worked": ["label", "check", "assistant-card", "step"],
       "team, waiting on the customer": ["label", "check", "line", "step"],
       "customer, asked Did this fix it?": ["question", "check", "answer"],
     };
@@ -129,9 +129,9 @@ describe("the ticket's card", () => {
   it("outlines Mark fixed while an assistant asks for a review", async () => {
     const states = await everyState();
     const card = states["team, the ticket an assistant worked"]!.querySelector(".ticket-card")!;
-    expect(card.querySelector(".card-line")?.text.trim()).toBe(
-      "Demo visitor's assistant asks for your review.",
-    );
+    // The assistant's card under the check is the request, so no line repeats it.
+    expect(card.querySelector(".card-line")).toBeNull();
+    expect(card.querySelector(".assistant-card")).not.toBeNull();
     const ask = card.querySelector(".next-action button")!;
     expect(ask.text).toBe("Mark fixed and tell the customer");
     expect(ask.classList.contains("secondary")).toBe(true);

@@ -217,7 +217,6 @@ main > form,
 }
 /* Small explanations under a title or beside a control: muted, never body-black. */
 .role-note,
-.status-rule,
 .agent-help,
 .real-site {
   color: var(--pd-muted);
@@ -746,6 +745,14 @@ table.people .person-since {
   gap: var(--pd-space-2) var(--pd-space-4);
   margin: 0;
 }
+/* Where the setting cannot change, its word and the quiet line, on the same row. */
+.account p.email-me-fixed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--pd-space-2) var(--pd-space-4);
+  margin: 0;
+}
 .account form.email-me fieldset,
 .account form.email-me label,
 .account form.email-me .mail-line {
@@ -1125,8 +1132,9 @@ table.tickets td:first-child a::after {
   table.tickets th:nth-child(4) {
     width: 11.5rem;
   }
+  /* Room for the longest "Filed" value, such as "59 minutes ago", inside the cell's padding. */
   table.tickets th:nth-child(5) {
-    width: 7rem;
+    width: 9rem;
   }
   table.tickets td:is(:nth-child(3), :nth-child(4)) {
     overflow: hidden;
@@ -1230,15 +1238,29 @@ label small.hint {
  * pulled up as far as it pushes down, so the boxes below move by exactly its one line. It holds
  * its link's hidden words, so they never stick out past the cut.
  */
+/*
+ * "Similar ticket:", the ticket, and its status on one line. Only the ticket's key and title
+ * shorten, with an ellipsis; the words before it and the status always show whole.
+ */
 small.similar-ticket {
   position: relative;
-  display: block;
+  display: flex;
+  gap: 0.3em;
   margin: calc(var(--pd-space-2) * -1) 0 var(--pd-space-2);
-  overflow: hidden;
   color: var(--pd-muted);
   font-size: var(--pd-text-sm);
   white-space: nowrap;
+}
+/* The link holds its hidden "(opens in a new tab)", so it clips that too and the page never
+   scrolls sideways. */
+small.similar-ticket > a {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
+}
+small.similar-ticket > span {
+  flex: none;
 }
 small.similar-ticket[hidden] {
   display: none;
@@ -1334,12 +1356,15 @@ label.add-pictures.full .add-pictures-words {
   border: var(--pd-hairline);
   border-radius: var(--pd-radius);
 }
+/* A circle at every width: the phone's taller buttons do not stretch it. */
 .picture-strip button.picture-remove {
   position: absolute;
   top: -8px;
   right: -8px;
   width: 24px;
   height: 24px;
+  min-width: 0;
+  min-height: 0;
   margin: 0;
   padding: 0;
   border: var(--pd-hairline);
@@ -1548,6 +1573,11 @@ article.ticket-card {
 .ticket-card .card-line a {
   color: inherit;
 }
+/* The link to the customer's own message: small and grey after the line, never the line itself. */
+.ticket-card .card-line a.card-line-link {
+  color: var(--pd-muted);
+  font-size: var(--pd-text-sm);
+}
 /*
  * Just after asking the customer, the page puts focus on this line so a screen reader reads it.
  * The line is words, not a control, so it draws no focus ring.
@@ -1591,13 +1621,18 @@ article.ticket-card {
 .ticket-card details.card-evidence {
   margin-bottom: var(--pd-space-3);
 }
-/* Yes and No side by side; No opens its box under both. */
+/*
+ * Yes and No side by side; No opens its box under both. Yes floats at the left and No's button
+ * flows beside it, so opening No moves neither button: its form clears the float and starts
+ * under both, at the card's left edge.
+ */
 .ticket-card .card-answer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: var(--pd-space-3);
+  display: flow-root;
   margin-top: var(--pd-space-4);
+}
+.ticket-card .card-answer > form {
+  float: left;
+  margin: 0 var(--pd-space-3) 0 0;
 }
 .ticket-card .card-answer button,
 .ticket-card .card-answer summary[role="button"] {
@@ -1606,10 +1641,26 @@ article.ticket-card {
 .ticket-card details.answer-no {
   margin: 0;
 }
-.ticket-card details.answer-no[open] {
-  flex-basis: 100%;
+.ticket-card details.answer-no > summary[role="button"] {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  padding: 6px 12px;
+  line-height: 1.45;
+}
+/* Its small down mark no taller than the words, so No is exactly as tall as Yes. */
+.ticket-card details.answer-no > summary[role="button"]::after {
+  float: none;
+  width: 0.9rem;
+  height: 0.9rem;
+  margin-inline-start: var(--pd-space-2);
+  background-size: 0.9rem auto;
 }
 .ticket-card details.answer-no form {
+  clear: left;
+  margin-top: var(--pd-space-3);
+}
+.ticket-card details.answer-no form button {
   margin-top: var(--pd-space-3);
 }
 @media (max-width: 639px) {
@@ -1619,14 +1670,15 @@ article.ticket-card {
     width: 100%;
     min-height: 44px;
   }
-  /* "No, it is not fixed" keeps its words in the middle of its tall box, like Yes. */
-  .ticket-card .card-answer summary[role="button"] {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .ticket-card .card-answer > form {
+    float: none;
+    margin: 0 0 var(--pd-space-3);
   }
-  .ticket-card details.answer-no form button {
-    margin-top: var(--pd-space-3);
+  /* "No, it is not fixed" keeps its words in the middle of its tall box, like Yes. */
+  .ticket-card details.answer-no > summary[role="button"] {
+    display: flex;
+    justify-content: center;
+    width: 100%;
   }
 }
 
@@ -1887,7 +1939,7 @@ details.history td:first-child {
 /*
  * Status and owner on one line under the title, 8px apart. For the team each is a small outlined
  * control, in the family of "New ticket", with a down mark that does not turn, like the header's
- * person menu. A fact this viewer cannot change has the same padding and no border. Label and
+ * person menu. A fact this viewer cannot change is plain words with no border. Label and
  * value are one small type.
  */
 .ticket-facts {
@@ -1923,6 +1975,18 @@ details.history td:first-child {
   color: var(--pd-text);
   font-size: var(--pd-text-sm);
   line-height: 18px;
+}
+/*
+ * Plain words are not a control, so they have no button padding: they start on the column's
+ * edge, also when they wrap to a line of their own, and the line keeps a wider space between
+ * its two facts.
+ */
+.ticket-facts .fact {
+  padding-inline: 0;
+  border-inline-width: 0;
+}
+.ticket-facts:has(> .fact) {
+  column-gap: var(--pd-space-5);
 }
 .ticket-facts .badge {
   line-height: 18px;
@@ -2031,9 +2095,25 @@ details.history td:first-child {
 .fact-menu li .badge {
   font-weight: inherit;
 }
-/* The current status is named, not offered. */
+/*
+ * The current status is named, not offered: heavier words and a small dot at the row's end, as
+ * menus mark the current choice.
+ */
 .ticket-facts details.dropdown.fact-menu > summary + ul li > .menu-current {
-  font-weight: var(--pd-weight-medium);
+  font-weight: var(--pd-weight-semibold);
+}
+.ticket-facts details.dropdown.fact-menu > summary + ul li > .menu-current::after {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-inline-start: auto;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
+}
+/* A choice's words and its note, such as "(assigns it to you)", are one line of text. */
+.fact-menu li .menu-words {
+  white-space: nowrap;
 }
 /* A status the rules refuse is greyed. */
 .ticket-facts details.dropdown.fact-menu > summary + ul li > button[disabled] {
@@ -2143,7 +2223,12 @@ details.history td:first-child {
    hidden box never carries words the customer would see. A browser that cannot read :has shows
    all three, which still works. */
 form.resolve:not(:has(input[value="duplicate"]:checked)) .resolve-duplicate,
-form.resolve:not(:has(input[value="other"]:checked)) .resolve-note,
+form.resolve:not(
+    :has(input:is([value="other"], [value="wont_fix"], [value="cannot_reproduce"]):checked)
+  )
+  .resolve-note,
+form.resolve:not(:has(input[value="other"]:checked)) .resolve-note-why,
+form.resolve:has(input[value="other"]:checked) .resolve-note-customer,
 form.resolve:not(:has(input[value="fixed_no_reply"]:checked)) .resolve-fixed-in {
   display: none;
 }
@@ -2317,18 +2402,18 @@ ul.more-list form {
     min-height: 44px;
   }
   /*
-   * The Owner menu's list is placed against the whole line, from its right edge, so it stays on
-   * the screen whether Owner sits beside Status or has wrapped under it.
+   * The Owner menu's list starts at its button's left edge, as on a wide screen. It is narrower
+   * here, and "Assign to" puts its list under its label, so it stays on the screen whether Owner
+   * sits beside Status or has wrapped under it.
    */
-  .ticket-facts {
-    position: relative;
-  }
-  .ticket-facts details.dropdown.owner-menu {
-    position: static;
-  }
   .ticket-facts details.dropdown.owner-menu > summary + ul {
-    right: 0;
-    left: auto;
+    min-width: 12rem;
+    max-width: 13.5rem;
+  }
+  .fact-menu form.assign-to label {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--pd-space-1);
   }
 }
 
@@ -2349,23 +2434,43 @@ ul.more-list form {
 
 /* ---------- 16. Saved message ---------- */
 
-/* What was just saved, shown at the top of the next page. No bar and no tick. */
+/*
+ * What was just saved, shown once on the next page: one quiet line of text with a small dot
+ * before it. No box, no bar and no tick, so it never reads as a button.
+ */
 p.saved {
-  display: inline-block;
-  margin-bottom: var(--pd-space-5);
-  padding: 7px 12px;
-  border: var(--pd-hairline);
-  border-radius: var(--pd-radius);
-  background: var(--pd-surface);
+  display: flex;
+  align-items: baseline;
+  gap: var(--pd-space-2);
+  margin-bottom: var(--pd-space-4);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pd-text);
   font-size: var(--pd-text-sm);
   font-weight: var(--pd-weight-medium);
 }
+/* A heading right under the line keeps the line's own gap, not a heading's larger one. */
+main > p:is(.saved, .refused) + h1 {
+  margin-top: 0;
+}
+p.saved::before {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pd-muted);
+  content: "";
+  transform: translateY(-1px);
+}
 /*
  * The page puts focus on the saved or refused line when it opens, so a screen reader reads it.
- * The line is words, not a control, so it draws no focus ring.
+ * The line is words, not a control, so it draws no focus ring, wherever it sits on the page.
  */
-main > p:is([role="status"], [role="alert"])[tabindex="-1"]:focus {
+p:is(.saved, .refused)[tabindex="-1"]:focus,
+p:is(.saved, .refused)[tabindex="-1"]:focus-visible {
   outline: none;
+  box-shadow: none;
 }
 
 /* ---------- The welcome page ---------- */
@@ -2769,15 +2874,23 @@ textarea:focus-visible {
 .demo-welcome-hide button.link {
   color: var(--pd-muted);
 }
-/* On a phone each link keeps a 44-pixel tap area without making the line taller. */
+/*
+ * On a phone the two links and Hide are one tidy stack, each at the card's left edge and the same
+ * distance apart. Each keeps a 44-pixel tap area without making its line taller.
+ */
 @media (max-width: 639px) {
+  .demo-welcome-more {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 24px;
+  }
   .demo-welcome-more button.link {
     display: inline-block;
     margin-block: -12px;
     padding-block: 12px;
   }
-  .demo-welcome-more {
-    row-gap: 24px;
+  .demo-welcome-more .demo-welcome-hide {
+    margin-inline-start: 0;
   }
 }
 

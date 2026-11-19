@@ -36,7 +36,6 @@ function accountOf(html: string) {
   return {
     text: page.querySelector("main")?.text.replace(/\s+/g, " ") ?? "",
     switchOn: box?.hasAttribute("checked") ?? null,
-    switchLocked: page.querySelector("form.email-me fieldset")?.hasAttribute("disabled") ?? null,
     peopleLink: page.querySelector("main a[href='/people']") !== null,
   };
 }
@@ -212,7 +211,7 @@ describe("the email switch", () => {
     expect(mailed.text).not.toContain("never sends email");
   });
 
-  it("is shown but cannot be changed on the demo, which never sends email", async () => {
+  it("is the word On, not a switch, on the demo, which never sends email", async () => {
     const { app, db } = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
     for (const who of DEMO_ACTORS) {
       const page = accountOf((await as(app, who).get("/account")).text);
@@ -222,8 +221,10 @@ describe("the email switch", () => {
       expect(rows[1]?.querySelector("dd")?.text, who.id).toBe("None on the demo");
       // The quiet words sit on the switch's own row.
       expect(rows[3]?.querySelector(".mail-line")?.text, who.id).toBe("The demo sends no email");
-      expect(page.switchOn, who.id).toBe(true);
-      expect(page.switchLocked, who.id).toBe(true);
+      // A switch that cannot move looks the same on, off and disabled, so the setting is words.
+      expect(page.switchOn, who.id).toBeNull();
+      expect(rows[3]?.querySelector(".email-me-state")?.text, who.id).toBe("On");
+      expect(rows[3]?.querySelector("form, button"), who.id).toBeNull();
       const tried = await as(app, who).post("/account").type("form").send({});
       expect(tried.status, who.id).toBe(403);
     }

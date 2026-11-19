@@ -7,7 +7,7 @@
   <%# A request for review is said once, on the ticket's card above, with its step. %>
   <p class="card-from"><small><%= card.from %></small></p>
   <%# On the demo's recorded run: when it was recorded, and under which key the assistant knew it. %>
-  <% if (card.recordedAs) { %><p class="card-recorded"><small>Recorded on 18 Nov 2026, when this sample was <%= card.recordedAs %>. <a href="/assistant-run#how-it-was-run">How this was run</a></small></p><% } %>
+  <% if (card.recordedAs) { %><p class="card-recorded"><small>Recorded on <time datetime="2026-11-18T12:00:00.000Z" data-day><%= formatDay("2026-11-18T12:00:00.000Z") %></time> on an earlier copy of this demo, where this ticket was <%= card.recordedAs %>. <a href="/assistant-run#how-it-was-run">How this was run</a></small></p><% } %>
   <% if (card.blocked) { %><p class="assistant-blocked"><strong>Assistant blocked:</strong> <span class="user-text"><%= card.blocked %></span></p><% } %>
   <% if (spec) { %><p class="card-proposal"><%= spec.state === "accepted" ? "Agreed test:" : "Suggested test:" %> <span class="user-text"><%= spec.summary %></span></p><% } %>
   <%# Accepting saves the test; it does not say the fix works. %>

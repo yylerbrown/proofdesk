@@ -230,13 +230,15 @@ export function cardLine(ticket: Ticket, viewer: Role, facts: CardFacts): CardLi
       const byline = name === null ? "" : ` ${name}.`;
       return line(`${resolved}${byline} ${after}`);
     };
+    // One pattern for every reason, each fact said once: the reason, who and when, then what
+    // the customer can still do.
     if (resolution.reason === "fixed_no_reply") {
       // The customer has the question "Did this fix it?" in place of this line.
       if (!team) return null;
       const fixedIn = resolution.note ? ` ${fixedInLine(resolution.note)}` : "";
       return teamLine(
-        `Resolved by the team: ${resolution.reason_label}${fixedIn}`,
-        "The customer did not confirm it, and can reopen it.",
+        `Resolved by the team: Fixed.${fixedIn}`,
+        "The customer has not confirmed it.",
       );
     }
     // Most notes end in a full stop; the line's own full stop follows the bracket.
@@ -246,7 +248,7 @@ export function cardLine(ticket: Ticket, viewer: Role, facts: CardFacts): CardLi
     if (!team) return line(`${resolution.reason_label}${note}. You have not confirmed it.`);
     return teamLine(
       `Resolved by the team: ${resolution.reason_label}${note}.`,
-      "Not confirmed by the customer.",
+      "The customer can reopen it.",
     );
   }
 
@@ -260,7 +262,7 @@ export function cardLine(ticket: Ticket, viewer: Role, facts: CardFacts): CardLi
     const at = facts.notFixed.at;
     // A No and a reopening read the same: the customer's word that it is not fixed.
     return team
-      ? line("The customer says it is not fixed, since ", at, ".", at)
+      ? line("The customer said it is not fixed on ", at, ".", at)
       : line("You said it is not fixed on ", at, ".", at);
   }
 

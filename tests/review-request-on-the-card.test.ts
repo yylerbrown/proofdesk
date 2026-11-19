@@ -68,7 +68,7 @@ describe("a review request on the ticket page", () => {
     await askForReview(app, key);
     const card = (await teamPage(app)).querySelector(".ticket-card")!;
     expect(card.querySelector(".card-line")?.text.trim()).toMatch(
-      /^The customer says it is not fixed, since /,
+      /^The customer said it is not fixed on /,
     );
     const ask = card.querySelector(".next-action button")!;
     expect(ask.text).toBe("Mark fixed and tell the customer");

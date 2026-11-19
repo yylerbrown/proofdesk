@@ -22,13 +22,18 @@
   <div class="account-row">
     <dt>Email notices</dt>
     <dd>
+      <% if (canChangeEmailMe) { %>
       <form method="post" action="/account" class="email-me">
-        <fieldset <% if (!canChangeEmailMe) { %>disabled<% } %>>
+        <fieldset>
           <label><input type="checkbox" role="switch" name="email_me" <% if (emailMe) { %>checked<% } %> /> Email me about my tickets</label>
         </fieldset>
         <% if (mailLine) { %><small class="mail-line account-quiet"><%= mailLine %></small><% } %>
-        <% if (canChangeEmailMe) { %><button type="submit">Save</button><% } %>
+        <button type="submit">Save</button>
       </form>
+      <% } else { %>
+      <%# Where it cannot be changed, such as on the demo, the setting is words, not a switch. %>
+      <p class="email-me email-me-fixed"><span class="email-me-state"><%= emailMe ? "On" : "Off" %></span><% if (mailLine) { %> <small class="mail-line account-quiet"><%= mailLine %></small><% } %></p>
+      <% } %>
     </dd>
   </div>
 </dl>

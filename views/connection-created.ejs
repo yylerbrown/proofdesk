@@ -26,7 +26,7 @@
   <pre class="paste command" id="curl-command"><code>curl -H "Authorization: Bearer <%= key %>" "<%= address %>/api/tickets"</code></pre>
   <button type="button" class="copy secondary" data-copy="<%= curlCommand %>" aria-label="Copy the curl command" hidden>Copy</button>
   <% if (connection.demo) { %>
-  <p class="see-what-it-wrote">To see what it wrote, view as Demo Team Member with Switch role at the top<%= locals.sampleKey ? ` and open ${sampleKey}` : "" %>.</p>
+  <p class="see-what-it-wrote">To see what it wrote, view as Demo Team Member with the menu at the top right<%= locals.sampleKey ? ` and open ${sampleKey}` : "" %>.</p>
   <% } else { %>
   <p class="see-what-it-wrote">What it writes shows on each ticket's page, and everything it asks for is on <a href="/connections/<%= connection.id %>">this connection's page</a>.</p>
   <% } %>

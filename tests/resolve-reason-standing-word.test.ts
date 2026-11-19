@@ -9,8 +9,8 @@ import { createTicketService } from "../src/server/tickets/service.js";
 import { admin, as, buildTestApp, customerOne, teamActor, visitor } from "./helpers.js";
 
 // "Fixed. Not customer-confirmed." stays open to the team after the customer's No, because
-// marking fixed tells the customer and asks them again. The resolve form's note box shows only
-// for Other, and a note left in it after choosing another reason is not sent. A few smaller
+// marking fixed tells the customer and asks them again. The resolve form's note box shows for
+// Other, Won't fix and Cannot reproduce, and a note left in it with a duplicate is not sent. A few smaller
 // refusals say the right thing.
 
 const filed = { title: "Printer jams", description: "It jams.", fix_check: "Ten pages print" };
@@ -70,20 +70,27 @@ describe("'Fixed. Not customer-confirmed.'", () => {
 });
 
 describe("the resolve form's note box", () => {
-  it("shows only for Other, the one reason that needs it", () => {
+  it("shows for Other, Won't fix and Cannot reproduce, with the label for the chosen reason", () => {
     const css = fs.readFileSync(new URL("../public/site.css", import.meta.url), "utf8");
-    expect(css).toContain('form.resolve:not(:has(input[value="other"]:checked)) .resolve-note');
+    expect(css).toContain(
+      ':has(input:is([value="other"], [value="wont_fix"], [value="cannot_reproduce"]):checked)\n  )\n  .resolve-note,',
+    );
+    expect(css).toContain(
+      'form.resolve:not(:has(input[value="other"]:checked)) .resolve-note-why,',
+    );
+    expect(css).toContain('form.resolve:has(input[value="other"]:checked) .resolve-note-customer,');
   });
 
-  it("sends no hidden words: a note left behind with another reason is dropped", async () => {
+  it("sends no hidden words: a note left behind with a duplicate is dropped", async () => {
     const { app } = await setup();
+    await as(app, customerOne).post("/api/tickets").send(filed);
     const res = await as(app, teamActor)
       .post("/tickets/SUP-1/resolve")
       .type("form")
-      .send({ reason: "wont_fix", note: "Typed under Other, then changed my mind." });
+      .send({ reason: "duplicate", duplicate_of: "SUP-2", note: "Typed under Other." });
     expect(res.status).toBe(303);
     const ticket = (await admin(app).get("/api/tickets/SUP-1")).body;
-    expect(ticket.resolution).toMatchObject({ reason: "wont_fix", note: null });
+    expect(ticket.resolution).toMatchObject({ reason: "duplicate", note: null });
   });
 
   it("keeps the note for Other, which needs it", async () => {
