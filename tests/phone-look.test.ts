@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { buildTestApp, visitor } from "./helpers.js";
 
 // Small things about the look that a browser test would be slow to reach: what the demo strip
-// says, a select that keeps inside the side panel, decoration screen readers skip, GitHub's mark
+// says, a select that keeps inside the ticket's column, decoration screen readers skip, GitHub's mark
 // in forced colours, buttons marked aria-disabled drawn like disabled ones, and the header on a
 // phone. The sizes on a phone are measured in a real browser in tests/browser/phone.spec.ts.
 
@@ -21,8 +21,8 @@ describe("the demo strip", () => {
 describe("the look", () => {
   const css = fs.readFileSync("public/site.css", "utf8");
 
-  it("keeps a select in the ticket's side panel inside its card", () => {
-    expect(css).toMatch(/\.ticket-panel select \{[^}]*max-width: 100%;/);
+  it("keeps the Owner menu's member list inside the column", () => {
+    expect(css).toMatch(/\.fact-menu form\.assign-to select \{[^}]*max-width: 100%;/);
   });
 
   it("gives the welcome page's arrow an empty alternative, after a plain fallback", () => {

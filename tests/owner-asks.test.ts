@@ -72,24 +72,30 @@ describe("who asks the customer", () => {
     expect(owner.status).toBe(200);
   });
 
-  it("may leave every box empty, and a link that is not one comes back with what was typed", async () => {
+  it("may leave its one box empty, and a message too long comes back with what was typed", async () => {
     const { app } = buildTestApp();
     await ready(app);
+    const typed = "x".repeat(2001);
     const page = await as(app, teamActor)
       .post("/tickets/SUP-1/ready")
       .type("form")
-      .send({ try_url: "not a link", tried: "Printed it", result: "" });
+      .send({ response: typed });
     expect(page.status).toBe(400);
     const form = parse(page.text).querySelector("form.ask");
-    expect(form?.querySelector("textarea[name=tried]")?.text).toBe("Printed it");
-    expect(parse(page.text).querySelector("#ready-error")?.text).toMatch(/http or https/);
-    // The form's empty boxes are not given: the customer is asked with nothing else.
+    expect(form?.querySelector("textarea[name=response]")?.text).toBe(typed);
+    expect(parse(page.text).querySelector("#ready-error")?.text).toMatch(/at most 2000/);
+    // The form's empty box is not given: the customer is asked with nothing else.
     const empty = await as(app, teamActor)
       .post("/tickets/SUP-1/ready")
       .type("form")
-      .send({ try_url: "", tried: "", result: "" });
+      .send({ response: "" });
     expect(empty.status).toBe(303);
-    expect((await reread(app)).ask).toMatchObject({ try_url: null, tried: null, result: null });
+    expect((await reread(app)).ask).toMatchObject({
+      try_url: null,
+      tried: null,
+      result: null,
+      response_to_no: null,
+    });
   });
 
   it("shows the customer what the owner tried and what happened", async () => {
@@ -143,10 +149,7 @@ describe("after a No", () => {
     await say("Still jams double-sided.");
 
     const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    // The page to try is filled in from the last question, and what changed is optional.
-    expect(page.querySelector("form.ask input[name=try_url]")?.getAttribute("value")).toBe(
-      ask.try_url,
-    );
+    // What changed is optional.
     const response = page.querySelector("form.ask textarea[name=response]")!;
     expect(response.hasAttribute("required")).toBe(false);
 

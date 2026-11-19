@@ -6,11 +6,11 @@ import { seedDemo } from "../src/server/demo.js";
 import { createTicketService } from "../src/server/tickets/service.js";
 import { as, buildTestApp, customerOne, FROM_THIS_SITE, teamActor, visitor } from "./helpers.js";
 
-// One card at the top of the ticket's main column holds the customer's check, the one line
-// saying where the ticket stands, and the one step this person can take. It is the same card in
-// every state and for both roles; the blocks that used to stand apart (the next step, the
-// customer's No, the confirmation, the team's resolution, the demo's change of seat) are lines
-// and steps inside it. The panel no longer shows the check.
+// One part of the ticket's single column, under the description, holds the customer's check, the
+// one line saying where the ticket stands, and the one step this person can take, as plain lines
+// with no box. It is the same in every state and for both roles; the blocks that used to stand
+// apart (the next step, the customer's No, the confirmation, the team's resolution, the demo's
+// change of seat) are lines and steps inside it.
 
 function buildDemo() {
   const built = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
@@ -71,7 +71,8 @@ describe("the ticket's card", () => {
       "team, New with no owner": ["label", "check", "step"],
       "team, In Progress after the customer's No": ["label", "check", "line", "step"],
       "team, Resolved by the customer": ["label", "check", "line"],
-      "team, the ticket an assistant worked": ["label", "check", "line", "step"],
+      // The assistant's suggested test waits for review, so its card comes before the step.
+      "team, the ticket an assistant worked": ["label", "check", "line", "assistant-card", "step"],
       "team, waiting on the customer": ["label", "check", "line", "step"],
       "customer, asked Did this fix it?": ["question", "check", "answer"],
     };
@@ -79,13 +80,12 @@ describe("the ticket's card", () => {
       const cards = page.querySelectorAll("main .ticket-card");
       expect(cards, state).toHaveLength(1);
       const card = cards[0]!;
-      expect(card.parentNode?.classList.contains("ticket-summary"), state).toBe(true);
+      expect(card.parentNode?.classList.contains("ticket-page"), state).toBe(true);
       expect(parts(card), state).toEqual(expected[state]);
-      // The panel holds the status and the owner, and no longer the check.
-      expect(page.querySelector("aside.ticket-panel blockquote"), state).toBeNull();
-      expect(page.querySelector("aside.ticket-panel")!.text, state).not.toContain(
-        "How will we know",
-      );
+      // The line under the title holds the status and the owner, and never the check.
+      const top = page.querySelector(".ticket-facts, .ticket-standing")!;
+      expect(top.querySelector("blockquote"), state).toBeNull();
+      expect(top.text, state).not.toContain("How will we know");
     }
   });
 
@@ -113,14 +113,16 @@ describe("the ticket's card", () => {
     );
   });
 
-  it("comes after the panel in the page, so the keyboard reaches status and owner first", async () => {
+  it("comes after status and owner in the page, so the keyboard reaches them first", async () => {
     const states = await everyState();
     for (const [state, page] of Object.entries(states)) {
-      const layout = page.querySelector(".ticket-layout")!;
-      const order = layout.childNodes
-        .filter((node): node is HTMLElement => "classList" in node)
-        .map((el) => el.classList.toString());
-      expect(order, state).toEqual(["ticket-panel", "ticket-summary", "ticket-thread"]);
+      const html = page.querySelector(".ticket-page")!.toString();
+      const top = Math.max(
+        html.indexOf('class="ticket-facts"'),
+        html.indexOf('class="ticket-standing"'),
+      );
+      expect(top, state).toBeGreaterThan(html.indexOf("<h1"));
+      expect(top, state).toBeLessThan(html.indexOf('class="ticket-card"'));
     }
   });
 

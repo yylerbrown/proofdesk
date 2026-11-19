@@ -40,9 +40,10 @@ const reopen = (app: Express, who: Actor, body: object = why) =>
 
 const reread = async (app: Express) => (await admin(app).get("/api/tickets/SUP-1")).body;
 
-// Found by where the form posts, so the test does not depend on how the page names it.
+// Found by where the form posts, so the test does not depend on how the page names it. The
+// team's form shows once the Status menu asks for it; the customer's is on the page.
 const offersReopen = async (app: Express, who: Actor) =>
-  parse((await as(app, who).get("/tickets/SUP-1")).text).querySelector(
+  parse((await as(app, who).get("/tickets/SUP-1?step=reopen")).text).querySelector(
     'form[action="/tickets/SUP-1/reopen"]',
   ) !== null;
 

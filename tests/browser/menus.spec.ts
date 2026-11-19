@@ -39,7 +39,10 @@ test("More options and Edit work from the keyboard, and text fields show a real 
     await expect(more).toHaveAttribute("open", "");
     await page.keyboard.press("Enter");
     await expect(more).not.toHaveAttribute("open");
-    await page.getByRole("link", { name: "Edit ticket" }).focus();
+    // Edit ticket is its first line.
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("link", { name: "Edit ticket" })).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/tickets\/SUP-\d+\/edit$/);
   });

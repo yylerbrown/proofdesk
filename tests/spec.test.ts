@@ -209,7 +209,8 @@ describe("deciding on a spec", () => {
       const card = parse((await as(app, who).get("/tickets/SUP-1")).text).querySelector(
         ".assistant-card",
       )!;
-      expect(card.querySelector(".card-outcome")?.text).toBe("Accepted by Team Member.");
+      // Accepting saves the test; it does not say the fix works.
+      expect(card.querySelector(".card-outcome")?.text).toBe("Test saved for the team to run.");
       expect(card.querySelectorAll("form")).toHaveLength(0);
     }
   });
@@ -267,7 +268,7 @@ describe("the spec on the ticket page", () => {
     const client = await connect(app);
     await call(client, "propose_spec", { key: "SUP-1", ...spec() });
     const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    const card = page.querySelector(".ticket-summary .assistant-card")!;
+    const card = page.querySelector(".ticket-page .assistant-card")!;
     expect(card.querySelectorAll("h2, h3")).toHaveLength(0);
     expect(card.querySelector(".card-from")?.text).toBe("From the AI assistant");
     expect(card.querySelector(".card-proposal")?.text).toContain(

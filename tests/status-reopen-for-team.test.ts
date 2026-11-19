@@ -36,18 +36,21 @@ async function resolvedByTheTeam() {
 }
 
 describe("Reopen for whoever the rules allow", () => {
-  it("opens the team's reopen from In Progress in the status row, and it reopens the ticket", async () => {
+  it("opens the team's reopen from In Progress in the Status menu, and it reopens the ticket", async () => {
     const { app } = await resolvedByTheTeam();
     const html = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    const panel = html.querySelector("aside.ticket-panel")!;
-    const reopen = panel.querySelector("details.reopen")!;
-    expect(reopen.querySelector("summary[role=button]")?.text).toBe("In Progress");
-    expect(reopen.querySelector("form")?.getAttribute("action")).toBe("/tickets/SUP-1/reopen");
-    expect(reopen.querySelector("form button")?.text).toBe("Reopen");
-    // The customer's own "Still happening?" stays theirs. The button already names where
-    // reopening takes it, so no line beside the row repeats it.
+    const link = html.querySelector(".status-menu a[href$='?step=reopen']")!;
+    expect(link.text).toBe("In Progress");
+    const shown = parse((await as(app, teamActor).get("/tickets/SUP-1?step=reopen")).text);
+    const reopen = shown.querySelector(".ticket-card form#reopen-form")!;
+    expect(reopen.getAttribute("action")).toBe("/tickets/SUP-1/reopen");
+    expect(reopen.querySelector("button")?.text).toBe("Reopen ticket");
+    expect(reopen.querySelector("a")?.text).toBe("Cancel");
+    // While it shows, it holds the page's one filled button, in place of the next step.
+    expect(shown.querySelector(".next-action")).toBeNull();
+    // The customer's own "Still happening?" stays theirs, and the plain page shows no form.
     expect(html.querySelector("#reopen")).toBeNull();
-    expect(panel.querySelector(".status-rule")).toBeNull();
+    expect(html.querySelector("form#reopen-form")).toBeNull();
 
     const done = await as(app, teamActor)
       .post("/tickets/SUP-1/reopen")
@@ -65,8 +68,7 @@ describe("Reopen for whoever the rules allow", () => {
       .send({ reason: "" });
     expect(refused.status).toBe(400);
     const html = parse(refused.text);
-    const reopen = html.querySelector("aside.ticket-panel details.reopen")!;
-    expect(reopen.hasAttribute("open")).toBe(true);
+    const reopen = html.querySelector("form#reopen-form")!;
     expect(reopen.querySelector("#reopen-error")?.text).toMatch(/reason for reopening/);
     expect(reopen.querySelector("textarea")?.getAttribute("aria-describedby")).toBe("reopen-error");
   });
@@ -75,6 +77,6 @@ describe("Reopen for whoever the rules allow", () => {
     const { app } = await resolvedByTheTeam();
     const html = parse((await as(app, customerOne).get("/tickets/SUP-1")).text);
     expect(html.querySelector("#reopen summary")?.text).toBe("Still happening?");
-    expect(html.querySelector("details.reopen")).toBeNull();
+    expect(html.querySelector("form#reopen-form")).toBeNull();
   });
 });

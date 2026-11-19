@@ -142,7 +142,7 @@ describe("the owner on the ticket page", () => {
     const { app } = await setup();
     const unowned = await as(app, teamActor).get("/tickets/SUP-1");
     const ownerName = (text: string) =>
-      parse(text).querySelector(".panel-owner details.owner-control > summary")?.text;
+      parse(text).querySelector("details.owner-menu > summary .fact-value")?.text;
     expect(ownerName(unowned.text)).toBe("Unassigned");
     // Taking is part of In Progress and of the next action at the top, so More does not repeat it.
     expect(unowned.text).toContain("Take ticket and start work");
@@ -158,17 +158,15 @@ describe("the owner on the ticket page", () => {
 
     // An admin may assign it to someone else, but not take it over.
     const adminPage = (await admin(app).get("/tickets/SUP-1")).text;
-    expect(
-      parse(adminPage).querySelector(".owner-control form[action$='/hand-off']"),
-    ).not.toBeNull();
+    expect(parse(adminPage).querySelector(".owner-menu form[action$='/hand-off']")).not.toBeNull();
     expect(adminPage).not.toContain("Assign to me");
     expect(adminPage).not.toContain("Take this ticket");
 
-    // A customer sees the owner as a plain row in the panel, once somebody owns the ticket.
+    // A customer reads the owner in the plain line under the title, once somebody owns it.
     const customer = await as(app, customerOne).get("/tickets/SUP-1");
-    const owner = parse(customer.text).querySelector(".ticket-panel .panel-owner");
-    expect(owner?.querySelector(".panel-label")?.text).toBe("Owner");
-    expect(owner?.text).toContain("Team Member");
+    expect(parse(customer.text).querySelector(".ticket-standing")?.text).toBe(
+      "New, with Team Member",
+    );
     expect(customer.text).not.toContain("/take");
   });
 

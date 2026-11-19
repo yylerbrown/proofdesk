@@ -1,22 +1,17 @@
-import { expect, test, type Locator } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
-// The status row in a real browser: pressing Resolved opens the reason form under the row while
-// all three buttons keep their place and size, and no reason is chosen at first, so a reason
-// must be picked before Resolve.
+// The Status menu in a real browser: it opens on a press and closes on Escape, with focus back
+// on it. Choosing Resolved shows one small form in the next step's place, with no reason chosen
+// at first, so a reason must be picked before "Resolve ticket", and Cancel puts the step back.
 
-/** Where a button sits and how big it is, rounded to whole pixels. */
-async function box(locator: Locator) {
-  const found = await locator.boundingBox();
-  if (found === null) throw new Error("The button is not on the page.");
-  return [found.x, found.y, found.width, found.height].map(Math.round);
-}
-
-test("Resolved opens its form under the row, and a reason must be chosen", async ({ page }) => {
+test("Resolved shows its form in the next step's place, and a reason must be chosen", async ({
+  page,
+}) => {
   await page.goto("/sign-in");
   await page.getByRole("button", { name: "View as Customer One" }).click();
   await page.getByRole("button", { name: "New ticket" }).click();
-  await page.getByLabel("Title").fill("The status row stays still");
-  await page.getByLabel("Description").fill("A ticket for the team to resolve from the row.");
+  await page.getByLabel("Title").fill("The status menu resolves with a reason");
+  await page.getByLabel("Description").fill("A ticket for the team to resolve from the menu.");
   await page.getByRole("button", { name: "File ticket" }).click();
   await expect(page).toHaveURL(/\/tickets\/SUP-\d+$/);
   const ticketUrl = page.url();
@@ -25,22 +20,42 @@ test("Resolved opens its form under the row, and a reason must be chosen", async
   await page.getByRole("button", { name: "View as Team Member" }).click();
   await page.goto(ticketUrl);
 
-  const row = page.locator(".status-row");
-  const inProgress = row.getByRole("button", { name: "In Progress" });
-  const resolved = row.locator("details.resolve > summary");
-  const before = [await box(inProgress), await box(resolved)];
+  const status = page.locator("details.status-menu");
+  const summary = status.locator("summary");
+  await expect(summary).toContainText("Status");
+  await expect(summary).toContainText("New");
+  // By keyboard: Enter opens it, Escape closes it and leaves focus where it was.
+  await summary.focus();
+  await page.keyboard.press("Enter");
+  await expect(status).toHaveJSProperty("open", true);
+  await page.keyboard.press("Escape");
+  await expect(status).toHaveJSProperty("open", false);
+  await expect(summary).toBeFocused();
+  // Opening Owner closes Status: only one is open at a time.
+  await summary.click();
+  await page.locator("details.owner-menu summary").click();
+  await expect(status).toHaveJSProperty("open", false);
 
-  await resolved.click();
-  const reason = row.getByRole("combobox", { name: "Reason" });
-  await expect(reason).toBeVisible();
-  expect([await box(inProgress), await box(resolved)]).toEqual(before);
-  // The form starts on its own line, under the buttons.
-  const [, buttonTop, , buttonHeight] = before[1]!;
-  expect((await box(reason))[1]!).toBeGreaterThan(buttonTop! + buttonHeight!);
-  // No reason is chosen at first, so a hurried press never claims a fix.
-  await expect(reason).toHaveValue("");
-  await reason.selectOption("fixed_no_reply");
-  await row.getByRole("button", { name: "Resolve", exact: true }).click();
+  // Cancel puts the usual next step back.
+  await summary.click();
+  await status.getByRole("link", { name: "Resolved" }).click();
+  await page.locator("form#resolve-form").getByRole("link", { name: "Cancel" }).click();
+  await expect(page.locator("form#resolve-form")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Take ticket and start work" })).toBeVisible();
+
+  await summary.click();
+  await status.getByRole("link", { name: "Resolved" }).click();
+  const form = page.locator("form#resolve-form");
+  await expect(
+    form.getByRole("group", { name: "Why are you resolving this ticket?" }),
+  ).toBeVisible();
+  await expect(page.locator(".next-action")).toHaveCount(0);
+  // No reason is chosen at first, and the browser will not send the form without one.
+  await expect(form.getByRole("radio", { checked: true })).toHaveCount(0);
+  await form.getByRole("button", { name: "Resolve ticket" }).click();
+  await expect(page).toHaveURL(/\?step=resolve$/);
+  await form.getByRole("radio", { name: "Fixed. Not customer-confirmed." }).check();
+  await form.getByRole("button", { name: "Resolve ticket" }).click();
   await expect(page.locator(".ticket-card .card-line")).toContainText(
     "Resolved by the team: Fixed.",
   );

@@ -1,4 +1,5 @@
 import { Router, type Request, type RequestHandler, type Response } from "express";
+import { z } from "zod";
 import type { Actor } from "../actor.js";
 import { DEMO_ACTORS, signedIn } from "../actor.js";
 import { RECORDED_SAMPLE_KEY } from "../demo.js";
@@ -30,6 +31,7 @@ import { picturesOf, uploaderToken, viewerToken } from "../pictures/upload.js";
 import { noMatchWords, readListPageQuery, sortHeaders } from "../pages/list-query.js";
 import { sameText, type ListSort, type TicketListFilter } from "../tickets/schemas.js";
 import { rememberBulkOutcome, takeBulkOutcome } from "../pages/bulk-outcome.js";
+import { customerStanding } from "../pages/standing.js";
 import { statusControl } from "../pages/status-control.js";
 import { DESCRIPTION_LIMIT, withHowFarOver } from "../pages/text-limit.js";
 import {
@@ -86,7 +88,8 @@ const FORM_FIELDS: Record<Problem["form"], string[]> = {
   answer: ["comment"],
   agreedCheck: ["agreed_check"],
   changeLink: ["change_url"],
-  ready: ["try_url", "tried", "result", "response"],
+  // The page has one box, the message; the API also takes the other three.
+  ready: ["response", "try_url", "tried", "result"],
   evidence: ["summary", "link"],
   reopen: ["reason"],
   handOff: ["to"],
@@ -374,7 +377,13 @@ function differingBoxes(ticket: Ticket, values: typeof emptyForm): string[] {
   ).map(([, name]) => name);
 }
 
-export function pagesRouter(service: TicketService): Router {
+/** How many email notices of a ticket this viewer may see, by the ticket's key. */
+export type NoticeCounter = (key: string, actor: Actor) => number;
+
+/** The form the Status menu asked to show in the next step's place, from the page's address. */
+const stepQuery = z.enum(["resolve", "reopen"]);
+
+export function pagesRouter(service: TicketService, countNotices: NoticeCounter): Router {
   const router = Router();
 
   // A cheap read for a ticket page left open, which asks it now and then to notice a change made
@@ -525,6 +534,8 @@ export function pagesRouter(service: TicketService): Router {
       asked: res.locals.saved === SAVED_MESSAGES.ready ? SAVED_MESSAGES.ready : null,
     };
     if (card.asked !== null) res.locals.saved = null;
+    // Resolved or Reopen, chosen from the Status menu, asks for its form in the address.
+    const step = stepQuery.safeParse(req.query.step);
     res.status(status).render("ticket-show", {
       ...helpers,
       title: `${ticket.key}: ${ticket.title}`,
@@ -541,6 +552,11 @@ export function pagesRouter(service: TicketService): Router {
         reviewBy !== null && notFixed === null,
       ),
       statusRow: statusControl(ticket, allowed, actor),
+      // The customer's line under the title: where it stands and whose turn it is.
+      standing: customerStanding(ticket, confirmedAt(ticket, events) !== null),
+      // That form shows in the next step's place.
+      step: req.method === "GET" && step.success ? step.data : null,
+      noticeCount: countNotices(ticket.key, actor),
       assistantSampleKey: service.assistantSampleKey(),
       recordedSampleKey: RECORDED_SAMPLE_KEY,
       handOffTo: service.handOffCandidates(ticket),
@@ -1087,6 +1103,11 @@ export function pagesRouter(service: TicketService): Router {
     ticketForm("evidence", (key, input, actor) => {
       const fields = { ...(input as Record<string, unknown>) };
       if (fields.link === "") delete fields.link;
+      // The page asks only what it shows and an optional link, so it picks the kind: a change
+      // when a link is given, otherwise a check the person ran.
+      if (fields.kind === undefined) {
+        fields.kind = fields.link === undefined ? "check_run" : "change_link";
+      }
       service.addEvidence(key, fields, actor);
       return service.getTicket(key, actor);
     }),

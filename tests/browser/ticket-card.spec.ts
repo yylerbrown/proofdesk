@@ -96,7 +96,8 @@ test("after Ask on a phone, the card's line under a long description is scrolled
   browser,
 }) => {
   // The visible part of a phone browser with its bars showing. On a phone the card sits under
-  // the panel and the description, so a description of a few lines puts it below the first screen.
+  // the status line and the description, so a description of a few lines puts it below the first
+  // screen.
   const lines = Array.from({ length: 8 }, (_, i) => `Line ${i + 1} of what happened.`);
   await askedTicket(browser, "Asked on a phone with a long description", {
     description: lines.join("\n"),

@@ -83,8 +83,8 @@ describe("resolving a New ticket nobody owns", () => {
   it("is offered to a team member, makes them its owner in the history, and lets them reopen it", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(filed);
-    const before = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    expect(before.querySelector("details.resolve form")?.getAttribute("action")).toBe(
+    const before = parse((await as(app, teamActor).get("/tickets/SUP-1?step=resolve")).text);
+    expect(before.querySelector("form.resolve")?.getAttribute("action")).toBe(
       "/tickets/SUP-1/resolve",
     );
 
@@ -106,8 +106,10 @@ describe("resolving a New ticket nobody owns", () => {
     expect(owned).toBeGreaterThanOrEqual(0);
     expect(what[owned + 1]).toMatch(/^Resolved by the team/);
 
-    // As its owner now, they may undo a resolution made by mistake.
-    expect(page.querySelector("details.reopen form")?.getAttribute("action")).toBe(
+    // As its owner now, they may undo a resolution made by mistake, from the Status menu.
+    expect(page.querySelector(".status-menu a[href$='?step=reopen']")).not.toBeNull();
+    const reopen = parse((await as(app, teamActor).get("/tickets/SUP-1?step=reopen")).text);
+    expect(reopen.querySelector("form#reopen-form")?.getAttribute("action")).toBe(
       "/tickets/SUP-1/reopen",
     );
   });

@@ -169,7 +169,7 @@ describe("evidence on the ticket page", () => {
       "main",
     )!;
     // An assistant's evidence is in its one card, under Details.
-    const section = main.querySelector(".ticket-summary .assistant-card details.card-details");
+    const section = main.querySelector(".ticket-page .assistant-card details.card-details");
     expect(section?.text).toContain("Reproduced and fixed");
     expect(section?.text).toContain("Reported by Helper (AI assistant)");
     expect(section?.text).toContain("Not checked by Proofdesk.");
@@ -220,7 +220,7 @@ describe("the evidence form on the ticket page", () => {
     expect(res.status).toBe(303);
     const html = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     // Evidence a person attached is one closed line, "Evidence (1)", with no heading.
-    const section = html.querySelector(".ticket-summary details.evidence-list");
+    const section = html.querySelector(".ticket-page details.evidence-list");
     expect(section?.querySelector("summary")?.text).toBe("Evidence (1)");
     expect(section?.text).toContain("Printed ten pages twice");
     expect(section?.text).toContain("Reported by Team Member");
