@@ -56,7 +56,7 @@ describe("a ticket the team resolved as fixed, for its customer", () => {
     expect(statusCell(await page(customerOne, "/tickets"))).toBe("Resolved");
     const ticket = await page(customerOne, "/tickets/SUP-1");
     expect(ticket.querySelector(".ticket-card .card-line")?.text.trim()).toBe(
-      "Resolved by the team: Won't fix (Works as designed.). You have not confirmed it.",
+      "Resolved by the team: Won't fix (Works as designed). You have not confirmed it.",
     );
   });
 });

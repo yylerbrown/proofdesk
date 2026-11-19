@@ -9,7 +9,7 @@ import { createTicketService } from "../src/server/tickets/service.js";
 import { admin, as, buildTestApp, customerOne, teamActor, visitor } from "./helpers.js";
 
 // "Fixed, but the customer has not replied" follows the customer's standing word, the same one
-// the callout at the top shows. The resolve form's note box shows only for Other, and a note
+// the card's line at the top links to. The resolve form's note box shows only for Other, and a note
 // left in it after choosing another reason is not sent. A few smaller refusals say the right
 // thing.
 

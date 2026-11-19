@@ -6,8 +6,8 @@ import { turnTag } from "../src/server/pages/format.js";
 import type { Ticket } from "../src/server/tickets/service.js";
 import { as, buildTestApp, customerOne, resolveTicket, teamActor, visitor } from "./helpers.js";
 
-// When the customer reopens a ticket, the team sees it as plainly as after a No: a callout
-// with their reason at the top of the ticket, and the list's quiet tag says why it is back. A team member who reopens a ticket is told so in words written for them.
+// When the customer reopens a ticket, the team sees it as plainly as after a No: the card's
+// line says so and links to the customer's message, and the list's quiet tag says why it is back. A team member who reopens a ticket is told so in words written for them.
 
 const valid = { title: "Printer jams", description: "It jams.", fix_check: "Ten pages print" };
 const reason = "It jams again on page three.";

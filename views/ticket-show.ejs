@@ -190,7 +190,9 @@
   <p class="card-line">
     <%# The only tick inside the product, always with the words "Customer confirmed". %>
     <% if (card.line.tick) { %><img src="/assets/mark.svg" alt="" width="20" height="20" class="tick" /><% } %>
-    <% if (card.lineHref) { %><a href="<%= card.lineHref %>"><%= card.line.text %></a><% } else { %><%= card.line.text %><% } %>
+    <%# The day is a <time>, so the visitor's browser writes it in their own time zone. The span
+        keeps the words and the day one sentence inside the line's row. %>
+    <span><% if (card.lineHref) { %><a href="<%= card.lineHref %>"><% } %><%= card.line.text %><% if (card.line.day) { %><time datetime="<%= card.line.day %>" data-day><%= formatDay(card.line.day) %></time><% } %><%= card.line.after %><% if (card.lineHref) { %></a><% } %></span>
     <% if (staff && ticket.resolution?.duplicate_of) { %><a href="/tickets/<%= ticket.resolution.duplicate_of %>">Open <%= ticket.resolution.duplicate_of %></a><% } %>
   </p>
   <% } %>

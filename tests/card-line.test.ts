@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { cardLine, formatDay, type CardFacts } from "../src/server/pages/format.js";
+import {
+  cardLine,
+  cardLineText,
+  formatDay,
+  type CardFacts,
+  type CardLine,
+} from "../src/server/pages/format.js";
 import type { Ticket } from "../src/server/tickets/service.js";
 
 // The one line on the ticket page's card, under the customer's check: where the ticket stands,
@@ -22,6 +28,9 @@ function ticket(fields: Partial<Ticket> = {}): Ticket {
   } as Ticket;
 }
 
+/** The line's words as a page without scripts shows them, its day in UTC. */
+const words = (line: CardLine | null) => (line === null ? null : cardLineText(line));
+
 const nothing: CardFacts = { confirmed: null, notFixed: null, reviewBy: null };
 const mine = { status: "in_progress", owner_id: "team-1", owner_name: "Team Member" } as const;
 
@@ -43,6 +52,8 @@ describe("the card's line", () => {
     const facts = { ...nothing, reviewBy: "Demo visitor's assistant" };
     expect(cardLine(ticket(mine), "team", facts)).toEqual({
       text: "Demo visitor's assistant asks for your review.",
+      day: null,
+      after: "",
       tick: false,
       messageAt: null,
     });
@@ -51,7 +62,7 @@ describe("the card's line", () => {
 
   it("tells the team it waits for the customer once they are asked", () => {
     const asked = ticket({ ...mine, ready_at: at });
-    expect(cardLine(asked, "team", nothing)?.text).toBe(
+    expect(words(cardLine(asked, "team", nothing))).toBe(
       "Waiting for the customer's answer. Asked 19 Nov 2026.",
     );
   });
@@ -63,7 +74,9 @@ describe("the card's line", () => {
   it("tells the team the customer said no, linked to their message", () => {
     const facts = { ...nothing, notFixed: { reopened: false, words: "Still jams.", at } };
     expect(cardLine(ticket(mine), "team", facts)).toEqual({
-      text: "The customer said no on 19 Nov 2026.",
+      text: "The customer said no on ",
+      day: at,
+      after: ".",
       tick: false,
       messageAt: at,
     });
@@ -72,14 +85,16 @@ describe("the card's line", () => {
   it("tells the customer who said no that they will be asked again, without their words", () => {
     const facts = { ...nothing, notFixed: { reopened: false, words: "Still jams.", at } };
     const line = cardLine(ticket(mine), "customer", facts);
-    expect(line?.text).toBe("You said no on 19 Nov 2026. The team will ask you again.");
-    expect(line?.text).not.toContain("Still jams.");
+    expect(words(line)).toBe("You said no on 19 Nov 2026. The team will ask you again.");
+    expect(words(line)).not.toContain("Still jams.");
   });
 
   it("tells the team the customer reopened it, linked to their message", () => {
     const facts = { ...nothing, notFixed: { reopened: true, words: "Again.", at } };
     expect(cardLine(ticket(mine), "team", facts)).toEqual({
-      text: "The customer reopened it on 19 Nov 2026.",
+      text: "The customer reopened it on ",
+      day: at,
+      after: ".",
       tick: false,
       messageAt: at,
     });
@@ -92,7 +107,9 @@ describe("the card's line", () => {
     const facts = { ...nothing, confirmed: at };
     for (const viewer of ["team", "admin", "customer"] as const) {
       expect(cardLine(resolved, viewer, facts)).toEqual({
-        text: "Customer confirmed it is fixed. 19 Nov 2026",
+        text: "Customer confirmed it is fixed. ",
+        day: at,
+        after: "",
         tick: true,
         messageAt: null,
       });
@@ -113,11 +130,11 @@ describe("the card's line", () => {
         at,
       },
     });
-    expect(cardLine(resolved, "team", nothing)).toEqual({
-      text: "Resolved by the team: Cannot reproduce. Demo Team Member, 19 Nov 2026. Not confirmed by the customer.",
-      tick: false,
-      messageAt: null,
-    });
+    const line = cardLine(resolved, "team", nothing);
+    expect(words(line)).toBe(
+      "Resolved by the team: Cannot reproduce. Demo Team Member, 19 Nov 2026. Not confirmed by the customer.",
+    );
+    expect(line).toMatchObject({ day: at, tick: false, messageAt: null });
   });
 
   it("tells the customer what the team said, and that they have not confirmed it", () => {
@@ -140,14 +157,14 @@ describe("the card's line", () => {
       "customer",
       nothing,
     );
-    expect(fixed?.text).toBe("The team says it is fixed. You have not confirmed it.");
+    expect(words(fixed)).toBe("The team says it is fixed. You have not confirmed it.");
     expect(fixed?.tick).toBe(false);
-    expect(cardLine(byTeam("wont_fix", "Won't fix"), "customer", nothing)?.text).toBe(
-      "Resolved by the team: Won't fix (Works as designed.). You have not confirmed it.",
+    expect(words(cardLine(byTeam("wont_fix", "Won't fix"), "customer", nothing))).toBe(
+      "Resolved by the team: Won't fix (Works as designed). You have not confirmed it.",
     );
     // "Fixed" is said once on the team's line too, not with its label's own caveat.
     expect(
-      cardLine(byTeam("fixed_no_reply", "Fixed. Not customer-confirmed."), "team", nothing)?.text,
+      words(cardLine(byTeam("fixed_no_reply", "Fixed. Not customer-confirmed."), "team", nothing)),
     ).toBe(
       "Resolved by the team: Fixed. Demo Team Member, 19 Nov 2026. Not confirmed by the customer.",
     );
@@ -160,7 +177,7 @@ describe("the card's line", () => {
 
   it("says when an archived ticket was archived, to the team, before anything else", () => {
     const archived = ticket({ ...mine, archived_at: at, ready_at: at });
-    expect(cardLine(archived, "admin", nothing)?.text).toBe(
+    expect(words(cardLine(archived, "admin", nothing))).toBe(
       "Archived on 19 Nov 2026. Hidden from the lists until restored.",
     );
     expect(cardLine(archived, "customer", nothing)).toBeNull();
@@ -168,7 +185,40 @@ describe("the card's line", () => {
 });
 
 describe("a day on the card", () => {
-  it("is the day alone, in UTC like every time the server writes", () => {
+  it("is the day alone, in UTC, as the text a page without scripts shows", () => {
     expect(formatDay("2026-11-17T23:56:00.000Z")).toBe("17 Nov 2026");
+  });
+
+  it("is kept apart from the words, so the page can show it in the visitor's time zone", () => {
+    const line = cardLine(ticket({ ...mine, ready_at: at }), "team", nothing);
+    expect(line).toMatchObject({
+      text: "Waiting for the customer's answer. Asked ",
+      day: at,
+      after: ".",
+    });
+  });
+});
+
+describe("a note on the team's resolution", () => {
+  it("loses its own last full stop inside the brackets, so the line does not read .).", () => {
+    const resolved = ticket({
+      status: "resolved",
+      resolution: {
+        by: "team",
+        label: "Resolved by the team: Other",
+        reason: "other",
+        reason_label: "Other",
+        note: "Out of scope. See the policy.",
+        duplicate_of: null,
+        resolved_by_name: "Demo Team Member",
+        at,
+      },
+    });
+    expect(words(cardLine(resolved, "team", nothing))).toBe(
+      "Resolved by the team: Other (Out of scope. See the policy). Demo Team Member, 19 Nov 2026. Not confirmed by the customer.",
+    );
+    expect(words(cardLine(resolved, "customer", nothing))).toBe(
+      "Resolved by the team: Other (Out of scope. See the policy). You have not confirmed it.",
+    );
   });
 });

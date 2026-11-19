@@ -10,6 +10,7 @@ import {
   customerSaysNotFixed,
   describeActor,
   describeEvent,
+  formatDay,
   formatTime,
   notFixedCard,
   STATUS_LABELS,
@@ -49,6 +50,7 @@ const helpers = {
   statusLabels: STATUS_LABELS,
   statuses: TICKET_STATUSES,
   formatTime,
+  formatDay,
   timeAgo,
   reportFields,
 };

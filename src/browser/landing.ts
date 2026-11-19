@@ -60,7 +60,13 @@ export function focusLanding(landing: Landing): Focusable | null {
 if (typeof document !== "undefined") {
   const searched = new URLSearchParams(window.location.search).has("q");
   const message = document.querySelector<HTMLElement>(
-    'main > p[role="alert"], main > p[role="status"], p#sent[role="status"]',
+    [
+      'main > p[role="alert"]',
+      'main > p[role="status"]',
+      'p#sent[role="status"]',
+      // Just after asking the customer, the card says so once, in place of its line.
+      '.ticket-card p.card-line[role="status"]',
+    ].join(", "),
   );
   focusLanding({
     hash: window.location.hash,

@@ -657,20 +657,6 @@ table button.danger:is(:hover, :active) {
   color: var(--pd-danger);
   text-decoration: underline;
 }
-/* Only the decisive button is large: "Yes, resolve ticket". */
-button.large {
-  min-height: 40px;
-  padding: 9px 18px;
-  border-radius: var(--pd-radius);
-  font-size: var(--pd-text-md);
-  letter-spacing: -0.011em;
-}
-/* Its quiet partner, "No, send it back", is a normal button. */
-button.secondary.large {
-  min-height: 0;
-  padding: 6px 12px;
-  font-size: var(--pd-text-sm);
-}
 /* Keep and the destructive button side by side, each as wide as its words. */
 .choice {
   display: flex;
@@ -1421,6 +1407,15 @@ article.ticket-card#did-this-fix-it {
   .ticket-card .card-answer summary[role="button"] {
     width: 100%;
     min-height: 44px;
+  }
+  /* "No, it is not fixed" keeps its words in the middle of its tall box, like Yes. */
+  .ticket-card .card-answer summary[role="button"] {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ticket-card details.answer-no form button {
+    margin-top: var(--pd-space-3);
   }
 }
 
