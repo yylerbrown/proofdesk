@@ -159,12 +159,13 @@ test("the long path: a check, a change link and evidence, a No, then the custome
   await test.step("the team member replies, adds a note, links the change, attaches evidence", async () => {
     await team.getByRole("radio", { name: "Reply to the customer" }).check();
     await team.getByLabel("Your message").fill(reply);
-    await team.getByRole("button", { name: "Send", exact: true }).click();
+    // The one button names who will read the message.
+    await team.getByRole("button", { name: "Send reply to customer" }).click();
     await expect(savedMessage(team)).toContainText("Reply sent");
 
     await team.getByRole("radio", { name: "Internal note, for the team only" }).check();
     await team.getByLabel("Your message").fill(note);
-    await team.getByRole("button", { name: "Send", exact: true }).click();
+    await team.getByRole("button", { name: "Save internal note" }).click();
     await expect(savedMessage(team)).toContainText("Internal note added");
     await expect(team.getByText(note)).toBeVisible();
 

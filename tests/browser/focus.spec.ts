@@ -87,7 +87,7 @@ test("the team's ticket page: Shift+Tab, Escape on Resolve and Reopen, and More"
   await test.step("a control reached with Shift+Tab is not left under the header", async () => {
     // A short window, so the page can scroll far enough to put Send under the header.
     await page.setViewportSize({ width: 1280, height: 300 });
-    const send = page.getByRole("button", { name: "Send", exact: true });
+    const send = page.getByRole("button", { name: "Send reply to customer" });
     const nextOne = page.locator("button[data-fill]").first();
     const header = page.locator("body > header");
     const top = (button: typeof send) =>

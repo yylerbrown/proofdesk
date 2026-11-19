@@ -587,7 +587,8 @@
     <textarea id="entry-body" name="body" rows="4" required <% if (entry.error) { %>aria-invalid="true" aria-describedby="body-error" autofocus<% } %>><%= entry.body %></textarea>
   </label>
   <% if (entry.error) { %><small id="body-error"><%= entry.error %></small><% } %>
-  <button type="submit" class="compact">Send</button>
+  <%# With a choice of who sees it, a small script makes the button name that audience. %>
+  <button type="submit" class="compact" <% if (allowed.note) { %>data-label-reply="Send reply to customer" data-label-note="Save internal note"<% } %>>Send</button>
 </form>
 <%# A few common replies for the team, as plain words: they fill the box, or send as they are.
     They suit an open ticket, so a resolved one does not offer them. %>

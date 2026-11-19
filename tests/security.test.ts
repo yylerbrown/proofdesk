@@ -252,6 +252,7 @@ const OWN_SCRIPTS = [
   '<script type="module" src="/assets/js/ticket-changed.js"></script>',
   '<script type="module" src="/assets/js/char-count.js"></script>',
   '<script type="module" src="/assets/js/open-details.js"></script>',
+  '<script type="module" src="/assets/js/send-label.js"></script>',
 ];
 
 // The one image tag: the mark beside the name in the header.
