@@ -108,16 +108,15 @@ describe("the links to the page for assistants", () => {
     expect(guide.addresses.llms).toMatch(/\/llms\.txt$/);
   });
 
-  it("are in the assistant setup page's part for other assistants", async () => {
+  it("are in the message the key page gives to paste into an agent", async () => {
     const { app, db, config } = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
     seedDemo(createTicketService(db, config.ticketPrefix));
     const res = await visitor(app).post("/demo/connection");
     expect(res.status, res.text).toBe(200);
-    const html = parse(res.text);
-    const other = html.querySelectorAll("h2").find((h) => h.text === "Other assistants");
-    expect(other).toBeDefined();
-    const after = res.text.slice(res.text.indexOf("<h2>Other assistants</h2>"));
-    expect(after).toContain('href="/llms.txt"');
+    const message = parse(res.text, { blockTextElements: {} }).querySelector(
+      "#agent-paste code",
+    )?.text;
+    expect(message).toMatch(/Read http:\/\/\S+\/llms\.txt first\./);
   });
 
   it.each(["README.md", "docs/AGENTS_GUIDE.md", "docs/API.md"])("are in %s", (file) => {

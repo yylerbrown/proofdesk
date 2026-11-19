@@ -11,14 +11,11 @@ import { admin, as, buildTestApp, customerOne, teamActor, visitor } from "./help
 /** Reads a page, with code blocks as elements rather than raw text. */
 const read = (text: string) => parse(text, { blockTextElements: { script: true, style: true } });
 
-/** Each copy button on a page, and the text shown just before it (a code block or a key). */
+/** Each copy button on a page, and the text shown just before it (a code block). */
 function copies(html: HTMLElement) {
   return html.querySelectorAll("button.copy").map((button) => {
     const before = button.previousElementSibling!;
-    const shown =
-      before.querySelector("input.key")?.getAttribute("value") ??
-      before.querySelector("code")?.text ??
-      before.text;
+    const shown = before.querySelector("code")?.text ?? before.text;
     return {
       copies: button.getAttribute("data-copy"),
       shown,
@@ -103,7 +100,7 @@ describe("the copy script", () => {
 });
 
 describe("copy buttons on the pages", () => {
-  it("sit beside the key, the Claude Code command and the curl example, each with its exact text", async () => {
+  it("sit beside the message for an agent and each folded command, each with its exact text", async () => {
     const { app } = buildTestApp();
     const page = await admin(app)
       .post("/connections")
@@ -116,35 +113,34 @@ describe("copy buttons on the pages", () => {
       expect(item.copies).toBe(item.shown);
       expect(item.hidden).toBe(true);
     }
-    expect(found[0]!.copies).toMatch(/^pd_/);
+    const key = /Bearer (pd_\S+)/.exec(found[0]!.copies!)?.[1];
+    expect(found[0]!.copies).toMatch(/^Please connect to Proofdesk/);
     expect(found[1]!.copies).toMatch(/^claude mcp add --transport http proofdesk /);
     // The .mcp.json entry carries the real key, ready to paste.
     const entry = JSON.parse(found[2]!.copies!) as {
       mcpServers: { proofdesk: { type: string; headers: { Authorization: string } } };
     };
     expect(entry.mcpServers.proofdesk.type).toBe("http");
-    expect(entry.mcpServers.proofdesk.headers.Authorization).toBe(`Bearer ${found[0]!.copies}`);
+    expect(entry.mcpServers.proofdesk.headers.Authorization).toBe(`Bearer ${key}`);
     expect(found[3]!.copies).toMatch(/^curl -H "Authorization: Bearer pd_/);
     // Each is named for what it copies, so four buttons are not four times "Copy".
     expect(html.querySelectorAll("button.copy").map((b) => b.getAttribute("aria-label"))).toEqual([
-      "Copy the key",
+      "Copy the message for your AI agent",
       "Copy the Claude Code command",
       "Copy the .mcp.json entry",
       "Copy the curl command",
     ]);
   });
 
-  it("sit beside the demo key's command too", async () => {
+  it("sit beside the demo key's message too", async () => {
     const built = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
     const service = createTicketService(built.db, built.config.ticketPrefix);
     seedDemo(service);
     const found = copies(read((await visitor(built.app).post("/demo/connection")).text));
-    expect(found.length).toBe(5);
+    expect(found.length).toBe(4);
     for (const item of found) expect(item.copies).toBe(item.shown);
     // The seed records the sample's key, so no test names a fixed number for it.
-    expect(found[2]!.copies).toBe(
-      `Using Proofdesk, write a test spec for ${service.assistantSampleKey()}`,
-    );
+    expect(found[0]!.copies).toContain(`(there is one, ${service.assistantSampleKey()})`);
   });
 
   it("sits beside the prompt that asks an assistant for a test spec", async () => {
