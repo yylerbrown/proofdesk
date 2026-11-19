@@ -77,7 +77,8 @@ describe("the people a ticket page reads", () => {
     for (const sql of statements) {
       const steps = plan(built.db, sql).join(" | ");
       // A scan of the user or account table reads one row per person who ever signed in.
-      expect(steps, sql).not.toMatch(/SCAN (u|a)\b/);
+      // SQLite names a table by its alias when it has one, and by its own name when not.
+      expect(steps, sql).not.toMatch(/SCAN "?(u|a|user|account)\b/);
     }
   });
 

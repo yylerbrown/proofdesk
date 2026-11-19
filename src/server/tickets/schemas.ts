@@ -209,7 +209,7 @@ export const listQuerySchema = z.object({
     .meta({ description: "Words to find in the title or description, in any case." }),
   order: z.enum(LIST_ORDERS).optional().meta({
     description:
-      "open_first (the default): open tickets newest first, then resolved ones. oldest: oldest first. updated: the most recently changed first.",
+      "open_first (the default): open tickets newest first, then resolved ones. oldest: oldest first. updated: the most recently changed first. Pages are counted by position, so a ticket that changes while you page through may move onto a page you already read; oldest is the order that never moves.",
   }),
   page: z.coerce.number().int().min(1).max(100000).optional(),
   cursor: z.string().max(100).optional().meta({

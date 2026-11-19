@@ -128,6 +128,8 @@ describe("each order the list offers", () => {
     const list = doc.paths["/tickets"].get;
     const order = list.parameters.find((p: { name: string }) => p.name === "order");
     expect(order.schema.enum).toEqual(["open_first", "oldest", "updated"]);
+    // Pages are counted by position, so the description warns that a changed ticket can move.
+    expect(order.description).toContain("may move onto a page you already read");
   });
 });
 
