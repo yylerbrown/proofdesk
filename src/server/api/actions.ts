@@ -22,10 +22,12 @@ import {
   verificationRequestSchema,
   versionOnlySchema,
 } from "../tickets/schemas.js";
+import { bulkChangeSchema } from "../tickets/bulk.js";
 import { addEvidenceSchema } from "../tickets/evidence.js";
 import { decideSpecSchema, proposeSpecSchema } from "../tickets/spec.js";
 import { LIST_PAGE_SIZE, type TicketService } from "../tickets/service.js";
 import {
+  bulkOutput,
   deletedOutput,
   entryOutput,
   eventOutput,
@@ -256,6 +258,17 @@ export const ACTIONS: ApiAction[] = [
     body: resolveSchema,
     output: ticketOutput,
     run: ({ service, actor, key, body }) => service.resolveWithReason(key, body, actor),
+  },
+  {
+    name: "bulk_change",
+    method: "post",
+    path: "/tickets/bulk",
+    summary:
+      'Change many tickets at once, as the ticket list does: keys (at most one page of the list) and either status (resolved takes a reason, as resolve_with_reason) or owner ("me", "nobody" or a team member\'s id). Each ticket goes through the same rules as the same change on its own page, at its current version, with its own history entry. The answer lists the keys changed and, for each one not changed, the status and error the single change would answer. People on the team only; never an agent.',
+    needs: "bulk_change",
+    body: bulkChangeSchema,
+    output: bulkOutput,
+    run: ({ service, actor, body }) => service.changeTickets(body, actor),
   },
   {
     name: "hand_off",

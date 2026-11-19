@@ -191,6 +191,12 @@ describe("real answers", () => {
       "resolve_with_reason",
       await admin(app).post("/api/tickets/SUP-3/resolve").send({ reason: "wont_fix" }),
     );
+    expectShape(
+      "bulk_change",
+      await admin(app)
+        .post("/api/tickets/bulk")
+        .send({ keys: ["SUP-1", "SUP-404"], owner: "me" }),
+    );
     expectShape("archive_ticket", await admin(app).post(`${t}/archive`));
     expectShape("restore_ticket", await admin(app).post(`${t}/restore`));
     expectShape("delete_ticket", await admin(app).delete(t).send({ confirm: "SUP-1" }));
