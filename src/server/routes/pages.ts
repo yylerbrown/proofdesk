@@ -380,20 +380,22 @@ export function pagesRouter(service: TicketService): Router {
         }
         // Ticked boxes arrive as one text, or as a list when more than one is ticked.
         const evidenceIds = [req.body?.evidence_ids].flat().filter((id) => typeof id === "string");
-        // The ticket changed since the page was opened. A form with text typed in it is shown
-        // again on the ticket as it is now, with the text kept. Any other press goes back to
-        // the ticket with the reason, as for other refusals.
+        // The ticket changed since the page was opened. A form with text typed in it, or with
+        // evidence ticked, is shown again on the ticket as it is now, with that kept. Any other
+        // press goes back to the ticket with the reason, as for other refusals.
         const firstTyped = FORM_FIELDS[form].find((name) => (values[name] ?? "").trim() !== "");
+        const somethingToKeep = firstTyped !== undefined || evidenceIds.length > 0;
         if (
           err instanceof HttpError &&
           err.code === "ticket_changed" &&
-          firstTyped !== undefined &&
+          somethingToKeep &&
           KEEPS_TEXT.has(form)
         ) {
           res.locals.refused = onTicketPage(err);
           showTicket(req, res, 409, emptyEntry, {
             form,
-            message: "Your text is kept here. Look at the ticket as it is now, then send again.",
+            message:
+              "What you entered is kept here. Look at the ticket as it is now, then send again.",
             comment: asText(req.body?.comment ?? req.body?.reason),
             values,
             evidenceIds,

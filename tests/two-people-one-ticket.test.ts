@@ -538,6 +538,28 @@ describe("every action that accepts a version", () => {
     },
   );
 
+  // Ending an assistant's work that has already ended changes nothing, so an old version is
+  // not refused there either: the press is answered with the ticket as it is.
+  it("end_agent_work with nothing to end is answered, not refused, and writes nothing", async () => {
+    const { app, db } = buildTestApp();
+    await filed(app);
+    await handToAgent(app, "SUP-1", await issueKey(app));
+    const seen = (await read(app)).version;
+    expect(
+      (await admin(app).post("/api/tickets/SUP-1/agent/end").send({ expected_version: seen }))
+        .status,
+    ).toBe(200);
+    changedElsewhere(db);
+    const before = stored(db);
+    const events = db.prepare("SELECT COUNT(*) AS n FROM ticket_events").get();
+    const res = await admin(app)
+      .post("/api/tickets/SUP-1/agent/end")
+      .send({ expected_version: seen });
+    expect(res.status).toBe(200);
+    expect(stored(db)).toEqual(before);
+    expect(db.prepare("SELECT COUNT(*) AS n FROM ticket_events").get()).toEqual(events);
+  });
+
   // The ticket's state is checked before its version, so a press the state refuses gets the
   // state's own words, even when it also carries an old version, such as after a double click.
   type StateRefusal = {
@@ -624,6 +646,21 @@ describe("every action that accepts a version", () => {
           .send({ connection_id: id ?? 1, expected_version: v });
       },
       code: "not_in_progress",
+    },
+    {
+      name: "hand_off",
+      setup: takeAndStart,
+      send: (app, v) =>
+        admin(app)
+          .post("/api/tickets/SUP-1/hand-off")
+          .send({ to: "dev-team-1", expected_owner: "", expected_version: v }),
+      code: "owner_changed",
+    },
+    {
+      name: "take_ticket on an archived ticket",
+      setup: (app) => admin(app).post("/api/tickets/SUP-1/archive"),
+      send: (app, v) => admin(app).post("/api/tickets/SUP-1/take").send({ expected_version: v }),
+      code: "ticket_archived",
     },
   ];
   it.each(STATE_REFUSALS)(
@@ -841,29 +878,37 @@ describe("the ticket page's own forms", () => {
     expect(second.refused).toBeUndefined();
   });
 
-  it("keep the ticked evidence when Ask with these details is refused for an old version", async () => {
-    const { app, db } = buildTestApp();
-    await filed(app);
-    await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
-    await admin(app).post("/api/tickets/SUP-1/evidence").send({ kind: "note", summary: "One" });
-    await admin(app).post("/api/tickets/SUP-1/evidence").send({ kind: "note", summary: "Two" });
-    const version = await formVersion(app, teamActor, "/tickets/SUP-1");
-    const boxes = parse((await as(app, teamActor).get("/tickets/SUP-1")).text)
-      .querySelectorAll("form.ask input[name=evidence_ids]")
-      .map((box) => box.getAttribute("value")!);
-    expect(boxes.length).toBe(2);
-    changedElsewhere(db);
-    const res = await as(app, teamActor)
-      .post("/tickets/SUP-1/ready")
-      .type("form")
-      .send(`tried=Printed+ten.&evidence_ids=${boxes[1]}&expected_version=${version}`);
-    expect(res.status).toBe(409);
-    const ticked = parse(res.text)
-      .querySelectorAll("form.ask input[name=evidence_ids]")
-      .filter((box) => box.hasAttribute("checked"))
-      .map((box) => box.getAttribute("value"));
-    expect(ticked).toEqual([boxes[1]]);
-  });
+  it.each([
+    { typed: "with text typed", text: "tried=Printed+ten.&" },
+    { typed: "with nothing typed", text: "" },
+  ])(
+    "keep the ticked evidence when Ask with these details is refused for an old version, $typed",
+    async ({ text }) => {
+      const { app, db } = buildTestApp();
+      await filed(app);
+      await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
+      await admin(app).post("/api/tickets/SUP-1/evidence").send({ kind: "note", summary: "One" });
+      await admin(app).post("/api/tickets/SUP-1/evidence").send({ kind: "note", summary: "Two" });
+      const version = await formVersion(app, teamActor, "/tickets/SUP-1");
+      const boxes = parse((await as(app, teamActor).get("/tickets/SUP-1")).text)
+        .querySelectorAll("form.ask input[name=evidence_ids]")
+        .map((box) => box.getAttribute("value")!);
+      expect(boxes.length).toBe(2);
+      changedElsewhere(db);
+      const res = await as(app, teamActor)
+        .post("/tickets/SUP-1/ready")
+        .type("form")
+        .send(`${text}evidence_ids=${boxes[1]}&expected_version=${version}`);
+      expect(res.status).toBe(409);
+      const ticked = parse(res.text)
+        .querySelectorAll("form.ask input[name=evidence_ids]")
+        .filter((box) => box.hasAttribute("checked"))
+        .map((box) => box.getAttribute("value"));
+      expect(ticked).toEqual([boxes[1]]);
+      // The message fits a form that kept only ticked boxes as well as one that kept text.
+      expect(res.text).toContain("What you entered is kept here.");
+    },
+  );
 
   it("keep what was typed when a press is refused for an old version", async () => {
     const { app, db } = buildTestApp();

@@ -963,6 +963,8 @@ export function createTicketService(
           );
         }
         if (status === "new") {
+          // Checked here so the owner rule answers before the version check.
+          // returnToNew checks it again for its other callers.
           requireOwnerOrAdminReturns(key, before, actor);
           requireVersion(key, before, expected_version);
           return returnToNew(key, before, actor);
