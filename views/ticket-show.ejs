@@ -168,9 +168,11 @@
     <button type="submit" class="secondary large">No, send it back</button>
   </form>
   <%# Common answers, as plain words. With scripts, each fills the box above, to change before
-      sending; without, each sends its words as an ordinary answer. %>
-  <p class="quick-label"><small>Or answer No in a few words:</small></p>
-  <div class="quick-answers" role="group" aria-label="Quick answers">
+      sending, and the script changes the line above them to say so: a No is then sent only by
+      "No, send it back", never by one press on a chip. Without scripts, each sends its words as
+      an ordinary answer, as this line says. %>
+  <p class="quick-label" id="quick-answers-label"><small data-filled-label="Or start your answer with one of these:">Or answer No in a few words:</small></p>
+  <div class="quick-answers" role="group" aria-labelledby="quick-answers-label">
     <% for (const words of ["Still happening", "Partly fixed", "Something else broke"]) { %>
     <form method="post" action="/tickets/<%= ticket.key %>/answer">
       <input type="hidden" name="fixed" value="no" />
