@@ -1,8 +1,16 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
-// The team ticks tickets on the list and changes them together. With scripts on, the bar floats
-// at the bottom of the window only while something is ticked and counts what is, so ticking a
-// row moves nothing on the page; the header's box ticks every row shown.
+// The team ticks tickets on the list and changes them together. With scripts on, the bar lies
+// over the filter row only while something is ticked and counts what is, so ticking a row moves
+// nothing on the page; the header's box ticks every row shown.
+
+// Where an element's top edge is in the window, in pixels.
+async function topOf(page: Page, selector: string): Promise<number> {
+  return page
+    .locator(selector)
+    .first()
+    .evaluate((element) => element.getBoundingClientRect().top);
+}
 
 test("a team member searches, ticks every row shown and resolves them with one reason", async ({
   page,
@@ -28,19 +36,25 @@ test("a team member searches, ticks every row shown and resolves them with one r
   // One row, by the keyboard: its box is a stop of its own, and Space ticks it.
   const rows = page.locator('input[name="keys"]');
   await expect(rows).toHaveCount(2);
-  const tableTop = () =>
-    page.locator("table.tickets").evaluate((table) => table.getBoundingClientRect().top);
+  const tableTop = () => topOf(page, "table.tickets");
+  const headingTop = () => topOf(page, "h1");
   const before = await tableTop();
+  const heading = await headingTop();
+  const filtersTop = await topOf(page, ".list-filters");
   await rows.first().focus();
   await page.keyboard.press("Space");
   await expect(bar).toBeVisible();
   await expect(bar.locator("[data-bulk-count]")).toHaveText("1 selected");
-  // The bar floats over the bottom of the window, so the table has not moved.
+  // The bar lies over the filter row, so neither the heading nor the table has moved.
   expect(await tableTop()).toBe(before);
-  await expect(bar).toHaveCSS("position", "fixed");
+  expect(await headingTop()).toBe(heading);
+  expect(Math.abs((await topOf(page, "[data-bulk-bar]")) - filtersTop)).toBeLessThanOrEqual(1);
+  await expect(page.locator(".list-filters")).toBeHidden();
   await page.keyboard.press("Space");
   await expect(bar).toBeHidden();
+  await expect(page.locator(".list-filters")).toBeVisible();
   expect(await tableTop()).toBe(before);
+  expect(await headingTop()).toBe(heading);
   await page.keyboard.press("Space");
 
   // Every row shown, by the mouse.
@@ -52,14 +66,17 @@ test("a team member searches, ticks every row shown and resolves them with one r
   await expect(bar).toBeHidden();
   await expect(rows.first()).not.toBeChecked();
   expect(await tableTop()).toBe(before);
+  expect(await headingTop()).toBe(heading);
   await page.getByRole("checkbox", { name: "Tick every ticket shown" }).click();
 
-  // Resolved opens its reason inside the bar, which grows upward, so the table still has not moved.
+  // Resolved opens its reason inside the bar, which grows down over the list if it must, so the
+  // table still has not moved.
   const reason = bar.getByRole("combobox", { name: "Reason" });
   await expect(reason).toBeHidden();
   await bar.getByRole("combobox", { name: "Status" }).selectOption("resolved");
   await expect(reason).toBeVisible();
   expect(await tableTop()).toBe(before);
+  expect(await headingTop()).toBe(heading);
   await reason.selectOption("wont_fix");
   await bar.getByRole("button", { name: "Apply", exact: true }).click();
 
@@ -69,7 +86,7 @@ test("a team member searches, ticks every row shown and resolves them with one r
   await expect(bar).toBeHidden();
 });
 
-test("at the bottom of a scrolled list, ticking and unticking the last row moves nothing", async ({
+test("the bar covers the filter row at desktop and phone width, Tab skips the filters, and a scrolled list keeps the bar in view", async ({
   page,
 }) => {
   const marker = "Scrollmark";
@@ -85,8 +102,51 @@ test("at the bottom of a scrolled list, ticking and unticking the last row moves
   await page.context().clearCookies();
   await page.goto("/sign-in");
   await page.getByRole("button", { name: "View as Team Member" }).click();
+
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto(`/tickets?q=${marker}`);
+    const filters = page.locator(".list-filters");
+    const bar = page.locator("[data-bulk-bar]");
+    const filtersBox = await filters.evaluate((element) =>
+      element.getBoundingClientRect().toJSON(),
+    );
+    await page.locator('input[name="keys"]').first().check();
+    await expect(bar).toBeVisible();
+    const barBox = await bar.evaluate((element) => element.getBoundingClientRect().toJSON());
+    expect(Math.abs(barBox.top - filtersBox.top)).toBeLessThanOrEqual(1);
+    expect(Math.abs(barBox.left - filtersBox.left)).toBeLessThanOrEqual(1);
+    expect(Math.abs(barBox.width - filtersBox.width)).toBeLessThanOrEqual(1);
+
+    // Shift+Tab from the first row's box back up to the site header: the bar's controls are on
+    // the way, and nothing in the covered filters is.
+    await page.locator('input[name="keys"]').first().focus();
+    const stops: { inFilters: boolean; name: string }[] = [];
+    for (let press = 0; press < 40; press += 1) {
+      await page.keyboard.press("Shift+Tab");
+      const stop = await page.evaluate(() => {
+        const active = document.activeElement;
+        return {
+          inFilters: active?.closest(".list-filters") !== null,
+          inHeader: active?.closest("body > header") !== null,
+          name: active?.getAttribute("aria-label") ?? active?.textContent?.trim() ?? "",
+        };
+      });
+      if (stop.inHeader) break;
+      stops.push(stop);
+    }
+    expect(stops.map((stop) => stop.name)).toContain("Status");
+    expect(stops.filter((stop) => stop.inFilters)).toEqual([]);
+
+    await bar.getByRole("button", { name: "Clear" }).click();
+    await expect(bar).toBeHidden();
+    await expect(filters).toBeVisible();
+    await expect(page.getByRole("searchbox")).toBeVisible();
+  }
+
+  // At the bottom of a scrolled list, ticking and unticking the last row moves nothing.
   // A short window, so the list scrolls and the end of the page is the end of the scroll.
-  await page.setViewportSize({ width: 1280, height: 400 });
+  await page.setViewportSize({ width: 1280, height: 300 });
   await page.goto(`/tickets?q=${marker}`);
   const bar = page.locator("[data-bulk-bar]");
   const last = page.locator('input[name="keys"]').last();
@@ -101,7 +161,19 @@ test("at the bottom of a scrolled list, ticking and unticking the last row moves
   await toEnd();
   const ticked = await lastTop();
   expect(ticked).toBe(before);
-  // Resolved grows the bar upward, and choosing another status again shrinks it.
+  // The filter row has scrolled away under the site header, and the bar stays in the window,
+  // stuck just under that header.
+  const headerBottom = await page
+    .locator("body > header")
+    .evaluate((header) => header.getBoundingClientRect().bottom);
+  const filtersBottom = await page
+    .locator(".list-filters")
+    .evaluate((filters) => filters.getBoundingClientRect().bottom);
+  expect(filtersBottom).toBeLessThan(headerBottom);
+  const barBox = await bar.evaluate((element) => element.getBoundingClientRect().toJSON());
+  expect(Math.abs(barBox.top - headerBottom)).toBeLessThanOrEqual(1);
+  expect(barBox.bottom).toBeLessThanOrEqual(300);
+  // Resolved can grow the bar, and choosing another status again shrinks it.
   const status = bar.getByRole("combobox", { name: "Status" });
   await status.selectOption("resolved");
   await toEnd();

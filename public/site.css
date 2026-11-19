@@ -2674,8 +2674,8 @@ pre.paste.command {
 /*
  * Changing ticked tickets from the list: a tick box before each key, and one quiet bar with the
  * count, a status, an owner, one Apply and a Clear, on one line. Without scripts the bar sits
- * above the table and is always shown. With scripts it floats at the bottom of the window,
- * centred, only while something is ticked, so ticking a row moves nothing on the page.
+ * above the table and is always shown. With scripts it lies over the filter row, as that row's
+ * own toolbar, only while something is ticked, so ticking a row moves nothing on the page.
  */
 /* The form holds the whole list, so it is as wide as the list, not a form page's column. */
 main > form.bulk {
@@ -2722,28 +2722,33 @@ main > form.bulk {
   margin: 0;
   color: var(--pd-danger);
 }
-/* With scripts on: one bar fixed to the bottom of the window, above the page's content. */
-form.bulk[data-floating] .bulk-bar {
-  position: fixed;
+/*
+ * With scripts on, the bar moves into the dock at the top of the list. The dock takes no room, so
+ * nothing moves, and it sticks under the site header while the list scrolls, so a bar with rows
+ * ticked stays in view. The bar inside is at least the filter row's height, which the script
+ * measures, and a bar that needs more room, as for Resolved's reason or on a phone, grows down
+ * over the list instead of pushing it.
+ */
+.bulk-dock {
+  position: sticky;
   z-index: 20;
-  bottom: var(--pd-space-4);
-  left: 50%;
-  width: max-content;
-  max-width: calc(100% - 2 * var(--pd-gutter));
-  margin: 0;
-  transform: translateX(-50%);
-  box-shadow: var(--pd-shadow);
+  top: var(--pd-header-stuck, 0px);
+  height: 0;
 }
-/* Room at the very end of the page, so the bar never covers the last row. It is the room the
-   tallest bar needs, Resolved with its reason, and it stays the whole time the list floats its
-   bar: room that came and went with the bar would shorten the page at the bottom of a scroll,
-   and the browser would pull the rows down. */
-body:has(form.bulk[data-floating]) {
-  padding-bottom: 10rem;
+.bulk-dock .bulk-bar {
+  box-sizing: border-box;
+  min-height: var(--bulk-row-height, 0px);
+  align-content: center;
+  margin: 0;
+  padding-block: 2px;
+}
+/* The filters under the bar: out of sight, and the script makes them inert, out of reach. */
+.list-filters[inert] {
+  visibility: hidden;
 }
 /* The reason shows only for Resolved, in the line after the status. A browser that cannot read
    :has shows it all the time, which still works. */
-.bulk:not(:has(select[name="status"] option[value="resolved"]:checked)) .bulk-reason {
+.bulk-bar:not(:has(select[name="status"] option[value="resolved"]:checked)) .bulk-reason {
   display: none;
 }
 /* The tick box sits above the row's link to its ticket, so a press ticks it instead of opening it. */
@@ -2780,19 +2785,5 @@ table.tickets .bulk-tick[hidden] {
   }
   .bulk-bar {
     padding: var(--pd-space-3);
-  }
-  /* On a phone the floating bar spans the width at the bottom and wraps to two lines at most. */
-  form.bulk[data-floating] .bulk-bar {
-    right: 0;
-    bottom: 0;
-    left: 0;
-    width: auto;
-    max-width: none;
-    border-width: 1px 0 0;
-    border-radius: 0;
-    transform: none;
-  }
-  body:has(form.bulk[data-floating]) {
-    padding-bottom: 13rem;
   }
 }
