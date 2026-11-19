@@ -12,12 +12,10 @@
   };
 %>
 <h1><%= mine ? "My tickets" : "All tickets" %></h1>
-<p class="list-note"><small>Tickets start New, move to In Progress when work starts, and become Resolved when the customer who filed them confirms the fix or the team resolves them with a reason.</small></p>
+<p class="list-note"><small>A ticket moves from New to In Progress, and is resolved when its customer confirms the fix or the team gives a reason.</small></p>
 <% if (viewer && viewer.role === "admin") { %>
 <p class="role-note"><small><% if (viewer.readOnly) { %>Admin preview, read-only: you see every ticket with its history and internal notes, and nothing you do here changes them. On the real site an admin also restores archived tickets, deletes tickets permanently and manages assistant connections. Archiving, restoring and deleting are off on this demo for everyone.<% } else { %>As an admin you see every ticket with its history and internal notes, restore archived tickets, delete tickets permanently and <a href="/connections">manage assistant connections</a>.<% } %></small></p>
 <% } %>
-<%- include("assistant-invite", { invite }) %>
-
 <%# The filters: by status, by owner for the team, and words to find. Each is a plain link or a GET form, and each keeps the others, so the address names the view and can be shared. %>
 <div class="list-filters">
 <nav aria-label="Filter by status">
@@ -27,7 +25,7 @@
     </li>
     <% for (const status of statuses) { %>
     <li>
-      <a href="<%= href({ status }) %>" <% if (current === status) { %>aria-current="page"<% } %>><%= statusLabels[status] %></a>
+      <a href="<%= href({ status }) %>" <% if (current === status) { %>aria-current="page"<% } %>><%= statusLabels[status] %> <span class="filter-count"><%= counts[status] %></span></a>
     </li>
     <% } %>
     <% if (showArchivedFilter) { %>
@@ -49,15 +47,15 @@
 <form method="get" action="/tickets" role="search" class="list-search">
   <% if (current !== "all") { %><input type="hidden" name="status" value="<%= current %>" /><% } %>
   <% if (filters.owner) { %><input type="hidden" name="owner" value="<%= filters.owner %>" /><% } %>
-  <input type="search" name="q" value="<%= filters.q ?? "" %>" placeholder="Search titles and descriptions" aria-label="Search titles and descriptions" maxlength="100" />
+  <% if (filters.order !== "open_first") { %><input type="hidden" name="order" value="<%= filters.order %>" /><% } %>
+  <input type="search" name="q" value="<%= filters.q ?? "" %>" placeholder="Search titles, descriptions or a key" aria-label="Search titles and descriptions, or open a ticket by its key" maxlength="100" />
   <button type="submit" class="secondary">Search</button>
 </form>
 </div>
 
 <% if (tickets.length === 0 && narrowed) { %>
-<%# Name only what is set: the owner filter, the search, or both. %>
-<% const clearWhat = filters.owner && filters.q ? "the owner filter and search" : filters.owner ? "the owner filter" : "the search"; %>
-<p class="empty">No tickets match. <a href="<%= href({ owner: undefined, q: undefined }) %>">Clear <%= clearWhat %></a>.</p>
+<%# Built from what is set (the owner filter, the search or both) and naming the status tab. %>
+<p class="empty"><%= noMatch.sentence %> <a href="<%= href({ owner: undefined, q: undefined }) %>"><%= noMatch.clear %></a>.</p>
 <% } else if (tickets.length === 0) { %>
 <p class="empty"><%= empty[current] %><% if (current !== "archived") { %> <a href="/tickets/new">File a ticket</a>.<% } %></p>
 <% } else { %>
@@ -70,25 +68,36 @@
         <th scope="col">Status</th>
         <th scope="col">Owner</th>
         <th scope="col">Waiting on</th>
-        <th scope="col">Filed</th>
+        <th scope="col"><%= filters.order === "updated" ? "Updated" : "Filed" %></th>
       </tr>
     </thead>
     <tbody>
       <% for (const ticket of tickets) { %>
       <tr>
-        <td><a href="/tickets/<%= ticket.key %>"><%= ticket.key %></a></td>
-        <td class="user-text title-cell" title="<%= ticket.title %>"><a href="/tickets/<%= ticket.key %>" tabindex="-1"><%= ticket.title %></a></td>
+        <%# The title is the row's one keyboard stop; the key stays a link for the mouse. %>
+        <td><a href="/tickets/<%= ticket.key %>" tabindex="-1"><%= ticket.key %></a></td>
+        <td class="user-text title-cell" title="<%= ticket.title %>"><a href="/tickets/<%= ticket.key %>"><%= ticket.title %></a></td>
         <td><%- include("status-badge", { status: ticket.status }) %><% if (ticket.resolution) { %><small class="resolution-label"><%= ticket.resolution.by === "team" ? `By the team: ${ticket.resolution.reason_label}` : "Customer confirmed" %></small><% } %></td>
         <td><%= ticket.owner_name ?? "Unassigned" %></td>
         <td><%= ticket.waiting %></td>
-        <td><time datetime="<%= ticket.created_at %>" data-relative title="<%= formatTime(ticket.created_at) %>"><%= timeAgo(ticket.created_at) %></time></td>
+        <% const when = filters.order === "updated" ? ticket.updated_at : ticket.created_at; %>
+        <td><time datetime="<%= when %>" data-relative title="<%= formatTime(when) %>"><%= timeAgo(when) %></time></td>
       </tr>
       <% } %>
     </tbody>
   </table>
 </div>
 <% if (nextPage) { %>
-<p><a href="<%= nextPage %>">Older tickets</a></p>
+<p><a href="<%= nextPage %>">Next page</a></p>
 <% } %>
+<%# The order is a quiet choice under the table, kept in the address like the filters. %>
+<nav aria-label="Order" class="list-order">
+  <small>Order:
+  <% for (const [order, label] of Object.entries(orders)) { %>
+    <a href="<%= href({ order }) %>" <% if (filters.order === order) { %>aria-current="true"<% } %>><%= label %></a>
+  <% } %>
+  </small>
+</nav>
 <% } %>
+<%- include("assistant-invite", { invite }) %>
 <%- include("footer") %>

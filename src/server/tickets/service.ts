@@ -28,6 +28,7 @@ import {
   versionOnlySchema,
   RESOLVE_REASON_LABELS,
   sameText,
+  type ListOrder,
   type ResolveReason,
   type TicketListFilter,
   type TicketStatus,
@@ -238,6 +239,9 @@ export const LIST_PAGE_SIZE = 100;
 /** How a list may be narrowed besides its status: by owner, and by words to find. */
 export type ListNarrowing = { owner?: "me" | "none"; q?: string };
 export const THREAD_LIMIT = 200;
+
+const EVERYONE: repository.ListScope = { kind: "everyone" };
+const ARCHIVED: repository.ListScope = { kind: "archived" };
 
 /** What a ticket page left open compares with the server, to notice a change made elsewhere. */
 export type TicketStamp = { version: number; entries: number; handoffs: number };
@@ -838,6 +842,32 @@ export function createTicketService(
     );
   }
 
+  /**
+   * Whose tickets this viewer's lists hold, decided once for both the rows and the counts. The
+   * team gets everyone's. An assistant gets only its own: the ones handed to its connection, or
+   * on the demo the sample made for assistants. They are picked in SQL before the page is cut,
+   * so newer tickets never push them off a page. A customer gets the ones they filed, and an
+   * assistant files none, so for one that list is empty.
+   */
+  function visibleScope(actor: Actor): repository.ListScope {
+    if (!can(actor, "list_all")) return { kind: "filed_by", createdBy: actor.id };
+    if (isHandedAgent(actor)) {
+      return { kind: "among", ids: repository.handedTicketIds(db, actor.connection!.id) };
+    }
+    if (isDemoAgent(actor)) return { kind: "among", ids: demoTicketIds() };
+    return EVERYONE;
+  }
+
+  /** The owner filter and search as the repository reads them. */
+  function narrowed(narrowing: ListNarrowing, actor: Actor): repository.Narrowing {
+    return {
+      ownerId: narrowing.owner === "me" ? actor.id : null,
+      unassigned: narrowing.owner === "none",
+      // Searched as plain words: %, _ and \ in them mean themselves.
+      search: narrowing.q ? `%${narrowing.q.replace(/[\\%_]/g, "\\$&")}%` : null,
+    };
+  }
+
   /** Throws 409 when the ticket is archived. Used before any change to its content. */
   function requireNotArchived(key: string, row: repository.TicketRow): void {
     if (row.archived_at !== null) {
@@ -877,35 +907,50 @@ export function createTicketService(
       actor: Actor,
       pageNumber = 1,
       narrowing: ListNarrowing = {},
+      order: ListOrder = "open_first",
     ): Ticket[] {
       const page = { limit: LIST_PAGE_SIZE, offset: (pageNumber - 1) * LIST_PAGE_SIZE };
-      const view = (rows: repository.TicketRow[]) => rows.map((row) => toTicket(row, actor));
-      const narrow = {
-        ownerId: narrowing.owner === "me" ? actor.id : null,
-        unassigned: narrowing.owner === "none",
-        // Searched as plain words: %, _ and \ in them mean themselves.
-        search: narrowing.q ? `%${narrowing.q.replace(/[\\%_]/g, "\\$&")}%` : null,
-      };
-      if (filter === "archived") {
-        requirePermission(actor, "list_archived");
-        return view(repository.listArchivedTickets(db, page, narrow));
+      if (filter === "archived") requirePermission(actor, "list_archived");
+      const scope = filter === "archived" ? ARCHIVED : visibleScope(actor);
+      const status = filter === "all" || filter === "archived" ? null : filter;
+      const rows = repository.listTickets(
+        db,
+        scope,
+        status,
+        order,
+        page,
+        narrowed(narrowing, actor),
+      );
+      return rows.map((row) => toTicket(row, actor));
+    },
+
+    /**
+     * How many tickets of each status this viewer's list holds with the same owner filter and
+     * search: the counts beside the status filters. They come from the same scope as the list,
+     * so a customer's counts cover only their own tickets.
+     */
+    countTickets(actor: Actor, narrowing: ListNarrowing = {}): Record<TicketStatus, number> {
+      return repository.countTicketsByStatus(db, visibleScope(actor), narrowed(narrowing, actor));
+    },
+
+    /**
+     * The ticket key this text names, such as "sup-3" for SUP-3, when this viewer may open that
+     * ticket; otherwise null. Someone else's ticket gives null, exactly as a key that does not
+     * exist, so the answer says nothing about tickets the viewer cannot see.
+     */
+    visibleKey(text: string, actor: Actor): string | null {
+      const typed = text.trim();
+      const start = `${prefix}-`;
+      if (typed.slice(0, start.length).toUpperCase() !== start.toUpperCase()) return null;
+      const key = start + typed.slice(start.length);
+      if (parseKey(prefix, key) === null) return null;
+      try {
+        requireRow(key, actor);
+        return key;
+      } catch (err) {
+        if (err instanceof HttpError) return null;
+        throw err;
       }
-      const status = filter === "all" ? null : filter;
-      if (can(actor, "list_all")) {
-        // An assistant lists only its own tickets: the ones handed to its connection, or on
-        // the demo the sample made for assistants. They are picked in SQL before the page is
-        // cut, so newer tickets never push them off a page.
-        if (isHandedAgent(actor)) {
-          const handed = repository.handedTicketIds(db, actor.connection!.id);
-          return view(repository.listTicketsAmong(db, handed, status, page, narrow));
-        }
-        if (isDemoAgent(actor)) {
-          return view(repository.listTicketsAmong(db, demoTicketIds(), status, page, narrow));
-        }
-        return view(repository.listAllTickets(db, status, page, narrow));
-      }
-      // An assistant files no tickets, so for one this list is empty.
-      return view(repository.listTicketsFiledBy(db, actor.id, status, page, narrow));
     },
 
     getTicket(key: string, actor: Actor): Ticket {
@@ -2017,7 +2062,8 @@ export function createTicketService(
      */
     recordDemoSeed(assistantKey?: string, recordedKey?: string): void {
       const text: DemoSeed["text"] = {};
-      for (const row of repository.listAllTickets(db, null, { limit: 1000, offset: 0 })) {
+      const everyTicket = { limit: 1000, offset: 0 };
+      for (const row of repository.listTickets(db, EVERYONE, null, "open_first", everyTicket)) {
         text[String(row.id)] = {
           title: row.title,
           description: row.description,

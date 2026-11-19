@@ -16,7 +16,7 @@ import {
   listQuerySchema,
   markReadySchema,
   noteSchema,
-  pageOf,
+  listPosition,
   reopenSchema,
   resolveSchema,
   verificationRequestSchema,
@@ -82,18 +82,15 @@ export const ACTIONS: ApiAction[] = [
     method: "get",
     path: "/tickets",
     summary:
-      "List tickets: open ones newest first, then resolved ones. A customer sees only their own. An assistant gets a short row per ticket handed to it; get_ticket reads one in full.",
+      "List tickets: open ones newest first, then resolved ones, unless order says otherwise. A customer sees only their own. An assistant gets a short row per ticket handed to it; get_ticket reads one in full.",
     needs: "read",
     query: listQuerySchema,
     paged: true,
     run: ({ service, actor, query }) => {
-      const { status, page, cursor, owner, q } = parse(listQuerySchema, query);
-      const tickets = service.listTickets(
-        status ?? "all",
-        actor,
-        cursor ? pageOf(cursor) : (page ?? 1),
-        { owner, q },
-      );
+      const checked = parse(listQuerySchema, query);
+      const { page, order } = listPosition(checked);
+      const { status, owner, q } = checked;
+      const tickets = service.listTickets(status ?? "all", actor, page, { owner, q }, order);
       if (actor.kind !== "agent") return tickets;
       return tickets.map((ticket) => ({
         key: ticket.key,
@@ -441,8 +438,8 @@ export const ACTIONS: ApiAction[] = [
  */
 export function nextCursor(query: unknown, items: unknown[]): string | null {
   if (items.length < LIST_PAGE_SIZE) return null;
-  const { page, cursor } = parse(listQuerySchema, query);
-  return cursorFor((cursor ? pageOf(cursor) : (page ?? 1)) + 1);
+  const { page, order } = listPosition(parse(listQuerySchema, query));
+  return cursorFor(page + 1, order);
 }
 
 /** "/tickets/:key" in the form the documentation uses: "/tickets/{key}". */

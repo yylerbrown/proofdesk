@@ -109,13 +109,16 @@ describe("a hand-edited address", () => {
 });
 
 describe("each ticket row", () => {
-  it("is one stop for the keyboard: the key link, with the title link out of the Tab order", async () => {
+  it("is one stop for the keyboard: the title link, with the key link out of the Tab order", async () => {
     const { app } = await setup();
     const html = parse((await as(app, teamActor).get("/tickets")).text);
     const row = html.querySelector("table.tickets tbody tr")!;
     const links = row.querySelectorAll("a");
     expect(links).toHaveLength(2);
-    expect(links.filter((a) => a.getAttribute("tabindex") !== "-1")).toHaveLength(1);
-    expect(row.querySelector("td.title-cell a")!.getAttribute("tabindex")).toBe("-1");
+    // The one stop is named by the title, so a keyboard or screen reader user hears what it is.
+    const stops = links.filter((a) => a.getAttribute("tabindex") !== "-1");
+    expect(stops.map((a) => a.closest("td")!.classList.contains("title-cell"))).toEqual([true]);
+    // The key stays a link for the mouse.
+    expect(row.querySelector("td:first-child a")!.getAttribute("tabindex")).toBe("-1");
   });
 });

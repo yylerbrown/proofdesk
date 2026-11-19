@@ -24,10 +24,10 @@ describe("the invitation to connect an assistant", () => {
   it("asks the team and the admin, says what an assistant does here, and never asks a customer", async () => {
     const { app } = buildTestApp();
     const team = (await list(app)).querySelector(".assistant-invite")!;
-    expect(team.querySelector("strong")?.text).toBe("Want to take things up a notch?");
-    expect(team.text).toContain("Connect your own AI assistant:");
-    expect(team.text).toContain("for a person to check");
-    expect(team.text).toContain("Proofdesk makes no AI calls itself.");
+    // One quiet sentence: what an assistant does first, then what Proofdesk does not do.
+    expect(team.querySelector("p")?.text).toBe(
+      "Connect your own AI assistant: it reproduces a ticket's problem and tests a fix, for a person to check. Proofdesk makes no AI calls itself.",
+    );
     // A team member cannot connect one, so they are told who can instead of shown a button.
     expect(team.querySelector("a[href='/connections']")).toBeNull();
     expect(team.querySelector(".invite-who")?.text).toBe("Only an admin can connect an assistant.");
@@ -81,6 +81,22 @@ describe("the invitation to connect an assistant", () => {
     const team = parse((await as("demo-team")).text).querySelector(".assistant-invite")!;
     expect(team.querySelector(".invite-actions a")?.getAttribute("href")).toBe("/sign-in#connect");
     expect(parse((await as("demo-customer")).text).querySelector(".assistant-invite")).toBeNull();
+  });
+
+  it("sits under the tickets, never above them, and is not shown to the read-only preview", async () => {
+    const built = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
+    seedDemo(createTicketService(built.db, built.config.ticketPrefix));
+    const as = (id: string) =>
+      visitor(built.app).set("Cookie", `${DEV_COOKIE}=${id}`).get("/tickets");
+    const main = parse((await as("demo-team")).text)
+      .querySelector("main")!
+      .toString();
+    expect(main.indexOf('class="assistant-invite"')).toBeGreaterThan(
+      main.indexOf('<table class="tickets"'),
+    );
+    // The preview can connect nothing, so it is not invited to.
+    const preview = parse((await as("demo-admin")).text);
+    expect(preview.querySelector(".assistant-invite, .assistant-connected")).toBeNull();
   });
 });
 

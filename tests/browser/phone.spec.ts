@@ -99,6 +99,7 @@ test("on a phone the small controls are 44-pixel tap targets", async ({ page }) 
     await page.goto("/tickets");
     await expectTapTargets(page, 'nav[aria-label="Filter by status"] li a');
     await expectTapTargets(page, 'nav[aria-label="Filter by owner"] li a');
+    await expectTapTargets(page, 'nav[aria-label="Order"] a');
     await expectTapTargets(page, ".site-header .sign-out button");
   });
 
@@ -149,6 +150,17 @@ test("on a phone the Switch role chevron sits right after its label", async ({ p
       .evaluate((summary) => getComputedStyle(summary, "::after").float);
     expect(chevron, `at ${width}px`).toBe("none");
   }
+});
+
+test("on a 390 by 664 phone the team's first ticket row is on the first screen", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 664 });
+  await signInAsTeam(page);
+  await page.goto("/tickets");
+  const row = await page.locator("table.tickets tbody tr").first().boundingBox();
+  expect(row).not.toBeNull();
+  expect(row!.y + row!.height).toBeLessThanOrEqual(664);
 });
 
 test("on a phone each ticket row puts the key and status on one line over the title", async ({
