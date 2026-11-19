@@ -76,28 +76,39 @@ describe("the account page", () => {
     const page = accountOf(res.text);
     expect(page.text).toContain("Sam Customer");
     expect(page.text).toContain("5005@example.com");
-    expect(page.text).toContain("From your GitHub account; change it on GitHub.");
     expect(page.text).toContain("Customer");
-    expect(page.text).toContain("You file tickets, follow your own and say whether a fix worked.");
-    expect(page.text).toContain("On the support team? Ask an admin to add you.");
     expect(page.peopleLink).toBe(false);
     expect(page.text).not.toContain("Di Customer");
     expect(page.text).not.toContain("5006@example.com");
   });
 
-  it("gives an admin the way to People, and a team member neither line", async () => {
+  it("is four rows and nothing else, for every role", async () => {
     const { app, db } = buildPeopleApp();
+    const sam = await signedInPerson(db, "5005", "Sam Customer");
     const boss = await signedInPerson(db, "1001", "Ada Admin");
     const tom = await signedInPerson(db, "2002", "Tom Team");
-    const bossPage = accountOf((await browserOf(app, boss.cookie).get("/account")).text);
-    expect(bossPage.peopleLink).toBe(true);
-    expect(bossPage.text).toContain("Admin");
-    expect(bossPage.text).not.toContain("Ask an admin to add you");
-    const tomPage = accountOf((await browserOf(app, tom.cookie).get("/account")).text);
-    expect(tomPage.text).toContain("Team member");
-    expect(tomPage.text).toContain("You see every ticket and work on it with the team.");
-    expect(tomPage.peopleLink).toBe(false);
-    expect(tomPage.text).not.toContain("Ask an admin to add you");
+    for (const [who, role] of [
+      [sam, "Customer"],
+      [boss, "Admin"],
+      [tom, "Team member"],
+    ] as const) {
+      const html = parse((await browserOf(app, who.cookie).get("/account")).text);
+      const main = html.querySelector("main")!;
+      const rows = main.querySelectorAll("dl.account-card > .account-row");
+      expect(rows.map((row) => row.querySelector("dt")?.text)).toEqual([
+        "Name",
+        "Email",
+        "Role",
+        "Email notices",
+      ]);
+      expect(main.querySelector(".account-role")?.text, role).toBe(role);
+      // The role row is the role word alone: no sentence under it, and People stays in the menu.
+      expect(main.querySelector("a[href='/people']"), role).toBeNull();
+      const words = main.text.replace(/\s+/g, " ");
+      expect(words, role).not.toContain("From your GitHub account");
+      expect(words, role).not.toContain("Ask an admin to add you");
+      expect(words, role).not.toContain("You see every ticket");
+    }
   });
 
   it("sends a signed-out visitor to sign in", async () => {
@@ -205,8 +216,12 @@ describe("the email switch", () => {
     const { app, db } = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
     for (const who of DEMO_ACTORS) {
       const page = accountOf((await as(app, who).get("/account")).text);
-      expect(page.text, who.id).toContain("This demo never sends email.");
-      expect(page.text, who.id).toContain("Made up for the demo, so Proofdesk holds no address.");
+      const rows = parse((await as(app, who).get("/account")).text).querySelectorAll(
+        "dl.account-card > .account-row",
+      );
+      expect(rows[1]?.querySelector("dd")?.text, who.id).toBe("None on the demo");
+      // The quiet words sit on the switch's own row.
+      expect(rows[3]?.querySelector(".mail-line")?.text, who.id).toBe("The demo sends no email");
       expect(page.switchOn, who.id).toBe(true);
       expect(page.switchLocked, who.id).toBe(true);
       const tried = await as(app, who).post("/account").type("form").send({});
