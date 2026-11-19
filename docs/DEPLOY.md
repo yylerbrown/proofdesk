@@ -54,23 +54,23 @@ Fly.io is [below](#flyio).
 
 All of them are in `.env.example`, with comments.
 
-| Name                                                                                | What it does                                                                                                                                                                |
-| ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`                                                                          | `development`, `test` or `production`. Production refuses the dev login and requires https sign-in.                                                                         |
-| `PORT`                                                                              | Default 3000.                                                                                                                                                               |
-| `DATABASE_PATH`                                                                     | The SQLite file. Default `./data/app.db`.                                                                                                                                   |
-| `TICKET_PREFIX`                                                                     | The letters before a ticket's number, default `SUP`. Fixed when the database is created.                                                                                    |
-| `DEV_SIGN_IN`                                                                       | `on` offers four made-up people. Development only.                                                                                                                          |
-| `DEMO`                                                                              | `on` makes this server the demo: sample data, three demo people, no GitHub sign-in.                                                                                         |
-| `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | GitHub sign-in. All four or none. Required in production unless `DEMO=on`.                                                                                                  |
-| `TEAM_GITHUB_IDS`, `ADMIN_GITHUB_IDS`                                               | GitHub user IDs, separated by commas. These people keep that role and show as locked on **People**; an admin chooses everyone else's, a customer by default.                |
-| `CLIENT_IP_HEADER`                                                                  | Behind a proxy, the header with the visitor's address, for rate limits. Fly.io: `fly-client-ip`.                                                                            |
-| `DEMO_URL`                                                                          | Optional, on the production site: the demo's https address, linked from the sign-in page as "Try the demo without signing in".                                              |
-| `REAL_SITE_URL`                                                                     | Optional, on the demo: the production site's https address, named on the welcome page as where GitHub sign-in with roles runs.                                              |
-| `SOURCE_URL`                                                                        | Optional: the repository's https address. The welcome page then links **Source and setup** to its README, and `GET /api` names it. Both Fly apps set it to the public copy. |
-| `PUBLIC_URL`                                                                        | Optional: the address people and assistants reach this server at, for the commands to paste. Else `BETTER_AUTH_URL`, else each request's own address. The demo sets it.     |
-| `SMTP_URL`, `MAIL_FROM`                                                             | Optional: the mail server (`smtps://user:password@host:465`) and the sender for email notices. Both or neither. Without them, or on the demo, nothing is sent.              |
-| `GIT_COMMIT`                                                                        | Reported by `GET /api/health`.                                                                                                                                              |
+| Name                                                                                | What it does                                                                                                                                                               |
+| ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                                                                          | `development`, `test` or `production`. Production refuses the dev login and requires https sign-in.                                                                        |
+| `PORT`                                                                              | Default 3000.                                                                                                                                                              |
+| `DATABASE_PATH`                                                                     | The SQLite file. Default `./data/app.db`.                                                                                                                                  |
+| `TICKET_PREFIX`                                                                     | The letters before a ticket's number, default `SUP`. Fixed when the database is created.                                                                                   |
+| `DEV_SIGN_IN`                                                                       | `on` offers four made-up people. Development only.                                                                                                                         |
+| `DEMO`                                                                              | `on` makes this server the demo: sample data, three demo people, no GitHub sign-in.                                                                                        |
+| `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | GitHub sign-in. All four or none. Required in production unless `DEMO=on`.                                                                                                 |
+| `TEAM_GITHUB_IDS`, `ADMIN_GITHUB_IDS`                                               | GitHub user IDs, separated by commas. These people keep that role and show as locked on **People**; an admin chooses everyone else's, a customer by default.               |
+| `CLIENT_IP_HEADER`                                                                  | Behind a proxy, the header with the visitor's address, for rate limits. Fly.io: `fly-client-ip`.                                                                           |
+| `DEMO_URL`                                                                          | Optional, on the production site: the demo's https address, linked from the sign-in page as "Try the demo without signing in".                                             |
+| `REAL_SITE_URL`                                                                     | Optional, on the demo: the production site's https address, named on About this demo as where GitHub sign-in with roles runs.                                              |
+| `SOURCE_URL`                                                                        | Optional: the repository's https address. About this demo then links **Source and setup** to its README, and `GET /api` names it. Both Fly apps set it to the public copy. |
+| `PUBLIC_URL`                                                                        | Optional: the address people and assistants reach this server at, for the commands to paste. Else `BETTER_AUTH_URL`, else each request's own address. The demo sets it.    |
+| `SMTP_URL`, `MAIL_FROM`                                                             | Optional: the mail server (`smtps://user:password@host:465`) and the sender for email notices. Both or neither. Without them, or on the demo, nothing is sent.             |
+| `GIT_COMMIT`                                                                        | Reported by `GET /api/health`.                                                                                                                                             |
 
 ### GitHub sign-in
 
@@ -227,7 +227,7 @@ set-aside folder keeps what visitors wrote; delete it when it is no longer neede
 
 ## The source link
 
-The welcome page links **Source and setup** to the README of the public copy of the source,
+The demo's About this demo page links **Source and setup** to the README of the public copy,
 <https://github.com/yylerbrown/proofdesk>, and `GET /api` names it, from `SOURCE_URL` in both `fly.toml` and
 `fly.proofdesk.toml`. That copy is republished after each batch of merges; the working repository
 stays private, so nothing links to it.
@@ -236,9 +236,9 @@ stays private, so nothing links to it.
 
 1. `curl https://support-desk-demo.fly.dev/api/health` and
    `curl https://proofdesk.fly.dev/api/health` both answer `"status":"ok"` with the commit.
-2. The demo's welcome page offers **Get a demo connection**, and its `/api/health` answers
-   `"assistant_connections":"ready"`. If it says `needs_reset`, or the start-up log says so, reset
-   the demo.
+2. The demo opens on the customer's ticket list, About this demo offers **Get a demo connection**,
+   and `/api/health` answers `"assistant_connections":"ready"`. If it says `needs_reset`, or the
+   start-up log says so, reset the demo.
 3. The real site's sign-in page shows **Sign in with GitHub** and **Try the demo without signing
    in**.
 

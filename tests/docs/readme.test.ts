@@ -83,6 +83,7 @@ describe("the feature list and the README's walkthrough", () => {
     const team = (path: string) => as("demo-team").post(`/api/tickets/${key}${path}`);
     const pages = [
       await visitor(demo.app).get("/sign-in"),
+      await as("demo-customer").get("/tickets"),
       await as("demo-customer").get("/tickets/new?try=1").redirects(1),
       await as("demo-customer").get(`/tickets/${key}`),
       await as("demo-team").get("/tickets"),
@@ -106,11 +107,6 @@ describe("the feature list and the README's walkthrough", () => {
     const shown = pages
       .map((res) => parse(res.text).querySelector("body")!.text.replace(/\s+/g, " "))
       .join(" ");
-    // The list's old order links, gone since the list sorts by its column headers, and the old
-    // welcome page's button, gone since the demo opens on the list. The tour still names them
-    // until the docs catch up; then this line goes.
-    const gone = ["Oldest first", "Recently updated", "Try the ticket workflow"];
-    for (const label of gone) labels.delete(label);
     for (const label of labels) expect(shown, label).toContain(label);
   });
 });

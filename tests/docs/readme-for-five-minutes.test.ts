@@ -31,7 +31,7 @@ describe("the README", () => {
     const start = readme.indexOf("## One ticket, start to finish");
     const walk = readme.slice(start, readme.indexOf("\n## ", start + 1));
     const order = [
-      "**Try the ticket workflow**",
+      "**File a sample ticket**",
       "**File ticket**",
       "**Take ticket and start work**",
       "**Ask the customer to verify**",

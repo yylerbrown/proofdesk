@@ -161,7 +161,7 @@ export function llmsText(address: string): string {
       `| MCP endpoint (streamable HTTP) | ${address}/mcp |`,
       `| JSON API | ${address}/api |`,
       "| Header on every request | `Authorization: Bearer <key>` |",
-      "| Where a key comes from | An admin issues one on the Connections page; it is shown once. On the demo, **Get a demo connection** on the welcome page gives one that lasts " +
+      "| Where a key comes from | An admin issues one on the Connections page; it is shown once. On the demo, **Get a demo connection** on the About this demo page gives one that lasts " +
         `${DEMO_CONNECTION_HOURS} hours at most. |`,
       `| The guide, as JSON | ${address}/api (no key needed; with a key it says what your connection may do) |`,
       `| OpenAPI description | ${address}/api/openapi.json |`,

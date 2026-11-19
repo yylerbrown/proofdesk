@@ -11,7 +11,7 @@ list. The twist: the customer writes how they will know it is fixed, and the tic
 - **The production site, with GitHub sign-in: <https://proofdesk.fly.dev>.**
 - **The source: <https://github.com/yylerbrown/proofdesk>.**
 
-<img src="docs/img/ticket-list.png" width="720" alt="The team's ticket list on the demo: status filters All, New, In Progress and Resolved with a count beside each status, owner filters Everyone, Mine and Unassigned, a search box, eight sample tickets with their key, title, status, owner, who each one waits on and when it was filed, and an order choice under the table">
+<img src="docs/img/ticket-list.png" width="720" alt="The team member's ticket list on the demo, which has no welcome card: status filters All, New, In Progress and Resolved with a count beside each status, owner filters Everyone, Mine and Unassigned, a search box, eight sample tickets with their key, title, status, owner, who each one waits on and when it was filed, under column headers that sort the list">
 
 ## Run it yourself
 
@@ -34,8 +34,9 @@ a production build, Docker, GitHub sign-in and every setting are in
 
 On the demo, in about two minutes:
 
-1. On the welcome page, press **Try the ticket workflow**, then **File ticket**. The form is
-   filled with a sample you can change, and the filed ticket shows **New**.
+1. The demo opens on your ticket list as the Demo Customer. On the welcome card above the list,
+   press **File a sample ticket**, then **File ticket**. The form is filled with a sample you can
+   change, and the filed ticket shows **New**.
 2. Press **View this ticket as a team member**, then **Take ticket and start work**. The ticket
    is **In Progress**, and you own it.
 3. Press **Ask the customer to verify**, then **View this ticket as the customer who filed it**.
@@ -77,9 +78,10 @@ header opens their account page, with a switch for email notices.
 | Team member | An admin chooses it on **People**, or `TEAM_GITHUB_IDS`.  | Sees every ticket, takes one and starts work, replies, writes internal notes, attaches evidence, asks the customer to verify, archives and restores. Hands on a ticket they own, resolves with a reason a ticket they own or a New ticket nobody owns, and can reopen it if the team resolved it. |
 | Admin       | An admin chooses it on **People**, or `ADMIN_GITHUB_IDS`. | Everything a team member does. Hands on or resolves any open ticket, can reopen any ticket the team resolved, chooses who is on the team, issues AI assistant connections on **Connections**, and deletes a ticket permanently.                                                                   |
 
-On the demo there is no sign-in: pick Demo Customer, Demo Team Member or Admin preview
-(read-only), and use **Switch role** in the header to try all three on the same ticket. The
-admin preview sees everything and changes nothing, and nobody archives or deletes there.
+On the demo there is no sign-in: you start as Demo Customer, and **Switch role** in the header
+changes to Demo Team Member or Admin preview (read-only) on the same ticket. The admin preview
+sees everything and changes nothing, and nobody archives or deletes there. **About this demo**,
+in every page's footer, says how the demo works.
 
 ## The AI assistant
 
@@ -91,8 +93,9 @@ it reproduced the arithmetic problem and tested a fix, then proposed a test, att
 evidence and asked the owner to review it. It resolved nothing, because only the customer's Yes
 confirms a fix: a test can pass while the customer is still stuck.
 
-To try it, press **Get a demo connection** on the demo's welcome page for a key that lasts a day
-at most, and the command to paste. On the production site an admin issues connections, and a
+To try it, open **About this demo** from the demo's footer, then **Connect your own AI
+assistant** and **Get a demo connection**, for a key that lasts a day at most and the command to
+paste. On the production site an admin issues connections, and a
 ticket's owner hands the ticket to one. [`docs/AGENTS_GUIDE.md`](docs/AGENTS_GUIDE.md) has the
 setup, the tools and the limits. An assistant can read everything it needs in one fetch:
 <https://support-desk-demo.fly.dev/llms.txt>.
