@@ -44,6 +44,20 @@ describe("the current status on a ticket page", () => {
   });
 });
 
+describe("the status row's height", () => {
+  it("is one height for every item, the greyed buttons included, and 44 pixels on a phone", () => {
+    const shared = ruleEndingWith(
+      '.status-row > * > :is(button, summary[role="button"]), .status-row > .status-current',
+    );
+    expect(shared.body).toContain("min-height: 2.25rem");
+    expect(shared.body).toContain("margin: 0");
+    const phone = css.slice(css.indexOf("min-height: 2.25rem"));
+    expect(phone).toMatch(
+      /@media \(max-width: 639px\) \{\s*\.status-row > \* > :is\(button, summary\[role="button"\]\),\s*\.status-row > \.status-current \{\s*min-height: 44px;/,
+    );
+  });
+});
+
 describe("the resolve form", () => {
   it("starts by saying what pressing it will do", async () => {
     const form = (await ticketPage()).querySelector("details.resolve form")!;
