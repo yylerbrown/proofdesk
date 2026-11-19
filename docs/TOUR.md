@@ -5,19 +5,19 @@ README's [One ticket, start to finish](../README.md#one-ticket-start-to-finish) 
 
 ## Try each feature in a minute
 
-Each one takes under a minute on the demo, starting from its welcome page.
+Each one takes under a minute on the demo, which opens on the ticket list as the Demo Customer.
 
 **Ticket submission: title, description, status**
 
-- Start as: The welcome page
-- Press: **Try the ticket workflow**, then **File ticket**
+- Start as: The demo's first page, your ticket list as Demo Customer
+- Press: **File a sample ticket** on the welcome card, then **File ticket**
 - You should see: The form says "Initial status: New" and is filled with a sample you can change. The filed ticket shows **New**, under "Ticket SUP-n filed. The support team has it now; come back to this page for updates."
 
 **Ticket list with filters**
 
-- Start as: **View as Demo Team Member**
-- Press: **New**, **In Progress**, **Resolved**; **Mine** and **Unassigned**; type words, or a ticket's key such as SUP-3, and press **Search**; under the table, **Oldest first** or **Recently updated**
-- You should see: "All tickets", with a count beside each status and "Support team" under Waiting on for tickets the team owes an answer, and each filter changes the list. A typed key opens that ticket. Filters, search and order combine in the address, so a view can be shared. A customer's list is "My tickets": only their own, with the search.
+- Start as: **Switch role**, then **View as Demo Team Member**
+- Press: **New**, **In Progress**, **Resolved**; **Mine** and **Unassigned**; type words, or a ticket's key such as SUP-3, and press **Search**; a column header such as **Title** or **Filed**, then the same header again
+- You should see: "All tickets", with a count beside each status and "Support team" under Waiting on for tickets the team owes an answer, and each filter changes the list. A typed key opens that ticket. A header sorts the list by its column, with an arrow on it, and a second press reverses it. Filters, search and sort combine in the address, so a view can be shared. On a phone the same sorts sit in a "Sort by" line above the list. A customer's list is "My tickets": only their own, with the search.
 
 **Update status: New to In Progress**
 
@@ -41,13 +41,13 @@ Each one takes under a minute on the demo, starting from its welcome page.
 
 - Start as: The production site, <https://proofdesk.fly.dev>
 - Press: **Sign in with GitHub**
-- You should see: Signed in as a customer, a team member or an admin, as [Sign-in and roles](../README.md#sign-in-and-roles) explains. On the demo the three roles are offered by name, the admin as **Admin preview (read-only)**.
+- You should see: Signed in as a customer, a team member or an admin, as [Sign-in and roles](../README.md#sign-in-and-roles) explains. On the demo the three roles are in the **Switch role** menu, the admin as **Admin preview (read-only)**.
 
 **AI features**
 
-- Start as: The welcome page
+- Start as: **About this demo**, in the footer of every demo page
 - Press: **Connect your own AI assistant**, then **Get a demo connection**, and paste the command into your own assistant, for example Claude Code
-- You should see: Your assistant, through MCP, reads the sample ticket made for assistants and its check, proposes a test spec, writes notes and attaches evidence. **See an assistant's work**, in the same section, opens with what one real run did and resolved nothing. [`AGENTS_GUIDE.md`](AGENTS_GUIDE.md) has the setup.
+- You should see: Your assistant, through MCP, reads the sample ticket made for assistants and its check, proposes a test spec, writes notes and attaches evidence. **See an assistant's work**, in the same section, opens with what one real run did and resolved nothing. On the customer's welcome card, **See a ticket an AI assistant worked** opens one in the team's view. [`AGENTS_GUIDE.md`](AGENTS_GUIDE.md) has the setup.
 
 **The customer's check, evidence and notices**
 

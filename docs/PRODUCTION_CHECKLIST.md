@@ -40,10 +40,12 @@ Measured numbers under load are in [Load test](#load-test) below.
 **Indexes.** Each list query was run through `EXPLAIN QUERY PLAN` on a database of 20,000
 tickets.
 
-- The team's ticket list reads `tickets_list_open_first` in the default order and
-  `tickets_list_updated` in Recently updated, and stops once the page is full; Oldest first
-  follows the table's own id order. Neither sorts the table. The counts beside the status
-  filters read every ticket in scope once per list view, which exact counts need.
+- The team's ticket list reads `tickets_list_open_first` in the default order, and stops once
+  the page is full. Each column sort reads its own index, `tickets_list_title`,
+  `tickets_list_status`, `tickets_list_owner`, `tickets_list_filed` or `tickets_list_updated`,
+  either way; the key sort follows the table's own id order. None of them sorts the table. The
+  counts beside the status filters read every ticket in scope once per list view, which exact
+  counts need.
 - Search uses `LIKE '%word%'` on the title and the description, so it reads every row whatever
   the indexes.
 - A customer's own list uses `idx_tickets_created_by`, then sorts.
