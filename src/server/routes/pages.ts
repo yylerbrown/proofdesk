@@ -73,6 +73,9 @@ const FORM_FIELDS: Record<Problem["form"], string[]> = {
   resolve: ["reason", "duplicate_of", "note"],
 };
 
+// The forms on the ticket page that show what was typed again when they are drawn after a refusal.
+const KEEPS_TEXT = new Set<Problem["form"]>(["answer", "ready", "reopen", "resolve"]);
+
 /** The box a refused form should focus: the first one with a message, or else its first box. */
 function focusField(form: Problem["form"], fieldErrors: Record<string, string[] | undefined>) {
   const fields = FORM_FIELDS[form];
@@ -232,6 +235,21 @@ function readTicketForm(body: Record<string, unknown> | undefined): typeof empty
   };
 }
 
+// The edit form's boxes, by the words the person sees above each one.
+const BOX_NAMES: [keyof typeof emptyForm, string][] = [
+  ["title", "Title"],
+  ["description", "Description"],
+  ["fix_check", "How will we know it's fixed?"],
+  ["where_url", "Page where it happened"],
+];
+
+/** The names of the boxes whose text differs from the ticket as it is now. */
+function differingBoxes(ticket: Ticket, values: typeof emptyForm): string[] {
+  return BOX_NAMES.filter(([field]) => (ticket[field] ?? "") !== values[field]).map(
+    ([, name]) => name,
+  );
+}
+
 export function pagesRouter(service: TicketService): Router {
   const router = Router();
 
@@ -331,6 +349,8 @@ export function pagesRouter(service: TicketService): Router {
       resolveReasons: RESOLVE_REASON_LABELS,
       entry: shownEntry,
       problem,
+      // What the page's watcher compares with the server's cheap read.
+      stamp: service.ticketStamp(ticket.key, actor),
     });
   }
 
@@ -347,12 +367,32 @@ export function pagesRouter(service: TicketService): Router {
         rememberSaved(res, FORM_SAVED[form](req.body, actor));
         res.redirect(303, `/tickets/${ticket.key}`);
       } catch (err) {
-        if (!(err instanceof ValidationError)) throw err;
-        const message = Object.values(err.fieldErrors).flat()[0] ?? err.message;
         const values: Record<string, string> = {};
         for (const [name, value] of Object.entries(req.body ?? {})) {
           if (typeof value === "string") values[name] = value;
         }
+        // The ticket changed since the page was opened. A form with text typed in it is shown
+        // again on the ticket as it is now, with the text kept. Any other press goes back to
+        // the ticket with the reason, as for other refusals.
+        const firstTyped = FORM_FIELDS[form].find((name) => (values[name] ?? "").trim() !== "");
+        if (
+          err instanceof HttpError &&
+          err.code === "ticket_changed" &&
+          firstTyped !== undefined &&
+          KEEPS_TEXT.has(form)
+        ) {
+          res.locals.refused = err.message;
+          showTicket(req, res, 409, emptyEntry, {
+            form,
+            message: "Your text is kept here. Look at the ticket as it is now, then send again.",
+            comment: asText(req.body?.comment ?? req.body?.reason),
+            values,
+            focus: firstTyped,
+          });
+          return;
+        }
+        if (!(err instanceof ValidationError)) throw err;
+        const message = Object.values(err.fieldErrors).flat()[0] ?? err.message;
         showTicket(req, res, 400, emptyEntry, {
           form,
           message,
@@ -584,11 +624,18 @@ export function pagesRouter(service: TicketService): Router {
       // The ticket as it is now. Its key is checked before it is put in the form's address.
       const current = service.getTicket(req.params.key, actor);
       const checkLocked = current.created_by !== actor.id;
+      // What the person typed stays. A check they may not change shows as it is now.
+      const shown = checkLocked ? { ...values, fix_check: current.fix_check ?? "" } : values;
+      const errors = err instanceof ValidationError ? err.fieldErrors : {};
       res.status(changed ? 409 : 400).render("ticket-form", {
         ...editForm(current.key),
-        // What the person typed stays. A check they may not change shows as it is now.
-        values: checkLocked ? { ...values, fix_check: current.fix_check ?? "" } : values,
-        errors: err instanceof ValidationError ? err.fieldErrors : {},
+        values: shown,
+        errors,
+        // The boxes whose text on the ticket now differs from what the form holds, so a second
+        // save does not put old text back unnoticed.
+        differ: changed ? differingBoxes(current, shown) : [],
+        // The hidden version has no box of its own, so a problem with it is said at the top.
+        versionUnreadable: errors.expected_version !== undefined,
         checkLocked,
         // After a refusal for a newer version, the form carries that version, so saving again
         // is a choice made with the change in view. After a mistake in a box, it keeps its own.

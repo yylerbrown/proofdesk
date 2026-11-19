@@ -112,6 +112,16 @@ export function countEntries(db: Db, ticketId: number, includeNotes: boolean): n
   return row.n;
 }
 
+/** How many times the ticket was handed to an assistant, plus how many of those ended. */
+export function countHandoffChanges(db: Db, ticketId: number): number {
+  const row = db
+    .prepare(
+      "SELECT COUNT(*) + COUNT(ended_at) AS n FROM ticket_agent_handoffs WHERE ticket_id = ?",
+    )
+    .get(ticketId) as { n: number };
+  return row.n;
+}
+
 /** Which slice of a long list to read: at most `limit` rows, after skipping `offset`. */
 export type Page = { limit: number; offset: number };
 

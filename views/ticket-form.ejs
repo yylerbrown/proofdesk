@@ -27,7 +27,12 @@
 <% if (locals.changedElsewhere) { %>
 <%# Saving over a newer version was refused: what was typed stays in the boxes, and the form now
     carries the newer version, so saving again is a deliberate choice. %>
-<p role="alert" class="refused changed-elsewhere">Someone changed this ticket while you were editing. Your text is kept below: compare it with the current ticket, then save again. <a href="/tickets/<%= editKey %>" target="_blank" rel="noopener">Open the current ticket in a new tab</a></p>
+<p role="alert" class="refused changed-elsewhere">Someone changed this ticket while you were editing. Your text is kept below: compare it with the current ticket, then save again. <% if (locals.differ?.length) { %>Different on the ticket now: <%= differ.join(", ") %>. <% } %><a href="/tickets/<%= editKey %>" target="_blank" rel="noopener">Open the current ticket in a new tab</a></p>
+<% } %>
+
+<% if (locals.versionUnreadable) { %>
+<%# The hidden version has no box of its own, so its problem is said here. %>
+<p role="alert" class="refused">This form could not be checked against the ticket, so nothing was saved. <a href="/tickets/<%= editKey %>/edit">Open the edit form again</a>.</p>
 <% } %>
 
 <% if (locals.readOnly) { %>

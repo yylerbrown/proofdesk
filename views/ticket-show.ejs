@@ -65,7 +65,7 @@
 <%# Wide screens: what the ticket is about on the left, what a person acts on in the panel on
     the right, the conversation and history under the left part. Narrow screens: one column,
     with the panel between the description and the conversation. %>
-<div class="ticket-layout" data-ticket-key="<%= ticket.key %>" data-ticket-version="<%= ticket.version %>" data-ticket-entries="<%= entries.length %>">
+<div class="ticket-layout" data-ticket-key="<%= ticket.key %>" data-ticket-version="<%= stamp.version %>" data-ticket-entries="<%= stamp.entries %>" data-ticket-handoffs="<%= stamp.handoffs %>">
 <div class="ticket-summary">
 <%# The customer said it is not fixed, with a No or by reopening it: shown first, until the team
     asks them again. Their latest word is the one shown. %>

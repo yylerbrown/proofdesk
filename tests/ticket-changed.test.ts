@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   differs,
   readStamp,
+  ticketAddress,
   watchTicket,
   type Stamp,
   type Watch,
@@ -38,7 +39,7 @@ function standIns(answer: () => Stamp | null, inView = () => true) {
   };
 }
 
-const page: Stamp = { version: 3, entries: 2 };
+const page: Stamp = { version: 3, entries: 2, handoffs: 0 };
 
 describe("the ticket-changed notice", () => {
   it("stays quiet while the ticket is as the page shows it", async () => {
@@ -49,10 +50,11 @@ describe("the ticket-changed notice", () => {
     expect(t.shown()).toBe(0);
   });
 
-  it("shows its line once when the version or the conversation changed", async () => {
+  it("shows its line once when the version, the conversation or an assistant's work changed", async () => {
     for (const now of [
-      { version: 4, entries: 2 },
-      { version: 3, entries: 3 },
+      { version: 4, entries: 2, handoffs: 0 },
+      { version: 3, entries: 3, handoffs: 0 },
+      { version: 3, entries: 2, handoffs: 1 },
     ]) {
       const t = standIns(() => now);
       const check = watchTicket(page, t.watch);
@@ -67,7 +69,7 @@ describe("the ticket-changed notice", () => {
   it("asks only while the tab is in view, and says nothing when the read fails", async () => {
     let inView = false;
     const hidden = standIns(
-      () => ({ version: 9, entries: 9 }),
+      () => ({ version: 9, entries: 9, handoffs: 9 }),
       () => inView,
     );
     const check = watchTicket(page, hidden.watch);
@@ -87,9 +89,15 @@ describe("the ticket-changed notice", () => {
   });
 
   it("reads only a well-formed stamp from the server", () => {
-    expect(readStamp({ version: 2, entries: 0 })).toEqual({ version: 2, entries: 0 });
-    expect(readStamp({ version: "2", entries: 0 })).toBeNull();
+    const stamp = { version: 2, entries: 0, handoffs: 0 };
+    expect(readStamp(stamp)).toEqual(stamp);
+    expect(readStamp({ ...stamp, version: "2" })).toBeNull();
+    expect(readStamp({ version: 2, entries: 0 })).toBeNull();
     expect(readStamp(null)).toBeNull();
-    expect(differs(page, { version: 3, entries: 2 })).toBe(false);
+    expect(differs(page, { version: 3, entries: 2, handoffs: 0 })).toBe(false);
+  });
+
+  it("sends Refresh to the ticket's own address, wherever the page was drawn", () => {
+    expect(ticketAddress("SUP-2")).toBe("/tickets/SUP-2");
   });
 });

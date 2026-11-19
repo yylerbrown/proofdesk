@@ -3,6 +3,8 @@ import { expect, test } from "@playwright/test";
 // A ticket page left open notices when someone else changes the ticket. The team member keeps
 // the ticket open in one browser; the customer, in another, edits it. When the team member's
 // tab comes back into view, one line says the ticket changed, and nothing else on the page moved.
+// The team member's page was drawn after a refused reply, so it sits at the reply form's address,
+// and Refresh still leads to the ticket.
 
 test("an open ticket page says when the ticket changed elsewhere", async ({ browser }) => {
   const customer = await (await browser.newContext()).newPage();
@@ -22,6 +24,10 @@ test("an open ticket page says when the ticket changed elsewhere", async ({ brow
   await expect(
     team.getByRole("heading", { name: "Receipts print twice", exact: true }),
   ).toBeVisible();
+  // A reply of only spaces passes the browser's check and is refused by the server.
+  await team.locator("#entry-body").fill("   ");
+  await team.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(team).toHaveURL(new RegExp(`/tickets/${key}/entries$`));
 
   // Nothing has changed yet: coming back to the tab says nothing.
   await team.evaluate(() => window.dispatchEvent(new Event("focus")));
@@ -40,7 +46,9 @@ test("an open ticket page says when the ticket changed elsewhere", async ({ brow
     team.getByRole("heading", { name: "Receipts print twice", exact: true }),
   ).toBeVisible();
 
-  await notice.getByRole("link", { name: "Refresh" }).click();
+  const refresh = notice.getByRole("link", { name: "Refresh" });
+  await expect(refresh).toHaveAttribute("href", `/tickets/${key}`);
+  await refresh.click();
   await expect(
     team.getByRole("heading", { name: "Receipts print twice since Monday" }),
   ).toBeVisible();

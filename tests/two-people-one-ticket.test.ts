@@ -104,6 +104,43 @@ describe("what the workflow's state checks already refuse", () => {
     expect((await read(app)).status).toBe("in_progress");
   });
 
+  it("the team's resolve while the customer answers Yes: the second is refused", async () => {
+    const { app } = buildTestApp();
+    await filed(app);
+    await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
+    const asked = await as(app, teamActor).post("/api/tickets/SUP-1/ready").send({});
+    const yes = await as(app, customerOne)
+      .post("/api/tickets/SUP-1/answer")
+      .send({ fixed: "yes", ready_token: asked.body.ready_token });
+    expect(yes.status).toBe(200);
+    const resolve = await as(app, teamActor)
+      .post("/api/tickets/SUP-1/resolve")
+      .send({ reason: "wont_fix" });
+    expect(resolve.status).toBe(409);
+    expect((await read(app)).resolution).toMatchObject({
+      by: "customer",
+      label: "Customer confirmed",
+    });
+  });
+
+  it("a reopen sent after the ticket was reopened and resolved again is refused", async () => {
+    const { app, db } = buildTestApp();
+    await filed(app);
+    await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
+    await as(app, teamActor).post("/api/tickets/SUP-1/resolve").send({ reason: "wont_fix" });
+    // The customer's page was loaded while the ticket was resolved the first time.
+    const seen = (await read(app)).version;
+    await as(app, customerOne).post("/api/tickets/SUP-1/reopen").send({ reason: "Again." });
+    await as(app, teamActor).post("/api/tickets/SUP-1/resolve").send({ reason: "wont_fix" });
+    const before = stored(db);
+    const late = await as(app, customerOne)
+      .post("/api/tickets/SUP-1/reopen")
+      .send({ reason: "Again.", expected_version: seen });
+    expect(late.status).toBe(409);
+    expect(late.body.error.code).toBe("ticket_changed");
+    expect(stored(db)).toEqual(before);
+  });
+
   it("resolve against resolve, and reopen against reopen: the second is refused", async () => {
     const { app } = buildTestApp();
     await filed(app);
@@ -159,6 +196,10 @@ describe("two people editing one ticket", () => {
     expect(form.querySelector("p.changed-elsewhere")?.text).toContain(
       "Someone changed this ticket while you were editing. Your text is kept below: compare it with the current ticket, then save again.",
     );
+    // It names the boxes whose text on the ticket now differs from the form's.
+    expect(form.querySelector("p.changed-elsewhere")?.text).toContain(
+      "Different on the ticket now: Title, Description.",
+    );
     const link = form.querySelector("p.changed-elsewhere a");
     expect(link?.getAttribute("href")).toBe("/tickets/SUP-1");
     expect(link?.getAttribute("target")).toBe("_blank");
@@ -199,6 +240,20 @@ describe("two people editing one ticket", () => {
     expect(stored(db)).toEqual(before);
   });
 
+  it("says so plainly when the form's version cannot be read, and saves nothing", async () => {
+    const { app } = buildTestApp();
+    await filed(app);
+    const res = await as(app, customerOne)
+      .post("/tickets/SUP-1/edit")
+      .type("form")
+      .send({ ...valid, title: "Spoiled", expected_version: "abc" });
+    expect(res.status).toBe(400);
+    expect(parse(res.text).querySelector("p[role=alert]")?.text).toContain(
+      "This form could not be checked against the ticket, so nothing was saved.",
+    );
+    expect((await read(app)).title).toBe(valid.title);
+  });
+
   it("checks nothing for a caller that sends no version, as before", async () => {
     const { app } = buildTestApp();
     await filed(app);
@@ -222,6 +277,11 @@ type Case = {
     app: Express,
     version: number,
   ) => Promise<{ status: number; body: { error?: { code?: string } } }>;
+  /**
+   * Whether the action writes the ticket's own row. A hand to an assistant does not: it is
+   * team-only work, so it raises the team's count of hand-offs instead of the version.
+   */
+  teamOnly?: true;
 };
 
 const takeAndStart = (app: Express) => as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
@@ -330,6 +390,7 @@ const CASES: Case[] = [
   },
   {
     name: "give_to_agent",
+    teamOnly: true,
     setup: takeAndStart,
     send: async (app, v) => {
       const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
@@ -341,6 +402,7 @@ const CASES: Case[] = [
   },
   {
     name: "end_agent_work",
+    teamOnly: true,
     setup: async (app) => handToAgent(app, "SUP-1", await issueKey(app)),
     send: (app, v) => admin(app).post("/api/tickets/SUP-1/agent/end").send({ expected_version: v }),
   },
@@ -368,9 +430,16 @@ describe("every action that accepts a version", () => {
     expect(stored(db)).toEqual(before);
 
     const current = (await read(app)).version;
+    const handoffs = (await as(app, teamActor).get("/tickets/SUP-1/version")).body.handoffs;
     const res = await c.send(app, current);
     expect(res.status).toBe(200);
-    expect((await read(app)).version).toBeGreaterThan(current);
+    if (c.teamOnly) {
+      expect((await read(app)).version).toBe(current);
+      const after = (await as(app, teamActor).get("/tickets/SUP-1/version")).body.handoffs;
+      expect(after).toBe(handoffs + 1);
+    } else {
+      expect((await read(app)).version).toBeGreaterThan(current);
+    }
   });
 
   it("is described in the API's own description, with the version in the ticket's JSON", async () => {
@@ -452,7 +521,9 @@ describe("the version", () => {
         .put("/api/tickets/SUP-1/agreed-check")
         .send({ agreed_check: "Ten pages print without a jam" }),
     );
-    await step(() => handToAgent(app, "SUP-1", key));
+    // Handing the ticket to an assistant changes nothing in its row, so it is not a step here;
+    // the hand-off tests below cover it.
+    await handToAgent(app, "SUP-1", key);
     // The assistant links the change it made.
     await step(() =>
       agent("/api/tickets/SUP-1/change-link").send({ change_url: "https://example.com/c/1" }),
@@ -534,6 +605,32 @@ describe("the ticket page's own forms", () => {
     );
     expect((await read(app)).owner_id).toBeNull();
   });
+
+  it("keep what was typed when a press is refused for an old version", async () => {
+    const { app, db } = buildTestApp();
+    await filed(app);
+    await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
+    const version = await formVersion(app, teamActor, "/tickets/SUP-1");
+    changedElsewhere(db);
+    const res = await as(app, teamActor).post("/tickets/SUP-1/ready").type("form").send({
+      tried: "Printed ten pages.",
+      result: "No jam.",
+      expected_version: version!,
+    });
+    expect(res.status).toBe(409);
+    const page = parse(res.text);
+    expect(page.querySelector("p.refused")?.text).toBe(
+      "Ticket SUP-1 changed since you opened it, so nothing was saved. This is the ticket as it is now.",
+    );
+    const ask = page.querySelector("form.ask")!;
+    expect(ask.querySelector("textarea[name=tried]")?.text).toBe("Printed ten pages.");
+    expect(ask.querySelector("textarea[name=result]")?.text).toBe("No jam.");
+    // The form now carries the current version, so pressing again goes through.
+    const fresh = ask.querySelector("input[name=expected_version]")?.getAttribute("value");
+    expect(fresh).toBe(String((await read(app)).version));
+    expect((await read(app)).status).toBe("in_progress");
+    expect((await read(app)).ready_token ?? null).toBeNull();
+  });
 });
 
 describe("the cheap read a page left open asks", () => {
@@ -546,10 +643,12 @@ describe("the cheap read a page left open asks", () => {
     expect((await as(app, customerOne).get("/tickets/SUP-1/version")).body).toEqual({
       version,
       entries: 1,
+      handoffs: 0,
     });
     expect((await as(app, teamActor).get("/tickets/SUP-1/version")).body).toEqual({
       version,
       entries: 2,
+      handoffs: 0,
     });
   });
 
@@ -587,5 +686,48 @@ describe("the cheap read a page left open asks", () => {
     expect(layout.getAttribute("data-ticket-key")).toBe("SUP-1");
     expect(Number(layout.getAttribute("data-ticket-version"))).toBe(stamp.version);
     expect(Number(layout.getAttribute("data-ticket-entries"))).toBe(stamp.entries);
+    expect(Number(layout.getAttribute("data-ticket-handoffs"))).toBe(stamp.handoffs);
+  });
+});
+
+describe("a hand to an assistant, as a customer's open page sees it", () => {
+  /** What a customer's page can compare: the cheap read, the page's attributes, the JSON. */
+  async function customerSees(app: Express) {
+    const page = parse((await as(app, customerOne).get("/tickets/SUP-1")).text);
+    const layout = page.querySelector("[data-ticket-version]")!;
+    return {
+      stamp: (await as(app, customerOne).get("/tickets/SUP-1/version")).body,
+      attributes: ["data-ticket-version", "data-ticket-entries", "data-ticket-handoffs"].map(
+        (name) => layout.getAttribute(name),
+      ),
+      ticket: (await as(app, customerOne).get("/api/tickets/SUP-1")).body,
+    };
+  }
+
+  it("changes nothing the customer can compare, when it starts or ends", async () => {
+    const { app } = buildTestApp();
+    await filed(app);
+    await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
+    const key = await issueKey(app);
+    const before = await customerSees(app);
+    await handToAgent(app, "SUP-1", key);
+    expect(await customerSees(app)).toEqual(before);
+    expect((await admin(app).post("/api/tickets/SUP-1/agent/end").send({})).status).toBe(200);
+    expect(await customerSees(app)).toEqual(before);
+    expect(before.stamp.handoffs).toBe(0);
+  });
+
+  it("is noticed by the team's open page", async () => {
+    const { app } = buildTestApp();
+    await filed(app);
+    await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
+    const key = await issueKey(app);
+    const stamp = async () => (await as(app, teamActor).get("/tickets/SUP-1/version")).body;
+    const before = await stamp();
+    await handToAgent(app, "SUP-1", key);
+    const handed = await stamp();
+    expect(handed.handoffs).toBe(before.handoffs + 1);
+    await admin(app).post("/api/tickets/SUP-1/agent/end").send({});
+    expect((await stamp()).handoffs).toBe(handed.handoffs + 1);
   });
 });

@@ -1,12 +1,13 @@
 // A ticket page left open notices quietly when someone changes the ticket elsewhere. When the
 // tab comes back into view, and every 30 seconds while it is in view, it asks the server for a
-// cheap reading of the ticket: its version and how many conversation entries this viewer sees.
+// cheap reading of the ticket: its version, how many conversation entries this viewer sees, and,
+// for the team, how often an assistant was given the ticket or stopped working on it.
 // When that differs from what the page shows, one line appears at the top of the ticket with a
 // Refresh link. Nothing on the page is replaced, so nothing changes under the person's hands,
 // and with scripts off the page simply stays as it was loaded.
 
 /** What the page shows, or what the server says now. */
-export type Stamp = { version: number; entries: number };
+export type Stamp = { version: number; entries: number; handoffs: number };
 
 /** How the watcher reaches the page, the server and the clock. Tests pass stand-ins. */
 export type Watch = {
@@ -26,7 +27,11 @@ export const CHECK_EVERY_MS = 30_000;
 
 /** Whether the ticket changed since the page was drawn. */
 export function differs(shown: Stamp, now: Stamp): boolean {
-  return shown.version !== now.version || shown.entries !== now.entries;
+  return (
+    shown.version !== now.version ||
+    shown.entries !== now.entries ||
+    shown.handoffs !== now.handoffs
+  );
 }
 
 /** Watches one ticket page. Returns the check, so a test can run it by hand. */
@@ -52,12 +57,23 @@ export function watchTicket(shown: Stamp, watch: Watch): () => Promise<void> {
   return check;
 }
 
+/** The ticket page's own address, for the Refresh link. */
+export function ticketAddress(key: string): string {
+  return `/tickets/${encodeURIComponent(key)}`;
+}
+
 /** Reads a stamp from the server's answer, or null for anything else. */
 export function readStamp(value: unknown): Stamp | null {
   if (typeof value !== "object" || value === null) return null;
-  const { version, entries } = value as { version?: unknown; entries?: unknown };
-  if (typeof version !== "number" || typeof entries !== "number") return null;
-  return { version, entries };
+  const { version, entries, handoffs } = value as {
+    version?: unknown;
+    entries?: unknown;
+    handoffs?: unknown;
+  };
+  if (typeof version !== "number" || typeof entries !== "number" || typeof handoffs !== "number") {
+    return null;
+  }
+  return { version, entries, handoffs };
 }
 
 if (typeof document !== "undefined") {
@@ -65,9 +81,11 @@ if (typeof document !== "undefined") {
   const key = layout?.dataset.ticketKey;
   const version = Number(layout?.dataset.ticketVersion);
   const entries = Number(layout?.dataset.ticketEntries);
-  if (layout && key && Number.isInteger(version) && Number.isInteger(entries)) {
+  const handoffs = Number(layout?.dataset.ticketHandoffs);
+  const counts = [version, entries, handoffs];
+  if (layout && key && counts.every((count) => Number.isInteger(count))) {
     watchTicket(
-      { version, entries },
+      { version, entries, handoffs },
       {
         read: async () => {
           try {
@@ -85,7 +103,9 @@ if (typeof document !== "undefined") {
           line.setAttribute("role", "status");
           line.className = "saved ticket-changed";
           const refresh = document.createElement("a");
-          refresh.href = window.location.pathname;
+          // The ticket's own address: a page drawn after a refused form sits at the form's
+          // address, which shows nothing when opened.
+          refresh.href = ticketAddress(key);
           refresh.textContent = "Refresh";
           line.append("This ticket changed. ", refresh, " to see it.");
           const heading = document.querySelector("main hgroup");

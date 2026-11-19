@@ -239,6 +239,9 @@ export const LIST_PAGE_SIZE = 100;
 export type ListNarrowing = { owner?: "me" | "none"; q?: string };
 export const THREAD_LIMIT = 200;
 
+/** What a ticket page left open compares with the server, to notice a change made elsewhere. */
+export type TicketStamp = { version: number; entries: number; handoffs: number };
+
 // The kinds of history entry a customer may see. Any other kind, including one added later,
 // stays hidden from customers until it is added here on purpose. "note_added" is left out.
 const CUSTOMER_EVENT_TYPES = new Set([
@@ -906,18 +909,19 @@ export function createTicketService(
     },
 
     /**
-     * A cheap read for a ticket page left open: the ticket's version, and how many entries of
-     * its conversation this viewer sees. Who may read it is checked exactly as for the ticket.
+     * A cheap read for a ticket page left open: the ticket's version, how many entries of its
+     * conversation this viewer sees, and how often an assistant was given the ticket or stopped
+     * working on it. Who may read it is checked exactly as for the ticket.
      */
-    ticketStamp(key: string, actor: Actor): { version: number; entries: number } {
+    ticketStamp(key: string, actor: Actor): TicketStamp {
       const row = requireRow(key, actor);
+      const team = can(actor, "read_notes", row);
       return {
         version: row.version,
         // The page shows at most THREAD_LIMIT of them, so it counts no further.
-        entries: Math.min(
-          repository.countEntries(db, row.id, can(actor, "read_notes", row)),
-          THREAD_LIMIT,
-        ),
+        entries: Math.min(repository.countEntries(db, row.id, team), THREAD_LIMIT),
+        // A hand to an assistant is team-only work, so a customer's count stays at 0.
+        handoffs: team ? repository.countHandoffChanges(db, row.id) : 0,
       };
     },
 
