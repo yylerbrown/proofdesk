@@ -58,14 +58,15 @@ describe("In Progress on a ticket nobody owns", () => {
 });
 
 describe("the resolve form's first choice", () => {
-  it("is the 'Fixed.' reason, so resolving takes two presses", async () => {
+  it("is Choose a reason, so a hurried press can never claim a fix", async () => {
     const { app } = await filed();
     const select = (await page(app)).querySelector('details.resolve select[name="reason"]')!;
     expect(select.hasAttribute("required")).toBe(true);
     const chosen = select.querySelectorAll("option").filter((o) => o.hasAttribute("selected"));
-    expect(chosen.map((o) => o.getAttribute("value"))).toEqual(["fixed_no_reply"]);
-    // With nothing to pick, the placeholder is not offered either.
-    expect(select.querySelector('option[value=""]')).toBeNull();
+    expect(chosen.map((o) => o.getAttribute("value"))).toEqual([""]);
+    expect(chosen[0]?.text).toBe("Choose a reason");
+    // "Fixed." is still offered, one choice away.
+    expect(select.querySelector('option[value="fixed_no_reply"]')).not.toBeNull();
   });
 
   it("keeps what was picked when a try is refused", async () => {

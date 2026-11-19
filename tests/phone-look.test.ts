@@ -40,9 +40,9 @@ describe("the look", () => {
     expect(css).toMatch(/:active:not\(\s*:disabled,\s*\[aria-disabled="true"\]\s*\)/);
   });
 
-  it("keeps Sign out on one line on a phone and lets the role switch grow with its words", () => {
+  it("keeps the header on one row on a phone, cutting a long name short", () => {
     const phone = css.slice(css.indexOf("@media (max-width: 639px)"));
-    expect(phone).toMatch(/\.site-header \.sign-out button \{[^}]*white-space: nowrap/);
-    expect(phone).toMatch(/details\.dropdown\.switch-role > summary \{[^}]*height: auto/);
+    expect(phone).toMatch(/\.site-header nav \{[^}]*flex-wrap: nowrap/);
+    expect(phone).toMatch(/\.person-menu > summary strong,[^{]*\{[^}]*text-overflow: ellipsis/);
   });
 });

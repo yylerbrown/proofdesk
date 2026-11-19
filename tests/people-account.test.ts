@@ -19,13 +19,14 @@ import { browserOf, buildPeopleApp, signedInPerson } from "./people-helpers.js";
 import { giveAddresses, ok } from "./notify-life.js";
 
 // The account page: each person sees who Proofdesk thinks they are, and switches their email
-// notices off. And the header line that leads there.
+// notices off. And the header menu that leads there.
 
 const valid = { title: "Printer is broken", description: "It jams on every page." };
 
-/** The header's "who is signed in" item, as text. */
+/** The button of the header's person menu, as text. */
 function headerViewer(html: string): string {
-  return parse(html).querySelector("header .viewer")?.text.replace(/\s+/g, " ").trim() ?? "";
+  const summary = parse(html).querySelector("header .person-menu summary");
+  return summary?.text.replace(/\s+/g, " ").trim() ?? "";
 }
 
 /** The parts of the account page the tests read. */
@@ -41,30 +42,27 @@ function accountOf(html: string) {
 }
 
 describe("the header", () => {
-  it("shows the name, linking to the account page, and the role as a plain word", async () => {
+  it("names the person's menu after them, with the role as a quiet word and Account inside", async () => {
     const { app } = buildTestApp();
     const cases: [Actor, string][] = [
-      [customerOne, "Signed in as Customer One Customer"],
-      [teamActor, "Signed in as Team Member Team member"],
-      [adminActor, "Signed in as Admin Admin"],
+      [customerOne, "Customer One Customer"],
+      [teamActor, "Team Member Team member"],
+      // A name that is the role word already is not followed by it again.
+      [adminActor, "Admin"],
     ];
     for (const [who, line] of cases) {
       const html = (await as(app, who).get("/tickets")).text;
       expect(headerViewer(html), who.id).toBe(line);
-      const link = parse(html).querySelector("header .viewer a.account-link");
-      expect(link?.getAttribute("href"), who.id).toBe("/account");
-      expect(link?.text, who.id).toBe(who.name);
+      const link = parse(html).querySelector("header .person-menu a[href='/account']");
+      expect(link?.text, who.id).toBe("Account");
     }
   });
 
-  it("calls the demo's admin preview read-only and keeps its Switch role menu", async () => {
+  it("calls the demo's admin preview read-only in its menu's button", async () => {
     const { app } = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
     const demoAdmin = DEMO_ACTORS.find((who) => who.readOnly === true)!;
     const html = (await as(app, demoAdmin).get("/tickets")).text;
-    const summary = parse(html).querySelector("header .switch-role summary");
-    expect(summary?.text.replace(/\s+/g, " ").trim()).toBe(
-      "Signed in as Demo Admin Admin, read-only Switch role",
-    );
+    expect(headerViewer(html)).toBe("Demo Admin Admin, read-only");
   });
 });
 

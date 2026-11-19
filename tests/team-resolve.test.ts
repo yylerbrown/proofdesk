@@ -144,10 +144,11 @@ describe("how a team resolution shows", () => {
     expect(page.querySelector(".confirmed")).toBeNull();
     expect(page.querySelector("main")!.text).not.toContain("Customer confirmed");
 
+    // In the list the status is one word, and the reason stays on the ticket's page.
     for (const who of [customerOne, teamActor]) {
       const list = parse((await as(app, who).get("/tickets?status=resolved")).text);
-      expect(list.querySelector("table.tickets .resolution-label")?.text).toBe(
-        "By the team: Won't fix",
+      expect(list.querySelector("table.tickets tbody td:nth-child(3)")?.text.trim()).toBe(
+        "Resolved",
       );
     }
     const history = parse((await as(app, customerOne).get("/tickets/SUP-1")).text)
@@ -171,7 +172,8 @@ describe("how a team resolution shows", () => {
     const ticket = (await as(app, customerOne).get("/api/tickets/SUP-1")).body;
     expect(ticket.resolution).toMatchObject({ by: "customer", label: "Customer confirmed" });
     const list = parse((await as(app, teamActor).get("/tickets?status=resolved")).text);
-    expect(list.querySelector("table.tickets .resolution-label")?.text).toBe("Customer confirmed");
+    const mark = list.querySelector("table.tickets .confirmed-mark");
+    expect(mark?.getAttribute("aria-label")).toBe("Customer confirmed");
     expect(
       parse((await as(app, customerOne).get("/tickets/SUP-1")).text).querySelector(".confirmed"),
     ).not.toBeNull();

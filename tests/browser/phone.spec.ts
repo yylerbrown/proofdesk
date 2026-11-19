@@ -5,7 +5,7 @@ import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 
 // The demo on a phone, measured in a real browser: the small controls are 44-pixel tap targets,
-// the role menu's chevron sits by its label, each ticket row stacks its title under the key and
+// the header keeps one row, each ticket row stacks its title under the key and
 // status, the assistant invite's links do not overlap, a select in the ticket's side panel stays inside
 // its card, nothing scrolls sideways, and the demo strip fits its lines. The demo strip, the
 // invite and the role menu only exist when the server runs as the demo, so this file starts a
@@ -98,18 +98,19 @@ test("on a phone the small controls are 44-pixel tap targets", async ({ page }) 
   await page.setViewportSize({ width: 390, height: 844 });
   await signInAsTeam(page);
 
-  await test.step("the list's filter chips, sort links and Sign out", async () => {
+  await test.step("the list's filter chips and sort links", async () => {
     await page.goto("/tickets");
     await expectTapTargets(page, 'nav[aria-label="Filter by status"] li a');
     await expectTapTargets(page, 'nav[aria-label="Filter by owner"] li a');
     await expectTapTargets(page, 'nav[aria-label="Sort by"] a');
-    await expectTapTargets(page, ".site-header .sign-out button");
   });
 
-  await test.step("the role menu's choices", async () => {
-    await page.locator("details.switch-role > summary").click();
-    await expect(page.locator("details.switch-role")).toHaveAttribute("open", "");
-    await expectTapTargets(page, "details.switch-role ul button");
+  await test.step("the person menu's button, its roles and its links", async () => {
+    await expectTapTargets(page, "details.person-menu > summary");
+    await page.locator("details.person-menu > summary").click();
+    await expect(page.locator("details.person-menu")).toHaveAttribute("open", "");
+    await expectTapTargets(page, "details.person-menu ul button");
+    await expectTapTargets(page, "details.person-menu li.menu-link a");
     await page.keyboard.press("Escape");
   });
 
@@ -171,17 +172,43 @@ test("on a phone no keyboard stop hides in the list's undrawn header row", async
   expect(await tabStopsInHeaderRow(page, 40)).toContain(true);
 });
 
-test("on a phone the Switch role chevron sits right after its label", async ({ page }) => {
-  await signInAsTeam(page);
-  for (const width of [390, 320]) {
-    await page.setViewportSize({ width, height: 844 });
-    await page.goto("/tickets");
-    // The chevron is drawn after the summary's words. Floated, it sits at the row's far end.
-    const chevron = await page
-      .locator("details.switch-role > summary")
-      .evaluate((summary) => getComputedStyle(summary, "::after").float);
-    expect(chevron, `at ${width}px`).toBe("none");
+test("on a phone the header keeps one row, with the person menu inside the screen", async ({
+  page,
+}) => {
+  // A first visit opens as the customer; the team member comes second.
+  for (const who of ["customer", "team member"]) {
+    if (who === "team member") await signInAsTeam(page);
+    for (const width of [390, 360, 320]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto("/tickets");
+      const brand = await page.locator(".site-header a.brand").boundingBox();
+      // The word itself, not its link: a squeezed link is narrower than the word that spills out of it.
+      const word = await page.locator(".site-header a.brand strong").boundingBox();
+      const newTicket = await page.locator('.site-header a[href="/tickets/new"]').boundingBox();
+      const menu = await page.locator("details.person-menu > summary").boundingBox();
+      const where = `as the ${who} at ${width}px`;
+      // Side by side on one row: the menu's button starts above the brand's bottom edge.
+      expect(menu!.y, where).toBeLessThan(brand!.y + brand!.height);
+      expect(menu!.x + menu!.width, where).toBeLessThanOrEqual(width);
+      // New ticket starts after the brand ends, so it never covers the word Proofdesk.
+      expect(word!.x + word!.width, where).toBeLessThanOrEqual(newTicket!.x);
+    }
   }
+});
+
+test("a long name is cut short, so the header keeps its height just above phone width", async ({
+  page,
+}) => {
+  await signInAsTeam(page);
+  await page.setViewportSize({ width: 640, height: 844 });
+  await page.goto("/tickets");
+  const nav = page.locator(".site-header nav");
+  const before = (await nav.boundingBox())!.height;
+  // A name as long as a real one can be, put in place of the demo's short one.
+  await page
+    .locator("details.person-menu > summary strong")
+    .evaluate((name) => (name.textContent = "Alexandra Catherine Montgomery-Smith"));
+  expect((await nav.boundingBox())!.height).toBe(before);
 });
 
 test("on a 390 by 664 phone the team's first ticket row is on the first screen", async ({
@@ -235,10 +262,11 @@ test("on a phone each ticket row puts the key and status on one line over the ti
 test("on a phone the admin's People link is a 44-pixel tap target", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/tickets");
-  await page.locator("details.switch-role > summary").click();
+  await page.locator("details.person-menu > summary").click();
   await page.getByRole("button", { name: "Admin preview (read-only)" }).click();
   await page.goto("/tickets");
-  await expectTapTargets(page, ".site-header li.people-link a");
+  await page.locator("details.person-menu > summary").click();
+  await expectTapTargets(page, ".site-header .person-menu a[href='/people']");
 });
 
 test("a select in the ticket's side panel stays inside its card", async ({ page }) => {

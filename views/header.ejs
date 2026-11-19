@@ -17,28 +17,28 @@
       <% if (demo) { %>
       <p class="demo-strip">Demo: sample data, shared with everyone who visits. It resets itself when it has been quiet for a while.</p>
       <% } %>
+      <%# Two groups and nothing else. Left: the brand and Tickets. Right: New ticket and one menu named
+          for the person, which holds everything about them. %>
       <nav class="container">
-        <ul>
+        <ul class="links">
           <li><a href="/tickets" class="brand"><img src="/assets/brand.svg" alt="" width="24" height="24" /><strong>Proofdesk</strong></a></li>
+          <% if (viewer) { %><li class="tickets-link"><a href="/tickets">Tickets</a></li><% } %>
         </ul>
         <% if (viewer) { %>
-        <ul class="links">
-          <li class="tickets-link"><a href="/tickets">Tickets</a></li>
-          <%# Only an admin chooses who is on the team, so only an admin is shown the way there. %>
-          <% if (viewer.role === "admin" && viewer.kind === "person") { %><li class="people-link"><a href="/people">People</a></li><% } %>
+        <ul class="account">
           <%# The read-only admin preview cannot file a ticket, so it is not offered one. %>
           <% if (!viewer.readOnly) { %><li><a href="/tickets/new" role="button">New ticket</a></li><% } %>
-        </ul>
-        <ul class="account">
-          <% if (viewer.demo && demoPeople.length > 0) { %>
           <li class="viewer">
-            <details class="dropdown switch-role">
-              <summary>Signed in as <strong><%= viewer.name %></strong> <small class="role-label"><%= viewerRoleWord %></small> <span class="switch-label">Switch role</span></summary>
-              <%# All three roles, each with one line on what to try as it. The current one is named, not offered. %>
+            <%# A native details element, so it opens and closes with scripts off. menus.js adds Escape and closing when focus leaves. %>
+            <details class="dropdown person-menu">
+              <summary><strong><%= viewer.name %></strong><% if (viewerRoleWord !== viewer.name) { %> <small class="role-label"><%= viewerRoleWord %></small><% } %></summary>
               <ul>
+                <% if (viewer.demo && demoPeople.length > 0) { %>
+                <%# All three roles, each with one line on what to try as it. The current one is named, not offered. %>
+                <li class="menu-heading">Switch role</li>
                 <% for (const person of demoPeople) { %>
                 <% const roleName = person.readOnly ? "Admin preview (read-only)" : `View as ${person.name}`; %>
-                <li>
+                <li class="role">
                   <% if (person.id === viewer.id) { %>
                   <span class="role-current" aria-current="true"><%= person.readOnly ? "Admin preview (read-only)" : person.name %> (you)</span>
                   <% } else { %>
@@ -51,17 +51,22 @@
                   <small class="role-try" id="role-try-<%= person.id %>"><%- include("role-try", { person }) %></small>
                 </li>
                 <% } %>
+                <% } %>
+                <li class="menu-link"><a href="/account">Account</a></li>
+                <%# Only an admin chooses who is on the team and issues assistant connections, so only an admin is shown the way there. %>
+                <% if (viewer.role === "admin" && viewer.kind === "person") { %><li class="menu-link"><a href="/people">People</a></li><% } %>
+                <% if (viewer.role === "admin" && viewer.kind === "person" && !viewer.readOnly) { %><li class="menu-link"><a href="/connections">Connections</a></li><% } %>
+                <% if (viewer.demo) { %>
+                <li class="menu-link"><a href="/sign-in">About this demo</a></li>
+                <% } else { %>
+                <li class="menu-link">
+                  <form method="post" action="/sign-out" class="sign-out">
+                    <button type="submit" class="link">Sign out</button>
+                  </form>
+                </li>
+                <% } %>
               </ul>
             </details>
-          </li>
-          <% } else { %>
-          <%# The name opens the person's own account page: who Proofdesk thinks they are. %>
-          <li class="viewer">Signed in as <a href="/account" class="account-link"><strong><%= viewer.name %></strong></a> <small class="role-label"><%= viewerRoleWord %></small></li>
-          <% } %>
-          <li>
-            <form method="post" action="/sign-out" class="sign-out">
-              <button type="submit" class="link">Sign out</button>
-            </form>
           </li>
         </ul>
         <% } %>

@@ -39,16 +39,14 @@ describe("the new-ticket address for the read-only admin preview", () => {
 });
 
 describe("the ticket list for the read-only admin preview", () => {
-  it("says what an admin does on the real site and what is off on the demo", async () => {
+  it("says it is read-only and what an admin does on the real site", async () => {
     const { app } = buildDemo();
     const note = parse((await asDemo(app, "demo-admin").get("/tickets")).text).querySelector(
       ".role-note",
     )!.text;
-    expect(note).toMatch(/^Admin preview, read-only/);
-    expect(note).toContain(
-      "On the real site an admin also restores archived tickets, deletes tickets permanently and manages assistant connections.",
+    expect(note).toBe(
+      "Read-only preview. On the real site an admin also restores archived tickets, deletes tickets permanently and manages assistant connections.",
     );
-    expect(note).toContain("Archiving, restoring and deleting are off on this demo for everyone.");
   });
 
   it.each(["demo-admin", "demo-team"])(

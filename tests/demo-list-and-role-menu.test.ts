@@ -44,7 +44,7 @@ describe("the Archived tab", () => {
 describe("the role menu", () => {
   it("has no gap between its rows", () => {
     const css = fs.readFileSync("public/site.css", "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
-    const found = /\.site-header details\.dropdown\.switch-role > summary \+ ul \{([^}]*)\}/.exec(
+    const found = /\.site-header details\.dropdown\.person-menu > summary \+ ul \{([^}]*)\}/.exec(
       css,
     );
     expect(found?.[1]).toContain("gap: 0;");

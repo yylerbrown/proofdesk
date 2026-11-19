@@ -74,6 +74,8 @@ export function createApp(config: Config, db: Db, options: { log?: LogLine } = {
   app.locals.demo = config.demo;
   // On the demo, the header offers every demo person, to switch role without losing the page.
   app.locals.demoPeople = config.demo ? DEMO_ACTORS : [];
+  // The demo's footer links to the source beside About this demo, when one is set.
+  app.locals.sourceUrl = config.sourceUrl;
 
   // One ticket service, shared by the JSON API and the pages, so the rules exist once.
   // The demo has a hard budget of rows, so rate limits are not the only thing that stops it

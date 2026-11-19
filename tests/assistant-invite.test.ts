@@ -101,12 +101,12 @@ describe("the invitation to connect an assistant", () => {
 });
 
 describe("the Connections page", () => {
-  it("is no longer a header link, and an admin still reaches it from the ticket list", async () => {
+  it("is in the admin's person menu, not in the header's top row", async () => {
     const { app } = buildTestApp();
     const page = parse((await admin(app).get("/tickets")).text);
-    expect(page.querySelector("header a[href='/connections']")).toBeNull();
-    const note = page.querySelector(".role-note a[href='/connections']");
-    expect(note?.text).toBe("manage assistant connections");
+    expect(page.querySelector("header nav > ul > li > a[href='/connections']")).toBeNull();
+    const link = page.querySelector("header .person-menu a[href='/connections']");
+    expect(link?.text).toBe("Connections");
     expect((await admin(app).get("/connections")).status).toBe(200);
   });
 });
