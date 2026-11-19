@@ -53,9 +53,11 @@
   <%# The one hint sits inside its label, so the box is named by the label words alone and the hint is read once, as its description. %>
   <label>
     <span id="title-label">Title</span>
-    <input type="text" name="title" value="<%= values.title %>" required minlength="3" maxlength="120" aria-labelledby="title-label" <% if (errors.title) { %>aria-invalid="true" aria-describedby="title-error"<% } %> <%= focusIf("title") %> />
+    <input type="text" name="title" value="<%= values.title %>" required minlength="3" maxlength="120" aria-labelledby="title-label" <% if (errors.title) { %>aria-invalid="true" aria-describedby="title-error"<% } %> <% if (!editKey) { %>data-similar-into="title-similar"<% } %> <%= focusIf("title") %> />
   </label>
   <% if (errors.title) { %><small id="title-error"><%= errors.title.join(" ") %></small><% } %>
+  <%# On the new form only, a script names one earlier ticket like the title once the person pauses. %>
+  <% if (!editKey) { %><small id="title-similar" class="similar-ticket" aria-live="polite" hidden></small><% } %>
 
   <%# The description has no maxlength: the browser would cut a long paste off without a word.
       The count under it shows as the text nears the limit, and the server says how far over it is. %>

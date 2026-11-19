@@ -7,6 +7,10 @@ export const SIGN_IN_LIMIT = 10;
 // How many requests that change something one person, one connection (or one address, on the
 // demo) may make in ten minutes, across every page, API route and tool. Reading is not counted.
 export const WRITE_LIMIT = 120;
+// How many times one person (or one address, on the demo) may ask the new ticket form's
+// "Similar ticket" question in ten minutes. These asks change nothing, so the write allowance
+// does not count them.
+export const SIMILAR_LIMIT = 60;
 // How many assistant connections one address may get from the demo's welcome page in an hour.
 export const DEMO_CONNECTIONS_PER_HOUR = 5;
 
