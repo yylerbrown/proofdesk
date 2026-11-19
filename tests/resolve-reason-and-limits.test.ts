@@ -152,7 +152,9 @@ describe("a long text with line breaks", () => {
     const description = form.querySelector('[name="description"]')!;
     expect(Number(description.getAttribute("data-count-limit"))).toBe(shape.description.maxLength);
     expect(limit("fix_check")).toBe(shape.fix_check.unwrap().maxLength);
-    expect(limit("where_url")).toBe(500);
+    expect(Number(form.querySelector('[name="title"]')!.getAttribute("minlength"))).toBe(
+      shape.title.minLength,
+    );
   });
 });
 

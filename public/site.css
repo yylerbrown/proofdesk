@@ -192,7 +192,6 @@ main > form,
 .role-note,
 .status-rule,
 .agent-help,
-.initial-status,
 .real-site {
   color: var(--pd-muted);
   font-size: var(--pd-text-sm);
@@ -205,42 +204,24 @@ hgroup + .role-note,
 h1 + .role-note {
   margin-top: calc(-1 * var(--pd-space-2));
 }
-/* "Back to all tickets", and the breadcrumb of the form pages: small and muted. */
-.back,
-nav[aria-label="breadcrumb"] {
+/* "Back to all tickets": small and muted. */
+.back {
   margin-bottom: var(--pd-space-3);
   font-size: var(--pd-text-sm);
 }
-.back a,
-nav[aria-label="breadcrumb"] a {
+.back a {
   color: var(--pd-muted);
   text-decoration: none;
 }
-.back a:hover,
-nav[aria-label="breadcrumb"] a:hover {
+.back a:hover {
   color: var(--pd-text);
   text-decoration: underline;
-}
-nav[aria-label="breadcrumb"] ul {
-  margin: 0;
-}
-nav[aria-label="breadcrumb"] ul li {
-  padding: 0;
-}
-nav[aria-label="breadcrumb"] ul li:not(:last-child)::after {
-  position: static;
-  width: auto;
-  margin: 0 var(--pd-space-2);
-}
-nav[aria-label="breadcrumb"] ul li a {
-  margin: 0;
-  padding: 0;
 }
 
 /* ---------- 2. Header ---------- */
 
 /*
- * A light bar with one hairline under it. "New ticket" is its only filled button. From tablet
+ * A light bar with one hairline under it. "New ticket" is an outlined button. From tablet
  * width up it stays at the top while the page scrolls under it, slightly see-through.
  */
 body > header.site-header {
@@ -351,8 +332,9 @@ header nav .viewer {
 header nav .viewer summary strong {
   display: inline-block;
   overflow: hidden;
-  /* A long name is cut short, so the header keeps one row at every width. */
-  max-width: 10rem;
+  /* A long name is cut short, so the header keeps one row at every width. The longest demo name,
+     "Demo Admin (read-only)", fits whole. */
+  max-width: 12rem;
   color: var(--pd-text);
   font-weight: var(--pd-weight-medium);
   text-overflow: ellipsis;
@@ -474,7 +456,8 @@ header nav .viewer summary strong {
   .site-header .person-menu > summary .role-label {
     display: block;
     overflow: hidden;
-    max-width: 8.5rem;
+    /* Wide enough for "Demo Admin (read-only)" whole. */
+    max-width: 10.5rem;
     margin: 0;
     text-overflow: ellipsis;
   }
@@ -705,11 +688,22 @@ table.people .person-email {
   color: var(--pd-muted);
   overflow-wrap: anywhere;
 }
-@media (max-width: 639px) {
-  table.people th:nth-child(2),
-  table.people td:nth-child(2) {
-    display: none;
-  }
+table.people .person-since {
+  color: var(--pd-muted);
+}
+/* The account page's email switch, as the last row of its list, keeps the rows' spacing. */
+.account dd form.email-me fieldset,
+.account dd form.email-me .mail-line {
+  margin-bottom: var(--pd-space-2);
+}
+/* The three role lines under the table: quiet print, no bullets. */
+ul.role-lines {
+  padding: 0;
+  color: var(--pd-muted);
+}
+ul.role-lines li {
+  margin: 0;
+  list-style: none;
 }
 
 /* ---------- 5. Status badge ---------- */
@@ -2161,30 +2155,21 @@ article.customer-said-no {
   background-color: var(--pd-subtle);
 }
 /*
- * Each role in the menu has one line under it on what to try as it, so the menu is wide enough
- * for those lines, and opens from its right edge so it stays on the screen. The current role is
- * named, not offered.
+ * The menu is wide enough for the longest name, "Demo Admin (read-only) (you)", and opens from its
+ * right edge so it stays on the screen. The current person is named, not offered.
  */
 .site-header details.dropdown.person-menu > summary + ul {
   right: 0;
   left: auto;
-  width: 18rem;
+  width: 15rem;
   max-width: calc(100vw - 32px);
 }
 .person-menu .role-current {
   display: block;
-  padding: 6px 10px 0;
+  padding: 6px 10px;
   color: var(--pd-text);
   font-size: var(--pd-text-sm);
   font-weight: var(--pd-weight-medium);
-}
-.person-menu .role-try {
-  display: block;
-  padding: 0 10px 6px;
-  color: var(--pd-muted);
-  font-size: var(--pd-text-xs);
-  line-height: 1.4;
-  white-space: normal;
 }
 
 /*

@@ -38,12 +38,16 @@ describe("the demo's welcome card", () => {
     const html = await page(demo().app, "/tickets");
     const card = html.querySelector("main > .demo-welcome")!;
     expect(card.querySelector("p")?.text).toBe(
-      "This is a live demo of Proofdesk, a support desk where the customer says how they will know a fix worked. You are trying it as a customer.",
+      "Proofdesk is a support desk where the customer says how they will know a fix worked. You are trying it as a customer.",
     );
     const buttons = card.querySelectorAll("[role=button], button:not(.link)");
     expect(buttons.map((button) => button.text)).toEqual(["File a sample ticket"]);
     const links = card.querySelectorAll(".demo-welcome-more button").map((b) => b.text);
-    expect(links).toEqual(["See the team's side", "See a ticket an AI assistant worked", "Hide"]);
+    expect(links).toEqual([
+      "See the team's side",
+      "See a ticket an AI assistant worked, as the team",
+      "Hide",
+    ]);
     // It comes before the list's heading, so the first screen leads with it.
     expect(card.nextElementSibling?.tagName).toBe("H1");
   });
@@ -89,7 +93,8 @@ describe("the demo's welcome card", () => {
 });
 
 describe("the welcome card's way to a ticket an AI assistant worked", () => {
-  const LABEL = "See a ticket an AI assistant worked";
+  // It says "as the team", because pressing it changes the visitor's role.
+  const LABEL = "See a ticket an AI assistant worked, as the team";
 
   it("switches to the team in the same press, opening the recorded run's ticket", async () => {
     const { app, recorded } = demo();
@@ -128,23 +133,18 @@ describe("the welcome card's way to a ticket an AI assistant worked", () => {
 });
 
 describe("the roles in the demo's person menu", () => {
-  it("lists the three roles, each with its one line on what to try", async () => {
+  it("lists the three people by name, the current one named and not offered", async () => {
     const html = await pageAs(demo().app, "demo-customer", "/tickets");
     const rows = html.querySelectorAll("header .person-menu ul li.role");
     expect(rows.length).toBe(3);
-    expect(rows.map((row) => row.querySelector(".role-try")?.text.trim())).toEqual([
-      "File a ticket, then follow it until the team asks whether it is fixed.",
-      "Take a ticket, write an internal note, and ask the customer to check the fix.",
-      "See every ticket and its full history. The demo admin changes nothing.",
-    ]);
-    // The current role is named, not offered; each other role's button is described by its line.
     expect(rows[0]!.querySelector("button")).toBeNull();
     expect(rows[0]!.querySelector(".role-current")?.text).toBe("Demo Customer (you)");
-    for (const row of rows.slice(1)) {
-      expect(description(html, row.querySelector("button"))).toBe(
-        row.querySelector(".role-try")?.text.trim(),
-      );
-    }
+    expect(rows.slice(1).map((row) => row.querySelector("button")?.text)).toEqual([
+      "Demo Team Member",
+      "Demo Admin (read-only)",
+    ]);
+    // A name is the whole choice: no line under it to describe it.
+    expect(html.querySelector("header .person-menu [aria-describedby]")).toBeNull();
   });
 });
 
@@ -163,6 +163,29 @@ describe("the page about the demo", () => {
       "connect",
     ]);
     expect(parts[0]!.text).toContain("Do not type anything private here.");
+  });
+
+  it("tells a signed-in visitor who they are once, then one row of links", async () => {
+    const { app } = demo({
+      SOURCE_URL: "https://code.example.com/team/desk",
+      REAL_SITE_URL: "https://desk.example.com",
+    });
+    const html = await pageAs(app, "demo-team", "/sign-in");
+    const main = html.querySelector("main")!;
+    expect(main.querySelector(".signed-in")?.text).toBe(
+      "You are Demo Team Member, one of three made-up people. Switch with the menu at the top right. " +
+        "On the real site, people sign in with GitHub. How sign-in and roles work",
+    );
+    expect(main.querySelector(".real-site")).toBeNull();
+    expect(main.text.match(/three made-up people/g)).toHaveLength(1);
+    const links = main.querySelector(".source-link")!;
+    expect(links.text).toBe("Back to the tickets · Source and setup");
+    expect(links.querySelectorAll("a").map((a) => a.getAttribute("href"))).toEqual([
+      "/tickets",
+      "https://code.example.com/team/desk#readme",
+    ]);
+    // Then the closed line for the assistant setup.
+    expect(links.nextElementSibling?.tagName).toBe("DETAILS");
   });
 
   it("gives a signed-out visitor one button to start again as the customer", async () => {
@@ -216,7 +239,7 @@ describe("the About page's assistant setup", () => {
     const html = await page(demo().app);
     const explanation = html.querySelector("#connect > p");
     expect(explanation?.text).toBe(
-      "Get a one-day key and one message to paste into your own AI agent, so it can work on the sample ticket made for it.",
+      "Get a one-day key and one message to paste into your own AI assistant, so it can work on the sample ticket made for it.",
     );
     expect(explanation?.classNames).not.toContain("notice");
     const css = fs.readFileSync("public/site.css", "utf8");

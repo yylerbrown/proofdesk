@@ -69,9 +69,9 @@ describe("quotes of the ticket page", () => {
 });
 
 describe("the demo, as the README describes it", () => {
-  it("resets when it has been quiet, as its own strip says, not once a day", () => {
-    expect(fs.readFileSync("views/header.ejs", "utf8")).toContain(
-      "It resets itself when it has been quiet for a while.",
+  it("resets when it has been quiet, as its About page says, not once a day", () => {
+    expect(fs.readFileSync("views/sign-in.ejs", "utf8")).toContain(
+      "The demo resets itself when it has been quiet for a while.",
     );
     expect(readme).toContain("by itself when it has been quiet for a while");
     expect(readme).not.toMatch(/once a day|one-day key/);

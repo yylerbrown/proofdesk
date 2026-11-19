@@ -24,7 +24,7 @@ describe("the new-ticket address for the read-only admin preview", () => {
     expect(res.status).toBe(200);
     const html = parse(res.text);
     expect(html.querySelector(".read-only-note")?.text).toBe(
-      "The admin preview is read-only. Switch to Demo Customer to file a ticket.",
+      "Demo Admin (read-only) changes nothing. Switch to Demo Customer to file a ticket.",
     );
     expect(html.querySelector('form[action="/tickets"]')).toBeNull();
     expect(res.text).not.toContain("File ticket");

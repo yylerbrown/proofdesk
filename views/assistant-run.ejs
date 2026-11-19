@@ -5,7 +5,7 @@
     stays one quiet click away, in the closed section below. %>
 <%# The first sentence says the scope, so no claim reaches further than the run's evidence in
     docs/assistant-run/summary.md. %>
-<p class="run-lead">On 18 Nov 2026 a visitor's own AI assistant worked the demo's sample ticket for assistants in a scratch file, from the ticket's text, because it had no access to the product's code. There it reproduced the arithmetic problem and tested a fix, and three tests passed. It then proposed a test, attached the run as evidence and asked the ticket's owner to review. It resolved nothing and changed no product code: accepting the test and asking the customer are left to people.</p>
+<p class="run-lead">On 18 Nov 2026 a visitor's own AI assistant worked the demo's sample ticket for assistants in a scratch file, from the ticket's text, because it had no access to the product's code. It reproduced the problem, tested a fix that passed three tests, proposed a test, attached the run as evidence and asked the owner to review, and it resolved nothing.</p>
 <% if (recordedKey && viewer && viewer.role !== "customer") { %>
 <p class="run-result"><a href="/tickets/<%= recordedKey %>" role="button">See what it left on <%= recordedKey %></a></p>
 <% } else if (recordedKey) { %>
@@ -23,12 +23,6 @@
 </div>
 <% } %>
 <% } %>
-<h2 class="run-left-heading">What it left on the ticket</h2>
-<ul class="run-left">
-  <li>A proposed test spec with one scenario, "Tax is applied once", for a person to accept or discard.</li>
-  <li>The test run as evidence, 3 passed and 0 failed, labelled as reported by an AI agent.</li>
-  <li>A review request to the owner, saying what it checked and what it did not.</li>
-</ul>
 <% if (tryUrl) { %>
 <p class="run-try"><small>To try it yourself, <a href="<%= tryUrl %>">connect your own assistant</a>.</small></p>
 <% } %>

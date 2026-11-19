@@ -8,17 +8,6 @@
   const firstError = ["title", "description", "fix_check", "where_url"].find((name) => errors[name]);
   const focusIf = (name) => (firstError === name ? "autofocus" : "");
 %>
-<nav aria-label="breadcrumb">
-  <ul>
-    <li><a href="/tickets">Tickets</a></li>
-    <% if (editKey) { %>
-    <li><a href="/tickets/<%= editKey %>"><%= editKey %></a></li>
-    <li>Edit</li>
-    <% } else { %>
-    <li>New</li>
-    <% } %>
-  </ul>
-</nav>
 <h1><%= editKey ? "Edit ticket" : title %></h1>
 <% if (locals.alreadyFiled) { %>
 <p class="notice already-filed" role="status">This form was already filed as <a href="/tickets/<%= alreadyFiled.key %>"><%= alreadyFiled.key %></a>. <a href="/tickets/new">Start a new ticket</a>.</p>
@@ -38,7 +27,7 @@
 
 <% if (locals.readOnly) { %>
 <%# The demo's admin preview changes nothing, so it gets no form to fill in and then lose. %>
-<p class="notice read-only-note">The admin preview is read-only. Switch to Demo Customer to file a ticket.</p>
+<p class="notice read-only-note">Demo Admin (read-only) changes nothing. Switch to Demo Customer to file a ticket.</p>
 <p><a href="/tickets">Back to the ticket list</a></p>
 <% } else { %>
 <% if (locals.sample) { %>
@@ -54,13 +43,16 @@
   <input type="hidden" name="loaded_<%= field %>" value="<%= loaded[field] %>" />
   <% } %>
   <% } %>
-  <%# Each box's maxlength is the server's limit for it, so the browser stops at the same length.
-      The description is the one exception, below. %>
-  <%# Each hint sits inside its label, so the box is named by the label words alone and the hint is read once, as its description. %>
+  <%# The form does not ask for the page where it happened: few people have one to give, and the
+      API still takes it. A link the ticket already has rides along unseen, so editing never
+      drops it. Only a link the server refused gets its box back, with the reason under it. %>
+  <% if (values.where_url && !errors.where_url) { %><input type="hidden" name="where_url" value="<%= values.where_url %>" /><% } %>
+  <%# Each box's minlength and maxlength are the server's limits for it, so the browser stops at the
+      same length and says when a title is too short. The description is the one exception, below. %>
+  <%# The one hint sits inside its label, so the box is named by the label words alone and the hint is read once, as its description. %>
   <label>
     <span id="title-label">Title</span>
-    <small id="title-hint" class="hint">3 to 120 characters.</small>
-    <input type="text" name="title" value="<%= values.title %>" required maxlength="120" aria-labelledby="title-label" <% if (errors.title) { %>aria-invalid="true" aria-describedby="title-error title-hint"<% } else { %>aria-describedby="title-hint"<% } %> <%= focusIf("title") %> />
+    <input type="text" name="title" value="<%= values.title %>" required minlength="3" maxlength="120" aria-labelledby="title-label" <% if (errors.title) { %>aria-invalid="true" aria-describedby="title-error"<% } %> <%= focusIf("title") %> />
   </label>
   <% if (errors.title) { %><small id="title-error"><%= errors.title.join(" ") %></small><% } %>
 
@@ -68,8 +60,7 @@
       The count under it shows as the text nears the limit, and the server says how far over it is. %>
   <label>
     <span id="description-label">Description</span>
-    <small id="description-hint" class="hint">Up to <%= descriptionLimit.toLocaleString("en") %> characters.</small>
-    <textarea name="description" rows="3" required aria-labelledby="description-label" data-count-limit="<%= descriptionLimit %>" data-count-into="description-count" <% if (errors.description) { %>aria-invalid="true" aria-describedby="description-error description-hint description-count"<% } else { %>aria-describedby="description-hint description-count"<% } %> <%= focusIf("description") %>><%= values.description %></textarea>
+    <textarea name="description" rows="3" required aria-labelledby="description-label" data-count-limit="<%= descriptionLimit %>" data-count-into="description-count" <% if (errors.description) { %>aria-invalid="true" aria-describedby="description-error description-count"<% } else { %>aria-describedby="description-count"<% } %> <%= focusIf("description") %>><%= values.description %></textarea>
     <small id="description-count" class="hint char-count" aria-live="polite" hidden></small>
   </label>
   <% if (errors.description) { %><small id="description-error"><%= errors.description.join(" ") %></small><% } %>
@@ -86,17 +77,16 @@
   </label>
   <% if (errors.fix_check) { %><small id="fix_check-error"><%= errors.fix_check.join(" ") %></small><% } %>
 
+  <% if (errors.where_url) { %>
   <label>
     Page where it happened (optional)
-    <input type="url" name="where_url" value="<%= values.where_url %>" maxlength="500" <% if (errors.where_url) { %>aria-invalid="true" aria-describedby="where_url-error"<% } %> <%= focusIf("where_url") %> />
+    <input type="url" name="where_url" value="<%= values.where_url %>" maxlength="500" aria-invalid="true" aria-describedby="where_url-error" <%= focusIf("where_url") %> />
   </label>
-  <% if (errors.where_url) { %><small id="where_url-error"><%= errors.where_url.join(" ") %></small><% } %>
+  <small id="where_url-error"><%= errors.where_url.join(" ") %></small>
+  <% } %>
 
   <% if (editKey && viewer && viewer.role !== "customer") { %>
   <p class="status-rule"><small>The customer confirms a fix with Yes; the team can also resolve with a reason.</small></p>
-  <% } %>
-  <% if (!editKey) { %>
-  <p class="initial-status">Initial status: <span class="badge status-new">New</span></p>
   <% } %>
   <div class="form-actions">
     <button type="submit"><%= submitLabel %></button>

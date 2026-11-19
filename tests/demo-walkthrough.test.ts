@@ -66,7 +66,11 @@ describe("the demo's first landing", () => {
   it("tells a signed-in demo visitor to switch role, not to sign out", async () => {
     const { app } = buildDemo();
     const html = parse((await asDemo(app, "demo-team").get("/sign-in")).text);
-    expect(html.querySelector(".signed-in")?.text).toContain("use Switch role at the top");
+    const line = html.querySelector(".signed-in")!.text;
+    expect(line).toContain("Switch with the menu at the top right.");
+    // Said once: the page has no second way of saying it.
+    expect(html.querySelector("main")!.text).not.toContain("Switch role at the top");
+    expect(line).not.toContain("sign out");
   });
 
   it("starts the workflow as the demo customer, on a new ticket filled with a sample", async () => {
@@ -160,8 +164,8 @@ describe("following one ticket across roles on the demo", () => {
     expect(menu.querySelector(".menu-heading")?.text).toBe("Switch role");
     const forms = menu.querySelectorAll("form");
     expect(forms.map((f) => f.querySelector("button")?.text)).toEqual([
-      "View as Demo Team Member",
-      "Admin preview (read-only)",
+      "Demo Team Member",
+      "Demo Admin (read-only)",
     ]);
     for (const form of forms) {
       expect(form.querySelector("input[name=next]")?.getAttribute("value")).toBe("/tickets/SUP-3");

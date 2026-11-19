@@ -37,10 +37,11 @@ async function filed() {
 }
 
 describe("a new ticket", () => {
-  it("says on the form that it starts New, and is New once filed", async () => {
+  it("is New once filed, without the form announcing it", async () => {
     const { app } = buildTestApp();
     const form = parse((await as(app, customerOne).get("/tickets/new").redirects(1)).text);
-    expect(form.querySelector(".initial-status")?.text).toBe("Initial status: New");
+    // A default is not announced on the form.
+    expect(form.text).not.toContain("Initial status");
     const res = await as(app, customerOne)
       .post("/tickets")
       .type("form")
