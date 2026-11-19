@@ -39,14 +39,15 @@ const WITH_MAIL: NotifySettings = {
 /** The notices the page lists, each as its "To ..." line. */
 function recipients(html: string): string[] {
   return parse(html)
-    .querySelectorAll("article.entry header strong")
+    .querySelectorAll("article.email .email-to")
     .map((line) => line.text);
 }
 
+/** The quiet tag of each notice on the page, which says what happened to it. */
 function states(html: string): string[] {
   return parse(html)
-    .querySelectorAll("article.entry header small")
-    .map((line) => line.text.replace(/^.*?\. /, ""));
+    .querySelectorAll("article.email .email-state")
+    .map((tag) => tag.text);
 }
 
 async function lifeWithNotices(settings: NotifySettings = WITH_MAIL) {
@@ -62,12 +63,12 @@ describe("the notices page", () => {
     const res = await ok(as(app, customerOne).get("/tickets/SUP-1/notices"));
     expect(recipients(res.text)).toEqual(["To You", "To You", "To You"]);
     const subjects = parse(res.text)
-      .querySelectorAll("article.entry > p")
+      .querySelectorAll("article.email .email-subject")
       .map((line) => line.text);
     expect(subjects).toEqual([
-      "Subject: [SUP-1] Did this fix it? Printer jams",
-      "Subject: [SUP-1] Did this fix it? Printer jams",
-      "Subject: [SUP-1] New reply: Printer jams",
+      "[SUP-1] Did this fix it? Printer jams",
+      "[SUP-1] Did this fix it? Printer jams",
+      "[SUP-1] New reply: Printer jams",
     ]);
     expect(res.text).toContain("Back to SUP-1");
   });
@@ -133,7 +134,7 @@ describe("the notices page", () => {
     const res = await ok(as(app, customerOne).get("/tickets/SUP-1/notices"));
     expect(res.text).not.toContain("<script>alert(1)");
     expect(res.text).not.toContain("<b>title</b>");
-    const body = parse(res.text).querySelector("article.entry pre")!;
+    const body = parse(res.text).querySelector("article.email .email-body")!;
     expect(body.text).toContain("Try <script>alert(1)</script> & see.");
   });
 
@@ -161,18 +162,18 @@ describe("the state of each notice, in plain words", () => {
     const { app, db } = await lifeWithNotices();
     const page = async () =>
       states((await ok(as(app, customerOne).get("/tickets/SUP-1/notices"))).text);
-    expect(await page()).toEqual(Array(3).fill("Waiting to be sent."));
+    expect(await page()).toEqual(Array(3).fill("Waiting to be sent"));
     setState(db, "sent", 1);
-    expect(await page()).toEqual(Array(3).fill("Sent."));
+    expect(await page()).toEqual(Array(3).fill("Sent"));
     setState(db, "failed", 5);
-    expect(await page()).toEqual(Array(3).fill("Failed after five tries."));
+    expect(await page()).toEqual(Array(3).fill("Failed after five tries"));
   });
 
   it("reads 'no mail server' on a site without one", async () => {
     const { app } = await lifeWithNotices({ ...WITH_MAIL, mailConfigured: false });
     const res = await ok(as(app, teamActor).get("/tickets/SUP-1/notices"));
     expect(states(res.text)).toEqual(
-      Array(6).fill("Not sent: no mail server is set up on this site."),
+      Array(6).fill("Not sent: no mail server is set up on this site"),
     );
   });
 
@@ -199,7 +200,7 @@ describe("the state of each notice, in plain words", () => {
     collectNotices(db, settings);
     const res = await ok(asDemo(app, demoCustomer).get(`/tickets/${key}/notices`));
     expect(recipients(res.text)).toEqual(["To You"]);
-    expect(states(res.text)).toEqual(["Not sent: this demo never sends email."]);
+    expect(states(res.text)).toEqual(["Not sent: this demo never sends email"]);
     expect(res.text).toContain("Looking at it.");
   });
 });

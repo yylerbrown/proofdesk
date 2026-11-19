@@ -8,6 +8,7 @@
   const firstError = ["title", "description", "fix_check", "where_url"].find((name) => errors[name]);
   const focusIf = (name) => (firstError === name ? "autofocus" : "");
 %>
+<div class="column ticket-form">
 <h1><%= editKey ? "Edit ticket" : title %></h1>
 <% if (locals.alreadyFiled) { %>
 <p class="notice already-filed" role="status">This form was already filed as <a href="/tickets/<%= alreadyFiled.key %>"><%= alreadyFiled.key %></a>. <a href="/tickets/new">Start a new ticket</a>.</p>
@@ -94,4 +95,5 @@
   </div>
 </form>
 <% } %>
+</div>
 <%- include("footer") %>

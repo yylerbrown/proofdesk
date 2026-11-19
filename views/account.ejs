@@ -1,35 +1,36 @@
 <%- include("header") %>
-<div class="column-form account">
+<div class="column account">
 <h1>Your account</h1>
-<dl>
-  <dt>Name</dt>
-  <dd class="user-text account-name"><%= viewer.readOnly === true ? `${name} (read-only)` : name %></dd>
-  <dt>Email address</dt>
-  <% if (email) { %>
-  <dd><span class="user-text account-email"><%= email %></span><% if (emailFrom) { %><br /><small><%= emailFrom %></small><% } %></dd>
-  <% } else { %>
-  <dd><small class="account-email"><%= madeUpLine %></small></dd>
-  <% } %>
-  <% if (signedInWith) { %>
-  <dt>Signed in with</dt>
-  <dd class="account-way"><%= signedInWith %></dd>
-  <% } %>
-  <dt>Role</dt>
-  <dd><span class="account-role"><%= roleWord %></span><br /><small class="account-allows"><%= roleAllows %></small>
-    <% if (showAskAnAdmin) { %><br /><small class="account-ask">On the support team? Ask an admin to add you.</small><% } %>
-    <% if (showPeopleLink) { %><br /><small><a href="/people">People</a></small><% } %>
-  </dd>
-  <%# The switch is the list's last row, so the page has one heading. %>
-  <dt>Email notices</dt>
-  <dd>
-    <form method="post" action="/account" class="email-me">
-      <fieldset <% if (!canChangeEmailMe) { %>disabled<% } %>>
-        <label><input type="checkbox" role="switch" name="email_me" <% if (emailMe) { %>checked<% } %> /> Email me about my tickets</label>
-      </fieldset>
-      <% if (mailLine) { %><p class="mail-line"><small><%= mailLine %></small></p><% } %>
-      <% if (canChangeEmailMe) { %><button type="submit">Save</button><% } %>
-    </form>
-  </dd>
+<%# One quiet card: a small grey label and its value on each row, and the email switch last. %>
+<dl class="account-card">
+  <div class="account-row">
+    <dt>Name</dt>
+    <dd class="user-text account-name"><%= viewer.readOnly === true ? `${name} (read-only)` : name %></dd>
+  </div>
+  <div class="account-row">
+    <dt>Email</dt>
+    <% if (email) { %>
+    <dd class="user-text account-email"><%= email %></dd>
+    <% } else { %>
+    <dd class="account-email account-quiet"><%= madeUpLine %></dd>
+    <% } %>
+  </div>
+  <div class="account-row">
+    <dt>Role</dt>
+    <dd class="account-role"><%= roleWord %></dd>
+  </div>
+  <div class="account-row">
+    <dt>Email notices</dt>
+    <dd>
+      <form method="post" action="/account" class="email-me">
+        <fieldset <% if (!canChangeEmailMe) { %>disabled<% } %>>
+          <label><input type="checkbox" role="switch" name="email_me" <% if (emailMe) { %>checked<% } %> /> Email me about my tickets</label>
+        </fieldset>
+        <% if (mailLine) { %><small class="mail-line account-quiet"><%= mailLine %></small><% } %>
+        <% if (canChangeEmailMe) { %><button type="submit">Save</button><% } %>
+      </form>
+    </dd>
+  </div>
 </dl>
 </div>
 <%- include("footer") %>
