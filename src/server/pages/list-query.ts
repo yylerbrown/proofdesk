@@ -56,6 +56,31 @@ export function readListPageQuery(query: unknown): ListPageQuery {
   return { status: read.status, owner: read.owner, q: read.q, sort, page: read.page };
 }
 
+/** How many days a resolved ticket stays on "All" after it was resolved. */
+export const RECENT_RESOLVED_DAYS = 14;
+
+/**
+ * The time before which "All" leaves resolved tickets out: 14 days before now. Only "All" with
+ * nothing searched leaves any out. "Resolved" lists every resolved ticket, and a search finds a
+ * ticket whatever its age, so both give undefined.
+ */
+export function recentResolvedCutoff(
+  status: TicketListFilter,
+  q: string | undefined,
+  now: Date,
+): string | undefined {
+  if (status !== "all" || q !== undefined) return undefined;
+  const days = RECENT_RESOLVED_DAYS * 24 * 60 * 60 * 1000;
+  return new Date(now.getTime() - days).toISOString();
+}
+
+/** The quiet line under "All" that says how many older resolved tickets it leaves out. */
+export function olderResolvedWords(count: number): string {
+  return count === 1
+    ? "1 older resolved ticket is under"
+    : `${count} older resolved tickets are under`;
+}
+
 /** The status tab in the empty-result sentence: "No resolved tickets ...". */
 const TAB_WORDS: Record<TicketListFilter, string> = {
   all: "tickets",

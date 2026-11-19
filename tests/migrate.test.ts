@@ -64,6 +64,7 @@ const ALL = [
   "0034_ticket_list_sort_indexes.sql",
   "0035_ticket_search.sql",
   "0036_ticket_pictures.sql",
+  "0037_ticket_last_resolved.sql",
 ];
 
 describe("runMigrations", () => {

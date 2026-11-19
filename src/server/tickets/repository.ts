@@ -40,6 +40,8 @@ export type TicketRow = {
   resolved_by: string | null;
   resolved_by_name: string | null;
   resolved_at: string | null;
+  // When the ticket last moved to Resolved, whoever resolved it; null while it is open.
+  last_resolved_at: string | null;
   // Rises by one on every change to the row, by a trigger in the database.
   version: number;
 };
@@ -135,19 +137,22 @@ export type Page = { limit: number; offset: number };
  * How a list may be narrowed: to one owner or to tickets nobody owns, and to tickets whose title
  * or description holds the search. A ticket is found when its text holds `search`, a LIKE pattern
  * the service escapes, or when its words match `match`, a query for the ticket_search word index
- * the service builds from quoted words.
+ * the service builds from quoted words. With `resolvedSince`, a resolved ticket is kept only when
+ * it moved to Resolved at that time or later; open tickets are always kept.
  */
 export type Narrowing = {
   ownerId: string | null;
   unassigned: boolean;
   search: string | null;
   match: string | null;
+  resolvedSince: string | null;
 };
 export const NO_NARROWING: Narrowing = {
   ownerId: null,
   unassigned: false,
   search: null,
   match: null,
+  resolvedSince: null,
 };
 
 /**
@@ -180,7 +185,8 @@ const NARROWED = `AND (@ownerId IS NULL OR owner_id = @ownerId)
        AND (@unassigned = 0 OR owner_id IS NULL)
        AND (@search IS NULL OR title LIKE @search ESCAPE '\\' OR description LIKE @search ESCAPE '\\'
          OR (@match IS NOT NULL
-             AND id IN (SELECT rowid FROM ticket_search WHERE ticket_search MATCH @match)))`;
+             AND id IN (SELECT rowid FROM ticket_search WHERE ticket_search MATCH @match)))
+       AND (@resolvedSince IS NULL OR status <> 'resolved' OR last_resolved_at >= @resolvedSince)`;
 
 // Each column's sort as SQL terms, each ending on the id, so the order is total and a page never
 // repeats or skips a ticket that did not change. Descending runs every term the other way, so it
@@ -212,6 +218,7 @@ function bound(scope: ListScope, narrow: Narrowing) {
     unassigned: narrow.unassigned ? 1 : 0,
     search: narrow.search,
     match: narrow.match,
+    resolvedSince: narrow.resolvedSince,
     ...scopeValues(scope),
   };
 }
@@ -262,6 +269,27 @@ export function countTicketsByStatus(
   const counts: Record<TicketStatus, number> = { new: 0, in_progress: 0, resolved: 0 };
   for (const row of rows) counts[row.status] = row.n;
   return counts;
+}
+
+/**
+ * How many resolved tickets in this scope and narrowing moved to Resolved before this time: the
+ * ones a list cut at that time leaves out. A resolved ticket with no time counts as older.
+ */
+export function countResolvedBefore(
+  db: Db,
+  scope: ListScope,
+  narrow: Narrowing,
+  before: string,
+): number {
+  const row = db
+    .prepare(
+      `SELECT COUNT(*) AS n FROM tickets
+       WHERE ${SCOPE_SQL[scope.kind]} AND status = 'resolved'
+       AND (last_resolved_at IS NULL OR last_resolved_at < @before)
+       ${NARROWED}`,
+    )
+    .get({ ...bound(scope, narrow), before }) as { n: number };
+  return row.n;
 }
 
 /** A ticket a similar title names: its id, its title and its status. */
@@ -351,14 +379,23 @@ export function updateTicketArchived(
  * Changes the status. Any change of status also ends a wait for the customer's answer: the
  * question "Did this fix it?" is only asked about the ticket as it was when it was asked.
  */
-/** Changes the status. Any change clears a resolution by the team: only the team's own sets one. */
+/**
+ * Changes the status. Any change clears a resolution by the team: only the team's own sets one.
+ * Moving to Resolved from another status records when; staying Resolved keeps the earlier time,
+ * and any other status clears it.
+ */
 export function updateTicketStatus(db: Db, id: number, status: TicketStatus, now: string): void {
   db.prepare(
-    `UPDATE tickets SET status = ?, ready_at = NULL, ready_token = NULL, updated_at = ?,
+    `UPDATE tickets SET status = @status, ready_at = NULL, ready_token = NULL, updated_at = @now,
        resolved_reason = NULL, resolved_note = NULL, resolved_duplicate_of = NULL,
-       resolved_by = NULL, resolved_by_name = NULL, resolved_at = NULL
-     WHERE id = ?`,
-  ).run(status, now, id);
+       resolved_by = NULL, resolved_by_name = NULL, resolved_at = NULL,
+       last_resolved_at = CASE
+         WHEN @status <> 'resolved' THEN NULL
+         WHEN status = 'resolved' THEN last_resolved_at
+         ELSE @now
+       END
+     WHERE id = @id`,
+  ).run({ status, now, id });
 }
 
 export type TeamResolution = {
@@ -374,7 +411,8 @@ export function resolveByTeam(db: Db, id: number, r: TeamResolution, now: string
   db.prepare(
     `UPDATE tickets SET status = 'resolved', ready_at = NULL, ready_token = NULL, updated_at = @now,
        resolved_reason = @reason, resolved_note = @note, resolved_duplicate_of = @duplicateOf,
-       resolved_by = @by, resolved_by_name = @byName, resolved_at = @now
+       resolved_by = @by, resolved_by_name = @byName, resolved_at = @now,
+       last_resolved_at = CASE WHEN status = 'resolved' THEN last_resolved_at ELSE @now END
      WHERE id = @id`,
   ).run({ ...r, now, id });
 }

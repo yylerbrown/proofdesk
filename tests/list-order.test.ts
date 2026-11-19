@@ -17,13 +17,23 @@ type Built = ReturnType<typeof buildTestApp>;
  */
 function fill(db: Built["db"], count = LIST_PAGE_SIZE + 30): void {
   const insert = db.prepare(
-    `INSERT INTO tickets (title, description, status, created_by, created_at, updated_at)
-     VALUES (?, 'd', ?, 'dev-customer-1', ?, ?)`,
+    `INSERT INTO tickets
+       (title, description, status, created_by, created_at, updated_at, last_resolved_at)
+     VALUES (?, 'd', ?, 'dev-customer-1', ?, ?, ?)`,
   );
+  // Resolved just now, so "All" on the page still lists them.
+  const now = new Date().toISOString();
   for (let i = 1; i <= count; i++) {
     const created = new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString();
     const updated = new Date(Date.UTC(2026, 1, 1, 0, (i * 37) % count)).toISOString();
-    insert.run(`Ticket ${i}`, i % 3 === 0 ? "resolved" : "new", created, updated);
+    const resolved = i % 3 === 0;
+    insert.run(
+      `Ticket ${i}`,
+      resolved ? "resolved" : "new",
+      created,
+      updated,
+      resolved ? now : null,
+    );
   }
 }
 
@@ -124,6 +134,8 @@ describe("how the team's list reads the table", () => {
         unassigned: 0,
         search: null,
         match: null,
+        // As the page asks it on "All": resolved tickets from the last 14 days only.
+        resolvedSince: "2026-01-01T00:00:00.000Z",
         ...page,
       };
       const steps = (

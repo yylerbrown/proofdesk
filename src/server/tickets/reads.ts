@@ -61,7 +61,9 @@ export function createReads(shared: Shared, options: ServiceOptions) {
     /**
      * One page of the list. A team member or admin gets every ticket, an assistant only its
      * own, and a customer only the ones they filed. "archived" lists only archived tickets, for
-     * a team member or admin. Every other filter leaves archived tickets out.
+     * a team member or admin. Every other filter leaves archived tickets out. With
+     * `resolvedSince`, a resolved ticket is listed only when it moved to Resolved at that time or
+     * later; the list page uses it, and the JSON API leaves it out.
      */
     listTickets(
       filter: TicketListFilter,
@@ -69,19 +71,16 @@ export function createReads(shared: Shared, options: ServiceOptions) {
       pageNumber = 1,
       narrowing: ListNarrowing = {},
       sort: ListSort = "open_first",
+      resolvedSince?: string,
     ): Ticket[] {
       const page = { limit: LIST_PAGE_SIZE, offset: (pageNumber - 1) * LIST_PAGE_SIZE };
       if (filter === "archived") requirePermission(actor, "list_archived");
       const scope = filter === "archived" ? ARCHIVED : visibleScope(actor);
       const status = filter === "all" || filter === "archived" ? null : filter;
-      const rows = repository.listTickets(
-        db,
-        scope,
-        status,
-        sort,
-        page,
-        narrowed(narrowing, actor),
-      );
+      const rows = repository.listTickets(db, scope, status, sort, page, {
+        ...narrowed(narrowing, actor),
+        resolvedSince: resolvedSince ?? null,
+      });
       return rows.map((row) => toTicket(row, actor));
     },
 
@@ -92,6 +91,20 @@ export function createReads(shared: Shared, options: ServiceOptions) {
      */
     countTickets(actor: Actor, narrowing: ListNarrowing = {}): Record<TicketStatus, number> {
       return repository.countTicketsByStatus(db, visibleScope(actor), narrowed(narrowing, actor));
+    },
+
+    /**
+     * How many resolved tickets this viewer's list holds, with the same owner filter and search,
+     * that moved to Resolved before this time: the ones a list cut at that time leaves out. A
+     * customer's count covers only their own tickets.
+     */
+    countResolvedBefore(actor: Actor, narrowing: ListNarrowing, before: string): number {
+      return repository.countResolvedBefore(
+        db,
+        visibleScope(actor),
+        narrowed(narrowing, actor),
+        before,
+      );
     },
 
     /**
