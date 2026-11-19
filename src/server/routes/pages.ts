@@ -28,6 +28,7 @@ import {
   ticketFiledWith,
 } from "../pages/form-id.js";
 import { fingerprint } from "../pages/loaded-text.js";
+import { sendPicturesFewAtOnce } from "../pictures/sending.js";
 import { keepUploaderToken, picturesOf, uploaderToken, viewerToken } from "../pictures/upload.js";
 import { noMatchWords, readListPageQuery, sortHeaders } from "../pages/list-query.js";
 import { sameText, type ListSort, type TicketListFilter } from "../tickets/schemas.js";
@@ -424,6 +425,9 @@ export type NoticeCounter = (key: string, actor: Actor) => number;
 /** The form the Status menu asked to show in the next step's place, from the page's address. */
 const stepQuery = z.enum(["resolve", "reopen"]);
 
+/** The address of one picture: its ticket's key and its own id. */
+type PictureParams = { key: string; id: string };
+
 /** What the pages need to know about this server. */
 export type PageOptions = {
   /** True in production, where cookies are sent over https only. */
@@ -453,22 +457,28 @@ export function pagesRouter(
   // same 404 as a picture that is not there. The answer is only ever shown as a picture: its
   // stored type, checked from its bytes when it was added, no file name from the upload, and a
   // policy that lets the response itself run nothing. Like /version above, it comes before the
-  // middleware below, so loading a picture never uses up the message a page shows once.
-  router.get("/tickets/:key/pictures/:id", (req, res) => {
-    const actor = signedIn(req);
-    const id = /^[1-9][0-9]{0,14}$/.test(req.params.id) ? Number(req.params.id) : 0;
-    const picture = service.readPicture(req.params.key, id, actor, viewerToken(req));
-    res.set({
-      "Content-Type": picture.type,
-      "Content-Disposition": "inline",
-      "Content-Security-Policy": "default-src 'none'; sandbox",
-      "X-Content-Type-Options": "nosniff",
-      // Kept by this browser only. The demo decides by a cookie who sees a picture.
-      "Cache-Control": "private, max-age=3600",
-      Vary: "Cookie",
-    });
-    res.send(picture.bytes);
-  });
+  // middleware below, so loading a picture never uses up the message a page shows once. Only a
+  // few pictures are sent at once, each within a deadline, since each is held in memory.
+  const countPictureSends = sendPicturesFewAtOnce();
+  router.get(
+    "/tickets/:key/pictures/:id",
+    countPictureSends,
+    (req: Request<PictureParams>, res) => {
+      const actor = signedIn(req);
+      const id = /^[1-9][0-9]{0,14}$/.test(req.params.id) ? Number(req.params.id) : 0;
+      const picture = service.readPicture(req.params.key, id, actor, viewerToken(req));
+      res.set({
+        "Content-Type": picture.type,
+        "Content-Disposition": "inline",
+        "Content-Security-Policy": "default-src 'none'; sandbox",
+        "X-Content-Type-Options": "nosniff",
+        // Kept by this browser only. The demo decides by a cookie who sees a picture.
+        "Cache-Control": "private, max-age=3600",
+        Vary: "Cookie",
+      });
+      res.send(picture.bytes);
+    },
+  );
 
   // A page opened just after a save says what was saved.
   router.use((req, res, next) => {
