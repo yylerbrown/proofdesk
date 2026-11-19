@@ -18,6 +18,7 @@ import {
   timeAgo,
   reportFields,
   turnTag,
+  markedFixed,
 } from "../pages/format.js";
 import {
   fileOnce,
@@ -71,7 +72,8 @@ type Problem = {
     | "evidence"
     | "reopen"
     | "handOff"
-    | "resolve";
+    | "resolve"
+    | "markFixed";
   message: string;
   comment: string;
   /** What was typed in the form, so it can be shown again. */
@@ -92,12 +94,14 @@ const FORM_FIELDS: Record<Problem["form"], string[]> = {
   evidence: ["summary", "link"],
   reopen: ["reason"],
   handOff: ["to"],
-  resolve: ["reason", "duplicate_of", "note"],
+  resolve: ["reason", "duplicate_of", "note", "fixed_in"],
+  // The next step "Mark fixed and tell the customer": its one box, where it is fixed.
+  markFixed: ["note"],
 };
 
 // The forms on the ticket page that carry the ticket's version and show what was typed again
 // when they are drawn after a refusal for an old version.
-const KEEPS_TEXT = new Set<Problem["form"]>(["ready", "reopen", "resolve"]);
+const KEEPS_TEXT = new Set<Problem["form"]>(["ready", "reopen", "resolve", "markFixed"]);
 
 /** The box a refused form should focus: the first one with a message, or else its first box. */
 function focusField(form: Problem["form"], fieldErrors: Record<string, string[] | undefined>) {
@@ -131,21 +135,27 @@ function isWalkthroughSample(ticket: Ticket, actor: Actor): boolean {
 
 /**
  * On the demo, the next role to view this ticket as, so one ticket can be followed from the
- * customer's words to their Yes: the team after the customer has filed or answered No, and the
- * customer who filed it once the team has asked them to verify, so the team's own next step comes
- * first. Nothing once it is resolved.
+ * customer's words to their Yes: the team after the customer has filed or said No, and the
+ * customer who filed it once the team has marked it fixed (or asked them), so the team's own next
+ * step comes first. Nothing once the customer has confirmed it or the team resolved it otherwise.
  */
 function demoNext(ticket: Ticket, actor: Actor) {
   if (actor.demo !== true || ticket.archived_at !== null) return null;
-  if (ticket.status === "resolved") return null;
   const filer = DEMO_ACTORS.find((person) => person.id === ticket.created_by);
   const team = DEMO_ACTORS.find((person) => person.role === "team");
+  // The customer has been told it is fixed, or asked, and has not answered yet.
+  const asked = ticket.status !== "resolved" && ticket.ready_at !== null;
+  if (
+    (markedFixed(ticket) || asked) &&
+    actor.role !== "customer" &&
+    filer !== undefined &&
+    filer.id !== actor.id
+  ) {
+    return { switchTo: filer.id, label: "View this ticket as the customer who filed it" };
+  }
+  if (ticket.status === "resolved") return null;
   if (actor.id === ticket.created_by && ticket.ready_at === null && team !== undefined) {
     return { switchTo: team.id, label: "View this ticket as a team member" };
-  }
-  const asked = ticket.ready_at !== null;
-  if (asked && actor.role !== "customer" && filer !== undefined && filer.id !== actor.id) {
-    return { switchTo: filer.id, label: "View this ticket as the customer who filed it" };
   }
   return null;
 }
@@ -212,13 +222,15 @@ type NextStep = {
   note?: string;
   /** Outlined rather than filled: while an assistant asks for a review, the review comes first. */
   outlined?: boolean;
+  /** The form has the optional box "Fixed in (optional)". */
+  fixedIn?: boolean;
 };
 
 /**
- * The step this viewer can take now: take the ticket and start work, start work, then ask the
- * customer to verify. Each is possible when it is shown; null when there is nothing for this
- * viewer to press. On the demo's sample, the ask says the sample skips the fix. While an
- * assistant asks for a review, the ask is outlined, since the review is the thing to do first.
+ * The step this viewer can take now: take the ticket and start work, start work, then mark it
+ * fixed and tell the customer. Each is possible when it is shown; null when there is nothing for
+ * this viewer to press. On the demo's sample, marking it fixed says the sample skips the fix.
+ * While an assistant asks for a review, that step is outlined, since the review comes first.
  */
 function nextStep(
   ticket: Ticket,
@@ -236,10 +248,14 @@ function nextStep(
       form: { action: `${at}/status`, fields: { status: "in_progress" } },
     };
   }
-  // One press asks the customer. What the owner tried, a page to try and evidence are optional,
-  // in the form "Ask with details" under "More options".
-  if (allowed.markReady) {
-    const step: NextStep = { label: "Ask the customer to verify", form: { action: `${at}/ready` } };
+  // One press resolves it as fixed and tells the customer, who can say it is not. The page adds
+  // one optional box for where it is fixed. Asking first is under "More options".
+  if (allowed.markReady && allowed.resolveWithReason) {
+    const step: NextStep = {
+      label: "Mark fixed and tell the customer",
+      form: { action: `${at}/resolve`, fields: { reason: "fixed_no_reply", from: "next-step" } },
+      fixedIn: true,
+    };
     if (sample) step.note = "The sample skips the fix.";
     if (reviewRequested) step.outlined = true;
     return step;
@@ -249,6 +265,26 @@ function nextStep(
 
 type TicketAction = (key: string, input: unknown, actor: Actor) => Ticket;
 
+/**
+ * What a resolve form sends to the rules. A note goes with Fixed, as where it is fixed, and with
+ * Other, as why. The Status menu's form has a box for each, so its Fixed box is named fixed_in;
+ * the box for the other reason, hidden and perhaps left with words in it, is not sent. A note
+ * with any other reason is not sent either.
+ */
+function resolveFields(input: unknown): Record<string, unknown> {
+  const fields = { ...(input as Record<string, unknown>) };
+  const fixedIn = fields.fixed_in;
+  // Which form it came from is for the page, not the rules.
+  delete fields.from;
+  delete fields.fixed_in;
+  if (fields.reason === "fixed_no_reply") {
+    if (fixedIn !== undefined) fields.note = fixedIn;
+  } else if (fields.reason !== "other") {
+    delete fields.note;
+  }
+  return fields;
+}
+
 // What each ticket-page form says it saved. The answer form says one thing or the other, and
 // reopening says one thing to the customer and another to the team.
 const FORM_SAVED: Record<Problem["form"], (input: unknown, actor: Actor) => SavedKey> = {
@@ -256,9 +292,14 @@ const FORM_SAVED: Record<Problem["form"], (input: unknown, actor: Actor) => Save
   changeLink: () => "link",
   ready: () => "ready",
   evidence: () => "evidence",
-  reopen: (_input, actor) => (actor.role === "customer" ? "reopened" : "reopenedByTeam"),
+  // The customer's reopening says the same as their No: the ticket is back with the team.
+  reopen: (_input, actor) => (actor.role === "customer" ? "notFixed" : "reopenedByTeam"),
   handOff: () => "handedOff",
-  resolve: () => "resolvedByTeam",
+  resolve: (input) =>
+    (input as Record<string, unknown> | undefined)?.reason === "fixed_no_reply"
+      ? "markedFixed"
+      : "resolvedByTeam",
+  markFixed: () => "markedFixed",
   answer: (input) =>
     (input as Record<string, unknown> | undefined)?.fixed === "yes" ? "fixed" : "notFixed",
 };
@@ -722,13 +763,18 @@ export function pagesRouter(service: TicketService, countNotices: NoticeCounter)
             ? "My tickets"
             : "All tickets",
       current,
-      tickets: tickets.map((ticket) => ({
-        ...ticket,
-        tag: turnTag(ticket, actor.role, {
+      tickets: tickets.map((ticket) => {
+        const tag = turnTag(ticket, actor.role, {
           reopened: reopened.has(ticket.key),
           signal: signals.get(ticket.key),
-        }),
-      })),
+        });
+        // The customer's question leads straight to where they answer it on the ticket.
+        const tagHref =
+          actor.role === "customer" && tag === "Did this fix it?"
+            ? `/tickets/${ticket.key}#did-this-fix-it`
+            : null;
+        return { ...ticket, tag, tagHref };
+      }),
       viewerRole: actor.role,
       // A full page means there may be older tickets on the next one.
       nextPage: tickets.length === LIST_PAGE_SIZE ? listHref(filters, pageNumber + 1) : null,
@@ -1027,16 +1073,17 @@ export function pagesRouter(service: TicketService, countNotices: NoticeCounter)
     rememberSaved(res, "fixed");
     res.redirect(303, `/tickets/${ticket.key}`);
   });
-  // The page shows its note box only for Other, so a note typed there and left behind after
-  // choosing another reason is not sent with it.
-  router.post(
-    "/tickets/:key/resolve",
-    ticketForm("resolve", (key, input, actor) => {
-      const fields = { ...(input as Record<string, unknown>) };
-      if (fields.reason !== "other") delete fields.note;
-      return service.resolveWithReason(key, fields, actor);
-    }),
-  );
+  // Resolving with a reason. Two forms post here: the Status menu's Resolved form, and the next
+  // step "Mark fixed and tell the customer", which sends from=next-step so that a refusal is
+  // shown beside its own button.
+  const resolve: TicketAction = (key, input, actor) =>
+    service.resolveWithReason(key, resolveFields(input), actor);
+  const resolveFromMenu = ticketForm("resolve", resolve);
+  const markFixed = ticketForm("markFixed", resolve);
+  router.post("/tickets/:key/resolve", (req, res, next) => {
+    if (req.body?.from === "next-step") return markFixed(req, res, next);
+    return resolveFromMenu(req, res, next);
+  });
   router.post("/tickets/:key/adopt-check", (req, res) => {
     const ticket = service.adoptCheck(req.params.key, signedIn(req), req.body);
     rememberSaved(res, "adopted");

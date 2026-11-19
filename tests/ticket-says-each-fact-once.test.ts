@@ -67,9 +67,9 @@ describe("the ticket page's one black button", () => {
     const filled = Object.fromEntries(pages.map(([state, page]) => [state, filledButtons(page)]));
     expect(filled["team, New with no owner"]).toEqual(["Take ticket and start work"]);
     expect(filled["team, In Progress after the customer's No"]).toEqual([
-      "Ask the customer to verify",
+      "Mark fixed and tell the customer",
     ]);
-    expect(filled["customer, asked Did this fix it?"]).toEqual(["Yes, resolve ticket"]);
+    expect(filled["customer, asked Did this fix it?"]).toEqual(["Yes, it is fixed"]);
   });
 
   it("draws the reply box's send button and the assistant card's accept as outlined", async () => {

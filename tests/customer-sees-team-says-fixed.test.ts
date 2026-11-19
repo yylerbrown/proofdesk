@@ -2,10 +2,10 @@ import { parse } from "node-html-parser";
 import { describe, expect, it } from "vitest";
 import { as, buildTestApp, customerOne, teamActor } from "./helpers.js";
 
-// When the team resolves a ticket as fixed without the customer's Yes, the customer's ticket says
-// so in their terms: "The team says it is fixed", and beneath it "You have not confirmed it",
-// with the way to reopen it. The team keeps its own wording. In the list the status is one word
-// for everyone, with no check mark, since the customer did not confirm it.
+// When the team marks a ticket fixed, it is resolved at once and the customer's ticket asks them
+// "Did this fix it?": the team says it is fixed, and they can say Yes or No. The team keeps its own
+// wording. In the list the status is one word with no check mark, since the customer did not
+// confirm it; the customer's own row adds the question, linked to where they answer it.
 
 const valid = { title: "Printer jams", description: "x", fix_check: "Ten pages print" };
 
@@ -30,25 +30,65 @@ function statusCell(list: ReturnType<typeof parse>): string {
 }
 
 describe("a ticket the team resolved as fixed, for its customer", () => {
-  it("shows only Resolved in the list, for the customer and the team", async () => {
+  it("shows Resolved in the list, and asks the customer on their own row", async () => {
     const { page } = await resolvedByTeam("fixed_no_reply");
-    expect(statusCell(await page(customerOne, "/tickets"))).toBe("Resolved");
+    const mine = await page(customerOne, "/tickets");
+    expect(statusCell(mine)).toBe("Resolved Did this fix it?");
+    expect(mine.querySelector("a.turn-tag")?.getAttribute("href")).toBe(
+      "/tickets/SUP-1#did-this-fix-it",
+    );
     expect(statusCell(await page(teamActor, "/tickets"))).toBe("Resolved");
   });
 
-  it("says the same on their ticket, with the way to reopen it", async () => {
+  it("asks the customer Did this fix it?, with Yes and a No that reopens it", async () => {
     const { page } = await resolvedByTeam("fixed_no_reply");
     const ticket = await page(customerOne, "/tickets/SUP-1");
-    const card = ticket.querySelector(".ticket-card")!;
-    expect(card.querySelector(".card-line")?.text.trim()).toBe(
-      "Resolved by the team: Fixed. You have not confirmed it.",
-    );
-    expect(card.querySelector("details#reopen summary")?.text).toBe("Still happening?");
+    const card = ticket.querySelector("#did-this-fix-it")!;
+    expect(card.querySelector("h2")?.text).toBe("Did this fix it?");
+    expect(card.querySelector("blockquote")?.text).toBe("Ten pages print");
+    expect(card.text).toContain("The team says it is fixed.");
+    expect(card.text).not.toContain("Fixed in:");
+    // The question replaces the old line and the old way to reopen.
+    expect(card.querySelector(".card-line")).toBeNull();
+    expect(ticket.querySelector("details#reopen")).toBeNull();
+    const yes = card.querySelector(".card-answer > form")!;
+    expect(yes.getAttribute("action")).toBe("/tickets/SUP-1/confirm");
+    expect(yes.querySelector("button")?.text).toBe("Yes, it is fixed");
+    expect(yes.querySelector("input[name=expected_version]")).not.toBeNull();
+    const no = card.querySelector("details.answer-no")!;
+    expect(no.hasAttribute("open")).toBe(false);
+    expect(no.querySelector("summary")?.text).toBe("No, it is not fixed");
+    expect(no.querySelector("form")?.getAttribute("action")).toBe("/tickets/SUP-1/reopen");
+    expect(no.querySelector("label")?.text).toBe("What is still wrong?");
+    expect(no.querySelector("textarea[name=reason]")?.hasAttribute("required")).toBe(true);
+    expect(no.querySelector("button")?.text).toBe("No, send it back");
     // The team reads the reason, who and when, and that the customer has not confirmed it.
     const team = await page(teamActor, "/tickets/SUP-1");
+    expect(team.querySelector("#did-this-fix-it")).toBeNull();
     expect(team.querySelector(".ticket-card .card-line")?.text.trim()).toMatch(
-      /^Resolved by the team: Fixed\. .+, \d{1,2} [A-Z][a-z]{2} \d{4}\. Not confirmed by the customer\.$/,
+      /^Resolved by the team: Fixed\. Not customer-confirmed\. .+, \d{1,2} [A-Z][a-z]{2} \d{4}\. The customer did not confirm it, and can reopen it\.$/,
     );
+  });
+
+  it("says where it is fixed, with Fixed in, to both of them", async () => {
+    const { page } = await resolvedByTeam("fixed_no_reply", { note: "version 4.2.1" });
+    const card = (await page(customerOne, "/tickets/SUP-1")).querySelector("#did-this-fix-it")!;
+    expect(card.querySelectorAll(".card-detail").map((line) => line.text.trim())).toEqual([
+      "The team says it is fixed.",
+      "Fixed in: version 4.2.1",
+    ]);
+    const team = await page(teamActor, "/tickets/SUP-1");
+    expect(team.querySelector(".ticket-card .card-line")?.text.trim()).toMatch(
+      /^Resolved by the team: Fixed\. Not customer-confirmed\. Fixed in: version 4\.2\.1\. /,
+    );
+    const history = team.querySelectorAll("details.history tbody tr").map((row) => row.text);
+    expect(
+      history.some((row) =>
+        row.includes(
+          "Resolved by the team: Fixed. Not customer-confirmed. Fixed in: version 4.2.1.",
+        ),
+      ),
+    ).toBe(true);
   });
 
   it("leaves the team's other reasons as they are, since they do not claim a fix", async () => {

@@ -131,7 +131,7 @@ describe("the Owner menu", () => {
 });
 
 describe("More options", () => {
-  it("holds, in order, Edit, Add evidence and Ask with details, then Archive and Delete", async () => {
+  it("holds, in order, Edit, Add evidence and Ask before resolving, then Archive and Delete", async () => {
     const { app } = await filed();
     await admin(app).post("/api/tickets/SUP-1/take-and-start");
     const more = (await page(app, adminActor)).querySelector("details.more-options")!;
@@ -143,7 +143,7 @@ describe("More options", () => {
     expect(names).toEqual([
       "Edit ticket",
       "Add evidence",
-      "Ask with details",
+      "Ask before resolving",
       "Archive ticket",
       "Delete permanently",
     ]);

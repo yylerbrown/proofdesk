@@ -37,7 +37,7 @@ const card = async (app: Express, who = teamActor) =>
 describe("the customer's No at the top of the ticket", () => {
   it("shows while it is their latest word", async () => {
     const app = await saidNo();
-    expect(await card(app)).toMatch(/^The customer said no on /);
+    expect(await card(app)).toMatch(/^The customer says it is not fixed, since /);
   });
 
   it("is not shown after the team resolved and then reopened the ticket", async () => {
@@ -62,8 +62,6 @@ describe("the customer's No at the top of the ticket", () => {
     await as(app, customerOne)
       .post("/api/tickets/SUP-1/answer")
       .send({ fixed: "no", comment: "Partly fixed", ready_token: token });
-    expect(await card(app, customerOne)).toMatch(
-      /^You said no on .+\. The team will ask you again\.$/,
-    );
+    expect(await card(app, customerOne)).toMatch(/^You said it is not fixed on .+\.$/);
   });
 });
