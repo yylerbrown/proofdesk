@@ -91,9 +91,12 @@ describe("who a ticket is handed to", () => {
 
   it("on the demo, is the demo's assistants for the sample made for them", async () => {
     const built = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
-    seedDemo(createTicketService(built.db, built.config.ticketPrefix));
+    const service = createTicketService(built.db, built.config.ticketPrefix);
+    seedDemo(service);
+    // The seed records the sample's key, so no test names a fixed number for it.
+    const sample = service.assistantSampleKey();
     const team = parse(
-      (await visitor(built.app).set("Cookie", `${DEV_COOKIE}=demo-team`).get("/tickets/SUP-4"))
+      (await visitor(built.app).set("Cookie", `${DEV_COOKIE}=demo-team`).get(`/tickets/${sample}`))
         .text,
     );
     expect(team.querySelector(".agent-help")?.text).toMatch(/^Handed to demo assistants/);
@@ -103,7 +106,7 @@ describe("who a ticket is handed to", () => {
     const page = parse((await visitor(built.app).post("/demo/connection")).text);
     const key = page.querySelector("input.key")!.getAttribute("value")!;
     const own = await request(built.app)
-      .get("/api/tickets/SUP-4")
+      .get(`/api/tickets/${sample}`)
       .set("Authorization", `Bearer ${key}`);
     expect(own.body.agent_id).toMatch(/^\d+$/);
   });

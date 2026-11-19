@@ -140,7 +140,7 @@ describe("following one ticket across roles on the demo", () => {
 
   it("offers a switch in the header that comes back to the page the visitor was on", async () => {
     const { app } = buildDemo();
-    const html = parse((await asDemo(app, "demo-customer").get("/tickets/SUP-1")).text);
+    const html = parse((await asDemo(app, "demo-customer").get("/tickets/SUP-3")).text);
     const menu = html.querySelector("header details.switch-role")!;
     expect(menu.querySelector("summary")?.text).toContain("Switch role");
     const forms = menu.querySelectorAll("form");
@@ -149,11 +149,11 @@ describe("following one ticket across roles on the demo", () => {
       "Admin preview (read-only)",
     ]);
     for (const form of forms) {
-      expect(form.querySelector("input[name=next]")?.getAttribute("value")).toBe("/tickets/SUP-1");
+      expect(form.querySelector("input[name=next]")?.getAttribute("value")).toBe("/tickets/SUP-3");
     }
     expect(await switchRole(app, "demo-customer", forms[0]!)).toMatchObject({
       status: 303,
-      to: "/tickets/SUP-1",
+      to: "/tickets/SUP-3",
     });
   });
 
@@ -185,7 +185,7 @@ describe("the real site's sign-in page", () => {
 describe("the next action on the demo", () => {
   it("comes right under the status, before a quieter switch of role", async () => {
     const { app } = buildDemo();
-    const html = parse((await asDemo(app, "demo-team").get("/tickets/SUP-2")).text);
+    const html = parse((await asDemo(app, "demo-team").get("/tickets/SUP-4")).text);
     const main = html.querySelector("main")!.toString();
     const next = html.querySelector(".next-action button")!;
     expect(next.text).toBe("Take ticket and start work");

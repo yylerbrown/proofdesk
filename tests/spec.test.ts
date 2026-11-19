@@ -335,17 +335,17 @@ describe("permanent deletion", () => {
 describe("test specs on the demo", () => {
   function buildDemo() {
     const built = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
-    seedDemo(createTicketService(built.db, built.config.ticketPrefix));
-    return built;
+    const service = createTicketService(built.db, built.config.ticketPrefix);
+    seedDemo(service);
+    // The seed records the sample's key, so no test names a fixed number for it.
+    return { ...built, sample: service.assistantSampleKey() ?? "none" };
   }
   async function demoKey(app: Express): Promise<string> {
     const res = await visitor(app).post("/demo/connection");
     return parse(res.text).querySelector("input.key")!.getAttribute("value")!;
   }
-  const sample = "SUP-4";
-
   it("never shows one connection the spec another proposed", async () => {
-    const { app } = buildDemo();
+    const { app, sample } = buildDemo();
     const marker = "SPEC-FROM-A-90ad";
     const a = await connect(app, await demoKey(app));
     const b = await connect(app, await demoKey(app));
@@ -368,14 +368,14 @@ describe("test specs on the demo", () => {
   });
 
   it("offers the demo's team the line only on the sample a demo key can read, never the customer", async () => {
-    const { app } = buildDemo();
+    const { app, sample } = buildDemo();
     const as = (id: string, key: string) =>
       visitor(app).set("Cookie", `${DEV_COOKIE}=${id}`).get(`/tickets/${key}`);
     expect(
       parse((await as("demo-customer", sample)).text).querySelector(".spec-prompt"),
     ).toBeNull();
     // A demo key reads only the sample made for assistants, so the line is not offered elsewhere.
-    expect(parse((await as("demo-team", "SUP-1")).text).querySelector(".spec-prompt")).toBeNull();
+    expect(parse((await as("demo-team", "SUP-3")).text).querySelector(".spec-prompt")).toBeNull();
     const line = parse((await as("demo-team", sample)).text).querySelector(".spec-prompt")!;
     expect(line.text).toContain(`Using Proofdesk, write a test spec for ${sample}`);
     // It leads to the welcome page's own block for getting a key, not to the top of the page.

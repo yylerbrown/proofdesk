@@ -81,23 +81,28 @@ describe("the sample data", () => {
   it("is made through the service, with a real history", async () => {
     const { app } = buildDemo();
     const list = await asDemo(app, demoTeam.id).get("/api/tickets");
-    // Open tickets newest first, then the resolved one.
+    // Open tickets newest first, then the resolved one. The two samples for AI assistants were
+    // filed first, so they are the oldest and sit under the plain support samples.
     expect(list.body.map((t: { key: string }) => t.key)).toEqual([
       "SUP-8",
       "SUP-7",
-      "SUP-6",
+      "SUP-5",
       "SUP-4",
       "SUP-3",
       "SUP-2",
       "SUP-1",
-      "SUP-5",
+      "SUP-6",
     ]);
+    const sample = list.body.find((t: { key: string }) => t.key === "SUP-1");
+    const recorded = list.body.find((t: { key: string }) => t.key === "SUP-2");
+    expect(sample.title).toBe("Sample for your AI assistant: the total adds tax twice");
+    expect(recorded.title).toMatch(/^Recorded example of a real assistant run/);
     // Every status is there, so each filter changes the list.
     const statuses = new Set(list.body.map((t: { status: string }) => t.status));
     expect([...statuses].sort()).toEqual(["in_progress", "new", "resolved"]);
-    const first = await asDemo(app, demoTeam.id).get("/api/tickets/SUP-1");
+    const first = await asDemo(app, demoTeam.id).get("/api/tickets/SUP-3");
     expect(first.body).toMatchObject({ status: "in_progress", owner_name: "Demo Team Member" });
-    const history = await asDemo(app, demoTeam.id).get("/api/tickets/SUP-1/events");
+    const history = await asDemo(app, demoTeam.id).get("/api/tickets/SUP-3/events");
     expect(history.body.map((e: { type: string }) => e.type)).toContain("owner_changed");
   });
 
@@ -114,36 +119,36 @@ describe("the demo admin sees everything and changes nothing", () => {
     const { app } = buildDemo();
     const admin = asDemo(app, demoAdmin.id);
     expect((await admin.get("/api/tickets?status=archived")).status).toBe(200);
-    const entries = await admin.get("/api/tickets/SUP-1/entries");
+    const entries = await admin.get("/api/tickets/SUP-3/entries");
     expect(entries.body.map((e: { kind: string }) => e.kind)).toContain("note");
   });
 
   it.each([
     ["post", "/api/tickets", { title: "Spam ticket", description: "x" }],
-    ["put", "/api/tickets/SUP-1", { title: "Changed", description: "x" }],
-    ["patch", "/api/tickets/SUP-1", { status: "new" }],
-    ["post", "/api/tickets/SUP-1/archive", {}],
-    ["post", "/api/tickets/SUP-3/restore", {}],
-    ["delete", "/api/tickets/SUP-1", { confirm: "SUP-1" }],
-    ["post", "/api/tickets/SUP-1/take", {}],
-    ["post", "/api/tickets/SUP-1/entries", { kind: "note", body: "x" }],
-    ["put", "/api/tickets/SUP-1/agreed-check", { agreed_check: "x" }],
+    ["put", "/api/tickets/SUP-3", { title: "Changed", description: "x" }],
+    ["patch", "/api/tickets/SUP-3", { status: "new" }],
+    ["post", "/api/tickets/SUP-3/archive", {}],
+    ["post", "/api/tickets/SUP-5/restore", {}],
+    ["delete", "/api/tickets/SUP-3", { confirm: "SUP-3" }],
+    ["post", "/api/tickets/SUP-3/take", {}],
+    ["post", "/api/tickets/SUP-3/entries", { kind: "note", body: "x" }],
+    ["put", "/api/tickets/SUP-3/agreed-check", { agreed_check: "x" }],
   ] as const)("is refused: %s %s", async (method, address, body) => {
     const { app } = buildDemo();
-    const before = await asDemo(app, demoTeam.id).get("/api/tickets/SUP-1");
+    const before = await asDemo(app, demoTeam.id).get("/api/tickets/SUP-3");
     const res = await asDemo(app, demoAdmin.id)[method](address).send(body);
     expect(res.status).toBe(403);
-    expect((await asDemo(app, demoTeam.id).get("/api/tickets/SUP-1")).body).toEqual(before.body);
+    expect((await asDemo(app, demoTeam.id).get("/api/tickets/SUP-3")).body).toEqual(before.body);
   });
 
   it("is shown no controls that would change anything", async () => {
     const { app } = buildDemo();
-    const page = await asDemo(app, demoAdmin.id).get("/tickets/SUP-1");
+    const page = await asDemo(app, demoAdmin.id).get("/tickets/SUP-3");
     // The ticket itself is shown, so the missing controls are not an error page's.
     expect(page.status).toBe(200);
     expect(page.text).toContain("Cannot sign in on my phone");
     for (const action of ["/edit", "/archive", "/delete", "/take", "/entries", "/status"]) {
-      expect(page.text, action).not.toContain(`/tickets/SUP-1${action}`);
+      expect(page.text, action).not.toContain(`/tickets/SUP-3${action}`);
     }
   });
 });
@@ -152,12 +157,12 @@ describe("the other demo people", () => {
   it("cannot archive, restore or delete, so one visitor cannot empty the demo", async () => {
     const { app } = buildDemo();
     const team = asDemo(app, demoTeam.id);
-    expect((await team.post("/api/tickets/SUP-1/archive")).status).toBe(403);
-    expect((await team.delete("/api/tickets/SUP-1").send({ confirm: "SUP-1" })).status).toBe(403);
-    const mine = await asDemo(app, demoCustomer.id).post("/api/tickets/SUP-1/archive");
+    expect((await team.post("/api/tickets/SUP-3/archive")).status).toBe(403);
+    expect((await team.delete("/api/tickets/SUP-3").send({ confirm: "SUP-3" })).status).toBe(403);
+    const mine = await asDemo(app, demoCustomer.id).post("/api/tickets/SUP-3/archive");
     expect(mine.status).toBe(403);
     expect((await team.get("/api/tickets")).body).toHaveLength(8);
-    expect((await team.get("/tickets/SUP-1")).text).not.toContain("/tickets/SUP-1/archive");
+    expect((await team.get("/tickets/SUP-3")).text).not.toContain("/tickets/SUP-3/archive");
   });
 
   it("let a visitor file a ticket and reply as a customer, and work on it as the team", async () => {

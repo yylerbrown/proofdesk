@@ -66,8 +66,11 @@ describe("the filters on the page", () => {
   it("keep each other in every link and in the search form, so the address can be shared", async () => {
     const { app } = await setup();
     const html = parse((await as(app, teamActor).get("/tickets?status=new&owner=me&q=print")).text);
+    // A status link also holds its count, as in "In Progress 1".
     const link = (label: string, nav: string) =>
-      html.querySelectorAll(`nav[aria-label='${nav}'] a`).find((a) => a.text.trim() === label)!;
+      html
+        .querySelectorAll(`nav[aria-label='${nav}'] a`)
+        .find((a) => a.text.trim().replace(/ \d+$/, "") === label)!;
     expect(link("In Progress", "Filter by status").getAttribute("href")).toBe(
       "/tickets?status=in_progress&owner=me&q=print",
     );
@@ -100,7 +103,9 @@ describe("the filters on the page", () => {
     const { app } = await setup();
     const html = parse((await as(app, teamActor).get("/tickets?status=new&owner=none&q=zzz")).text);
     const empty = html.querySelector("p.empty")!;
-    expect(empty.text).toContain("No tickets match.");
+    expect(empty.text).toBe(
+      'No new tickets that nobody owns and match "zzz". Clear the owner filter and search.',
+    );
     expect(empty.querySelector("a")?.getAttribute("href")).toBe("/tickets?status=new");
   });
 });

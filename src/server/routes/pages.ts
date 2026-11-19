@@ -1,6 +1,7 @@
 import { Router, type Request, type RequestHandler, type Response } from "express";
 import type { Actor } from "../actor.js";
 import { DEMO_ACTORS, signedIn } from "../actor.js";
+import { RECORDED_SAMPLE_KEY } from "../demo.js";
 import { forbidden, HttpError, onTicketPage, ValidationError } from "../errors.js";
 import { can } from "../permissions.js";
 import {
@@ -21,8 +22,8 @@ import {
   formMatchesTicket,
   ticketFiledWith,
 } from "../pages/form-id.js";
-import { readListPageQuery } from "../pages/list-query.js";
-import { sameText } from "../tickets/schemas.js";
+import { LIST_ORDER_LABELS, noMatchWords, readListPageQuery } from "../pages/list-query.js";
+import { sameText, type ListOrder } from "../tickets/schemas.js";
 import { statusControl } from "../pages/status-control.js";
 import { rememberSaved, takeProblem, takeSaved, type SavedKey } from "../pages/saved.js";
 import { RESOLVE_REASON_LABELS, TICKET_STATUSES } from "../tickets/schemas.js";
@@ -117,8 +118,8 @@ function demoNext(ticket: Ticket, actor: Actor) {
   return null;
 }
 
-/** The ticket list's filters, as they stand in its address. */
-type ListFilters = { status: string; owner?: "me" | "none"; q?: string };
+/** The ticket list's filters and order, as they stand in its address. */
+type ListFilters = { status: string; owner?: "me" | "none"; q?: string; order?: ListOrder };
 
 /** The address of the ticket list with these filters, leaving out the ones at their default. */
 function listHref(filters: ListFilters, page?: number): string {
@@ -126,6 +127,7 @@ function listHref(filters: ListFilters, page?: number): string {
   if (filters.status !== "all") params.set("status", filters.status);
   if (filters.owner) params.set("owner", filters.owner);
   if (filters.q) params.set("q", filters.q);
+  if (filters.order && filters.order !== "open_first") params.set("order", filters.order);
   if (page !== undefined) params.set("page", String(page));
   const query = params.toString();
   return query ? `/tickets?${query}` : "/tickets";
@@ -343,6 +345,7 @@ export function pagesRouter(service: TicketService): Router {
       statusRow: statusControl(ticket, allowed, actor),
       recordedRun: service.recordedRunKey() === ticket.key,
       assistantSampleKey: service.assistantSampleKey(),
+      recordedSampleKey: RECORDED_SAMPLE_KEY,
       handOffTo: service.handOffCandidates(ticket),
       agentHelp,
       entries,
@@ -431,18 +434,29 @@ export function pagesRouter(service: TicketService): Router {
     // A customer's list is their own tickets, so it has no owner filter to keep.
     const owner = actor.role === "customer" ? undefined : query.owner;
     const q = query.q;
+    // A ticket key typed into the search, such as "sup-3", opens that ticket when this viewer
+    // may see it. Any other text, another customer's key included, is an ordinary search.
+    const typedKey = q === undefined ? null : service.visibleKey(q, actor);
+    if (typedKey !== null) {
+      res.redirect(`/tickets/${typedKey}`);
+      return;
+    }
     const pageNumber = query.page;
-    const tickets = service.listTickets(current, actor, pageNumber, { owner, q });
+    const order = query.order;
+    const tickets = service.listTickets(current, actor, pageNumber, { owner, q }, order);
+    // Beside each status filter: how many tickets it holds with the same owner filter and search.
+    const counts = service.countTickets(actor, { owner, q });
     // Every link on the list keeps the other filters, so a filtered view can be shared.
-    const filters: ListFilters = { status: current, owner, q };
+    const filters: ListFilters = { status: current, owner, q, order };
     const signals = service.assistantSignals(tickets, actor);
     const reopened =
       actor.role === "customer" ? new Set<string>() : service.reopenedByCustomer(tickets);
     // The invitation to bring an assistant: for the team only, until one is connected. On the
     // demo every visitor gets their own connection, so it always invites.
     const connected = actor.demo === true ? 0 : service.connectedAssistants();
+    // The read-only admin preview can connect nothing, so it is not invited.
     const invite =
-      actor.role === "customer"
+      actor.role === "customer" || actor.readOnly === true
         ? null
         : connected > 0
           ? { connected, manage: can(actor, "manage_connections") }
@@ -473,6 +487,9 @@ export function pagesRouter(service: TicketService): Router {
       // Who owns a ticket is the team's question; a customer's list is their own tickets.
       ownerFilters: actor.role !== "customer",
       narrowed: owner !== undefined || q !== undefined,
+      noMatch: noMatchWords(current, owner, q),
+      counts,
+      orders: LIST_ORDER_LABELS,
       showArchivedFilter: can(actor, "list_archived"),
       invite,
     });

@@ -1,5 +1,5 @@
 import type { Db } from "../db.js";
-import type { EntryKind, ResolveReason, TicketStatus } from "./schemas.js";
+import type { EntryKind, ListOrder, ResolveReason, TicketStatus } from "./schemas.js";
 
 // The SQL for tickets lives in this file. Every statement here is a fixed string with ?
 // placeholders, so no user input is ever joined into SQL text.
@@ -126,100 +126,103 @@ export function countHandoffChanges(db: Db, ticketId: number): number {
 export type Page = { limit: number; offset: number };
 
 /**
- * Every ticket that is not archived: open ones first, newest first, then resolved ones.
- * Pass a status to get only that status.
- */
-/**
  * How a list may be narrowed: to one owner or to tickets nobody owns, and to tickets whose title
  * or description holds the search, a LIKE pattern the service escapes.
  */
 export type Narrowing = { ownerId: string | null; unassigned: boolean; search: string | null };
 export const NO_NARROWING: Narrowing = { ownerId: null, unassigned: false, search: null };
 
-// The same conditions in every list below. A fixed string: the values are bound.
+/**
+ * Whose tickets a list holds. The service decides this from who is asking, once, and the same
+ * scope then gives both the rows and the counts, so the two can never disagree.
+ * - everyone: every ticket that is not archived, for the team.
+ * - among: the tickets among these ids that are not archived, for an assistant. The ids are
+ *   applied before the page is cut, so a page holds as many of them as fit.
+ * - filed_by: the tickets one person filed that are not archived, for a customer. There is no
+ *   way to ask it for everyone's tickets, so a mistake in a caller cannot show a customer other
+ *   people's tickets.
+ * - archived: archived tickets only.
+ */
+export type ListScope =
+  | { kind: "everyone" }
+  | { kind: "among"; ids: number[] }
+  | { kind: "filed_by"; createdBy: string }
+  | { kind: "archived" };
+
+// Each scope's condition. Fixed strings: the values are bound.
+const SCOPE_SQL: Record<ListScope["kind"], string> = {
+  everyone: "archived_at IS NULL",
+  among: "archived_at IS NULL AND id IN (SELECT value FROM json_each(@ids))",
+  filed_by: "archived_at IS NULL AND created_by = @createdBy",
+  archived: "archived_at IS NOT NULL",
+};
+
+// The same narrowing in every list and count. A fixed string: the values are bound.
 const NARROWED = `AND (@ownerId IS NULL OR owner_id = @ownerId)
        AND (@unassigned = 0 OR owner_id IS NULL)
        AND (@search IS NULL OR title LIKE @search ESCAPE '\\' OR description LIKE @search ESCAPE '\\')`;
 
-function narrowed(n: Narrowing) {
-  return { ownerId: n.ownerId, unassigned: n.unassigned ? 1 : 0, search: n.search };
+// Each order as SQL. Each ends on the id, so the order is total and a page never repeats or
+// skips a ticket that did not change.
+// Migration 0032 has an index for each, so the team's list never sorts the whole table.
+const ORDER_SQL: Record<ListOrder, string> = {
+  // Open tickets first, newest first, then resolved ones, newest first.
+  open_first: "status = 'resolved', id DESC",
+  oldest: "id ASC",
+  updated: "updated_at DESC, id DESC",
+};
+
+/** The values the statements above bind, with only the ones this scope names. */
+function bound(scope: ListScope, narrow: Narrowing) {
+  const values: Record<string, unknown> = {
+    ownerId: narrow.ownerId,
+    unassigned: narrow.unassigned ? 1 : 0,
+    search: narrow.search,
+  };
+  if (scope.kind === "among") values.ids = JSON.stringify(scope.ids);
+  if (scope.kind === "filed_by") values.createdBy = scope.createdBy;
+  return values;
 }
 
-export function listAllTickets(
+/** One page of the tickets in this scope, of one status or of every status, in this order. */
+export function listTickets(
   db: Db,
+  scope: ListScope,
   status: TicketStatus | null,
+  order: ListOrder,
   page: Page,
   narrow: Narrowing = NO_NARROWING,
 ): TicketRow[] {
   return db
     .prepare(
       `SELECT * FROM tickets
-       WHERE archived_at IS NULL AND (@status IS NULL OR status = @status)
+       WHERE ${SCOPE_SQL[scope.kind]} AND (@status IS NULL OR status = @status)
        ${NARROWED}
-       ORDER BY status = 'resolved', id DESC LIMIT @limit OFFSET @offset`,
+       ORDER BY ${ORDER_SQL[order]} LIMIT @limit OFFSET @offset`,
     )
-    .all({ status, ...page, ...narrowed(narrow) }) as TicketRow[];
+    .all({ ...bound(scope, narrow), status, ...page }) as TicketRow[];
 }
 
 /**
- * The tickets among these ids that are not archived, in the same order as above: what an
- * assistant may list. The ids are applied before the page is cut, so a page holds as many of
- * them as fit, however many other tickets are newer.
+ * How many tickets of each status the same scope and narrowing hold, in one grouped query.
+ * A status with no tickets counts 0.
  */
-export function listTicketsAmong(
+export function countTicketsByStatus(
   db: Db,
-  ids: number[],
-  status: TicketStatus | null,
-  page: Page,
+  scope: ListScope,
   narrow: Narrowing = NO_NARROWING,
-): TicketRow[] {
-  return db
+): Record<TicketStatus, number> {
+  const rows = db
     .prepare(
-      `SELECT * FROM tickets
-       WHERE id IN (SELECT value FROM json_each(@ids)) AND archived_at IS NULL
-         AND (@status IS NULL OR status = @status)
+      `SELECT status, COUNT(*) AS n FROM tickets
+       WHERE ${SCOPE_SQL[scope.kind]}
        ${NARROWED}
-       ORDER BY status = 'resolved', id DESC LIMIT @limit OFFSET @offset`,
+       GROUP BY status`,
     )
-    .all({ ids: JSON.stringify(ids), status, ...page, ...narrowed(narrow) }) as TicketRow[];
-}
-
-/**
- * The tickets one person filed that are not archived, in the same order as above. There is no way to ask
- * it for everyone's tickets, so a mistake in a caller cannot show a customer other people's
- * tickets. created_by is a plain condition, so the index on it is used.
- */
-export function listTicketsFiledBy(
-  db: Db,
-  createdBy: string,
-  status: TicketStatus | null,
-  page: Page,
-  narrow: Narrowing = NO_NARROWING,
-): TicketRow[] {
-  return db
-    .prepare(
-      `SELECT * FROM tickets
-       WHERE created_by = @createdBy AND archived_at IS NULL
-         AND (@status IS NULL OR status = @status)
-       ${NARROWED}
-       ORDER BY status = 'resolved', id DESC LIMIT @limit OFFSET @offset`,
-    )
-    .all({ createdBy, status, ...page, ...narrowed(narrow) }) as TicketRow[];
-}
-
-/** Archived tickets only, newest first. */
-export function listArchivedTickets(
-  db: Db,
-  page: Page,
-  narrow: Narrowing = NO_NARROWING,
-): TicketRow[] {
-  return db
-    .prepare(
-      `SELECT * FROM tickets WHERE archived_at IS NOT NULL
-       ${NARROWED}
-       ORDER BY id DESC LIMIT @limit OFFSET @offset`,
-    )
-    .all({ ...page, ...narrowed(narrow) }) as TicketRow[];
+    .all(bound(scope, narrow)) as { status: TicketStatus; n: number }[];
+  const counts: Record<TicketStatus, number> = { new: 0, in_progress: 0, resolved: 0 };
+  for (const row of rows) counts[row.status] = row.n;
+  return counts;
 }
 
 export type TicketText = {

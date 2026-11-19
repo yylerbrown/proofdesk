@@ -114,10 +114,12 @@ describe("the list's empty search", () => {
 
   it("names only what is set", async () => {
     const { app } = await filed();
-    expect(await sentence(app, "q=zzz")).toBe("No tickets match. Clear the search.");
-    expect(await sentence(app, "owner=me")).toBe("No tickets match. Clear the owner filter.");
+    expect(await sentence(app, "q=zzz")).toBe('No tickets match "zzz". Clear the search.');
+    expect(await sentence(app, "owner=me")).toBe(
+      "No tickets that you own. Clear the owner filter.",
+    );
     expect(await sentence(app, "owner=me&q=zzz")).toBe(
-      "No tickets match. Clear the owner filter and search.",
+      'No tickets that you own and match "zzz". Clear the owner filter and search.',
     );
   });
 });

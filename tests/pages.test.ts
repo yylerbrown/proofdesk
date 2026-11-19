@@ -29,8 +29,8 @@ describe("ticket list page", () => {
     await submitForm(app, { ...valid, title: "First ticket" });
     await submitForm(app, { ...valid, title: "Second ticket" });
     const res = await admin(app).get("/tickets");
-    expect(res.text).toContain('<a href="/tickets/SUP-1">SUP-1</a>');
-    expect(res.text).toContain('<a href="/tickets/SUP-2">SUP-2</a>');
+    expect(res.text).toContain('<a href="/tickets/SUP-1" tabindex="-1">SUP-1</a>');
+    expect(res.text).toContain('<a href="/tickets/SUP-2" tabindex="-1">SUP-2</a>');
     expect(res.text.indexOf("Second ticket")).toBeLessThan(res.text.indexOf("First ticket"));
   });
 

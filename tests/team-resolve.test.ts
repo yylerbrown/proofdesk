@@ -187,15 +187,18 @@ describe("how a team resolution shows", () => {
 
   it("reaches an assistant's read as a label, without a visitor's note", async () => {
     const built = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
-    seedDemo(createTicketService(built.db, built.config.ticketPrefix));
+    const service = createTicketService(built.db, built.config.ticketPrefix);
+    seedDemo(service);
+    // The seed records the sample's key, so no test names a fixed number for it.
+    const sample = service.assistantSampleKey();
     const team = visitor(built.app).set("Cookie", `${DEV_COOKIE}=demo-team`);
     await team
-      .post("/api/tickets/SUP-4/resolve")
+      .post(`/api/tickets/${sample}/resolve`)
       .send({ reason: "wont_fix", note: "A visitor's words." });
     const page = parse((await visitor(built.app).post("/demo/connection")).text);
     const key = page.querySelector("input.key")!.getAttribute("value")!;
     const read = await request(built.app)
-      .get("/api/tickets/SUP-4")
+      .get(`/api/tickets/${sample}`)
       .set("Authorization", `Bearer ${key}`);
     expect(read.body.resolution).toMatchObject({
       by: "team",

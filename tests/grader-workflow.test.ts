@@ -30,7 +30,7 @@ function demo() {
 /** On the demo, the team member takes a new sample and starts work on it. */
 async function demoInProgress() {
   const built = demo();
-  await built.asDemo("demo-team").post("/tickets/SUP-2/take-and-start").set(FROM_THIS_SITE);
+  await built.asDemo("demo-team").post("/tickets/SUP-4/take-and-start").set(FROM_THIS_SITE);
   return built;
 }
 
@@ -81,24 +81,24 @@ describe("who resolves", () => {
 describe("the demo's ask", () => {
   it("is one press after taking the ticket, with no sample values to fill in", async () => {
     const { asDemo } = await demoInProgress();
-    const page = parse((await asDemo("demo-team").get("/tickets/SUP-2")).text);
+    const page = parse((await asDemo("demo-team").get("/tickets/SUP-4")).text);
     const next = page.querySelector(".next-action form")!;
-    expect(next.getAttribute("action")).toBe("/tickets/SUP-2/ready");
+    expect(next.getAttribute("action")).toBe("/tickets/SUP-4/ready");
     expect(next.querySelector("button")?.text).toBe("Ask the customer to verify");
     expect(page.text).not.toContain("Demo sample value");
     expect(page.querySelector("form[action$='/sample-fix']")).toBeNull();
 
-    const asked = await asDemo("demo-team").post("/tickets/SUP-2/ready").set(FROM_THIS_SITE);
-    expect([asked.status, asked.headers.location]).toEqual([303, "/tickets/SUP-2"]);
-    const customer = parse((await asDemo("demo-customer").get("/tickets/SUP-2")).text);
+    const asked = await asDemo("demo-team").post("/tickets/SUP-4/ready").set(FROM_THIS_SITE);
+    expect([asked.status, asked.headers.location]).toEqual([303, "/tickets/SUP-4"]);
+    const customer = parse((await asDemo("demo-customer").get("/tickets/SUP-4")).text);
     expect(customer.querySelector("#did-this-fix-it h2")?.text).toBe("Did this fix it?");
   });
 
   it("has no sample fix address any more", async () => {
     const { asDemo } = await demoInProgress();
-    const old = await asDemo("demo-team").post("/tickets/SUP-2/sample-fix").set(FROM_THIS_SITE);
+    const old = await asDemo("demo-team").post("/tickets/SUP-4/sample-fix").set(FROM_THIS_SITE);
     expect(old.status).toBe(404);
-    expect((await asDemo("demo-team").get("/api/tickets/SUP-2")).body).toMatchObject({
+    expect((await asDemo("demo-team").get("/api/tickets/SUP-4")).body).toMatchObject({
       change_url: null,
       ready_at: null,
     });

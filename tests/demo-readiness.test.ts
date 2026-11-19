@@ -19,14 +19,15 @@ function demo({ recorded }: { recorded: boolean }) {
     // What older code left behind: sample tickets with no record of what was seeded.
     service.createTicket({ title: "Cannot sign in", description: "x" }, DEMO_ACTORS[0]!);
   }
-  return built;
+  // The seed records the sample's key, so no test names a fixed number for it.
+  return { ...built, sample: service.assistantSampleKey() ?? "none" };
 }
 
 describe("the sample made for assistants", () => {
   it("is owned by the demo's team member and in progress, so a review request reaches someone", async () => {
-    const { app } = demo({ recorded: true });
+    const { app, sample } = demo({ recorded: true });
     const ticket = (
-      await visitor(app).set("Cookie", `${DEV_COOKIE}=demo-team`).get("/api/tickets/SUP-4")
+      await visitor(app).set("Cookie", `${DEV_COOKIE}=demo-team`).get(`/api/tickets/${sample}`)
     ).body;
     expect(ticket).toMatchObject({
       title: "Sample for your AI assistant: the total adds tax twice",
@@ -36,12 +37,12 @@ describe("the sample made for assistants", () => {
   });
 
   it("is the one ticket a new demo connection lists, so a first run just works", async () => {
-    const { app } = demo({ recorded: true });
+    const { app, sample } = demo({ recorded: true });
     const page = parse((await visitor(app).post("/demo/connection")).text);
     const key = page.querySelector("input.key")!.getAttribute("value")!;
     const list = await request(app).get("/api/tickets").set("Authorization", `Bearer ${key}`);
     expect(list.body).toEqual([
-      expect.objectContaining({ key: "SUP-4", owner_name: "Demo Team Member" }),
+      expect.objectContaining({ key: sample, owner_name: "Demo Team Member" }),
     ]);
   });
 });

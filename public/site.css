@@ -872,6 +872,25 @@ form.list-search :is(input, button):focus-visible {
   outline: none;
   border-color: var(--pd-focus);
 }
+/* How many tickets each status filter holds: smaller and muted, inside the filter's own link. */
+.filter-count {
+  margin-left: 0.25em;
+  color: var(--pd-muted);
+  font-size: var(--pd-text-xs);
+  font-variant-numeric: tabular-nums;
+}
+/* The list's order: a quiet line under the table, its current choice in plain text weight. */
+.list-order {
+  color: var(--pd-muted);
+}
+.list-order a {
+  margin-left: var(--pd-space-2);
+}
+.list-order a[aria-current] {
+  color: var(--pd-text);
+  font-weight: var(--pd-weight-semibold);
+  text-decoration: none;
+}
 @media (max-width: 639px) {
   form.list-search {
     max-width: none;
@@ -2368,8 +2387,8 @@ dl.run-facts dd {
 }
 
 /*
- * The invitation to bring your own AI assistant, on the team's ticket list: a compact strip of
- * small text, a side offer that never pushes the tickets far down. On a wide screen its links sit
+ * The invitation to bring your own AI assistant, on the team's ticket list: one quiet line of
+ * small muted text under the tickets, so it never pushes them down. On a wide screen its links sit
  * beside the text. It goes once dismissed or once an assistant is connected.
  */
 .assistant-invite {
@@ -2377,16 +2396,14 @@ dl.run-facts dd {
   flex-wrap: wrap;
   align-items: baseline;
   gap: var(--pd-space-1) var(--pd-space-4);
-  margin: 0 0 var(--pd-space-4);
-  padding: var(--pd-space-2) var(--pd-space-3);
-  border: 1px solid var(--pd-border);
-  border-radius: var(--pd-radius);
-  background: var(--pd-surface);
+  margin: var(--pd-space-4) 0 0;
+  color: var(--pd-muted);
   font-size: var(--pd-text-sm);
 }
 .assistant-invite p {
-  flex: 1 1 28rem;
+  flex: 0 1 auto;
   margin: 0;
+  color: inherit;
 }
 .invite-actions {
   display: flex;
@@ -2404,22 +2421,14 @@ dl.run-facts dd {
   font-size: inherit;
   line-height: inherit;
 }
-.invite-connect {
-  font-weight: var(--pd-weight-semibold);
-}
 .invite-who,
 .assistant-connected {
   color: var(--pd-muted);
 }
-/*
- * On a phone the strip keeps to its headline and links ("See an assistant's work" shows the rest),
- * and each link keeps a 44-pixel tap area without making the strip taller.
- */
+/* On a phone each link keeps a 44-pixel tap area without making the line taller. */
 @media (max-width: 639px) {
-  .invite-more {
-    display: none;
-  }
-  .invite-actions :is(a, button.link) {
+  .invite-actions :is(a, button.link),
+  .list-order a {
     display: inline-block;
     margin-block: -12px;
     padding-block: 12px;

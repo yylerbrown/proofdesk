@@ -136,11 +136,15 @@ describe("copy buttons on the pages", () => {
 
   it("sit beside the demo key's command too", async () => {
     const built = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
-    seedDemo(createTicketService(built.db, built.config.ticketPrefix));
+    const service = createTicketService(built.db, built.config.ticketPrefix);
+    seedDemo(service);
     const found = copies(read((await visitor(built.app).post("/demo/connection")).text));
     expect(found.length).toBe(5);
     for (const item of found) expect(item.copies).toBe(item.shown);
-    expect(found[2]!.copies).toBe("Using Proofdesk, write a test spec for SUP-4");
+    // The seed records the sample's key, so no test names a fixed number for it.
+    expect(found[2]!.copies).toBe(
+      `Using Proofdesk, write a test spec for ${service.assistantSampleKey()}`,
+    );
   });
 
   it("sits beside the prompt that asks an assistant for a test spec", async () => {

@@ -188,6 +188,13 @@ export const changeStatusSchema = z.object({
 export const TICKET_LIST_FILTERS = [...TICKET_STATUSES, "all", "archived"] as const;
 export type TicketListFilter = (typeof TICKET_LIST_FILTERS)[number];
 
+/**
+ * The orders a list can be read in: open tickets first and newest first (the default), oldest
+ * first, or the most recently changed first.
+ */
+export const LIST_ORDERS = ["open_first", "oldest", "updated"] as const;
+export type ListOrder = (typeof LIST_ORDERS)[number];
+
 export const listQuerySchema = z.object({
   status: z.enum(TICKET_LIST_FILTERS).optional(),
   owner: z.enum(["me", "none"]).optional().meta({
@@ -200,29 +207,59 @@ export const listQuerySchema = z.object({
       z.string().trim().max(100, "Must be at most 100 characters.").optional(),
     )
     .meta({ description: "Words to find in the title or description, in any case." }),
+  order: z.enum(LIST_ORDERS).optional().meta({
+    description:
+      "open_first (the default): open tickets newest first, then resolved ones. oldest: oldest first. updated: the most recently changed first. Pages are counted by position, so a ticket that changes while you page through may move onto a page you already read; oldest is the order that never moves.",
+  }),
   page: z.coerce.number().int().min(1).max(100000).optional(),
   cursor: z.string().max(100).optional().meta({
-    description: "Where the previous page ended, as given by its next_cursor or Link header.",
+    description:
+      "Where the previous page ended, as given by its next_cursor or Link header. It keeps the order it was made for.",
   }),
 });
 
-/** A cursor names the next page. It is opaque to callers: pass back what you were given. */
-export function cursorFor(page: number): string {
-  return Buffer.from(JSON.stringify({ page })).toString("base64url");
+/** A cursor names the next page and its order. It is opaque to callers: pass back what you were given. */
+export function cursorFor(page: number, order: ListOrder): string {
+  return Buffer.from(JSON.stringify({ page, order })).toString("base64url");
 }
 
-/** The page a cursor names, or a validation error for one that was not made here. */
-export function pageOf(cursor: string): number {
+/** The page and order a cursor names, or a validation error for one that was not made here. */
+function readCursor(cursor: string): { page: number; order: ListOrder } {
   try {
-    const { page } = z
-      .object({ page: z.number().int().min(1).max(100000) })
+    const { page, order } = z
+      .object({
+        page: z.number().int().min(1).max(100000),
+        // A cursor made before orders existed names none: it is the default order.
+        order: z.enum(LIST_ORDERS).default("open_first"),
+      })
       .parse(JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")));
-    return page;
+    return { page, order };
   } catch {
     throw new ValidationError("That cursor was not made here.", {
       cursor: ["Pass back the next_cursor you were given, unchanged."],
     });
   }
+}
+
+/**
+ * Which page of the list to read, and in which order, from a list query already checked by
+ * listQuerySchema. A cursor keeps its own order, so the next page is read the same way as the
+ * one before it. An order that differs from the cursor's is refused, not guessed.
+ */
+export function listPosition(query: z.infer<typeof listQuerySchema>): {
+  page: number;
+  order: ListOrder;
+} {
+  if (query.cursor === undefined) {
+    return { page: query.page ?? 1, order: query.order ?? "open_first" };
+  }
+  const position = readCursor(query.cursor);
+  if (query.order !== undefined && query.order !== position.order) {
+    throw new ValidationError("That cursor was made for another order.", {
+      order: ["Leave out order when you pass a cursor, or pass the order the cursor was made for."],
+    });
+  }
+  return position;
 }
 
 /** Why the team resolved a ticket without the customer's Yes. */

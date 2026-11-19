@@ -29,7 +29,7 @@ describe("the ticket list", () => {
     const all = parse((await as(app, teamActor).get("/tickets")).text);
     expect(all.querySelector("h1")?.text).toBe("All tickets");
     expect(all.querySelector(".list-note")?.text).toBe(
-      "Tickets start New, move to In Progress when work starts, and become Resolved when the customer who filed them confirms the fix or the team resolves them with a reason.",
+      "A ticket moves from New to In Progress, and is resolved when its customer confirms the fix or the team gives a reason.",
     );
     expect(all.querySelector(".role-note")).toBeNull();
   });

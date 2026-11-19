@@ -34,7 +34,7 @@
 
 <%# Another demo customer filed the recorded run, so only the team opens it. %>
 <% if (locals.recordedRun && viewerRole !== "customer") { %>
-<p class="recorded-run">A recorded example of a real assistant run: what it sent is shown here as it sent it. The run worked on the assistant sample, <%= locals.assistantSampleKey ?? "SUP-4" %>, in an earlier copy of this demo, so its own words name <%= locals.assistantSampleKey ?? "SUP-4" %>. <a href="/assistant-run">See its transcript and files</a></p>
+<p class="recorded-run">A recorded example of a real assistant run: what it sent is shown here as it sent it. The run worked on the assistant sample when it was <%= recordedSampleKey %>, in an earlier copy of this demo, so its own words name <%= recordedSampleKey %>.<% if (locals.assistantSampleKey && assistantSampleKey !== recordedSampleKey) { %> Here that sample is <%= assistantSampleKey %>.<% } %> <a href="/assistant-run">See its transcript and files</a></p>
 <% } %>
 <%# On the demo: the next role to view this same ticket as, or where resolved tickets are listed. %>
 <% if (locals.demoNext) { %>

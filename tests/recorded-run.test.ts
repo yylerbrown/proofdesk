@@ -31,15 +31,19 @@ function sent(): Record<string, Record<string, unknown>> {
 
 function demo() {
   const built = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
-  seedDemo(createTicketService(built.db, built.config.ticketPrefix));
+  const service = createTicketService(built.db, built.config.ticketPrefix);
+  seedDemo(service);
   const asTeam = () => visitor(built.app).set("Cookie", `${DEV_COOKIE}=demo-team`);
-  return { ...built, asTeam };
+  // The seed records its samples' keys, so no test names a fixed number for them.
+  const sample = service.assistantSampleKey() ?? "none";
+  const recorded = service.recordedRunKey() ?? "none";
+  return { ...built, asTeam, sample, recorded };
 }
 
 describe("the recorded run on the demo", () => {
   it("is labelled, carries the same check, and was left as the run left it", async () => {
-    const { asTeam } = demo();
-    const ticket = (await asTeam().get("/api/tickets/SUP-8")).body;
+    const { asTeam, recorded } = demo();
+    const ticket = (await asTeam().get(`/api/tickets/${recorded}`)).body;
     expect(ticket.title).toBe(
       "Recorded example of a real assistant run on 18 Nov 2026: the total adds tax twice",
     );
@@ -49,9 +53,9 @@ describe("the recorded run on the demo", () => {
   });
 
   it("holds the spec, the evidence and the review request exactly as the assistant sent them", async () => {
-    const { asTeam } = demo();
+    const { asTeam, recorded } = demo();
     const inputs = sent();
-    const spec = (await asTeam().get("/api/tickets/SUP-8")).body.spec;
+    const spec = (await asTeam().get(`/api/tickets/${recorded}`)).body.spec;
     expect(spec.state).toBe("proposed");
     expect(spec.summary).toBe(inputs.propose_spec!.summary);
     expect(
@@ -64,7 +68,7 @@ describe("the recorded run on the demo", () => {
       })),
     ).toEqual(inputs.propose_spec!.scenarios);
 
-    const [evidence] = (await asTeam().get("/api/tickets/SUP-8/evidence")).body;
+    const [evidence] = (await asTeam().get(`/api/tickets/${recorded}/evidence`)).body;
     const reported = inputs.add_evidence!;
     expect(evidence).toMatchObject({
       kind: reported.kind,
@@ -77,7 +81,7 @@ describe("the recorded run on the demo", () => {
     });
     expect(evidence.report).toEqual(reported.report);
 
-    const notes = (await asTeam().get("/api/tickets/SUP-8/entries")).body as Record<
+    const notes = (await asTeam().get(`/api/tickets/${recorded}/entries`)).body as Record<
       string,
       unknown
     >[];
@@ -90,8 +94,8 @@ describe("the recorded run on the demo", () => {
   });
 
   it("labels the evidence with the assistant that reported it, and links the run", async () => {
-    const { asTeam } = demo();
-    const html = parse((await asTeam().get("/tickets/SUP-8")).text);
+    const { asTeam, recorded } = demo();
+    const html = parse((await asTeam().get(`/tickets/${recorded}`)).text);
     expect(html.querySelector("ul.evidence")?.text).toContain(
       "Reported by Demo visitor's assistant (AI agent)",
     );
@@ -99,8 +103,8 @@ describe("the recorded run on the demo", () => {
   });
 
   it("keeps the assistant's review request apart from the customer's check, and says where SUP-4 comes from", async () => {
-    const { asTeam } = demo();
-    const html = parse((await asTeam().get("/tickets/SUP-8")).text);
+    const { asTeam, sample, recorded } = demo();
+    const html = parse((await asTeam().get(`/tickets/${recorded}`)).text);
     const check = html
       .querySelectorAll("section")
       .find((s) => s.querySelector("h2")?.text === "How will we know it's fixed?")!;
@@ -114,7 +118,7 @@ describe("the recorded run on the demo", () => {
     expect(inside.indexOf("<blockquote")).toBeGreaterThan(-1);
     expect(inside.indexOf("<blockquote")).toBeLessThan(inside.indexOf("assistant-signal"));
     expect(html.querySelector(".recorded-run")?.text).toContain(
-      "The run worked on the assistant sample, SUP-4, in an earlier copy of this demo",
+      `The run worked on the assistant sample when it was SUP-4, in an earlier copy of this demo, so its own words name SUP-4. Here that sample is ${sample}.`,
     );
   });
 });
@@ -147,7 +151,7 @@ describe("the assistant's work, on its own page", () => {
   });
 
   it("never links a viewer to a ticket they cannot open, and opens it for them as the team", async () => {
-    const { app } = demo();
+    const { app, recorded } = demo();
     const viewers: [string, ReturnType<typeof visitor>][] = [
       ["signed out", visitor(app)],
       ...["demo-customer", "demo-team", "demo-admin"].map(
@@ -179,9 +183,9 @@ describe("the assistant's work, on its own page", () => {
           .map((i) => [i.getAttribute("name"), i.getAttribute("value")]),
       );
       const sent = await visitor(app).post(form.getAttribute("action")!).type("form").send(fields);
-      expect(sent.headers.location).toBe("/tickets/SUP-8");
+      expect(sent.headers.location).toBe(`/tickets/${recorded}`);
       const cookie = sent.headers["set-cookie"] as unknown as string[];
-      const opened = await visitor(app).get("/tickets/SUP-8").set("Cookie", cookie);
+      const opened = await visitor(app).get(`/tickets/${recorded}`).set("Cookie", cookie);
       expect(opened.status).toBe(200);
     }
   });
@@ -252,7 +256,7 @@ describe("the run page on a phone", () => {
 
 describe("the demo's history and the assistant samples' customer", () => {
   it("names every person and assistant in history, never Unknown person or a raw id", async () => {
-    const { app } = demo();
+    const { app, recorded } = demo();
     const as = (id: string) => visitor(app).set("Cookie", `${DEV_COOKIE}=${id}`);
     const who = async (key: string, viewer: string) =>
       parse((await as(viewer).get(`/tickets/${key}`)).text)
@@ -262,22 +266,22 @@ describe("the demo's history and the assistant samples' customer", () => {
       const rows = await who(`SUP-${n}`, "demo-team");
       expect(rows.join(" | "), `SUP-${n}`).not.toMatch(/Unknown person|demo-recorded-assistant/);
     }
-    expect(await who("SUP-6", "demo-admin")).toContain("Second Demo Customer customer");
-    expect(await who("SUP-7", "demo-admin")).toContain("Third Demo Customer customer");
-    expect(await who("SUP-8", "demo-team")).toContain("Demo visitor's assistant (AI agent)");
+    expect(await who("SUP-7", "demo-admin")).toContain("Second Demo Customer customer");
+    expect(await who("SUP-8", "demo-admin")).toContain("Third Demo Customer customer");
+    expect(await who(recorded, "demo-team")).toContain("Demo visitor's assistant (AI agent)");
     // Named in plain words, with no connection id.
     expect(RECORDED_ASSISTANT.name).not.toMatch(/[0-9a-f]{6,}/);
   });
 
   it("files both assistant samples for another customer, out of the demo customer's own list", async () => {
-    const { app } = demo();
+    const { app, sample, recorded } = demo();
     const as = (id: string) => visitor(app).set("Cookie", `${DEV_COOKIE}=${id}`);
     const mine = (await as("demo-customer").get("/api/tickets")).body as { key: string }[];
     const keys = mine.map((ticket) => ticket.key);
-    expect(keys).not.toContain("SUP-4");
-    expect(keys).not.toContain("SUP-8");
-    expect((await as("demo-customer").get("/tickets/SUP-8")).status).toBe(404);
-    for (const key of ["SUP-4", "SUP-8"]) {
+    expect(keys).not.toContain(sample);
+    expect(keys).not.toContain(recorded);
+    expect((await as("demo-customer").get(`/tickets/${recorded}`)).status).toBe(404);
+    for (const key of [sample, recorded]) {
       const rows = parse((await as("demo-admin").get(`/tickets/${key}`)).text)
         .querySelectorAll("details.history tbody tr")
         .map((row) => row.text.replace(/\s+/g, " ").trim());
@@ -286,11 +290,13 @@ describe("the demo's history and the assistant samples' customer", () => {
         key,
       ).toContain("Second Demo Customer");
     }
-    // The team still reads where SUP-8's words come from.
-    const description = parse((await as("demo-team").get("/tickets/SUP-8")).text).querySelector(
-      ".ticket-summary",
-    )!.text;
-    expect(description).toContain("what one real AI assistant did on SUP-4, the sample ticket");
+    // The team still reads where the recorded run's words come from.
+    const description = parse(
+      (await as("demo-team").get(`/tickets/${recorded}`)).text,
+    ).querySelector(".ticket-summary")!.text;
+    expect(description).toContain(
+      "what one real AI assistant did on SUP-4, the sample ticket for assistants in an earlier copy of this demo",
+    );
     expect(description).toContain("which the team sees");
   });
 });

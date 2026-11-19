@@ -3,7 +3,7 @@ import { roleOf } from "../auth.js";
 import { DEMO_SEED_PEOPLE } from "../demo.js";
 import type { Config } from "../config.js";
 import type { Db } from "../db.js";
-import { listSignedInPeople } from "./repository.js";
+import { listPossibleTeam, listSignedInPeopleAmong } from "./repository.js";
 
 /** A person a ticket can be handed to. */
 export type TeamMember = { id: string; name: string };
@@ -18,8 +18,9 @@ export function teamMembers(config: Config, db: Db): () => TeamMember[] {
     const made = entrancePeople(config)
       .filter((person) => person.role !== "customer" && person.readOnly !== true)
       .map(({ id, name }) => ({ id, name }));
-    // One query for everyone who has signed in, with their GitHub user numbers.
-    const signedIn = listSignedInPeople(db)
+    // One query for the people who may be on the team, never every customer who signed in.
+    const settingsIds = [...config.adminGithubIds, ...config.teamGithubIds];
+    const signedIn = listPossibleTeam(db, settingsIds)
       .filter(
         (person) =>
           roleOf(config, person.github_id ?? undefined, person.chosen_role) !== "customer",
@@ -41,9 +42,9 @@ export function peopleRoles(config: Config, db: Db): (ids: string[]) => Map<stri
     for (const person of [...DEV_ACTORS, ...DEMO_ACTORS, ...DEMO_SEED_PEOPLE]) {
       if (wanted.has(person.id)) roles.set(person.id, person.role);
     }
-    for (const person of listSignedInPeople(db)) {
-      if (wanted.has(person.id))
-        roles.set(person.id, roleOf(config, person.github_id ?? undefined, person.chosen_role));
+    // Only the people asked about, however many others have signed in.
+    for (const person of listSignedInPeopleAmong(db, [...wanted])) {
+      roles.set(person.id, roleOf(config, person.github_id ?? undefined, person.chosen_role));
     }
     return roles;
   };
