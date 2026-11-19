@@ -33,10 +33,7 @@ These rules apply to any AI coding assistant that changes this repository.
   changes repository settings, secrets or branch protection.
 - Checks gate every merge but one: typecheck, lint, format, the unit tests, the build and the
   browser journey pass on the exact commit being merged, run by CI or by a local gate that runs
-  the same commands. `docs/SPEC.md` records the one exception and when the local gate took over.
-- In this build, under the owner's standing instruction, a separate coordinating assistant merged
-  the pull requests and deployed the demo and the real site. The owner set the direction and made
-  the design calls. Reviews came from other AI sessions and models, and no human reviewer read
-  the pull requests.
+  the same commands. `docs/BUILD_LOG.md` records the one exception, when the local gate took
+  over, and who merged and reviewed the pull requests in this build.
 - Say plainly in the pull request what was run and what was not. Do not claim something
   works unless it was run.

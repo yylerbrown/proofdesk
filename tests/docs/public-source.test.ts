@@ -21,7 +21,11 @@ describe("the public source", () => {
     const readme = fs.readFileSync("README.md", "utf8");
     expect(readme).toContain(`<${PUBLIC}>`);
     expect(readme).toContain(`git clone ${PUBLIC}.git`);
-    expect(readme).toMatch(/refer to the private working\s+repository/);
+    // Pull request numbers belong to the private working repository. The README names none, and
+    // the build log, which does, says whose they are.
+    expect(readme).not.toMatch(/#\d+\b/);
+    const log = fs.readFileSync("docs/BUILD_LOG.md", "utf8");
+    expect(log).toMatch(/refer to the private working\s+repository/);
   });
 
   it("is the only repository any tracked file links to on GitHub", () => {

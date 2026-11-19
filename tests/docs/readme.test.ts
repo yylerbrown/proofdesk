@@ -29,28 +29,32 @@ describe("the API reference's route table", () => {
   });
 });
 
-// The feature list in the README names the exact buttons, links and filters a visitor presses.
-// Each one must be on a page the demo actually shows, so the list cannot promise a label the
-// product does not have.
-describe("the README's feature list", () => {
-  // The README is written for someone trying the product, not for whoever marks it.
-  it("is headed for a visitor, and no heading speaks of how the work is marked", () => {
+// The tour's feature list and the README's one walkthrough name the exact buttons, links and
+// filters a visitor presses. Each one must be on a page the demo actually shows, so neither can
+// promise a label the product does not have.
+describe("the feature list and the README's walkthrough", () => {
+  // Both are written for someone trying the product, not for whoever marks it.
+  it("are headed for a visitor, and no heading speaks of how the work is marked", () => {
+    const tour = fs.readFileSync("docs/TOUR.md", "utf8");
     const readme = fs.readFileSync("README.md", "utf8");
-    const headings = [...readme.matchAll(/^(#{1,6} .+|\*\*[^*]+\*\*)$/gm)].map((m) => m[1]!);
+    const headings = [...(tour + readme).matchAll(/^(#{1,6} .+|\*\*[^*]+\*\*)$/gm)].map(
+      (m) => m[1]!,
+    );
     expect(headings).toContain("## Try each feature in a minute");
+    expect(headings).toContain("## One ticket, start to finish");
     expect(headings.filter((h) => /rubric|grader|bonus/i.test(h))).toEqual([]);
   });
 
-  it("names only labels the demo shows", async () => {
+  it("name only labels the demo shows", async () => {
     const { parse } = await import("node-html-parser");
     const { DEV_COOKIE } = await import("../../src/server/actor.js");
     const { seedDemo } = await import("../../src/server/demo.js");
     const { createTicketService } = await import("../../src/server/tickets/service.js");
     const { buildTestApp, SIGN_IN_ENV, visitor } = await import("../helpers.js");
 
-    const readme = fs.readFileSync("README.md", "utf8");
-    const start = readme.indexOf("## Try each feature in a minute");
-    const table = readme.slice(start, readme.indexOf("\n## ", start + 1));
+    const tour = fs.readFileSync("docs/TOUR.md", "utf8");
+    const start = tour.indexOf("## Try each feature in a minute");
+    const table = tour.slice(start);
     // Each feature lists where to start and what to press; the bold words there are labels.
     const labels = new Set<string>();
     for (const line of table.split("\n")) {
@@ -59,6 +63,13 @@ describe("the README's feature list", () => {
     }
     expect(table).not.toMatch(/^\|/m);
     expect(labels.size).toBeGreaterThan(10);
+    // The README's walkthrough: every bold word in its numbered steps is a label or a status.
+    const readme = fs.readFileSync("README.md", "utf8");
+    const walkStart = readme.indexOf("## One ticket, start to finish");
+    const walk = readme.slice(walkStart, readme.indexOf("\n## ", walkStart + 1));
+    const walkLabels = [...walk.matchAll(/\*\*([^*]+)\*\*/g)].map((m) => m[1]!);
+    expect(walkLabels.length).toBeGreaterThan(6);
+    for (const label of walkLabels) labels.add(label);
 
     // The pages a visitor passes through on the demo, and the real site's sign-in.
     const demo = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });

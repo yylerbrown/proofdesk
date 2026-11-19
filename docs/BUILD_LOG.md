@@ -3,7 +3,8 @@
 An honest record of each step: what was asked, what came back wrong or was changed, and the
 pull request that carried it. Pull request numbers refer to the private working repository; the
 public copy's `docs/PULL_REQUESTS.md` holds each one's title and description. The notes under the
-table explain the gaps.
+table explain the gaps, and [How changes reached main](#how-changes-reached-main) says who merged
+them and which checks ran.
 
 | Step                                             | What was asked                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | What came back wrong or was changed                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Pull request                     |
 | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
@@ -151,6 +152,27 @@ table explain the gaps.
 | 140. Tests named for what they test              | Nine test files named for the build's history now say what they check, mixed files are split, and the tests that read the docs sit under tests/docs.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | One test that only checked for a long-removed style was deleted. With the README heading renamed, the moved docs tests fail.                                                                                                                                                                                                                                                                                                                                                                                                                       | #154                             |
 | 141. The ticket service by concern               | The ticket service, over 2,000 lines, is split into one file per concern, with every page, answer and the API description exactly the same; the demo's seeding record moves beside the demo.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Other design-debt items stay as they were. Putting the old service file back fails the length test.                                                                                                                                                                                                                                                                                                                                                                                                                                                | #155                             |
 
+## How changes reached main
+
+- **The private working repository.** The build happened in a private repository, and every pull
+  request number in this log is one of its pull requests. The public repository is a clean copy
+  of it, and the public copy's `docs/PULL_REQUESTS.md` holds each pull request's number, title
+  and description.
+- **Who merged.** The project skeleton, seven commits on 17 November, went straight to `main`.
+  Every later change came through a pull request. The assistant that built a change never merged
+  it or deployed it. Under the owner's standing instruction, a separate coordinating assistant
+  merged the pull requests and deployed the demo and the real site. The owner set the direction
+  and made the design calls. Reviews came from other AI sessions and models, and no human
+  reviewer read the pull requests.
+- **The checks, and the one exception.** Typecheck, lint, format, the unit tests, the build and
+  the browser journey pass on the exact commit before it merges. Pull request #1 is the one
+  exception: it was merged while its restarted checks were still running, and they passed two
+  minutes later. GitHub Actions stopped starting jobs at 17:01 UTC on 18 November. The pull
+  requests merged while it was stopped, starting with #96, had no CI run on their final commit:
+  each one merged only after a local gate ran the same commands on the exact commit being
+  merged. [`SPEC.md`](SPEC.md#standing-rules) keeps the same account among its standing
+  rules.
+
 ## Notes on the numbering
 
 - Steps are numbered in the order they were planned, which is close to, but not exactly, the
@@ -159,7 +181,7 @@ table explain the gaps.
 - Three numbers have no row, because their pull requests were never merged: 48, the ticket page
   built around one proof block (#56, parked as a draft for the owner to decide); 62, one demo
   ticket's evidence linked to its regression test (#70, deferred by an outside review, with its
-  design first in [`docs/ROADMAP.md`](docs/ROADMAP.md)); and 63, a roadmap of ten ideas (#71,
+  design first in [`ROADMAP.md`](ROADMAP.md)); and 63, a roadmap of ten ideas (#71,
   closed, replaced by step 69). #43, a plain page on how Proofdesk works, is parked as a draft
   and has no step.
 - Merged without a row of their own: #3 (the specification), #39 (the first real-browser test),

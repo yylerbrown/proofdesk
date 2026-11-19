@@ -91,7 +91,7 @@ describe("email notices, as the README describes them", () => {
     expect(limits).toContain("sent with nodemailer only once `SMTP_URL` and `MAIL_FROM` are set");
     expect(limits).toContain("The demo never sends");
     expect(limits).not.toContain("nobody can turn them off");
-    const features = section(readme, "## Try each feature in a minute");
+    const features = section(flat("docs/TOUR.md"), "## Try each feature in a minute");
     // The page is named by its pattern: a fixed key such as SUP-1 changes with the seed.
     expect(features).toContain("(`/tickets/<key>/notices`");
     expect(readme).not.toContain("/tickets/SUP-1/notices");
@@ -135,7 +135,7 @@ describe("the package name", () => {
 
 describe("the build log", () => {
   it("has a row for each pull request merged on the afternoon of 18 November", () => {
-    const log = fs.readFileSync("BUILD_LOG.md", "utf8");
+    const log = fs.readFileSync("docs/BUILD_LOG.md", "utf8");
     for (const pr of [133, 134, 135, 136, 137, 138, 139, 141, 142]) {
       expect(log, `#${pr}`).toMatch(new RegExp(`\\| #${pr} +\\|`));
     }
