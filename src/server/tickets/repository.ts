@@ -133,10 +133,22 @@ export type Page = { limit: number; offset: number };
 
 /**
  * How a list may be narrowed: to one owner or to tickets nobody owns, and to tickets whose title
- * or description holds the search, a LIKE pattern the service escapes.
+ * or description holds the search. A ticket is found when its text holds `search`, a LIKE pattern
+ * the service escapes, or when its words match `match`, a query for the ticket_search word index
+ * the service builds from quoted words.
  */
-export type Narrowing = { ownerId: string | null; unassigned: boolean; search: string | null };
-export const NO_NARROWING: Narrowing = { ownerId: null, unassigned: false, search: null };
+export type Narrowing = {
+  ownerId: string | null;
+  unassigned: boolean;
+  search: string | null;
+  match: string | null;
+};
+export const NO_NARROWING: Narrowing = {
+  ownerId: null,
+  unassigned: false,
+  search: null,
+  match: null,
+};
 
 /**
  * Whose tickets a list holds. The service decides this from who is asking, once, and the same
@@ -166,7 +178,9 @@ const SCOPE_SQL: Record<ListScope["kind"], string> = {
 // The same narrowing in every list and count. A fixed string: the values are bound.
 const NARROWED = `AND (@ownerId IS NULL OR owner_id = @ownerId)
        AND (@unassigned = 0 OR owner_id IS NULL)
-       AND (@search IS NULL OR title LIKE @search ESCAPE '\\' OR description LIKE @search ESCAPE '\\')`;
+       AND (@search IS NULL OR title LIKE @search ESCAPE '\\' OR description LIKE @search ESCAPE '\\'
+         OR (@match IS NOT NULL
+             AND id IN (SELECT rowid FROM ticket_search WHERE ticket_search MATCH @match)))`;
 
 // Each column's sort as SQL terms, each ending on the id, so the order is total and a page never
 // repeats or skips a ticket that did not change. Descending runs every term the other way, so it
@@ -197,6 +211,7 @@ function bound(scope: ListScope, narrow: Narrowing) {
     ownerId: narrow.ownerId,
     unassigned: narrow.unassigned ? 1 : 0,
     search: narrow.search,
+    match: narrow.match,
   };
   if (scope.kind === "among") values.ids = JSON.stringify(scope.ids);
   if (scope.kind === "filed_by") values.createdBy = scope.createdBy;

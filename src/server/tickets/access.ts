@@ -6,6 +6,7 @@ import { can } from "../permissions.js";
 import { parseKey } from "./keys.js";
 import * as repository from "./repository.js";
 import type { ListNarrowing } from "./types.js";
+import { listSearchMatch } from "./word-query.js";
 
 // Which tickets an actor may reach, and the ticket row behind a key.
 //
@@ -29,8 +30,10 @@ export function narrowed(narrowing: ListNarrowing, actor: Actor): repository.Nar
   return {
     ownerId: narrowing.owner === "me" ? actor.id : null,
     unassigned: narrowing.owner === "none",
-    // Searched as plain words: %, _ and \ in them mean themselves.
+    // Searched as plain text: %, _ and \ in it mean themselves.
     search: narrowing.q ? `%${narrowing.q.replace(/[\\%_]/g, "\\$&")}%` : null,
+    // And searched as words, in any order and any form.
+    match: narrowing.q ? listSearchMatch(narrowing.q) : null,
   };
 }
 
