@@ -432,8 +432,12 @@ header nav .viewer strong {
 .site-header details.dropdown.switch-role[open] > summary::before {
   display: none;
 }
-/* Its menu: a small popover, the one kind of thing that floats, as wide as its button. */
+/*
+ * Its menu: a small popover, the one kind of thing that floats, as wide as its button. Its rows
+ * sit close with no gap, so the header's phone spacing never reads as a missing row.
+ */
 .site-header details.dropdown.switch-role > summary + ul {
+  gap: 0;
   min-width: 100%;
   margin-top: 6px;
   padding: var(--pd-space-1);

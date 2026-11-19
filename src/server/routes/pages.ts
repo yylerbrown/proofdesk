@@ -517,7 +517,9 @@ export function pagesRouter(service: TicketService): Router {
       noMatch: noMatchWords(current, owner, q),
       counts,
       orders: LIST_ORDER_LABELS,
-      showArchivedFilter: can(actor, "list_archived"),
+      // Nobody archives on the demo, so its Archived tab would always be empty. The address
+      // still works there, and says why it is empty.
+      showArchivedFilter: can(actor, "list_archived") && actor.demo !== true,
       invite,
     });
   });
