@@ -132,14 +132,19 @@
 <% } %>
 
 <%# How the customer will know it is fixed, where the ticket stands, and the one step this viewer
-    can take: plain lines in the column, set apart by space. While the customer is asked, the
-    check's label becomes their question, "Did this fix it?". %>
+    can take: plain lines in the column, set apart by space. Once the team marks it fixed, or asks,
+    the check's label becomes the customer's question, "Did this fix it?". %>
 <%
+  // Asked before resolving: the customer's answer settles it.
   const asking = allowed.answer;
+  // Marked fixed by the team: the ticket is resolved, and the customer may say Yes or No.
+  const confirming = allowed.confirmFix;
+  const question = asking || confirming;
   const restoring = ticket.archived_at !== null && allowed.restore;
-  const reopening = allowed.reopen && !staff;
+  // The customer's way back in, except while the question's own No does that.
+  const reopening = allowed.reopen && !staff && !confirming;
   const hasStep = Boolean(locals.nextStep || locals.demoNext || restoring || reopening || stepForm);
-  const showCard = asking || ticket.fix_check || ticket.agreed_check || card.line || card.asked || hasStep;
+  const showCard = question || ticket.fix_check || ticket.agreed_check || card.line || card.asked || hasStep;
 %>
 <%# A code change linked to the ticket is the first line of the evidence, for the team. %>
 <% const changeUrl = staff ? ticket.change_url : null; %>
@@ -151,8 +156,8 @@
 <%- include("assistant-card", { card: assistantCard, changeUrl }) %>
 <% } %>
 <% if (showCard) { %>
-<article class="ticket-card" <% if (asking) { %>id="did-this-fix-it"<% } %>>
-  <% if (asking) { %>
+<article class="ticket-card" <% if (question) { %>id="did-this-fix-it"<% } %>>
+  <% if (question) { %>
   <h2>Did this fix it?</h2>
   <% } else if (ticket.fix_check) { %>
   <p class="card-label">How will we know it's fixed?</p>
@@ -177,6 +182,13 @@
     <span><% if (card.lineHref) { %><a href="<%= card.lineHref %>"><% } %><%= card.line.text %><% if (card.line.day) { %><time datetime="<%= card.line.day %>" data-day><%= formatDay(card.line.day) %></time><% } %><%= card.line.after %><% if (card.lineHref) { %></a><% } %></span>
     <% if (staff && ticket.resolution?.duplicate_of) { %><a href="/tickets/<%= ticket.resolution.duplicate_of %>">Open <%= ticket.resolution.duplicate_of %></a><% } %>
   </p>
+  <% } %>
+
+  <% if (confirming) { %>
+  <p class="card-detail">The team says it is fixed.</p>
+  <% if (ticket.resolution?.note) { %>
+  <p class="card-detail">Fixed in: <span class="user-text"><%= ticket.resolution.note %></span></p>
+  <% } %>
   <% } %>
 
   <% if (asking) { %>
@@ -206,21 +218,34 @@
     <%- include("evidence", { evidence }) %>
   </details>
   <% } %>
-  <%# Yes is one press. No opens its box, and stays open with its message after a refused try. %>
+  <% } %>
+  <% if (question) { %>
+  <%# Yes is one press. No opens its box, and stays open with its message after a refused try.
+      Asked, both answer the question; marked fixed, Yes confirms it and No reopens it. %>
+  <% const noForm = asking ? "answer" : "reopen"; %>
+  <% const noField = asking ? "comment" : "reason"; %>
   <div class="card-answer">
-    <form method="post" action="/tickets/<%= ticket.key %>/answer">
+    <form method="post" action="/tickets/<%= ticket.key %>/<%= asking ? "answer" : "confirm" %>">
+      <% if (asking) { %>
       <input type="hidden" name="fixed" value="yes" />
       <input type="hidden" name="ready_token" value="<%= ticket.ready_token %>" />
-      <button type="submit">Yes, resolve ticket</button>
+      <% } else { %>
+      <%- versionField %>
+      <% } %>
+      <button type="submit">Yes, it is fixed</button>
     </form>
-    <details class="answer-no" <% if (problem?.form === "answer") { %>open<% } %>>
+    <details class="answer-no" <% if (problem?.form === noForm) { %>open<% } %>>
       <summary role="button" class="secondary outline">No, it is not fixed</summary>
-      <form method="post" action="/tickets/<%= ticket.key %>/answer">
+      <form method="post" action="/tickets/<%= ticket.key %>/<%= noForm %>">
+        <% if (asking) { %>
         <input type="hidden" name="fixed" value="no" />
         <input type="hidden" name="ready_token" value="<%= ticket.ready_token %>" />
+        <% } else { %>
+        <%- versionField %>
+        <% } %>
         <label for="answer-comment">What is still wrong?</label>
-        <textarea id="answer-comment" name="comment" rows="3" required <% if (problem?.form === "answer") { %>aria-invalid="true" aria-describedby="answer-error"<% } %> <%= focusIf("answer", "comment") %>><%= problem?.form === "answer" ? problem.comment : "" %></textarea>
-        <% if (problem?.form === "answer") { %><small id="answer-error"><%= problem.message %></small><% } %>
+        <textarea id="answer-comment" name="<%= noField %>" rows="3" required <% if (problem?.form === noForm) { %>aria-invalid="true" aria-describedby="answer-error"<% } %> <%= focusIf(noForm, noField) %>><%= problem?.form === noForm ? problem.comment : "" %></textarea>
+        <% if (problem?.form === noForm) { %><small id="answer-error"><%= problem.message %></small><% } %>
         <button type="submit" class="secondary">No, send it back</button>
       </form>
     </details>
@@ -256,9 +281,15 @@
       Why?
       <textarea name="note" rows="2" maxlength="500" <%= focusIf("resolve", "note") %>><%= resolving.note ?? "" %></textarea>
     </label>
+    <label class="resolve-fixed-in">
+      Fixed in (optional)
+      <input type="text" name="fixed_in" placeholder="a version, or live now" maxlength="120" value="<%= resolving.fixed_in ?? "" %>" <%= focusIf("resolve", "fixed_in") %> />
+    </label>
     <% if (problem?.form === "resolve") { %><p><small id="resolve-error" role="alert"><%= problem.message %></small></p><% } %>
     <div class="form-actions">
-      <button type="submit">Resolve ticket</button>
+      <%# Fixed also tells the customer, so a small script makes the button say so. Without it the
+          button reads "Resolve ticket", and does the same. %>
+      <button type="submit" data-label-fixed="Mark fixed and tell the customer" data-label-other="Resolve ticket">Resolve ticket</button>
       <a href="/tickets/<%= ticket.key %>">Cancel</a>
     </div>
   </form>
@@ -280,10 +311,18 @@
   <% if (locals.nextStep) { %>
   <div class="card-step next-action">
     <% if (nextStep.form) { %>
-    <form method="post" action="<%= nextStep.form.action %>">
+    <form method="post" action="<%= nextStep.form.action %>" <% if (nextStep.fixedIn) { %>class="mark-fixed"<% } %>>
       <%- versionField %>
       <% for (const [name, value] of Object.entries(nextStep.form.fields ?? {})) { %>
       <input type="hidden" name="<%= name %>" value="<%= value %>" />
+      <% } %>
+      <%# Marking it fixed takes one optional line for where it is fixed; with nothing typed it is
+          one press. What is typed in the message box below is not sent with it. %>
+      <% if (nextStep.fixedIn) { %>
+      <% const markRefused = problem?.form === "markFixed"; %>
+      <label for="fixed-in" class="card-label">Fixed in (optional)</label>
+      <input type="text" id="fixed-in" name="note" placeholder="a version, or live now" maxlength="120" value="<%= markRefused ? (problem.values?.note ?? "") : "" %>" <% if (markRefused) { %>aria-invalid="true" aria-describedby="mark-fixed-error"<% } %> <%= focusIf("markFixed", "note") %> />
+      <% if (markRefused) { %><small id="mark-fixed-error" role="alert"><%= problem.message %></small><% } %>
       <% } %>
       <button type="submit" <% if (nextStep.outlined) { %>class="secondary"<% } %>><%= nextStep.label %></button>
     </form>
@@ -476,10 +515,11 @@
 <% } %>
 <% if (staff && allowed.markReady) { %>
 <% const asked = problem?.form === "ready" ? (problem.values ?? {}) : {}; %>
-<%# The step above asks with nothing more. This adds one message the customer reads with the question. %>
+<%# The old way: ask the customer and wait for their answer before resolving. Its one box is
+    optional, so pressing the button with nothing typed is the plain ask. %>
 <li>
 <details name="more-option" class="ask-details" id="ask" <% if (problem?.form === "ready") { %>open<% } %>>
-<summary>Ask with details</summary>
+<summary>Ask before resolving</summary>
 <form method="post" action="/tickets/<%= ticket.key %>/ready" class="ask">
   <%- versionField %>
   <label>
@@ -487,7 +527,7 @@
     <textarea name="response" rows="2" <% if (problem?.form === "ready") { %>aria-describedby="ready-error"<% } %> <%= focusIf("ready", "response") %>><%= asked.response ?? "" %></textarea>
   </label>
   <% if (problem?.form === "ready") { %><p><small id="ready-error" role="alert"><%= problem.message %></small></p><% } %>
-  <button type="submit" class="secondary compact">Ask with these details</button>
+  <button type="submit" class="secondary compact">Ask the customer</button>
 </form>
 </details>
 </li>

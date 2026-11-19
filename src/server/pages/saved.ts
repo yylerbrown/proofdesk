@@ -23,9 +23,9 @@ export const SAVED_MESSAGES = {
   withdrawn: "Question withdrawn. You can ask the customer again when you are ready.",
   agentGiven: "Handed to the assistant. It can work on this ticket only.",
   agentEnded: "The assistant has stopped working on this ticket.",
-  reopened: "Reopened. The team has your words.",
   reopenedByTeam: "Reopened, with your reason.",
   resolvedByTeam: "Resolved, with your reason. The customer sees it and can reopen it.",
+  markedFixed: "Marked fixed. The customer has been told.",
   released: "Unassigned. Anyone on the team can take it.",
   restored: "Ticket restored.",
   archived: "Ticket archived.",
@@ -34,6 +34,7 @@ export const SAVED_MESSAGES = {
   link: "Change link saved.",
   ready: "Asked the customer: Did this fix it?",
   fixed: "Thank you. The ticket is resolved.",
+  // After the customer's No, or their reopening a resolved ticket.
   notFixed: "Thank you. The ticket is back with the team.",
   specAccepted: "Test accepted. It is the agreed test now.",
   specDiscarded: "Suggested test discarded.",

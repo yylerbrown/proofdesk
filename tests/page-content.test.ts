@@ -159,7 +159,7 @@ describe("whose turn it is", () => {
     expect(turnTag(on("team"), "team", plain)).toBeNull();
     expect(turnTag(on("team"), "customer", plain)).toBeNull();
     expect(turnTag(on("customer"), "team", plain)).toBe("Asked the customer");
-    expect(turnTag(on("customer"), "customer", plain)).toBe("Your answer needed");
+    expect(turnTag(on("customer"), "customer", plain)).toBe("Did this fix it?");
     expect(turnTag(on("nobody"), "team", plain)).toBeNull();
   });
 

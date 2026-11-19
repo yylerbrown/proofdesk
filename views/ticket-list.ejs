@@ -123,7 +123,7 @@
         <td><% if (bulk) { %><input type="checkbox" class="bulk-tick" name="keys" value="<%= ticket.key %>" aria-label="Tick <%= ticket.key %>" <% if (bulk.ticked.has(ticket.key)) { %>checked<% } %> /><% } %><a href="/tickets/<%= ticket.key %>" tabindex="-1"><%= ticket.key %></a></td>
         <td class="user-text title-cell" title="<%= ticket.title %>"><a href="/tickets/<%= ticket.key %>"><%= ticket.title %></a></td>
         <%# One line: the status word, a check mark when the customer confirmed the fix, and a quiet tag only when it is not simply the team's turn. How the team resolved a ticket is on its own page. %>
-        <td class="status-cell"><%- include("status-badge", { status: ticket.status }) %><% if (ticket.resolution && ticket.resolution.by === "customer") { %> <span class="confirmed-mark" role="img" aria-label="Customer confirmed" title="Customer confirmed">✓</span><% } %><% if (ticket.tag) { %> <span class="turn-tag"><%= ticket.tag %></span><% } %></td>
+        <td class="status-cell"><%- include("status-badge", { status: ticket.status }) %><% if (ticket.resolution && ticket.resolution.by === "customer") { %> <span class="confirmed-mark" role="img" aria-label="Customer confirmed" title="Customer confirmed">✓</span><% } %><% if (ticket.tagHref) { %> <a class="turn-tag" href="<%= ticket.tagHref %>"><%= ticket.tag %></a><% } else if (ticket.tag) { %> <span class="turn-tag"><%= ticket.tag %></span><% } %></td>
         <td><%= ticket.owner_name ?? "Unassigned" %></td>
         <% const when = byUpdated ? ticket.updated_at : ticket.created_at; %>
         <td><time datetime="<%= when %>" data-relative title="<%= formatTime(when) %>"><%= timeAgo(when) %></time></td>

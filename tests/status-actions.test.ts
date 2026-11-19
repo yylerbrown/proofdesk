@@ -230,7 +230,7 @@ describe("the status control", () => {
     const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     const asks = page
       .querySelectorAll("button, summary")
-      .filter((control) => control.text.trim() === "Ask the customer to verify");
+      .filter((control) => control.text.trim() === "Mark fixed and tell the customer");
     // The one at the top of the page, the product's recommended next step.
     expect(asks).toHaveLength(1);
     expect(asks[0]!.closest(".next-action")).not.toBeNull();

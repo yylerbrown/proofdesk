@@ -61,17 +61,37 @@ export type TurnFacts = {
  * or null when there is nothing to flag. Each tag is a reason for someone to look at it.
  */
 export function turnTag(ticket: Ticket, viewer: Role, facts: TurnFacts): string | null {
+  // The customer meets one name for the question, whether the team asked it or marked it fixed.
   if (ticket.waiting_on === "customer") {
-    return viewer === "customer" ? "Your answer needed" : "Asked the customer";
+    return viewer === "customer" ? "Did this fix it?" : "Asked the customer";
   }
+  if (viewer === "customer" && markedFixed(ticket)) return "Did this fix it?";
   // The rest are about the team's turn, which the customer is not told about.
   if (ticket.waiting_on !== "team" || viewer === "customer") return null;
   // What an assistant said it needs is what the team needs to see first.
   if (facts.signal?.label === "Assistant blocked:") return "Assistant is blocked";
   if (facts.signal?.label === "Review requested by") return "Assistant asks for review";
-  if (facts.reopened) return "Customer reopened it";
-  if (ticket.customer_answer?.fixed === false) return "Customer said no";
+  // A No and a reopening are the same word from the customer.
+  if (facts.reopened || ticket.customer_answer?.fixed === false) return "Customer says not fixed";
   return null;
+}
+
+/**
+ * True for a ticket the team resolved as fixed that its customer has not confirmed yet. Their
+ * Yes clears the team's reason, so such a ticket then reads as the customer's.
+ */
+export function markedFixed(ticket: Ticket): boolean {
+  return (
+    ticket.archived_at === null &&
+    ticket.status === "resolved" &&
+    ticket.resolution?.by === "team" &&
+    ticket.resolution.reason === "fixed_no_reply"
+  );
+}
+
+/** Where the team says it is fixed, as typed with "Fixed in", in one sentence. */
+export function fixedInLine(note: string): string {
+  return `Fixed in: ${note.replace(/\.$/, "")}.`;
 }
 
 /** The customer's latest word that the ticket is not fixed: a No, or their reopening it. */
@@ -197,21 +217,31 @@ export function cardLine(ticket: Ticket, viewer: Role, facts: CardFacts): CardLi
     }
     const resolution = ticket.resolution;
     if (resolution === null || resolution.by !== "team") return null;
-    // The reason's label for "Fixed" also says it is not confirmed, which the line says itself.
-    const reason = resolution.reason === "fixed_no_reply" ? "Fixed" : resolution.reason_label;
+    // For the team: what they said, then who resolved it and when, such as "Demo Team Member,
+    // 19 Nov 2026", then what the customer has done about it.
+    const name = resolution.resolved_by_name;
+    const teamLine = (resolved: string, after: string): CardLine => {
+      if (resolution.at) {
+        const byWhom = name === null ? " " : ` ${name}, `;
+        return line(`${resolved}${byWhom}`, resolution.at, `. ${after}`);
+      }
+      const byline = name === null ? "" : ` ${name}.`;
+      return line(`${resolved}${byline} ${after}`);
+    };
+    if (resolution.reason === "fixed_no_reply") {
+      // The customer has the question "Did this fix it?" in place of this line.
+      if (!team) return null;
+      const fixedIn = resolution.note ? ` ${fixedInLine(resolution.note)}` : "";
+      return teamLine(
+        `Resolved by the team: ${resolution.reason_label}${fixedIn}`,
+        "The customer did not confirm it, and can reopen it.",
+      );
+    }
     // Most notes end in a full stop; the line's own full stop follows the bracket.
     const note = resolution.note ? ` (${resolution.note.replace(/\.$/, "")})` : "";
-    if (!team) return line(`Resolved by the team: ${reason}${note}. You have not confirmed it.`);
-    // Who resolved it and when, such as "Demo Team Member, 19 Nov 2026".
-    const resolved = `Resolved by the team: ${reason}${note}.`;
-    const notConfirmed = "Not confirmed by the customer.";
-    const name = resolution.resolved_by_name;
-    if (resolution.at) {
-      const byWhom = name === null ? " " : ` ${name}, `;
-      return line(`${resolved}${byWhom}`, resolution.at, `. ${notConfirmed}`);
-    }
-    const byline = name === null ? "" : ` ${name}.`;
-    return line(`${resolved}${byline} ${notConfirmed}`);
+    const resolved = `Resolved by the team: ${resolution.reason_label}${note}.`;
+    if (!team) return line(`${resolved} You have not confirmed it.`);
+    return teamLine(resolved, "Not confirmed by the customer.");
   }
 
   // Asked: the customer has the question itself, as the card's heading.
@@ -222,12 +252,10 @@ export function cardLine(ticket: Ticket, viewer: Role, facts: CardFacts): CardLi
 
   if (facts.notFixed !== null) {
     const at = facts.notFixed.at;
-    if (facts.notFixed.reopened) {
-      return team ? line("The customer reopened it on ", at, ".", at) : null;
-    }
+    // A No and a reopening read the same: the customer's word that it is not fixed.
     return team
-      ? line("The customer said no on ", at, ".", at)
-      : line("You said no on ", at, ". The team will ask you again.", at);
+      ? line("The customer says it is not fixed, since ", at, ".", at)
+      : line("You said it is not fixed on ", at, ".", at);
   }
 
   if (team && facts.reviewBy !== null) return line(`${facts.reviewBy} asks for your review.`);
@@ -319,6 +347,8 @@ export function describeEvent(event: TicketEvent): string {
         reason === "duplicate" && duplicate_of
           ? `Duplicate of ${duplicate_of}`
           : RESOLVE_REASON_LABELS[reason];
+      if (reason === "fixed_no_reply" && note)
+        return `Resolved by the team: ${why} ${fixedInLine(note)}`;
       return `Resolved by the team: ${why}${note ? ` (${note})` : ""}`;
     }
   }

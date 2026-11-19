@@ -174,12 +174,12 @@ describe("a resolved ticket", () => {
 });
 
 describe("the card's line after the customer reopens", () => {
-  it("says they reopened it, not the older No, and never repeats their words", async () => {
+  it("says it is not fixed, linked to the reopening, and never repeats their words", async () => {
     const { app } = await setup();
     await customerSaysNo(app, "Still jams on page two.");
     const line = async (who = teamActor) =>
       (await ticketPage(app, who)).querySelector(".ticket-card .card-line")?.text.trim() ?? null;
-    expect(await line()).toMatch(/^The customer said no on /);
+    expect(await line()).toMatch(/^The customer says it is not fixed, since /);
     await as(app, teamActor)
       .post("/api/tickets/SUP-1/resolve")
       .send({ reason: "cannot_reproduce" });
@@ -187,9 +187,9 @@ describe("the card's line after the customer reopens", () => {
       .post("/api/tickets/SUP-1/reopen")
       .send({ reason: "It jams again since Monday." });
     expect(reopened.status).toBe(200);
-    expect(await line()).toMatch(/^The customer reopened it on /);
-    // The customer's own ticket is simply back with the team, so their card has no line.
-    expect(await line(customerOne)).toBeNull();
+    // A reopening reads as a No does: one phrase for the customer's word that it is not fixed.
+    expect(await line()).toMatch(/^The customer says it is not fixed, since /);
+    expect(await line(customerOne)).toMatch(/^You said it is not fixed on /);
     for (const who of [teamActor, customerOne]) {
       const card = (await ticketPage(app, who)).querySelector(".ticket-card")!;
       expect(card.text).not.toContain("It jams again since Monday.");
