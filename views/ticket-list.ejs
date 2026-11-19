@@ -79,7 +79,8 @@
       <tr>
         <% sortHeaders.forEach((header, index) => { %>
         <% if (index === 4) { %><th scope="col">Waiting on</th><% } %>
-        <th scope="col" <% if (header.ariaSort) { %>aria-sort="<%= header.ariaSort %>"<% } %>><a href="<%= header.href %>" class="sort-link" aria-label="<%= header.name %>"><%= header.label %><span class="sort-arrow" aria-hidden="true"><%= arrow(header) %></span></a></th>
+        <%# The plain name stands in for the link on a phone, where the header row is not drawn, so no keyboard stop hides there. %>
+        <th scope="col" <% if (header.ariaSort) { %>aria-sort="<%= header.ariaSort %>"<% } %>><a href="<%= header.href %>" class="sort-link" aria-label="<%= header.name %>"><%= header.label %><span class="sort-arrow" aria-hidden="true"><%= arrow(header) %></span></a><span class="sort-label"><%= header.label %></span></th>
         <% }) %>
       </tr>
     </thead>

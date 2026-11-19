@@ -4,6 +4,7 @@ import * as repository from "../src/server/tickets/repository.js";
 import {
   LIST_SORTS,
   SORT_DIRECTIONS,
+  sortFrom,
   type ListSortColumn,
   type SortDirection,
 } from "../src/server/tickets/schemas.js";
@@ -141,7 +142,7 @@ describe("the list's column headers", () => {
     html.querySelectorAll("table.tickets thead th").map((th) => {
       const link = th.querySelector("a");
       return {
-        text: th.text,
+        text: link?.text ?? th.text,
         sort: th.getAttribute("aria-sort") ?? null,
         name: link?.getAttribute("aria-label") ?? null,
         href: link?.getAttribute("href") ?? null,
@@ -186,6 +187,12 @@ describe("the list's column headers", () => {
         href: "/tickets?sort=filed&direction=desc",
       },
     ]);
+    // Each sortable header also holds its name as plain words, which stand in for the link on a
+    // phone, where the header row is not drawn and a link there would be a stop nobody sees.
+    const plain = html
+      .querySelectorAll("table.tickets thead th")
+      .map((th) => th.querySelector("span.sort-label")?.text ?? null);
+    expect(plain).toEqual(["Key", "Title", "Status", "Owner", null, "Filed"]);
     // The default list is open first, newest first, as before.
     const keys = html
       .querySelectorAll("table.tickets tbody tr td:first-child")
@@ -285,6 +292,30 @@ describe("the list's column headers", () => {
   });
 });
 
+describe("the sort a column, a direction and an order name", () => {
+  // The page and the API both read the sort through this one rule, so they cannot drift apart.
+  it("takes the column first, its first way without a direction, then the order", () => {
+    expect(sortFrom("title", "desc", undefined)).toEqual({ by: "title", direction: "desc" });
+    expect(sortFrom("filed", undefined, undefined)).toEqual({ by: "filed", direction: "desc" });
+    expect(sortFrom("key", undefined, "oldest")).toEqual({ by: "key", direction: "asc" });
+    expect(sortFrom(undefined, "desc", "oldest")).toEqual({ by: "filed", direction: "asc" });
+    expect(sortFrom(undefined, "desc", undefined)).toBeUndefined();
+  });
+
+  it("lets the page take a column over an order and drop a lone direction", async () => {
+    const built = buildTestApp();
+    fill(built.db, 5);
+    const keys = async (address: string) =>
+      parse((await as(built.app, teamActor).get(address)).text)
+        .querySelectorAll("table.tickets tbody tr td:first-child")
+        .map((td) => td.text);
+    expect(await keys("/tickets?sort=key&order=oldest")).toEqual(
+      await keys("/tickets?sort=key&direction=asc"),
+    );
+    expect(await keys("/tickets?direction=asc")).toEqual(await keys("/tickets"));
+  });
+});
+
 describe("a sort that cannot be read", () => {
   it("is a 400 from the API and the default list on the page", async () => {
     const built = buildTestApp();
@@ -328,6 +359,13 @@ describe("a sort that cannot be read", () => {
     expect(same.status).toBe(200);
     const other = await as(built.app, teamActor).get(`/api/tickets?cursor=${cursor}&sort=title`);
     expect(other.status).toBe(400);
+    // The refusal names the sort the caller passed, not the older order.
+    expect(other.body.error.message).toBe("That cursor was made for another sort.");
+    expect(Object.keys(other.body.error.fields)).toEqual(["sort"]);
+    const older = await as(built.app, teamActor).get(`/api/tickets?cursor=${cursor}&order=oldest`);
+    expect(older.status).toBe(400);
+    expect(older.body.error.message).toBe("That cursor was made for another order.");
+    expect(Object.keys(older.body.error.fields)).toEqual(["order"]);
   });
 });
 

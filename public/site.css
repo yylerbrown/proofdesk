@@ -913,6 +913,10 @@ table.tickets thead th[aria-sort] a.sort-link {
 .sort-arrow:not(:empty) {
   margin-left: 0.25em;
 }
+/* The header's plain name, shown only on a phone in place of its link. */
+table.tickets thead .sort-label {
+  display: none;
+}
 /* On a phone the list is stacked with no header row, so the same sort links sit above it. */
 .list-sort {
   display: none;
@@ -2599,6 +2603,13 @@ ol.first-steps li {
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
+  }
+  /* The header row is not drawn here, so its sort links leave the tab order and the names stay. */
+  table.tickets thead a.sort-link {
+    display: none;
+  }
+  table.tickets thead .sort-label {
+    display: inline;
   }
   table.tickets tbody tr {
     display: grid;

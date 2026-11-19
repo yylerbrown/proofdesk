@@ -139,6 +139,35 @@ test("on a phone the small controls are 44-pixel tap targets", async ({ page }) 
   });
 });
 
+/** Presses Tab from the top of the page and says, for each stop, whether it is in the list's header row. */
+async function tabStopsInHeaderRow(page: Page, presses: number) {
+  const inHeader: boolean[] = [];
+  for (let press = 0; press < presses; press += 1) {
+    await page.keyboard.press("Tab");
+    inHeader.push(
+      await page.evaluate(() => document.activeElement?.closest("table.tickets thead") != null),
+    );
+  }
+  return inHeader;
+}
+
+test("on a phone no keyboard stop hides in the list's undrawn header row", async ({ page }) => {
+  await signInAsTeam(page);
+  // At 390 wide the header row is kept for screen readers but not drawn, so nothing in it takes focus.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/tickets");
+  await expect(page.locator("table.tickets tbody tr").first()).toBeVisible();
+  expect(await tabStopsInHeaderRow(page, 40)).not.toContain(true);
+  // The column names are still there for a screen reader.
+  await expect(page.locator("table.tickets thead th").first()).toHaveText("Key", {
+    useInnerText: true,
+  });
+  // On a wide screen the drawn header row's sort links are keyboard stops as before.
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/tickets");
+  expect(await tabStopsInHeaderRow(page, 40)).toContain(true);
+});
+
 test("on a phone the Switch role chevron sits right after its label", async ({ page }) => {
   await signInAsTeam(page);
   for (const width of [390, 320]) {

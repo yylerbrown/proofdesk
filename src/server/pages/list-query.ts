@@ -4,8 +4,8 @@ import {
   LIST_ORDERS,
   LIST_SORTS,
   listQuerySchema,
-  ORDER_SORTS,
   SORT_DIRECTIONS,
+  sortFrom,
   TICKET_LIST_FILTERS,
   type ListSort,
   type ListSortColumn,
@@ -52,12 +52,7 @@ export type ListPageQuery = {
 export function readListPageQuery(query: unknown): ListPageQuery {
   const read = listPageSchema.parse(query ?? {});
   // A column sort wins over an old order link; with neither, the default list.
-  let sort: ListSort = "open_first";
-  if (read.sort !== undefined) {
-    sort = { by: read.sort, direction: read.direction ?? FIRST_DIRECTION[read.sort] };
-  } else if (read.order !== undefined) {
-    sort = ORDER_SORTS[read.order];
-  }
+  const sort: ListSort = sortFrom(read.sort, read.direction, read.order) ?? "open_first";
   return { status: read.status, owner: read.owner, q: read.q, sort, page: read.page };
 }
 

@@ -6,8 +6,8 @@ import { LIST_PAGE_SIZE } from "../src/server/tickets/service.js";
 import { as, buildTestApp, teamActor } from "./helpers.js";
 
 // The API's list orders: open first and newest first (the default), oldest first, or recently
-// updated, kept in the API's cursor. The page sorts by its column headers instead. Each order reads one page at a time from
-// an index, so a long list never sorts the whole table.
+// updated, kept in the API's cursor. The page sorts by its column headers instead. Each order
+// reads one page at a time from an index, so a long list never sorts the whole table.
 
 type Built = ReturnType<typeof buildTestApp>;
 

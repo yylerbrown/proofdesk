@@ -225,6 +225,21 @@ export const ORDER_SORTS: Record<ListOrder, ListSort> = {
   updated: { by: "updated", direction: "desc" },
 };
 
+/**
+ * The sort that a column, a direction and an order name together, or undefined when they name
+ * none. A column wins over an order, and a direction without a column is not used. The API
+ * refuses those two cases before it asks; the page and a cursor take them as they come.
+ */
+export function sortFrom(
+  by: ListSortColumn | undefined,
+  direction: SortDirection | undefined,
+  order: ListOrder | undefined,
+): ListSort | undefined {
+  if (by !== undefined) return { by, direction: direction ?? FIRST_DIRECTION[by] };
+  if (order !== undefined) return ORDER_SORTS[order];
+  return undefined;
+}
+
 /** True when two sorts are the same column the same way, or both the default. */
 export function sameSort(a: ListSort, b: ListSort): boolean {
   if (a === "open_first" || b === "open_first") return a === b;
@@ -276,11 +291,7 @@ function requestedSort(query: ListQuery): ListSort | undefined {
       direction: ["Pass sort with direction, or leave direction out."],
     });
   }
-  if (query.order !== undefined) return ORDER_SORTS[query.order];
-  if (query.sort !== undefined) {
-    return { by: query.sort, direction: query.direction ?? FIRST_DIRECTION[query.sort] };
-  }
-  return undefined;
+  return sortFrom(query.sort, query.direction, query.order);
 }
 
 /** A cursor names the next page and its sort. It is opaque to callers: pass back what you were given. */
@@ -301,9 +312,9 @@ function readCursor(cursor: string): { page: number; sort: ListSort } {
         direction: z.enum(SORT_DIRECTIONS).optional(),
       })
       .parse(JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")));
-    if (named.by === undefined) return { page: named.page, sort: ORDER_SORTS[named.order] };
-    const direction = named.direction ?? FIRST_DIRECTION[named.by];
-    return { page: named.page, sort: { by: named.by, direction } };
+    // The order defaults to open_first, so a cursor always names a sort.
+    const sort = sortFrom(named.by, named.direction, named.order) ?? "open_first";
+    return { page: named.page, sort };
   } catch {
     throw new ValidationError("That cursor was not made here.", {
       cursor: ["Pass back the next_cursor you were given, unchanged."],
@@ -323,8 +334,12 @@ export function listPosition(query: ListQuery): { page: number; sort: ListSort }
   }
   const position = readCursor(query.cursor);
   if (asked !== undefined && !sameSort(asked, position.sort)) {
-    throw new ValidationError("That cursor was made for another order.", {
-      order: ["Leave out order and sort when you pass a cursor, or pass the ones it was made for."],
+    // Name the field the caller passed: sort, or the older order.
+    const field = query.sort !== undefined ? "sort" : "order";
+    throw new ValidationError(`That cursor was made for another ${field}.`, {
+      [field]: [
+        "Leave out order and sort when you pass a cursor, or pass the ones it was made for.",
+      ],
     });
   }
   return position;
