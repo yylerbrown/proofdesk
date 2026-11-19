@@ -20,7 +20,12 @@ export type StatusChoice =
   | { status: TicketStatus; kind: "reopen" }
   | { status: TicketStatus; kind: "disabled" };
 
-export type StatusControl = { choices: StatusChoice[]; why: string | null };
+/**
+ * The row's choices; one short line saying why some cannot be pressed, if any; and whether
+ * pressing In Progress also makes this viewer the owner, as the "Take ticket and start work"
+ * button at the top of the page does, so the page can say so under the row.
+ */
+export type StatusControl = { choices: StatusChoice[]; why: string | null; alsoTakes: boolean };
 
 /** The row for a team member or admin, or null for a customer, who has no status control. */
 export function statusControl(
@@ -31,7 +36,11 @@ export function statusControl(
   if (actor.role === "customer") return null;
   const choices = TICKET_STATUSES.map((status) => choiceFor(status, ticket, allowed, actor));
   const disabled = choices.filter((choice) => choice.kind === "disabled");
-  return { choices, why: disabled.length === 0 ? null : whyDisabled(ticket, allowed, actor) };
+  const why = disabled.length === 0 ? null : whyDisabled(ticket, allowed, actor);
+  const alsoTakes = choices.some(
+    (choice) => choice.kind === "press" && choice.action.endsWith("/take-and-start"),
+  );
+  return { choices, why, alsoTakes };
 }
 
 /** What pressing this status does for this viewer, if anything. */

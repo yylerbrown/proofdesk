@@ -45,8 +45,10 @@ const ticketPage = async (app: Express, who = teamActor) =>
   parse((await as(app, who).get("/tickets/SUP-1")).text);
 
 describe("the resolve form", () => {
-  it("starts on an empty, required choice, so a stray press records nothing", async () => {
+  it("starts on an empty, required choice while the customer's No stands", async () => {
     const { app } = await setup();
+    // Otherwise it starts on "Fixed, not yet confirmed" (status-row-reads-as-one-control).
+    await customerSaysNo(app, "Still jams on page two.");
     const select = (await ticketPage(app)).querySelector('details.resolve select[name="reason"]')!;
     expect(select.hasAttribute("required")).toBe(true);
     const first = select.querySelectorAll("option")[0]!;
