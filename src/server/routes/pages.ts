@@ -163,6 +163,11 @@ type NextStep = {
   href?: string;
   /** One line saying what this step is for, after the button. */
   note?: string;
+  /**
+   * Before asking the customer: the check they wrote when filing, shown in one line above the
+   * button so the owner reads it before asking. Null when they gave none.
+   */
+  customerCheck?: string | null;
 };
 
 /**
@@ -191,6 +196,7 @@ function nextStep(
       label: "Ask the customer to verify",
       form: { action: `${at}/ready` },
       note: 'Sends the customer "Did this fix it?".',
+      customerCheck: ticket.fix_check,
     };
   }
   return null;
