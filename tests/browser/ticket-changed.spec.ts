@@ -26,7 +26,7 @@ test("an open ticket page says when the ticket changed elsewhere", async ({ brow
   ).toBeVisible();
   // A reply of only spaces passes the browser's check and is refused by the server.
   await team.locator("#entry-body").fill("   ");
-  await team.getByRole("button", { name: "Send", exact: true }).click();
+  await team.getByRole("button", { name: "Send reply to customer" }).click();
   await expect(team).toHaveURL(new RegExp(`/tickets/${key}/entries$`));
 
   // Nothing has changed yet: coming back to the tab says nothing.

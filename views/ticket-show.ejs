@@ -17,6 +17,10 @@
 <%# The viewer's one next action, right under the status: the step that is possible now. %>
 <% if (locals.nextStep) { %>
 <div class="next-action">
+  <%# Before the owner asks, the customer's own check, so they read what will be checked first. %>
+  <% if (nextStep.customerCheck !== undefined) { %>
+  <p class="next-check"><% if (nextStep.customerCheck) { %>The customer will check: <span class="user-text"><%= nextStep.customerCheck %></span><% } else if (nextStep.teamCheck) { %>The customer will check the team's check: <span class="user-text"><%= nextStep.teamCheck %></span><% } else { %>The customer gave no check.<% } %></p>
+  <% } %>
   <% if (nextStep.form) { %>
   <form method="post" action="<%= nextStep.form.action %>">
     <%- versionField %>
@@ -29,6 +33,8 @@
   <a href="<%= nextStep.href %>" role="button"><%= nextStep.label %></a>
   <% } %>
   <% if (nextStep.note) { %><small class="next-note"><%= nextStep.note %></small><% } %>
+  <%# The optional details form is further down; this link leads there, and opens it with scripts. %>
+  <% if (nextStep.detailsId) { %><small class="next-details"><a href="#<%= nextStep.detailsId %>" data-opens="<%= nextStep.detailsId %>">Add details first (optional)</a></small><% } %>
 </div>
 <% } %>
 
@@ -98,7 +104,13 @@
 <%# Resolved by the team, without the customer's Yes: said plainly to everyone, with the reason, and never with the tick. %>
 <% if (ticket.resolution && ticket.resolution.by === "team") { %>
 <article class="resolved-by-team">
+  <% if (teamSaysFixed(ticket, viewerRole)) { %>
+  <%# The customer reads it in their terms: the team's word, and that theirs is still to come. %>
+  <p><strong>The team says it is fixed</strong></p>
+  <p>You have not confirmed it.</p>
+  <% } else { %>
   <p><strong><%= ticket.resolution.label %></strong></p>
+  <% } %>
   <% if (ticket.resolution.note) { %><p class="user-text"><%= ticket.resolution.note %></p><% } %>
   <p><small><% if (ticket.resolution.resolved_by_name) { %><%= ticket.resolution.resolved_by_name %>, <% } %><%- include("time", { iso: ticket.resolution.at }) %>. <%= viewerRole === "customer" ? "If it is still happening, you can reopen it." : "The customer did not confirm it, and can reopen it." %><% if (staff && ticket.resolution.duplicate_of) { %> <a href="/tickets/<%= ticket.resolution.duplicate_of %>">Open <%= ticket.resolution.duplicate_of %></a><% } %></small></p>
 </article>
@@ -272,8 +284,10 @@
         chosen already and resolving takes two presses. While the customer's No stands it is not
         offered, and the person picks a reason. After a refused try, what they picked stays. %>
     <% const chosenReason = problem?.form === "resolve" ? (resolving.reason ?? "") : (notFixed ? "" : "fixed_no_reply"); %>
+    <%# It opens a form rather than changing the status at once, so it says so; the button
+        inside the form is the one that resolves. %>
     <details class="resolve" <% if (problem?.form === "resolve") { %>open<% } %>>
-      <summary role="button" class="secondary outline"><%= statusLabels[choice.status] %></summary>
+      <summary role="button" class="secondary outline">Resolve with a reason…</summary>
       <form method="post" action="/tickets/<%= ticket.key %>/resolve">
         <%- versionField %>
         <p class="resolve-lead"><small>Resolves the ticket now, with the reason you pick. The customer sees it and can reopen it.</small></p>
@@ -579,7 +593,8 @@
     <textarea id="entry-body" name="body" rows="4" required <% if (entry.error) { %>aria-invalid="true" aria-describedby="body-error" autofocus<% } %>><%= entry.body %></textarea>
   </label>
   <% if (entry.error) { %><small id="body-error"><%= entry.error %></small><% } %>
-  <button type="submit" class="compact">Send</button>
+  <%# With a choice of who sees it, a small script makes the button name that audience. %>
+  <button type="submit" class="compact" <% if (allowed.note) { %>data-label-reply="Send reply to customer" data-label-note="Save internal note"<% } %>>Send</button>
 </form>
 <%# A few common replies for the team, as plain words: they fill the box, or send as they are.
     They suit an open ticket, so a resolved one does not offer them. %>

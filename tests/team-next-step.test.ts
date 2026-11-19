@@ -41,7 +41,7 @@ describe("who resolves", () => {
     const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     // On the ticket, Resolved is in the status row for those who may, and opens the reasons.
     const row = page.querySelector(".status-control .status-row")!;
-    expect(row.querySelector("details.resolve summary")?.text).toBe("Resolved");
+    expect(row.querySelector("details.resolve summary")?.text).toBe("Resolve with a reason…");
     expect(row.querySelector("details.resolve select[name=reason]")).not.toBeNull();
     const edit = parse((await as(app, teamActor).get("/tickets/SUP-1/edit")).text);
     expect(edit.querySelector(".status-rule")?.text).toBe(sentence);

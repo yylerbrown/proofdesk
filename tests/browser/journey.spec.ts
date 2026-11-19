@@ -59,7 +59,7 @@ test("the short path: file, take, ask the customer, and their Yes resolves it", 
   await customer.getByLabel("Title").fill("The report page is blank");
   await customer.getByLabel("Description").fill("The reports page shows nothing since Monday.");
   await customer.getByRole("button", { name: "File ticket" }).click();
-  await expect(savedMessage(customer)).toContainText("Ticket filed");
+  await expect(savedMessage(customer)).toContainText(/Ticket [A-Z]{2,6}-\d+ filed\./);
   const key = /\/tickets\/([A-Z]{2,6}-\d+)$/.exec(new URL(customer.url()).pathname)![1]!;
 
   await team.goto(`/tickets/${key}`);
@@ -103,7 +103,7 @@ test("the plain path: the status row's In Progress, then Resolved with a reason"
   const row = team.locator(".status-row");
   await row.getByRole("button", { name: "In Progress" }).click();
   await expectTicketStatus(team, key, "In Progress");
-  await row.getByRole("button", { name: "Resolved" }).click();
+  await row.getByRole("button", { name: "Resolve with a reason" }).click();
   await row.getByRole("combobox", { name: "Reason" }).selectOption("cannot_reproduce");
   await row.getByRole("button", { name: "Resolve", exact: true }).click();
   await expect(savedMessage(team)).toContainText("Resolved, with your reason");
@@ -131,7 +131,7 @@ test("the long path: a check, a change link and evidence, a No, then the custome
     await customer.getByLabel("How will we know it's fixed?").fill(ticket.check);
     await customer.getByRole("button", { name: "File ticket" }).click();
 
-    await expect(savedMessage(customer)).toContainText("Ticket filed");
+    await expect(savedMessage(customer)).toContainText(/Ticket [A-Z]{2,6}-\d+ filed\./);
     const match = /\/tickets\/([A-Z]{2,6}-\d+)$/.exec(new URL(customer.url()).pathname);
     expect(match, "the ticket page address ends in its key").not.toBeNull();
     key = match![1]!;
@@ -159,12 +159,13 @@ test("the long path: a check, a change link and evidence, a No, then the custome
   await test.step("the team member replies, adds a note, links the change, attaches evidence", async () => {
     await team.getByRole("radio", { name: "Reply to the customer" }).check();
     await team.getByLabel("Your message").fill(reply);
-    await team.getByRole("button", { name: "Send", exact: true }).click();
+    // The one button names who will read the message.
+    await team.getByRole("button", { name: "Send reply to customer" }).click();
     await expect(savedMessage(team)).toContainText("Reply sent");
 
     await team.getByRole("radio", { name: "Internal note, for the team only" }).check();
     await team.getByLabel("Your message").fill(note);
-    await team.getByRole("button", { name: "Send", exact: true }).click();
+    await team.getByRole("button", { name: "Save internal note" }).click();
     await expect(savedMessage(team)).toContainText("Internal note added");
     await expect(team.getByText(note)).toBeVisible();
 

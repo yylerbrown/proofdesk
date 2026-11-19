@@ -44,6 +44,21 @@ describe("the assistant run page, first look", () => {
     }
   });
 
+  it("says the run's scope in its first sentence, and claims only what the run shows", async () => {
+    const { app } = demo();
+    const lead = (await pageFor(app, "signed out")).querySelector("p.run-lead")!.text;
+    const first = lead.slice(0, lead.indexOf(". ") + 1);
+    expect(first).toContain("in a scratch file, from the ticket's text");
+    expect(first).toContain("because it had no access to the product's code");
+    // What it did there, as the run's summary records it.
+    expect(lead).toContain(
+      "reproduced the arithmetic problem and tested a fix, and three tests passed",
+    );
+    expect(lead).toContain("asked the ticket's owner to review");
+    // Never the wider claim that it reproduced the customer's problem itself.
+    expect(lead).not.toContain("reproduced the customer's problem");
+  });
+
   it("keeps every detail of how it was run inside one closed section, with nothing removed", async () => {
     const { app } = demo();
     for (const who of VIEWERS) {

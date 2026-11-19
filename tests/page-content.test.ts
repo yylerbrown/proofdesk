@@ -212,7 +212,10 @@ describe("after a save", () => {
     const filed = await browser.post("/tickets").type("form").send(valid);
     expect(filed.status).toBe(303);
     const shown = parse((await browser.get("/tickets/SUP-1")).text);
-    expect(shown.querySelector("[role=status]")?.text).toContain("Ticket filed.");
+    // The receipt names the ticket and says what happens next.
+    expect(shown.querySelector("[role=status]")?.text).toBe(
+      "Ticket SUP-1 filed. The support team has it now; come back to this page for updates.",
+    );
     const again = parse((await browser.get("/tickets/SUP-1")).text);
     expect(again.querySelector("[role=status]")).toBeNull();
   });

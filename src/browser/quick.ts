@@ -57,6 +57,8 @@ if (typeof document !== "undefined") {
     (kind) => {
       for (const radio of document.querySelectorAll<HTMLInputElement>("input[name=kind]")) {
         radio.checked = radio.value === kind;
+        // Setting it here fires no event, so the send button's label is told of the change.
+        radio.dispatchEvent(new Event("change"));
       }
     },
   );

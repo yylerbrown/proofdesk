@@ -361,7 +361,7 @@ describe("on the demo", () => {
     return { app, browser: visitor(app).set("Cookie", `${DEV_COOKIE}=${id}`) };
   }
 
-  it("shows the admin preview the three made-up people, with every choice disabled", async () => {
+  it("shows the admin preview the three made-up people, each role in words", async () => {
     const { browser } = demoAs("demo-admin");
     const res = await browser.get("/people");
     expect(res.status).toBe(200);
@@ -374,10 +374,11 @@ describe("on the demo", () => {
       "Demo Team Member",
       "Demo Admin",
     ]);
-    expect(rows.filter((row) => row.disabled === true)).toHaveLength(2);
-    expect(rows[2]!.says).toBe("You, Admin");
+    // Nothing to press: each role as words, with no disabled selectors or Save buttons.
+    expect(rows.map((row) => row.says)).toEqual(["Customer", "Team member", "You, Admin"]);
+    expect(parse(res.text).querySelector("table.people select")).toBeNull();
     expect(rows[0]!.email).toBe("Made up for the demo");
-    expect(parse(res.text).querySelector("table.people button:not([disabled])")).toBeNull();
+    expect(parse(res.text).querySelector("table.people button")).toBeNull();
     // Made-up people never signed in, so that cell is empty rather than "Never".
     const firstSignedIn = parse(res.text)
       .querySelectorAll("table.people tbody tr")
@@ -409,7 +410,7 @@ describe("on the development entrance", () => {
     return visitor(app).set("Cookie", `${DEV_COOKIE}=${id}`);
   }
 
-  it("shows the made-up admin the made-up people, with every choice disabled", async () => {
+  it("shows the made-up admin the made-up people, each role in words", async () => {
     const res = await devAs("dev-admin-1").get("/people");
     expect(res.status).toBe(200);
     expect(res.text).toContain(
@@ -425,8 +426,13 @@ describe("on the development entrance", () => {
       "Admin",
     ]);
     expect(rows[0]!.email).toBe("Made up for development");
-    expect(rows.filter((row) => row.disabled === true)).toHaveLength(3);
-    expect(parse(res.text).querySelector("table.people button:not([disabled])")).toBeNull();
+    expect(rows.map((row) => row.says)).toEqual([
+      "Customer",
+      "Customer",
+      "Team member",
+      "You, Admin",
+    ]);
+    expect(parse(res.text).querySelector("table.people button")).toBeNull();
   });
 
   it("changes nothing, and says so", async () => {

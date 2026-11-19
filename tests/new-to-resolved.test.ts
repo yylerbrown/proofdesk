@@ -68,7 +68,9 @@ describe("where Resolved comes from", () => {
     const { app } = await filed();
     const fresh = await page(app, teamActor);
     expect(fresh.querySelector(".next-action button")?.text).toBe("Take ticket and start work");
-    expect(fresh.querySelector(".status-control details.resolve summary")?.text).toBe("Resolved");
+    expect(fresh.querySelector(".status-control details.resolve summary")?.text).toBe(
+      "Resolve with a reason…",
+    );
     // Nothing is greyed; the one line says the row's In Progress also takes the ticket.
     expect(rule(fresh)).toBe("In Progress also makes you the owner.");
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
@@ -82,7 +84,9 @@ describe("where Resolved comes from", () => {
     expect(details.querySelector("summary")?.text).toBe("Ask with details (optional)");
     expect(details.querySelector("button[type=submit]")?.hasAttribute("disabled")).toBe(false);
     expect(owner.querySelector("#ask-blocked-why")).toBeNull();
-    expect(owner.querySelector(".status-control details.resolve summary")?.text).toBe("Resolved");
+    expect(owner.querySelector(".status-control details.resolve summary")?.text).toBe(
+      "Resolve with a reason…",
+    );
 
     // An admin may resolve it with a reason too, but only its owner asks the customer.
     const byAdmin = await page(app, adminActor);

@@ -12,6 +12,7 @@ import {
   formatTime,
   notFixedCard,
   STATUS_LABELS,
+  teamSaysFixed,
   timeAgo,
   reportFields,
   waitingOn,
@@ -23,11 +24,13 @@ import {
   formMatchesTicket,
   ticketFiledWith,
 } from "../pages/form-id.js";
+import { fingerprint } from "../pages/loaded-text.js";
 import { LIST_ORDER_LABELS, noMatchWords, readListPageQuery } from "../pages/list-query.js";
 import { sameText, type ListOrder } from "../tickets/schemas.js";
 import { statusControl } from "../pages/status-control.js";
 import { DESCRIPTION_LIMIT, withHowFarOver } from "../pages/text-limit.js";
 import {
+  filedMessage,
   rememberSaved,
   SAVED_MESSAGES,
   takeProblem,
@@ -47,6 +50,7 @@ const helpers = {
   formatTime,
   timeAgo,
   reportFields,
+  teamSaysFixed,
 };
 
 // What the reply form holds: the kind chosen, the text typed, and a message if it was refused.
@@ -163,6 +167,15 @@ type NextStep = {
   href?: string;
   /** One line saying what this step is for, after the button. */
   note?: string;
+  /**
+   * Before asking the customer: the check they wrote when filing, shown in one line above the
+   * button so the owner reads it before asking. Null when they gave none.
+   */
+  customerCheck?: string | null;
+  /** The team's clearer wording of the check, said instead when the customer gave none. */
+  teamCheck?: string | null;
+  /** A quiet link beside the button to the optional form with more to say, by its id. */
+  detailsId?: string;
 };
 
 /**
@@ -191,6 +204,9 @@ function nextStep(
       label: "Ask the customer to verify",
       form: { action: `${at}/ready` },
       note: 'Sends the customer "Did this fix it?".',
+      customerCheck: ticket.fix_check,
+      teamCheck: ticket.agreed_check,
+      detailsId: "ask",
     };
   }
   return null;
@@ -268,6 +284,52 @@ const BOX_NAMES: [keyof typeof emptyForm, string][] = [
   ["where_url", "Page where it happened"],
 ];
 
+/** The four boxes of the edit form, filled in with the ticket as it is now. */
+function ticketValues(ticket: Ticket): typeof emptyForm {
+  return {
+    title: ticket.title,
+    description: ticket.description,
+    where_url: ticket.where_url ?? "",
+    fix_check: ticket.fix_check ?? "",
+  };
+}
+
+/** A fingerprint of each of the four boxes, as the ticket holds them now. */
+function ticketFingerprints(ticket: Ticket): typeof emptyForm {
+  return {
+    title: fingerprint(ticket.title),
+    description: fingerprint(ticket.description),
+    where_url: fingerprint(ticket.where_url),
+    fix_check: fingerprint(ticket.fix_check),
+  };
+}
+
+/**
+ * What the edit form held when it was opened, as the fingerprints in its hidden "loaded_" boxes,
+ * or null when it has none. These come from the browser, so they only word the message after a
+ * refused save: the save itself is checked against the ticket's version, never against these.
+ */
+function readLoaded(body: Record<string, unknown> | undefined): typeof emptyForm | null {
+  const sent = BOX_NAMES.some(([field]) => typeof body?.[`loaded_${field}`] === "string");
+  if (!sent) return null;
+  return {
+    title: asText(body?.loaded_title),
+    description: asText(body?.loaded_description),
+    where_url: asText(body?.loaded_where_url),
+    fix_check: asText(body?.loaded_fix_check),
+  };
+}
+
+/**
+ * The boxes someone else changed since the form was opened, each with the text it holds now, so
+ * the person need not compare the ticket and their draft box by box.
+ */
+function changedSinceLoaded(ticket: Ticket, loaded: typeof emptyForm) {
+  return BOX_NAMES.filter(([field]) => fingerprint(ticket[field]) !== loaded[field]).map(
+    ([field, name]) => ({ name, now: (ticket[field] ?? "").trim() }),
+  );
+}
+
 /**
  * The names of the boxes whose text differs from the ticket as it is now. They are compared the
  * way a ticket stores them: trimmed, and with a browser's CR LF line breaks the same as plain ones.
@@ -312,6 +374,8 @@ export function pagesRouter(service: TicketService): Router {
   ): void {
     const actor = signedIn(req);
     const ticket = service.getTicket(req.params.key as string, actor);
+    // Just after filing, the receipt names this ticket.
+    if (res.locals.saved === SAVED_MESSAGES.filed) res.locals.saved = filedMessage(ticket.key);
     const entries = service.listEntries(ticket.key, actor);
     const events = service.listEvents(ticket.key, actor);
     const names = service.peopleNames(events.map((event) => event.actor));
@@ -667,15 +731,12 @@ export function pagesRouter(service: TicketService): Router {
       res.redirect(303, `/tickets/${ticket.key}`);
       return;
     }
-    const values = {
-      title: ticket.title,
-      description: ticket.description,
-      where_url: ticket.where_url ?? "",
-      fix_check: ticket.fix_check ?? "",
-    };
+    const values = ticketValues(ticket);
     res.render("ticket-form", {
       ...editForm(ticket.key),
       values,
+      // What the form was opened with, so a refused save can say what someone else changed.
+      loaded: ticketFingerprints(ticket),
       errors: {},
       checkLocked: ticket.created_by !== actor.id,
       version: ticket.version,
@@ -685,6 +746,7 @@ export function pagesRouter(service: TicketService): Router {
   router.post("/tickets/:key/edit", (req, res) => {
     const actor = signedIn(req);
     const values = readTicketForm(req.body);
+    const loaded = readLoaded(req.body);
     const expectedVersion = asText(req.body?.expected_version);
     try {
       const ticket = service.editTicket(
@@ -712,9 +774,13 @@ export function pagesRouter(service: TicketService): Router {
         ...editForm(current.key),
         values: shown,
         errors,
-        // The boxes whose text on the ticket now differs from what the form holds, so a second
-        // save does not put old text back unnoticed.
-        differ: changed ? differingBoxes(current, shown) : [],
+        // What someone else changed since the form was opened, with the text it holds now. A
+        // form sent without what it was opened with names the boxes that differ instead.
+        changedByOthers: changed && loaded !== null ? changedSinceLoaded(current, loaded) : null,
+        differ: changed && loaded === null ? differingBoxes(current, shown) : [],
+        // After a refusal for a newer version the form is now based on the ticket as it is;
+        // after a mistake in a box it is still based on what it was opened with.
+        loaded: changed ? ticketFingerprints(current) : loaded,
         // The hidden version has no box of its own, so a problem with it is said at the top.
         versionUnreadable: errors.expected_version !== undefined,
         checkLocked,

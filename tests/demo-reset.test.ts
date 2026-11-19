@@ -12,8 +12,8 @@ import { createDemoReset, KEEP_SET_ASIDE, RESET_TIMES } from "../src/server/demo
 import { openSite } from "../src/server/start.js";
 import { FROM_THIS_SITE } from "./helpers.js";
 
-// The demo goes back to its samples by itself: once its samples are a day old and nobody has
-// asked for anything for a while, or at two days whatever happens. The real site never does.
+// The demo goes back to its samples by itself: once its samples are two hours old and nobody has
+// asked for anything for half an hour, or at two days whatever happens. The real site never does.
 
 const HOUR = 60 * 60 * 1000;
 const MINUTE = 60 * 1000;
@@ -57,10 +57,10 @@ function startDemo(options: { rename?: (from: string, to: string) => void } = {}
 }
 
 describe("the demo resetting itself", () => {
-  it("does nothing before its samples are a day old", async () => {
+  it("does nothing before its samples are two hours old", async () => {
     const demo = startDemo();
     expect((await demo.fileTicket("A visitor's ticket")).status).toBe(201);
-    demo.clock.now += 23 * HOUR;
+    demo.clock.now += 2 * HOUR - MINUTE;
     expect(demo.reset.check()).toBe(false);
     expect(await demo.titles()).toContain("A visitor's ticket");
     expect(demo.setAside()).toEqual([]);
@@ -129,9 +129,29 @@ describe("the demo resetting itself", () => {
     expect(next.body.key).toBe(visitorsKey);
     // The earlier database is on the disk, set aside, as the manual reset leaves it.
     expect(demo.setAside().some((name) => name.startsWith("app.db.before-reseed-"))).toBe(true);
-    // The fresh samples are the new start: a day must pass again.
-    demo.clock.now += 23 * HOUR;
+    // The fresh samples are the new start: two hours must pass again.
+    demo.clock.now += 2 * HOUR - MINUTE;
     expect(demo.reset.check()).toBe(false);
+  });
+
+  it("resets once its data is two hours old and nobody has asked for anything for half an hour", async () => {
+    // The times the demo runs with, not ones a test passes in.
+    expect(RESET_TIMES).toMatchObject({
+      oldAfterMs: 2 * HOUR,
+      quietForMs: 30 * MINUTE,
+      forcedAfterMs: 48 * HOUR,
+    });
+    const demo = startDemo();
+    await demo.fileTicket("A visitor's ticket");
+    // A visitor looked twenty minutes before the data turned two hours old.
+    demo.clock.now += 2 * HOUR - 20 * MINUTE;
+    await demo.titles();
+    demo.clock.now += 20 * MINUTE + MINUTE;
+    expect(demo.reset.check()).toBe(false);
+    // Half an hour after that visitor, with nobody since, it resets.
+    demo.clock.now += 9 * MINUTE;
+    expect(demo.reset.check()).toBe(true);
+    expect(await demo.titles()).not.toContain("A visitor's ticket");
   });
 
   it("resets at two days even if it is never quiet", async () => {

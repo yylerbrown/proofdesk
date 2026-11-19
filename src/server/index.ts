@@ -11,7 +11,7 @@ const log = (line: string) => console.log(line);
 const config = loadConfig();
 const site = openSite(config, log);
 
-// The demo goes back to its samples by itself once a day (src/server/demo-reset.ts), so its
+// The demo goes back to its samples by itself when it is quiet (src/server/demo-reset.ts), so its
 // requests go to whichever app is current. The real site serves its one app and never resets.
 const demoReset = config.demo ? createDemoReset({ config, log, site }) : null;
 const current = (): Site => (demoReset === null ? site : demoReset.current());

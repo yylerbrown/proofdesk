@@ -2438,6 +2438,11 @@ table.tickets td.title-cell a:hover {
 .next-note {
   color: var(--pd-muted);
 }
+/* The customer's check, on a line of its own above the button that asks them. */
+.next-check {
+  flex-basis: 100%;
+  margin: 0;
+}
 /* On the demo, the next role to view as: quieter than the next action, and below it. */
 .demo-next button {
   font-size: var(--pd-text-sm);
@@ -2600,5 +2605,10 @@ ol.first-steps li {
   table.tickets tbody .resolution-label {
     display: inline;
     margin-left: var(--pd-space-2);
+  }
+  /* A second line, such as "You have not confirmed it", sits beneath the first. */
+  table.tickets tbody .resolution-label + .resolution-label {
+    display: block;
+    margin-left: 0;
   }
 }

@@ -239,7 +239,7 @@ test("the demo strip says the demo resets, on one line wide and two on a phone",
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto("/sign-in");
   await expect(page.locator(".demo-strip")).toHaveText(
-    "Demo: sample data, shared with everyone who visits. It resets itself about once a day.",
+    "Demo: sample data, shared with everyone who visits. It resets itself when it has been quiet for a while.",
   );
   expect(await stripLines(page)).toBe(1);
   await page.setViewportSize({ width: 390, height: 844 });

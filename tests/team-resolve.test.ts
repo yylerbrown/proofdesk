@@ -213,7 +213,9 @@ describe("resolving with a reason on the page", () => {
     const { app } = await setup();
     await admin(app).post("/api/tickets/SUP-2/take");
     const owner = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    expect(owner.querySelector("details.resolve summary")?.text).toBe("Resolved");
+    // The opener says it opens a form; the button inside the form is the one that resolves.
+    expect(owner.querySelector("details.resolve summary")?.text).toBe("Resolve with a reason…");
+    expect(owner.querySelector("details.resolve form button")?.text).toBe("Resolve");
     expect(owner.querySelector(".next-action")?.text).not.toContain("Resolve");
     expect(
       parse((await admin(app).get("/tickets/SUP-2")).text).querySelector("details.resolve"),
