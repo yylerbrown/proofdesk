@@ -181,6 +181,14 @@
   const hasStep = Boolean(locals.nextStep || locals.demoNext || restoring || reopening);
   const showCard = asking || ticket.fix_check || ticket.agreed_check || card.line || card.asked || hasStep;
 %>
+<%# A code change linked to the ticket is the first line of the evidence, for the team. %>
+<% const changeUrl = staff ? ticket.change_url : null; %>
+<%# While an assistant's suggested test waits for a person's decision, its card comes first, so
+    the review is read before the step that asks the customer. Otherwise it follows the card. %>
+<% const reviewFirst = Boolean(assistantCard && assistantCard.canDecide && assistantCard.spec && assistantCard.spec.state === "proposed"); %>
+<% if (reviewFirst) { %>
+<%- include("assistant-card", { card: assistantCard, changeUrl }) %>
+<% } %>
 <% if (showCard) { %>
 <article class="ticket-card" <% if (asking) { %>id="did-this-fix-it"<% } %>>
   <% if (asking) { %>
@@ -307,11 +315,9 @@
 
 <%# Everything an assistant left on the ticket is one card. Evidence a person attached, with no
     assistant's work beside it, is one closed line. The customer sees the proof when asked. %>
-<%# A code change linked to the ticket is the first line of the evidence, for the team. %>
-<% const changeUrl = staff ? ticket.change_url : null; %>
-<% if (assistantCard) { %>
+<% if (assistantCard && !reviewFirst) { %>
 <%- include("assistant-card", { card: assistantCard, changeUrl }) %>
-<% } else if (staff && (evidence.length > 0 || changeUrl)) { %>
+<% } else if (!assistantCard && staff && (evidence.length > 0 || changeUrl)) { %>
 <details class="evidence-list">
   <summary>Evidence (<%= evidence.length + (changeUrl ? 1 : 0) %>)</summary>
   <%- include("change-line", { changeUrl }) %>

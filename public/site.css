@@ -819,8 +819,15 @@ form.list-search {
   max-width: 24rem;
   margin: 0 0 0 auto;
 }
-form.list-search input {
+/*
+ * The box is round at both ends in every view. A filtered or sorted list puts hidden fields ahead
+ * of the box, and Pico rounds only the first and last child of a search form, so the box sets its
+ * own round ends and does not depend on where it sits in the form. The selector names the form's
+ * role so it outranks Pico's own rule for a box that is not the first child.
+ */
+form.list-search[role="search"] input[type="search"] {
   margin: 0;
+  border-radius: 5rem;
   font-size: var(--pd-text-sm);
 }
 /*
