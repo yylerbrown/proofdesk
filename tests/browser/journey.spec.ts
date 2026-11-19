@@ -103,7 +103,7 @@ test("the plain path: the status row's In Progress, then Resolved with a reason"
   const row = team.locator(".status-row");
   await row.getByRole("button", { name: "In Progress" }).click();
   await expectTicketStatus(team, key, "In Progress");
-  await row.getByRole("button", { name: "Resolved" }).click();
+  await row.getByRole("button", { name: "Resolve with a reason" }).click();
   await row.getByRole("combobox", { name: "Reason" }).selectOption("cannot_reproduce");
   await row.getByRole("button", { name: "Resolve", exact: true }).click();
   await expect(savedMessage(team)).toContainText("Resolved, with your reason");

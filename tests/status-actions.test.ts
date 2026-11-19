@@ -80,7 +80,11 @@ describe("the status control", () => {
   it("on a New ticket marks New, takes and starts with In Progress, and opens the reason for Resolved", async () => {
     const { app } = await filed();
     const section = (await statusSection(app, teamActor))!;
-    expect(row(section)).toEqual(["New: current", "In Progress: press", "Resolved: opens"]);
+    expect(row(section)).toEqual([
+      "New: current",
+      "In Progress: press",
+      "Resolve with a reason…: opens",
+    ]);
     expect(why(section)).toBeNull();
     expect(formFor(section, "In Progress").getAttribute("action")).toBe(
       "/tickets/SUP-1/take-and-start",
@@ -109,7 +113,11 @@ describe("the status control", () => {
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
     for (const who of [teamActor, adminActor]) {
       const section = (await statusSection(app, who))!;
-      expect(row(section)).toEqual(["New: press", "In Progress: current", "Resolved: opens"]);
+      expect(row(section)).toEqual([
+        "New: press",
+        "In Progress: current",
+        "Resolve with a reason…: opens",
+      ]);
       const back = formFor(section, "New");
       expect(back.getAttribute("action")).toBe("/tickets/SUP-1/status");
       expect(back.querySelector("input[name=status]")?.getAttribute("value")).toBe("new");
@@ -166,7 +174,7 @@ describe("the status control", () => {
     expect(row((await statusSection(app, teamActor))!)).toEqual([
       "New: press",
       "In Progress: current",
-      "Resolved: opens",
+      "Resolve with a reason…: opens",
     ]);
   });
 

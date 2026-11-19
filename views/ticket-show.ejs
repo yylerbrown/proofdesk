@@ -272,8 +272,10 @@
         chosen already and resolving takes two presses. While the customer's No stands it is not
         offered, and the person picks a reason. After a refused try, what they picked stays. %>
     <% const chosenReason = problem?.form === "resolve" ? (resolving.reason ?? "") : (notFixed ? "" : "fixed_no_reply"); %>
+    <%# It opens a form rather than changing the status at once, so it says so; the button
+        inside the form is the one that resolves. %>
     <details class="resolve" <% if (problem?.form === "resolve") { %>open<% } %>>
-      <summary role="button" class="secondary outline"><%= statusLabels[choice.status] %></summary>
+      <summary role="button" class="secondary outline">Resolve with a reason…</summary>
       <form method="post" action="/tickets/<%= ticket.key %>/resolve">
         <%- versionField %>
         <p class="resolve-lead"><small>Resolves the ticket now, with the reason you pick. The customer sees it and can reopen it.</small></p>
