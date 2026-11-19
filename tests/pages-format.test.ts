@@ -48,9 +48,9 @@ describe("describeActor", () => {
     expect(describeActor({ ...event("created", {}), actor: "u-1" }, names)).toBe("Sam Rivera");
   });
 
-  it("marks an AI agent as one", () => {
+  it("marks an AI assistant as one", () => {
     const agent = { ...event("created", {}), actor: "u-1", actor_kind: "agent" as const };
-    expect(describeActor(agent, names)).toBe("Sam Rivera (AI agent)");
+    expect(describeActor(agent, names)).toBe("Sam Rivera (AI assistant)");
   });
 
   it("does not show an id that has no name", () => {

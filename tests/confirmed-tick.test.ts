@@ -62,9 +62,7 @@ describe("the tick", () => {
     // On the ticket's card, with the day it was confirmed.
     const line = main.querySelector(".ticket-card .card-line")!;
     expect(line.querySelector(".tick")).not.toBeNull();
-    expect(line.text.trim()).toMatch(
-      /^Customer confirmed it is fixed\. \d{1,2} [A-Z][a-z]{2} \d{4}\.$/,
-    );
+    expect(line.text.trim()).toMatch(/^Customer confirmed on \d{1,2} [A-Z][a-z]{2} \d{4}\.$/);
     expect(ticks(await ticketMain(app, "/tickets"))).toHaveLength(0);
   });
 

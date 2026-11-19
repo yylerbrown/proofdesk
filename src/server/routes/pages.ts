@@ -10,6 +10,7 @@ import {
   customerSaysNotFixed,
   describeActor,
   describeEvent,
+  firstParagraph,
   formatDay,
   formatTime,
   notFixedCard,
@@ -53,6 +54,7 @@ const helpers = {
   formatDay,
   timeAgo,
   reportFields,
+  firstParagraph,
 };
 
 // What the reply form holds: the kind chosen, the text typed, and a message if it was refused.

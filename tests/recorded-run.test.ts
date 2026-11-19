@@ -101,7 +101,7 @@ describe("the recorded run on the demo", () => {
     const { asTeam, recorded } = demo();
     const html = parse((await asTeam().get(`/tickets/${recorded}`)).text);
     expect(html.querySelector("ul.evidence")?.text).toContain(
-      "Reported by Demo visitor's assistant (AI agent)",
+      "Reported by Demo visitor's assistant (AI assistant)",
     );
   });
 
@@ -298,7 +298,7 @@ describe("the demo's history and the assistant samples' customer", () => {
     }
     expect(await who("SUP-7", "demo-admin")).toContain("Second Demo Customer customer");
     expect(await who("SUP-8", "demo-admin")).toContain("Third Demo Customer customer");
-    expect(await who(recorded, "demo-team")).toContain("Demo visitor's assistant (AI agent)");
+    expect(await who(recorded, "demo-team")).toContain("Demo visitor's assistant (AI assistant)");
     // Named in plain words, with no connection id.
     expect(RECORDED_ASSISTANT.name).not.toMatch(/[0-9a-f]{6,}/);
   });

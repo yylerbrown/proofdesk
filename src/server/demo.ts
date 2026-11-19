@@ -84,11 +84,6 @@ export function seedDemo(service: TicketService): void {
   service.addEntry(login.key, { kind: "reply", body: "An older iPhone, with Safari." }, customer);
   service.takeTicket(login.key, team);
   service.changeStatus(login.key, { status: "in_progress" }, team);
-  service.agreeCheck(
-    login.key,
-    { agreed_check: "Sign-in works on Safari on iPhone, on the oldest supported version" },
-    team,
-  );
 
   service.createTicket(
     {

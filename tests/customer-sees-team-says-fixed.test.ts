@@ -41,7 +41,7 @@ describe("a ticket the team resolved as fixed, for its customer", () => {
     const ticket = await page(customerOne, "/tickets/SUP-1");
     const card = ticket.querySelector(".ticket-card")!;
     expect(card.querySelector(".card-line")?.text.trim()).toBe(
-      "The team says it is fixed. You have not confirmed it.",
+      "Resolved by the team: Fixed. You have not confirmed it.",
     );
     expect(card.querySelector("details#reopen summary")?.text).toBe("Still happening?");
     // The team reads the reason, who and when, and that the customer has not confirmed it.

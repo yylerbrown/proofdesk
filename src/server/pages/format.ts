@@ -48,20 +48,6 @@ export function timeAgo(iso: string, now: Date = new Date()): string {
   return "just now";
 }
 
-/**
- * True when the customer is looking at a ticket the team resolved as fixed without their Yes.
- * Their list and their ticket then say so in their terms: "The team says it is fixed", and
- * beneath it "You have not confirmed it". The team's view keeps its own wording, and so do the
- * team's other reasons, such as a duplicate, which are not a claim that it is fixed.
- */
-export function teamSaysFixed(ticket: Ticket, viewer: Role): boolean {
-  return (
-    viewer === "customer" &&
-    ticket.resolution?.by === "team" &&
-    ticket.resolution.reason === "fixed_no_reply"
-  );
-}
-
 /** What the list knows about a ticket besides the ticket itself. */
 export type TurnFacts = {
   /** The customer's latest word is their reopening it. */
@@ -208,7 +194,7 @@ export function cardLine(ticket: Ticket, viewer: Role, facts: CardFacts): CardLi
 
   if (ticket.status === "resolved") {
     if (facts.confirmed !== null) {
-      return { ...line("Customer confirmed it is fixed. ", facts.confirmed, "."), tick: true };
+      return { ...line("Customer confirmed on ", facts.confirmed, "."), tick: true };
     }
     const resolution = ticket.resolution;
     if (resolution === null || resolution.by !== "team") return null;
@@ -216,12 +202,7 @@ export function cardLine(ticket: Ticket, viewer: Role, facts: CardFacts): CardLi
     const reason = resolution.reason === "fixed_no_reply" ? "Fixed" : resolution.reason_label;
     // Most notes end in a full stop; the line's own full stop follows the bracket.
     const note = resolution.note ? ` (${resolution.note.replace(/\.$/, "")})` : "";
-    if (!team) {
-      const said = teamSaysFixed(ticket, viewer)
-        ? "The team says it is fixed"
-        : `Resolved by the team: ${reason}`;
-      return line(`${said}${note}. You have not confirmed it.`);
-    }
+    if (!team) return line(`Resolved by the team: ${reason}${note}. You have not confirmed it.`);
     // Who resolved it and when, such as "Demo Team Member, 19 Nov 2026".
     const resolved = `Resolved by the team: ${reason}${note}.`;
     const notConfirmed = "Not confirmed by the customer.";
@@ -292,7 +273,7 @@ export function describeEvent(event: TicketEvent): string {
   if (event.type === "owner_changed") {
     const owner = ownerChangeSchema.safeParse(event.data);
     if (owner.success) {
-      return owner.data.to === null ? "Released, now without an owner" : `Owner: ${owner.data.to}`;
+      return owner.data.to === null ? "Unassigned" : `Assigned to ${owner.data.to}`;
     }
   }
   if (event.type === "check_agreed") {
@@ -306,14 +287,14 @@ export function describeEvent(event: TicketEvent): string {
   if (event.type === "customer_answered") {
     const answer = z.object({ fixed: z.boolean() }).safeParse(event.data);
     if (answer.success) {
-      return answer.data.fixed ? "Customer confirmed it is fixed" : "Customer says it is not fixed";
+      return answer.data.fixed ? "Customer confirmed" : "Customer says it is not fixed";
     }
   }
   if (event.type === "reply_added") return "Reply added";
-  if (event.type === "evidence_added") return "Evidence attached";
-  if (event.type === "spec_proposed") return "Test spec proposed";
-  if (event.type === "spec_accepted") return "Test spec accepted";
-  if (event.type === "spec_discarded") return "Test spec discarded";
+  if (event.type === "evidence_added") return "Evidence added";
+  if (event.type === "spec_proposed") return "Suggested test added";
+  if (event.type === "spec_accepted") return "Suggested test accepted as the agreed test";
+  if (event.type === "spec_discarded") return "Suggested test discarded";
   if (event.type === "note_added") return "Internal note added";
   if (event.type === "review_requested") return "Review of the evidence requested";
   if (event.type === "reopened") {
@@ -361,7 +342,18 @@ export function describeEvent(event: TicketEvent): string {
 }
 
 /**
- * Who wrote a history entry, by display name. An AI agent is always marked, so it is never
+ * A note split at its first blank line: the first paragraph, and the rest, or null when the
+ * note is one paragraph. Windows line endings count as line endings.
+ */
+export function firstParagraph(text: string): { first: string; rest: string | null } {
+  const paragraphs = text.trim().split(/\r?\n[ \t]*\r?\n/);
+  const first = paragraphs[0] ?? "";
+  const rest = paragraphs.slice(1).join("\n\n").trim();
+  return { first, rest: rest === "" ? null : rest };
+}
+
+/**
+ * Who wrote a history entry, by display name. An AI assistant is always marked, so it is never
  * taken for a person. The names of demo people already say "Demo".
  */
 export function describeActor(event: TicketEvent, names: Map<string, string>): string {
@@ -371,7 +363,7 @@ export function describeActor(event: TicketEvent, names: Map<string, string>): s
     (typeof connectionName === "string" ? connectionName : undefined) ??
     names.get(event.actor) ??
     (event.actor_kind === "agent" ? event.actor : "Unknown person");
-  return event.actor_kind === "agent" ? `${name} (AI agent)` : name;
+  return event.actor_kind === "agent" ? `${name} (AI assistant)` : name;
 }
 
 /**

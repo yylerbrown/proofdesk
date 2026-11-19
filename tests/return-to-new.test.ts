@@ -143,7 +143,7 @@ describe("returning a ticket to New", () => {
       .set("Cookie", [`${DEV_COOKIE}=${teamActor.id}`, ...[res.headers["set-cookie"]].flat()])
       .get("/tickets/SUP-1");
     expect(parse(page.text).querySelector("p.saved")?.text.trim()).toBe(
-      "Back to New, with no owner. Anyone on the team can take it.",
+      "Back to New and unassigned. Anyone on the team can take it.",
     );
   });
 });

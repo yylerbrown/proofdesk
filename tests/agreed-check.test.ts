@@ -100,8 +100,10 @@ describe("the agreed check", () => {
     expect(customer.text).not.toContain("In your words");
     expect(customer.text).not.toContain('action="/tickets/SUP-1/agreed-check"');
 
+    // The team's page has no form for it: the team's check stays in the API only.
     const team = await as(app, teamActor).get("/tickets/SUP-1");
-    expect(team.text).toContain('action="/tickets/SUP-1/agreed-check"');
+    expect(team.text).not.toContain('action="/tickets/SUP-1/agreed-check"');
+    expect(team.text).not.toContain("Offer a clearer check");
     // The history says it in words.
     expect(parse(team.text).querySelector("main")!.text).toContain("Team's check: ");
   });

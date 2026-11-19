@@ -817,14 +817,7 @@ describe("the ticket page's own forms", () => {
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
     const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     const version = String((await read(app)).version);
-    const changing = [
-      "/status",
-      "/resolve",
-      "/ready",
-      "/hand-off",
-      "/agreed-check",
-      "/change-link",
-    ];
+    const changing = ["/status", "/resolve", "/ready", "/hand-off"];
     for (const ending of changing) {
       const forms = page
         .querySelectorAll("form")
@@ -980,7 +973,7 @@ describe("the cheap read a page left open asks", () => {
     const take = await team.post("/tickets/SUP-1/take").type("form").send({});
     expect(take.status).toBe(303);
     await team.get("/tickets/SUP-1/version");
-    expect((await team.get("/tickets/SUP-1")).text).toContain("You own this ticket now.");
+    expect((await team.get("/tickets/SUP-1")).text).toContain("Assigned to you.");
   });
 
   it("matches what the ticket page draws, so an unchanged page stays quiet", async () => {
