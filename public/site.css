@@ -867,6 +867,13 @@ table.tickets thead th[aria-sort] a.sort-link {
 .sort-arrow:not(:empty) {
   margin-left: 0.25em;
 }
+/* Before any press, each sortable header shows a faint two-way mark, so it reads as a control. */
+table.tickets thead .sort-arrow:empty::after {
+  margin-left: 0.25em;
+  content: "\2195";
+  content: "\2195" / "";
+  opacity: 0.4;
+}
 /* The header's plain name, shown only on a phone in place of its link. */
 table.tickets thead .sort-label {
   display: none;
@@ -1007,6 +1014,13 @@ table.tickets td:first-child a::after {
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
     line-clamp: 2;
+  }
+}
+/* Below 1100px the title column is narrow, so a long title gets one more line before it is cut. */
+@media (min-width: 640px) and (max-width: 1099px) {
+  table.tickets td.user-text a {
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
   }
 }
 /*
@@ -2185,6 +2199,11 @@ article.customer-said-no {
 }
 .demo-welcome-start [role="button"] {
   margin: 0;
+}
+/* "Prefilled and editable": what the sample button commits the visitor to, beside it. */
+.demo-welcome-start small {
+  margin-left: var(--pd-space-2);
+  color: var(--pd-muted);
 }
 .demo-welcome-more {
   display: flex;

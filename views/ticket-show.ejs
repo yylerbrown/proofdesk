@@ -298,10 +298,9 @@
     </form>
     <% } else if (choice.kind === "resolve") { %>
     <% const resolving = problem?.form === "resolve" ? (problem.values ?? {}) : {}; %>
-    <%# "Fixed, not yet confirmed" is what the team means when it resolves directly, so it is
-        chosen already and resolving takes two presses. While the customer's No stands it is not
-        offered, and the person picks a reason. After a refused try, what they picked stays. %>
-    <% const chosenReason = problem?.form === "resolve" ? (resolving.reason ?? "") : (notFixed ? "" : "fixed_no_reply"); %>
+    <%# No reason is chosen at first, so a hurried press can never claim a fix. While the
+        customer's No stands "Fixed" is not offered. After a refused try, what they picked stays. %>
+    <% const chosenReason = problem?.form === "resolve" ? (resolving.reason ?? "") : ""; %>
     <%# Resolved opens a reason and the button that resolves, rather than changing the status at once. %>
     <details class="resolve" <% if (problem?.form === "resolve") { %>open<% } %>>
       <summary role="button" class="secondary outline">Resolved</summary>

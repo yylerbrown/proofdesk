@@ -113,6 +113,18 @@ const WALKTHROUGH_SAMPLE = {
 };
 
 /**
+ * True for a demo ticket that is still the welcome card's sample, word for word. Such a ticket
+ * has no real fix to make, so its page says the sample skips it.
+ */
+function isWalkthroughSample(ticket: Ticket, actor: Actor): boolean {
+  return (
+    actor.demo === true &&
+    ticket.title === WALKTHROUGH_SAMPLE.title &&
+    ticket.description === WALKTHROUGH_SAMPLE.description
+  );
+}
+
+/**
  * On the demo, the next role to view this ticket as, so one ticket can be followed from the
  * customer's words to their Yes: the team after the customer has filed or answered No, and the
  * customer who filed it once the team has asked them to verify, so the team's own next step comes
@@ -219,11 +231,12 @@ type NextStep = {
 /**
  * The step this viewer can take now: take the ticket and start work, start work, then ask the
  * customer to verify. Each is possible when it is shown; null when there is nothing for this
- * viewer to press.
+ * viewer to press. On the demo's sample, the ask says the sample skips the fix.
  */
 function nextStep(
   ticket: Ticket,
   allowed: ReturnType<TicketService["allowedActions"]>,
+  sample: boolean,
 ): NextStep | null {
   const at = `/tickets/${ticket.key}`;
   if (allowed.takeAndStart) {
@@ -241,7 +254,9 @@ function nextStep(
     return {
       label: "Ask the customer to verify",
       form: { action: `${at}/ready` },
-      note: 'Sends the customer "Did this fix it?".',
+      note: sample
+        ? 'Sends the customer "Did this fix it?". The sample skips the fix.'
+        : 'Sends the customer "Did this fix it?".',
       customerCheck: ticket.fix_check,
       teamCheck: ticket.agreed_check,
       detailsId: "ask",
@@ -456,7 +471,7 @@ export function pagesRouter(service: TicketService): Router {
       viewerId: actor.id,
       assistantSignal: service.assistantSignals([ticket], actor).get(ticket.key) ?? null,
       demoNext: demoNext(ticket, actor),
-      nextStep: nextStep(ticket, allowed),
+      nextStep: nextStep(ticket, allowed, isWalkthroughSample(ticket, actor)),
       statusRow: statusControl(ticket, allowed, actor),
       recordedRun: service.recordedRunKey() === ticket.key,
       assistantSampleKey: service.assistantSampleKey(),

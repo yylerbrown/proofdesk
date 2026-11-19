@@ -23,8 +23,8 @@ test("the resolve form shows each box only for the reason that needs it", async 
   const duplicateOf = resolve.getByRole("textbox", { name: "Duplicate of" });
   const note = resolve.getByRole("textbox", { name: "Why?" });
 
-  // It starts on the "Fixed." reason: only the reason and the Resolve button show.
-  await expect(reason).toHaveValue("fixed_no_reply");
+  // It starts with no reason chosen: only the reason and the Resolve button show.
+  await expect(reason).toHaveValue("");
   await expect(duplicateOf).toBeHidden();
   await expect(note).toBeHidden();
 

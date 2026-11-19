@@ -37,8 +37,9 @@ test("Resolved opens its form under the row, and resolving takes two presses", a
   // The form starts on its own line, under the buttons.
   const [, buttonTop, , buttonHeight] = before[1]!;
   expect((await box(reason))[1]!).toBeGreaterThan(buttonTop! + buttonHeight!);
-  await expect(reason).toHaveValue("fixed_no_reply");
-
+  // No reason is chosen at first, so a hurried press never claims a fix.
+  await expect(reason).toHaveValue("");
+  await reason.selectOption("fixed_no_reply");
   await row.getByRole("button", { name: "Resolve", exact: true }).click();
   await expect(page.locator("article.resolved-by-team strong")).toHaveText(
     "Resolved by the team: Fixed. Not customer-confirmed.",
