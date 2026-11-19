@@ -5,7 +5,7 @@ import { expect, test, type Page } from "@playwright/test";
 // line that says it was sent, by the message box, with focus on it; a search puts focus back in
 // the search box. A control reached
 // with Shift+Tab is never left under the sticky header. Escape closes the Resolve and Reopen
-// panels and returns focus to them, and the More menu opens in view.
+// panels and returns focus to them.
 
 async function signIn(page: Page, person: string) {
   await page.goto("/sign-in");
@@ -73,9 +73,7 @@ test("focus starts from the saved line, the sent line or the search box", async 
   });
 });
 
-test("the team's ticket page: Shift+Tab, Escape on Resolve and Reopen, and More", async ({
-  page,
-}) => {
+test("the team's ticket page: Shift+Tab, and Escape on Resolve and Reopen", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await signIn(page, "Customer One");
   await page.goto("/tickets/new");
@@ -128,32 +126,7 @@ test("the team's ticket page: Shift+Tab, Escape on Resolve and Reopen, and More"
     await resolve.locator("summary").click();
   });
 
-  await test.step("More opens in view at the bottom of the window", async () => {
-    const summary = page.locator("details.more > summary");
-    // Put More's button at the very bottom of the window, where its menu has no room.
-    await summary.evaluate((button) => {
-      window.scrollBy(0, button.getBoundingClientRect().bottom - window.innerHeight + 2);
-    });
-    const room = await summary.evaluate(
-      (button) => window.innerHeight - button.getBoundingClientRect().bottom,
-    );
-    expect(room).toBeLessThan(40);
-    await summary.click();
-    await expect(page.locator("details.more")).toHaveAttribute("open", "");
-    const menu = page.locator(".more-menu");
-    await expect
-      .poll(() => menu.evaluate((list) => list.getBoundingClientRect().bottom))
-      .toBeLessThanOrEqual(800);
-    const menuTop = await menu.evaluate((list) => list.getBoundingClientRect().top);
-    const headerBottom = await page
-      .locator("body > header")
-      .evaluate((header) => header.getBoundingClientRect().bottom);
-    expect(menuTop).toBeGreaterThanOrEqual(headerBottom);
-    await expect(menu.locator(":is(a, button)").last()).toBeInViewport({ ratio: 1 });
-  });
-
   await test.step("Escape closes Reopen and puts focus back on it", async () => {
-    await page.keyboard.press("Escape");
     const resolve = page.locator("details.resolve");
     await resolve.locator("summary").click();
     await resolve.locator('select[name="reason"]').selectOption("wont_fix");

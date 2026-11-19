@@ -81,7 +81,7 @@ test("the short path: file, take, ask the customer, and their Yes resolves it", 
   await expectTicketStatus(customer, key, "Resolved");
   // Only the customer's Yes reads as "Customer confirmed".
   await team.goto(`/tickets/${key}`);
-  await expect(team.locator(".resolution-label")).toHaveText("Customer confirmed");
+  await expect(team.locator("article.confirmed")).toContainText("Customer confirmed it is fixed.");
 
   await customer.context().close();
   await team.context().close();
@@ -103,13 +103,13 @@ test("the plain path: the status row's In Progress, then Resolved with a reason"
   const row = team.locator(".status-row");
   await row.getByRole("button", { name: "In Progress" }).click();
   await expectTicketStatus(team, key, "In Progress");
-  await row.getByRole("button", { name: "Resolve with a reason" }).click();
+  await row.getByRole("button", { name: "Resolved", exact: true }).click();
   await row.getByRole("combobox", { name: "Reason" }).selectOption("cannot_reproduce");
   await row.getByRole("button", { name: "Resolve", exact: true }).click();
   await expect(savedMessage(team)).toContainText("Resolved, with your reason");
   await expectTicketStatus(team, key, "Resolved");
   // The team's resolution is never shown as the customer's confirmation.
-  await expect(team.locator(".resolution-label")).toHaveText(
+  await expect(team.locator("article.resolved-by-team strong")).toHaveText(
     "Resolved by the team: Cannot reproduce",
   );
 
@@ -149,7 +149,7 @@ test("the long path: a check, a change link and evidence, a No, then the custome
     await expect(listRow(team, key)).toContainText("Unassigned");
     await listRow(team, key).getByRole("link", { name: key, exact: true }).click();
 
-    // One action owns the ticket and starts work; taking without starting is in More.
+    // One action owns the ticket and starts work.
     await team.getByRole("button", { name: "Take ticket and start work" }).click();
     await expect(savedMessage(team)).toContainText("You own this ticket, and it is in progress");
     await expect(team.getByRole("button", { name: "Take ticket and start work" })).toHaveCount(0);
@@ -169,13 +169,15 @@ test("the long path: a check, a change link and evidence, a No, then the custome
     await expect(savedMessage(team)).toContainText("Internal note added");
     await expect(team.getByText(note)).toBeVisible();
 
-    // Both are optional, so each waits behind its own disclosure.
+    // Both are optional, so each waits behind its own disclosure under More options.
+    await team.locator("summary", { hasText: "More options" }).click();
     await team.locator("summary", { hasText: "Add the code change link" }).click();
     await team.getByRole("textbox", { name: "Link to the code change" }).fill(changeUrl);
     await team.getByRole("button", { name: "Save change link" }).click();
     await expect(savedMessage(team)).toContainText("Change link saved");
     await expect(team.getByRole("link", { name: changeUrl })).toBeVisible();
 
+    await team.locator("summary", { hasText: "More options" }).click();
     await team.locator("summary", { hasText: "Attach evidence" }).click();
     await team.getByRole("textbox", { name: "What it shows" }).fill(evidence);
     await team.getByRole("button", { name: "Attach evidence" }).click();
@@ -184,6 +186,7 @@ test("the long path: a check, a change link and evidence, a No, then the custome
 
   await test.step("the team member asks the customer to check", async () => {
     // The details are optional, so they wait behind their own disclosure.
+    await team.locator("summary", { hasText: "More options" }).click();
     await team.locator("summary", { hasText: "Ask with details (optional)" }).click();
     await team.getByRole("textbox", { name: "Page on the live site to try" }).fill(tryUrl);
     await team
@@ -239,6 +242,7 @@ test("the long path: a check, a change link and evidence, a No, then the custome
 
   await test.step("the team member asks again and the customer answers Yes", async () => {
     await team.goto(`/tickets/${key}`);
+    await team.locator("summary", { hasText: "More options" }).click();
     await team.locator("summary", { hasText: "Ask with details (optional)" }).click();
     // The page to try is filled in from the last question; after a No, the owner says what changed.
     await expect(team.getByRole("textbox", { name: "Page on the live site to try" })).toHaveValue(

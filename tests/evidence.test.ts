@@ -169,7 +169,7 @@ describe("evidence on the ticket page", () => {
       "main",
     )!;
     const section = main
-      .querySelectorAll("aside section")
+      .querySelectorAll(".ticket-summary section")
       .find((s) => s.querySelector("h2")?.text === "Evidence");
     expect(section?.text).toContain("Reproduced and fixed");
     expect(section?.text).toContain("Reported by Helper (AI agent)");
@@ -218,7 +218,7 @@ describe("the evidence form on the ticket page", () => {
     expect(res.status).toBe(303);
     const html = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     const section = html
-      .querySelectorAll("aside section")
+      .querySelectorAll(".ticket-summary section")
       .find((s) => s.querySelector("h2")?.text === "Evidence");
     expect(section?.text).toContain("Printed ten pages twice");
     expect(section?.text).toContain("Reported by Team Member");

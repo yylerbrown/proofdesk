@@ -4,7 +4,8 @@ import { wireOpeningLinks, type OpeningLink, type Section } from "../src/browser
 import { admin, as, buildTestApp, customerOne, teamActor } from "./helpers.js";
 
 // Beside the top "Ask the customer to verify" button, one quiet link leads to the optional
-// details form further down, so a person who wants to say what they tried finds where first.
+// details form further down, inside "More options", so a person who wants to say what they
+// tried finds where first.
 
 describe("the link to the optional details", () => {
   it("sits beside the ask and leads to the details form", async () => {
@@ -22,8 +23,8 @@ describe("the link to the optional details", () => {
     expect(link.text).toBe("Add details first (optional)");
     expect(link.getAttribute("href")).toBe("#ask");
     expect(link.getAttribute("data-opens")).toBe("ask");
-    // It leads to the closed details form, which the page already has.
-    const details = html.querySelector("details#ask")!;
+    // It leads to the closed details form, which the page already has, inside More options.
+    const details = html.querySelector("details.more-options details#ask")!;
     expect(details.hasAttribute("open")).toBe(false);
     expect(details.querySelector("summary")?.text).toBe("Ask with details (optional)");
     // Nobody else sees it.
@@ -42,11 +43,25 @@ describe("the script that opens it", () => {
       dataset: { opens: "ask" },
       addEventListener: (_type, listener) => (press = listener),
     };
-    wireOpeningLinks([link], (id) => (id === "ask" ? section : null));
+    wireOpeningLinks([link], (id) => (id === "ask" ? [section] : []));
     expect(section.open).toBe(false);
     press();
     expect(section.open).toBe(true);
     expect(other.open).toBe(false);
+  });
+
+  it("opens the closed section around the named one too", () => {
+    const section: Section = { open: false };
+    const around: Section = { open: false };
+    let press: () => void = () => undefined;
+    const link: OpeningLink = {
+      dataset: { opens: "ask" },
+      addEventListener: (_type, listener) => (press = listener),
+    };
+    wireOpeningLinks([link], (id) => (id === "ask" ? [section, around] : []));
+    press();
+    expect(section.open).toBe(true);
+    expect(around.open).toBe(true);
   });
 
   it("does nothing when the section is not on the page", () => {
@@ -55,7 +70,7 @@ describe("the script that opens it", () => {
       dataset: { opens: "missing" },
       addEventListener: (_type, listener) => (press = listener),
     };
-    wireOpeningLinks([link], () => null);
+    wireOpeningLinks([link], () => []);
     expect(() => press()).not.toThrow();
   });
 });

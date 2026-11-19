@@ -1,17 +1,16 @@
 import { expect, test } from "@playwright/test";
 
-// Mouse use of a ticket's More menu in WebKit, the engine behind Safari. In WebKit a mouse press
-// on a button or link does not focus it, so focus moves to the nearest focusable part of the
-// page around it instead. The menu must stay open through that press, or the click is lost.
+// Mouse use of a ticket page in WebKit, the engine behind Safari: More options opens with a
+// press, and Edit ticket, the quiet link under the title, leads to the edit page.
 
 test.use({ browserName: "webkit" });
 
-test("a mouse click on a choice inside More works in WebKit", async ({ page }) => {
+test("More options and Edit ticket work with a mouse in WebKit", async ({ page }) => {
   await page.goto("/sign-in");
   await page.getByRole("button", { name: "View as Customer One" }).click();
   await page.getByRole("button", { name: "New ticket" }).click();
-  await page.getByLabel("Title").fill("More works with a mouse in WebKit");
-  await page.getByLabel("Description").fill("A ticket for the team to edit from the More menu.");
+  await page.getByLabel("Title").fill("More options work with a mouse in WebKit");
+  await page.getByLabel("Description").fill("A ticket for the team to open and edit.");
   await page.getByRole("button", { name: "File ticket" }).click();
   await expect(page).toHaveURL(/\/tickets\/SUP-\d+$/);
   const ticketUrl = page.url();
@@ -20,12 +19,15 @@ test("a mouse click on a choice inside More works in WebKit", async ({ page }) =
   await page.getByRole("button", { name: "View as Team Member" }).click();
   await page.goto(ticketUrl);
 
-  const more = page.locator("details.more");
+  await test.step("More options", async () => {
+    const more = page.locator("details.more-options");
+    await more.locator("summary").first().click();
+    await expect(more).toHaveAttribute("open", "");
+    await expect(more.locator("summary", { hasText: "Attach evidence" })).toBeVisible();
+  });
 
   await test.step("Edit ticket", async () => {
-    await more.locator("summary").click();
-    await expect(more).toHaveAttribute("open", "");
-    await more.getByRole("button", { name: "Edit ticket" }).click();
+    await page.getByRole("link", { name: "Edit ticket" }).click();
     await expect(page).toHaveURL(/\/tickets\/SUP-\d+\/edit$/);
   });
 });

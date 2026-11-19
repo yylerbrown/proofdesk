@@ -169,7 +169,7 @@ describe("after a No", () => {
 });
 
 describe("the ask on the ticket page", () => {
-  it("shows the button greyed, with the reason, to anyone but the owner", async () => {
+  it("is offered to the owner only, and never shown greyed to anyone else", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
@@ -177,10 +177,11 @@ describe("the ask on the ticket page", () => {
     const noLink = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     expect(noLink.querySelector("form.ask")).not.toBeNull();
     expect(noLink.querySelector(".ask-blocked")).toBeNull();
+    // Anyone else sees no ask at all: a control that cannot be pressed is not shown.
     const notMine = parse((await admin(app).get("/tickets/SUP-1")).text);
-    expect(notMine.querySelector("#ask-blocked-why")?.text).toBe(
-      "Only Team Member can ask the customer to verify.",
-    );
+    expect(notMine.querySelector("form.ask")).toBeNull();
+    expect(notMine.querySelector(".ask-blocked")).toBeNull();
+    expect(notMine.querySelector("main")!.text).not.toContain("Ask the customer to verify");
     expect(
       parse((await as(app, customerOne).get("/tickets/SUP-1")).text).querySelector(".ask-blocked"),
     ).toBeNull();

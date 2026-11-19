@@ -80,11 +80,7 @@ describe("the status control", () => {
   it("on a New ticket marks New, takes and starts with In Progress, and opens the reason for Resolved", async () => {
     const { app } = await filed();
     const section = (await statusSection(app, teamActor))!;
-    expect(row(section)).toEqual([
-      "New: current",
-      "In Progress: press",
-      "Resolve with a reason…: opens",
-    ]);
+    expect(row(section)).toEqual(["New: current", "In Progress: press", "Resolved: opens"]);
     expect(why(section)).toBeNull();
     expect(formFor(section, "In Progress").getAttribute("action")).toBe(
       "/tickets/SUP-1/take-and-start",
@@ -113,11 +109,7 @@ describe("the status control", () => {
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
     for (const who of [teamActor, adminActor]) {
       const section = (await statusSection(app, who))!;
-      expect(row(section)).toEqual([
-        "New: press",
-        "In Progress: current",
-        "Resolve with a reason…: opens",
-      ]);
+      expect(row(section)).toEqual(["New: press", "In Progress: current", "Resolved: opens"]);
       const back = formFor(section, "New");
       expect(back.getAttribute("action")).toBe("/tickets/SUP-1/status");
       expect(back.querySelector("input[name=status]")?.getAttribute("value")).toBe("new");
@@ -174,7 +166,7 @@ describe("the status control", () => {
     expect(row((await statusSection(app, teamActor))!)).toEqual([
       "New: press",
       "In Progress: current",
-      "Resolve with a reason…: opens",
+      "Resolved: opens",
     ]);
   });
 
@@ -204,12 +196,15 @@ describe("the status control", () => {
 });
 
 describe("the customer's page", () => {
-  it("gains no status section and keeps its own way to reopen", async () => {
+  it("shows the status as a word with no control, and keeps its own way to reopen", async () => {
     const { app } = await filed();
-    expect(await statusSection(app, customerOne)).toBeNull();
+    const section = (await statusSection(app, customerOne))!;
+    expect(section.querySelector(".badge")?.text).toBe("New");
+    expect(section.querySelector("form, button, details, .status-row")).toBeNull();
     await resolveTicket(app, "SUP-1", customerOne);
     const html = parse((await as(app, customerOne).get("/tickets/SUP-1")).text);
-    expect(html.querySelector("aside.ticket-panel")!.text).not.toMatch(/Start work|Resolve|Reopen/);
+    expect(html.querySelector("aside.ticket-panel")!.text).not.toMatch(/Start work|Reopen/);
+    expect(html.querySelector("aside.ticket-panel form")).toBeNull();
     expect(html.querySelector("#reopen summary")?.text).toBe("Still happening?");
     expect(html.querySelector("summary[role=button]")).toBeNull();
   });

@@ -228,7 +228,7 @@ function nextStep(
     };
   }
   // One press asks the customer. What the owner tried, a page to try and evidence are optional,
-  // in the form under "The fix".
+  // in the form under "More options".
   if (allowed.markReady) {
     return {
       label: "Ask the customer to verify",
@@ -242,16 +242,6 @@ function nextStep(
   return null;
 }
 
-/** Why the team cannot ask the customer yet, in plain words, or null when that is not the question. */
-function askBlockedReason(ticket: Ticket, actor: Actor): string | null {
-  if (actor.role === "customer" || actor.readOnly || ticket.archived_at !== null) return null;
-  if (ticket.status === "resolved" || ticket.ready_at !== null) return null;
-  if (ticket.owner_id === null) return "Take the ticket first.";
-  if (ticket.owner_id !== actor.id)
-    return `Only ${ticket.owner_name} can ask the customer to verify.`;
-  if (ticket.status !== "in_progress") return "Start work first.";
-  return null;
-}
 type TicketAction = (key: string, input: unknown, actor: Actor) => Ticket;
 
 // What each ticket-page form says it saved. The answer form says one thing or the other, and
@@ -456,7 +446,6 @@ export function pagesRouter(service: TicketService): Router {
       ticket,
       viewerRole: actor.role,
       viewerId: actor.id,
-      askBlocked: askBlockedReason(ticket, actor),
       assistantSignal: service.assistantSignals([ticket], actor).get(ticket.key) ?? null,
       demoNext: demoNext(ticket, actor),
       nextStep: nextStep(ticket, allowed),
@@ -903,7 +892,16 @@ export function pagesRouter(service: TicketService): Router {
   router.post("/tickets/:key/ready", ticketForm("ready", service.markReady));
   router.post("/tickets/:key/answer", ticketForm("answer", service.answer));
   router.post("/tickets/:key/reopen", ticketForm("reopen", service.reopen));
-  router.post("/tickets/:key/resolve", ticketForm("resolve", service.resolveWithReason));
+  // The page shows its note box only for Other, so a note typed there and left behind after
+  // choosing another reason is not sent with it.
+  router.post(
+    "/tickets/:key/resolve",
+    ticketForm("resolve", (key, input, actor) => {
+      const fields = { ...(input as Record<string, unknown>) };
+      if (fields.reason !== "other") delete fields.note;
+      return service.resolveWithReason(key, fields, actor);
+    }),
+  );
   router.post("/tickets/:key/adopt-check", (req, res) => {
     const ticket = service.adoptCheck(req.params.key, signedIn(req), req.body);
     rememberSaved(res, "adopted");

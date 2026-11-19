@@ -98,7 +98,7 @@ describe("from merged to confirmed", () => {
 
     const team = await as(app, teamActor).get("/tickets/SUP-1");
     expect(team.text).not.toContain('action="/tickets/SUP-1/answer"');
-    expect(team.text).toContain("Waiting for the customer who filed this ticket");
+    expect(team.text).toContain("waiting for the customer who filed this ticket");
   });
 
   it("resolves the ticket when the customer says yes", async () => {

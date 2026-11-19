@@ -4,13 +4,14 @@ import { describe, expect, it } from "vitest";
 import { admin, as, buildTestApp, customerOne, teamActor, visitor } from "./helpers.js";
 import { DEV_COOKIE } from "../src/server/actor.js";
 import { seedDemo } from "../src/server/demo.js";
+import { SAVED_MESSAGES } from "../src/server/pages/saved.js";
 import { createTicketService } from "../src/server/tickets/service.js";
 
-// On a ticket page the status row and the button at the top read as one control: when pressing
-// In Progress would also make the viewer the owner, a short line under the row says so, and both
-// controls post to the same place, so the same message follows either press. Resolving starts on
-// the "Fixed." reason when that reason is offered. A More menu that would hold a single
-// item shows that item directly, and the list's empty search names only what is set.
+// On a ticket page the status row and the button at the top read as one control: both post to
+// the same place, so the same message follows either press, and that message says the viewer
+// owns the ticket now. Resolving starts on the "Fixed." reason when that reason is offered.
+// "Edit ticket" is a quiet link under the title, and the list's empty search names only what
+// is set.
 
 const valid = {
   title: "Printer jams",
@@ -35,33 +36,24 @@ async function demoPage(person: string, at: string) {
 }
 
 describe("In Progress on a ticket nobody owns", () => {
-  it("says under the row that it also makes you the owner, like the button at the top", async () => {
+  it("posts where the button at the top does, and the message after says you own it", async () => {
     const { app } = await filed();
     const html = await page(app);
-    const line = html.querySelector(".status-control #status-takes");
-    expect(line?.text.trim()).toBe("In Progress also makes you the owner.");
+    // No line under the row: the message after the press says it.
+    expect(html.querySelector(".status-control .status-rule")).toBeNull();
     const rowButton = html
       .querySelectorAll(".status-row > form button")
       .find((button) => button.text.trim() === "In Progress")!;
-    expect(rowButton.getAttribute("aria-describedby")).toBe("status-takes");
     // Both post to the same place, so both end on the same message.
     const top = html
       .querySelectorAll(".next-action form")
       .find((form) => form.querySelector("button")?.text.trim() === "Take ticket and start work")!;
     expect(rowButton.closest("form")?.getAttribute("action")).toBe(top.getAttribute("action"));
     expect(top.getAttribute("action")).toBe("/tickets/SUP-1/take-and-start");
-  });
-
-  it("says nothing once the viewer owns it, once work has started, or in the read-only preview", async () => {
-    const { app } = await filed();
-    await as(app, teamActor).post("/api/tickets/SUP-1/take");
-    expect((await page(app)).querySelector("#status-takes")).toBeNull();
-    await as(app, teamActor).post("/api/tickets/SUP-1/status").send({ status: "in_progress" });
-    expect((await page(app)).querySelector("#status-takes")).toBeNull();
-    // SUP-7 is the demo's New ticket that nobody owns.
-    expect((await demoPage("demo-admin", "/tickets/SUP-7")).querySelector("#status-takes")).toBe(
-      null,
-    );
+    const pressed = await as(app, teamActor).post("/tickets/SUP-1/take-and-start");
+    expect(pressed.status).toBe(303);
+    expect(String(pressed.headers["set-cookie"])).toContain("saved=started");
+    expect(SAVED_MESSAGES.started).toBe("You own this ticket, and it is in progress.");
   });
 });
 
@@ -90,21 +82,25 @@ describe("the resolve form's first choice", () => {
   });
 });
 
-describe("a More menu with a single item", () => {
-  it("is shown as that item on the demo customer's page, where archiving is off", async () => {
+describe("Edit ticket", () => {
+  it("is a quiet link under the title, and More options is left out when it would be empty", async () => {
     // SUP-5 is the demo customer's confirmed ticket; they may edit it and nothing else.
     const html = await demoPage("demo-customer", "/tickets/SUP-5");
-    const panel = html.querySelector("aside.ticket-panel")!;
-    expect(panel.querySelector("details.more")).toBeNull();
-    const edit = panel.querySelector(".more-single a[href='/tickets/SUP-5/edit']");
+    const edit = html.querySelector("hgroup .meta a.edit-link");
+    expect(edit?.getAttribute("href")).toBe("/tickets/SUP-5/edit");
     expect(edit?.text.trim()).toBe("Edit ticket");
+    expect(html.querySelector("aside.ticket-panel a[href$='/edit']")).toBeNull();
+    expect(html.querySelector("details.more-options")).toBeNull();
   });
 
-  it("stays a More menu when it holds two or more", async () => {
+  it("leaves the customer's archive under More options", async () => {
     const { app } = await filed();
-    const panel = (await page(app, customerOne)).querySelector("aside.ticket-panel")!;
-    expect(panel.querySelector("details.more > summary")?.text.trim()).toBe("More");
-    expect(panel.querySelector(".more-single")).toBeNull();
+    const html = await page(app, customerOne);
+    expect(html.querySelector("hgroup .meta a.edit-link")?.text.trim()).toBe("Edit ticket");
+    const more = html.querySelector("details.more-options")!;
+    expect(more.querySelectorAll("a, button").map((el) => el.text.trim())).toEqual([
+      "Archive ticket",
+    ]);
   });
 });
 

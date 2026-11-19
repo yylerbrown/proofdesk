@@ -59,11 +59,10 @@ describe("the status row's height", () => {
 });
 
 describe("the resolve form", () => {
-  it("starts by saying what pressing it will do", async () => {
+  it("holds a reason and the Resolve button, with no paragraph before them", async () => {
     const form = (await ticketPage()).querySelector("details.resolve form")!;
-    const first = form.querySelector("p, label")!;
-    expect(first.text.trim()).toBe(
-      "Resolves the ticket now, with the reason you pick. The customer sees it and can reopen it.",
-    );
+    expect(form.querySelector("p")).toBeNull();
+    expect(form.querySelector("label")!.text.trim()).toMatch(/^Reason/);
+    expect(form.querySelector("button[type=submit]")!.text.trim()).toBe("Resolve");
   });
 });

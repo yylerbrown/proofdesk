@@ -160,7 +160,7 @@ describe("starting work", () => {
     expect(taken.body.error.code).toBe("already_owned");
   });
 
-  it("puts Take under the status, as the next action, and offers Start work only to the owner", async () => {
+  it("puts Take under the status, as the next action, Assign to me under Owner, and Start work only for the owner", async () => {
     const { app } = buildTestApp();
     await admin(app).post("/api/tickets").send(valid);
     const unowned = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
@@ -169,8 +169,8 @@ describe("starting work", () => {
     expect(unowned.querySelector(".next-action button")?.text.trim()).toBe(
       "Take ticket and start work",
     );
-    // Taking without starting work is left to the API: the page's In Progress takes it too.
-    expect(panel.querySelector("form[action$='/take']")).toBeNull();
+    // The owner's one control assigns it without starting work.
+    expect(panel.querySelector("form[action$='/take'] button")?.text).toBe("Assign to me");
     // The status row's In Progress takes the ticket too, so it is the same one step as the top.
     expect(panel.querySelector("form[action$='/status']")).toBeNull();
     await as(app, teamActor).post("/api/tickets/SUP-1/take");

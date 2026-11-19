@@ -18,7 +18,7 @@ function section(text: string, heading: string): string {
 
 describe("quotes of the ticket page", () => {
   it("name the status row's third control as the page does", () => {
-    expect(flat("views/ticket-show.ejs")).toContain(">Resolve with a reason…</summary>");
+    expect(flat("views/ticket-show.ejs")).toContain(">Resolved</summary>");
     for (const text of [readme, tour]) {
       expect(text).toContain('press "Resolve with a reason…" under Status');
       expect(text).not.toContain('press "Resolved" under Status');

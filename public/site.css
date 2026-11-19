@@ -1559,6 +1559,8 @@ details.history[open] > summary {
 details.history > summary,
 details#reopen > summary,
 .ticket-panel details > summary,
+details.more-options summary,
+details.evidence-list > summary,
 .ticket-thread details.publish > summary,
 .ticket-thread details.spec-prompt > summary,
 .welcome details.connect > summary {
@@ -1572,6 +1574,8 @@ details#reopen > summary,
 details.history > summary:hover,
 details#reopen > summary:hover,
 .ticket-panel details > summary:hover,
+details.more-options summary:hover,
+details.evidence-list > summary:hover,
 .ticket-thread details.publish > summary:hover,
 .ticket-thread details.spec-prompt > summary:hover,
 .welcome details.connect > summary:hover {
@@ -1580,6 +1584,8 @@ details#reopen > summary:hover,
 details.history > summary::after,
 details#reopen > summary::after,
 .ticket-panel details > summary::after,
+details.more-options summary::after,
+details.evidence-list > summary::after,
 .ticket-thread details.publish > summary::after,
 .ticket-thread details.spec-prompt > summary::after,
 .welcome details.connect > summary::after {
@@ -1670,8 +1676,8 @@ article.entry > p {
     column-gap: var(--pd-space-8);
   }
 }
-/* The panel: one white card, its parts divided by hairlines, when it holds more than More. */
-.ticket-panel:has(> :not(details.more)) {
+/* The panel: one white card, its parts divided by hairlines. */
+.ticket-panel {
   padding: var(--pd-space-4) 20px;
   border: var(--pd-hairline);
   border-radius: var(--pd-radius-lg);
@@ -1728,11 +1734,12 @@ article.entry > p {
 .ticket-panel label {
   margin-bottom: var(--pd-space-2);
 }
-/* Resolving with a reason: "Duplicate of" shows only for a duplicate, and the note once any
-   reason is chosen, a duplicate included, so no hidden box can carry words the customer would
-   see. A browser that cannot read :has shows both, which still works. */
+/* Resolving with a reason: "Duplicate of" shows only for a duplicate, and the note box only for
+   Other, which needs it. The page's route drops a note sent with any other reason, so a hidden
+   box never carries words the customer would see. A browser that cannot read :has shows both,
+   which still works. */
 .resolve form:not(:has(option[value="duplicate"]:checked)) .resolve-duplicate,
-.resolve form:has(option[value=""]:checked) .resolve-note {
+.resolve form:not(:has(option[value="other"]:checked)) .resolve-note {
   display: none;
 }
 .ticket-panel form > button {
@@ -2072,7 +2079,6 @@ textarea:focus-visible {
     transform: translateY(-2px);
   }
 }
-details.more[open] > .more-menu,
 .site-header details.dropdown.switch-role[open] > summary + ul {
   animation: pd-pop var(--pd-ease-move);
 }
@@ -2123,22 +2129,6 @@ article.customer-said-no {
 }
 .customer-said-no > p:last-child {
   margin-bottom: 0;
-}
-
-/*
- * Asking the customer is offered greyed until it can be done, with its reason on the line under
- * it rather than squeezed beside it.
- */
-p.ask-blocked {
-  display: grid;
-  justify-items: start;
-  gap: 6px;
-}
-.ask-blocked button[disabled] {
-  margin: 0;
-}
-.ask-blocked small {
-  color: var(--pd-muted);
 }
 
 /* Why a ticket action was refused, at the top of the ticket it came from. */
@@ -2298,7 +2288,9 @@ button.copy {
 @media (max-width: 639px) {
   details.history > summary,
   details#reopen > summary,
-  .ticket-panel details:not(.more) > summary,
+  .ticket-panel details > summary,
+  details.more-options summary,
+  details.evidence-list > summary,
   .ticket-thread details.publish > summary,
   .ticket-thread details.spec-prompt > summary,
   .welcome details.connect > summary {
@@ -2345,96 +2337,27 @@ button.copy {
 }
 
 /*
- * "More": the page's secondary actions in a small menu, a native details element, so it needs no
- * script and opens by keyboard. A quiet button that opens a popover: a hairline, the large
- * radius and the one soft shadow.
+ * "More options": the team's optional and rarer steps, one closed disclosure at the bottom of the
+ * main column. Each step inside is a small disclosure of its own, one under another.
  */
-details.more {
-  position: relative;
-  margin-top: var(--pd-space-4);
-  margin-bottom: 0;
+details.more-options {
+  margin-top: var(--pd-space-5);
   border-bottom: 0;
 }
-.ticket-panel details.more > summary {
-  display: inline-block;
-  padding: 5px 12px;
-  border: 1px solid var(--pd-control-border);
-  border-radius: var(--pd-radius);
-  background: var(--pd-surface);
-  color: var(--pd-text);
-  font-size: var(--pd-text-sm);
-  font-weight: var(--pd-weight-medium);
-  list-style: none;
-  transition: background-color var(--pd-ease);
+details.more-options[open] > summary {
+  margin-bottom: var(--pd-space-3);
 }
-.ticket-panel details.more > summary::after {
-  display: none;
+details.more-options > :not(summary) {
+  max-width: var(--pd-measure);
+  margin-bottom: var(--pd-space-3);
 }
-/*
- * The phone fixes at the end of this file make More a 44px tap target. From tablet width up it
- * matches the 32px buttons beside it instead; on a phone the 44px stands.
- */
-@media (min-width: 640px) {
-  .ticket-panel details.more > summary:not([role]) {
-    min-height: 0;
-  }
+details.more-options details {
+  margin-bottom: var(--pd-space-2);
+  border-bottom: 0;
 }
-.ticket-panel details.more[open] > summary,
-.ticket-panel details.more > summary:hover {
-  background: var(--pd-subtle);
-  color: var(--pd-text);
-}
-.more-menu {
-  position: absolute;
-  z-index: 10;
-  top: calc(100% + 6px);
-  left: 0;
-  min-width: 220px;
-  padding: var(--pd-space-1);
-  border: var(--pd-hairline);
-  border-radius: var(--pd-radius-lg);
-  background: var(--pd-surface);
-  box-shadow: var(--pd-shadow);
-  /* When the menus script scrolls the menu into view, its shadow shows under it too. */
-  scroll-margin-bottom: var(--pd-space-4);
-}
-/* With no room under More, the menus script opens the menu upward, above the button. */
-.more-menu.opens-up {
-  top: auto;
-  bottom: calc(100% + 6px);
-}
-.more-menu form {
-  margin: 0;
-}
-.more-menu :is(button, a, a[role="button"]),
-.more-menu :is(button, a, a[role="button"]):is(:hover, :active) {
-  display: block;
-  width: 100%;
-  min-height: 0;
-  margin: 0;
-  padding: 6px 10px;
-  border: 0;
-  border-radius: var(--pd-radius);
-  background: none;
-  color: var(--pd-text);
-  font-size: var(--pd-text-sm);
-  text-align: left;
-  text-decoration: none;
-  transform: none;
-}
-.more-menu :is(button, a, a[role="button"]):is(:hover, :active) {
-  background: var(--pd-subtle);
-}
-.more-menu .danger-zone {
-  margin-top: var(--pd-space-1);
-  padding-top: var(--pd-space-1);
-  border-top: var(--pd-hairline);
-}
-/* Archive and delete stay red in the menu, on the same grey when pointed at (red on it: 5.86). */
-.more-menu .danger-zone a.danger[role="button"],
-.more-menu .danger-zone a.danger[role="button"]:is(:hover, :active) {
-  margin: 0;
-  color: var(--pd-danger);
+/* "Edit ticket" beside the title: a quiet link in the line under it. */
+.meta a.edit-link {
+  color: var(--pd-muted);
 }
 
 /* Quick answers and replies: a row of small quiet buttons, each one plain words. */
@@ -2494,13 +2417,6 @@ table.tickets td.title-cell a:hover {
   text-decoration: underline;
 }
 /* The phone fixes, kept together at the end. */
-
-/* More is a full-size tap target, like the buttons around it. */
-.ticket-panel details.more > summary {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-}
 
 /* The viewer's one next action, right under the status line. */
 .next-action {

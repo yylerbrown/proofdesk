@@ -9,8 +9,9 @@ import { createTicketService } from "../src/server/tickets/service.js";
 import { admin, as, buildTestApp, customerOne, teamActor, visitor } from "./helpers.js";
 
 // "Fixed, but the customer has not replied" follows the customer's standing word, the same one
-// the callout at the top shows. The resolve form hides no box that could carry words. A few
-// smaller refusals say the right thing.
+// the callout at the top shows. The resolve form's note box shows only for Other, and a note
+// left in it after choosing another reason is not sent. A few smaller refusals say the right
+// thing.
 
 const filed = { title: "Printer jams", description: "It jams.", fix_check: "Ten pages print" };
 const ask = { try_url: "https://example.com/t", tried: "Printed.", result: "No jam." };
@@ -72,12 +73,30 @@ describe("'Fixed, but the customer has not replied'", () => {
 });
 
 describe("the resolve form's note box", () => {
-  it("is not hidden for a duplicate, so no hidden words reach the customer", () => {
+  it("shows only for Other, the one reason that needs it", () => {
     const css = fs.readFileSync(new URL("../public/site.css", import.meta.url), "utf8");
-    // Any rule that hides the note while Duplicate is chosen.
-    const hidesNoteForDuplicate = /option\[value="duplicate"\]:checked\)\s*\.resolve-note/;
-    expect(css).not.toMatch(hidesNoteForDuplicate);
-    expect(css).toContain('.resolve form:has(option[value=""]:checked) .resolve-note');
+    expect(css).toContain('.resolve form:not(:has(option[value="other"]:checked)) .resolve-note');
+  });
+
+  it("sends no hidden words: a note left behind with another reason is dropped", async () => {
+    const { app } = await setup();
+    const res = await as(app, teamActor)
+      .post("/tickets/SUP-1/resolve")
+      .type("form")
+      .send({ reason: "wont_fix", note: "Typed under Other, then changed my mind." });
+    expect(res.status).toBe(303);
+    const ticket = (await admin(app).get("/api/tickets/SUP-1")).body;
+    expect(ticket.resolution).toMatchObject({ reason: "wont_fix", note: null });
+  });
+
+  it("keeps the note for Other, which needs it", async () => {
+    const { app } = await setup();
+    await as(app, teamActor)
+      .post("/tickets/SUP-1/resolve")
+      .type("form")
+      .send({ reason: "other", note: "Handled by phone." });
+    const ticket = (await admin(app).get("/api/tickets/SUP-1")).body;
+    expect(ticket.resolution).toMatchObject({ reason: "other", note: "Handled by phone." });
   });
 });
 
