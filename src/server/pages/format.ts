@@ -49,6 +49,20 @@ export function timeAgo(iso: string, now: Date = new Date()): string {
 }
 
 /**
+ * True when the customer is looking at a ticket the team resolved as fixed without their Yes.
+ * Their list and their ticket then say so in their terms: "The team says it is fixed", and
+ * beneath it "You have not confirmed it". The team's view keeps its own wording, and so do the
+ * team's other reasons, such as a duplicate, which are not a claim that it is fixed.
+ */
+export function teamSaysFixed(ticket: Ticket, viewer: Role): boolean {
+  return (
+    viewer === "customer" &&
+    ticket.resolution?.by === "team" &&
+    ticket.resolution.reason === "fixed_no_reply"
+  );
+}
+
+/**
  * Who has to act next on a ticket, in the words the viewer should read. reopened is true when
  * the customer's latest word is their reopening it.
  */

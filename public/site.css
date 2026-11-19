@@ -2606,4 +2606,9 @@ ol.first-steps li {
     display: inline;
     margin-left: var(--pd-space-2);
   }
+  /* A second line, such as "You have not confirmed it", sits beneath the first. */
+  table.tickets tbody .resolution-label + .resolution-label {
+    display: block;
+    margin-left: 0;
+  }
 }

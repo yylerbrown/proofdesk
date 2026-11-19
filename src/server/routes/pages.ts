@@ -12,6 +12,7 @@ import {
   formatTime,
   notFixedCard,
   STATUS_LABELS,
+  teamSaysFixed,
   timeAgo,
   reportFields,
   waitingOn,
@@ -48,6 +49,7 @@ const helpers = {
   formatTime,
   timeAgo,
   reportFields,
+  teamSaysFixed,
 };
 
 // What the reply form holds: the kind chosen, the text typed, and a message if it was refused.

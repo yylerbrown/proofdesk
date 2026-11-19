@@ -104,7 +104,13 @@
 <%# Resolved by the team, without the customer's Yes: said plainly to everyone, with the reason, and never with the tick. %>
 <% if (ticket.resolution && ticket.resolution.by === "team") { %>
 <article class="resolved-by-team">
+  <% if (teamSaysFixed(ticket, viewerRole)) { %>
+  <%# The customer reads it in their terms: the team's word, and that theirs is still to come. %>
+  <p><strong>The team says it is fixed</strong></p>
+  <p>You have not confirmed it.</p>
+  <% } else { %>
   <p><strong><%= ticket.resolution.label %></strong></p>
+  <% } %>
   <% if (ticket.resolution.note) { %><p class="user-text"><%= ticket.resolution.note %></p><% } %>
   <p><small><% if (ticket.resolution.resolved_by_name) { %><%= ticket.resolution.resolved_by_name %>, <% } %><%- include("time", { iso: ticket.resolution.at }) %>. <%= viewerRole === "customer" ? "If it is still happening, you can reopen it." : "The customer did not confirm it, and can reopen it." %><% if (staff && ticket.resolution.duplicate_of) { %> <a href="/tickets/<%= ticket.resolution.duplicate_of %>">Open <%= ticket.resolution.duplicate_of %></a><% } %></small></p>
 </article>

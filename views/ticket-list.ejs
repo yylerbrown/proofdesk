@@ -77,7 +77,7 @@
         <%# The title is the row's one keyboard stop; the key stays a link for the mouse. %>
         <td><a href="/tickets/<%= ticket.key %>" tabindex="-1"><%= ticket.key %></a></td>
         <td class="user-text title-cell" title="<%= ticket.title %>"><a href="/tickets/<%= ticket.key %>"><%= ticket.title %></a></td>
-        <td><%- include("status-badge", { status: ticket.status }) %><% if (ticket.resolution) { %><small class="resolution-label"><%= ticket.resolution.by === "team" ? `By the team: ${ticket.resolution.reason_label}` : "Customer confirmed" %></small><% } %></td>
+        <td><%- include("status-badge", { status: ticket.status }) %><% if (teamSaysFixed(ticket, viewerRole)) { %><small class="resolution-label">The team says it is fixed</small><small class="resolution-label">You have not confirmed it</small><% } else if (ticket.resolution) { %><small class="resolution-label"><%= ticket.resolution.by === "team" ? `By the team: ${ticket.resolution.reason_label}` : "Customer confirmed" %></small><% } %></td>
         <td><%= ticket.owner_name ?? "Unassigned" %></td>
         <td><%= ticket.waiting %></td>
         <% const when = filters.order === "updated" ? ticket.updated_at : ticket.created_at; %>
