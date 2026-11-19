@@ -96,7 +96,7 @@ export function createTicketService(
     ...createBulk({ ...reads, ...workflow, ...resolveAndReopen }, teamMembers),
     // Who a ticket can be given to: everyone on the team.
     teamMembers,
-    // customer-question.ts: markReady, withdrawQuestionAsked, answer
+    // customer-question.ts: markReady, withdrawQuestionAsked, answer, confirmFix
     ...createCustomerQuestion(shared),
     // conversation.ts: addEntry, addNote, askOwnerToReview, requestReview, listEntries
     ...createConversation(shared),

@@ -50,7 +50,7 @@ const resolvePage = async (app: Express) =>
 describe("the resolve form", () => {
   it("starts on an empty, required choice while the customer's No stands", async () => {
     const { app } = await setup();
-    // Otherwise it starts on the "Fixed." reason (status-row-reads-as-one-control).
+    // Nothing is chosen at first, before or after the customer's No.
     await customerSaysNo(app, "Still jams on page two.");
     const radios = (await resolvePage(app)).querySelectorAll('form.resolve input[name="reason"]');
     expect(radios.every((radio) => radio.hasAttribute("required"))).toBe(true);
@@ -65,7 +65,7 @@ describe("the resolve form", () => {
     expect((await admin(app).get("/api/tickets/SUP-1")).body.status).toBe("in_progress");
   });
 
-  it("offers 'the customer has not replied' only while that is true", async () => {
+  it("offers Fixed after the customer's No too, since it asks them again", async () => {
     const { app } = await setup();
     const values = async () =>
       (await resolvePage(app))
@@ -73,16 +73,18 @@ describe("the resolve form", () => {
         .map((radio) => radio.getAttribute("value"));
     expect(await values()).toContain("fixed_no_reply");
     await customerSaysNo(app, "Still jams on page two.");
-    expect(await values()).toEqual(["duplicate", "wont_fix", "cannot_reproduce", "other"]);
-    // Sent anyway, the service refuses it beside the reason.
+    expect(await values()).toEqual([
+      "fixed_no_reply",
+      "duplicate",
+      "wont_fix",
+      "cannot_reproduce",
+      "other",
+    ]);
     const res = await as(app, teamActor)
       .post("/api/tickets/SUP-1/resolve")
       .send({ reason: "fixed_no_reply" });
-    expect(res.status).toBe(400);
-    expect(res.body.error.message).toBe(
-      "The customer said it is not fixed. Choose another reason.",
-    );
-    expect((await admin(app).get("/api/tickets/SUP-1")).body.status).toBe("in_progress");
+    expect(res.status).toBe(200);
+    expect((await admin(app).get("/api/tickets/SUP-1")).body.status).toBe("resolved");
   });
 
   it("marks the duplicate and note boxes, which the stylesheet shows only when used", async () => {

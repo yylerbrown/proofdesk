@@ -12,6 +12,7 @@ export type NoticeKind =
   | "asked_to_check"
   | "team_replied"
   | "resolved_by_team"
+  | "marked_fixed"
   | "handed_to_you"
   | "customer_said_no"
   | "customer_replied"
@@ -27,7 +28,8 @@ export const TOLD: ReadonlyMap<string, readonly Audience[]> = new Map<string, Au
   // A public reply: from the person who filed it goes to the owner, from anyone else to the
   // person who filed it.
   ["reply_added", ["customer", "owner"]],
-  // The team resolved it with a reason, so the customer knows they can reopen it.
+  // The team resolved it with a reason, so the customer knows they can reopen it. With the
+  // reason Fixed, the customer is asked whether it is.
   ["resolved_by_team", ["customer"]],
   // The ticket was handed to a new owner.
   ["owner_changed", ["owner"]],
@@ -59,6 +61,7 @@ export type EventFacts = {
 export type PlannedNotice = { recipientId: string; kind: NoticeKind; audience: Audience };
 
 const answerSchema = z.object({ fixed: z.boolean() });
+const resolvedSchema = z.object({ reason: z.string() });
 
 /** The notices one history event gives, after every rule below. Often none. */
 export function noticesFor(facts: EventFacts): PlannedNotice[] {
@@ -93,8 +96,11 @@ function candidates(facts: EventFacts): PlannedNotice[] {
       // No public reply found: nothing to tell, rather than guess.
       if (facts.replyByFiler === null) return [];
       return facts.replyByFiler ? toOwner("customer_replied") : toCustomer("team_replied");
-    case "resolved_by_team":
-      return toCustomer("resolved_by_team");
+    case "resolved_by_team": {
+      const resolved = resolvedSchema.safeParse(facts.data);
+      const fixed = resolved.success && resolved.data.reason === "fixed_no_reply";
+      return toCustomer(fixed ? "marked_fixed" : "resolved_by_team");
+    }
     case "owner_changed":
       return toOwner("handed_to_you");
     case "customer_answered": {

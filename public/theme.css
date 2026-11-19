@@ -109,7 +109,6 @@
    */
   --pd-page: 1200px;
   --pd-measure: 760px; /* longest line of reading text */
-  --pd-column: 44rem; /* the one centred column of a narrow page, such as a ticket */
   --pd-header-h: 56px;
   --pd-radius-sm: 4px; /* tags, code, badges */
   --pd-radius: 6px; /* buttons, inputs, menu items */

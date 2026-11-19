@@ -4,10 +4,11 @@ import { HttpError } from "../errors.js";
 import { can } from "../permissions.js";
 import { isDemoAgent, narrowed } from "./access.js";
 import { requirePermission } from "./checks.js";
-import { parseKey } from "./keys.js";
+import { buildKey, parseKey } from "./keys.js";
 import * as repository from "./repository.js";
 import type { ListSort, TicketListFilter, TicketStatus } from "./schemas.js";
 import type { Shared } from "./shared.js";
+import { titleWords } from "./word-query.js";
 import {
   LIST_PAGE_SIZE,
   THREAD_LIMIT,
@@ -22,6 +23,12 @@ import {
 // shows beside it. None of these write.
 
 const ARCHIVED: repository.ListScope = { kind: "archived" };
+
+// The longest title a similar ticket is looked for, the same as the longest title a ticket holds.
+const SIMILAR_TITLE_MAX = 120;
+
+/** The one earlier ticket a title being typed overlaps, as the new ticket form names it. */
+export type SimilarTicket = { key: string; title: string; status: TicketStatus };
 
 // The kinds of history entry a customer may see. Any other kind, including one added later,
 // stays hidden from customers until it is added here on purpose. "note_added" is left out.
@@ -105,6 +112,24 @@ export function createReads(shared: Shared, options: ServiceOptions) {
         if (err instanceof HttpError) return null;
         throw err;
       }
+    },
+
+    /**
+     * The one ticket whose title is like this title being typed, among the tickets this person's
+     * list holds, or null. A ticket is similar when its title holds at least two of the typed
+     * title's words and at least half of them, in any form ("signing" counts for "sign"). Only
+     * someone who may file a ticket asks. A customer's answer can only name a ticket they filed,
+     * and "nothing alike" is the same null whether or not someone else holds a matching ticket.
+     */
+    similarTicket(actor: Actor, title: string): SimilarTicket | null {
+      requirePermission(actor, "create");
+      if (title.length > SIMILAR_TITLE_MAX) return null;
+      const words = titleWords(title);
+      if (words.length < 2) return null;
+      const need = Math.max(2, Math.ceil(words.length / 2));
+      const row = repository.similarTitle(db, visibleScope(actor), words, need);
+      if (row === undefined) return null;
+      return { key: buildKey(prefix, row.id), title: row.title, status: row.status };
     },
 
     getTicket(key: string, actor: Actor): Ticket {

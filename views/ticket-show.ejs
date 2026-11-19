@@ -17,7 +17,7 @@
 <%# One column of reading width, the same for every ticket, role and width: the way back, the
     title, status and owner on one line, the ticket's own words, the customer's check, where it
     stands, the one next step, then the conversation and the quiet last row. %>
-<div class="ticket-page" data-ticket-key="<%= ticket.key %>" data-ticket-version="<%= stamp.version %>" data-ticket-entries="<%= stamp.entries %>" data-ticket-handoffs="<%= stamp.handoffs %>" data-ticket-status="<%= ticket.status %>">
+<div class="ticket-page column" data-ticket-key="<%= ticket.key %>" data-ticket-version="<%= stamp.version %>" data-ticket-entries="<%= stamp.entries %>" data-ticket-handoffs="<%= stamp.handoffs %>" data-ticket-status="<%= ticket.status %>">
 <p class="back"><a href="/tickets"><%= staff ? "All tickets" : "My tickets" %></a> / <%= ticket.key %></p>
 <h1 class="user-text"><%= ticket.title %></h1>
 
@@ -233,10 +233,10 @@
 
   <% if (resolveForm) { %>
   <% const resolving = problem?.form === "resolve" ? (problem.values ?? {}) : {}; %>
-  <%# No reason is chosen at first, so a hurried press can never claim a fix. While the
-      customer's No stands "Fixed" is not offered. After a refused try, what they picked stays. %>
+  <%# No reason is chosen at first, so a hurried press can never claim a fix. After a refused
+      try, what they picked stays. %>
   <% const chosenReason = resolving.reason ?? ""; %>
-  <% const reasons = Object.entries(resolveReasons).filter(([value]) => !(value === "fixed_no_reply" && notFixed)); %>
+  <% const reasons = Object.entries(resolveReasons); %>
   <form method="post" action="/tickets/<%= ticket.key %>/resolve" id="resolve-form" class="card-step step-form resolve">
     <%- versionField %>
     <fieldset <% if (problem?.form === "resolve") { %>aria-describedby="resolve-error"<% } %>>

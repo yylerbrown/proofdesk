@@ -133,10 +133,22 @@ export type Page = { limit: number; offset: number };
 
 /**
  * How a list may be narrowed: to one owner or to tickets nobody owns, and to tickets whose title
- * or description holds the search, a LIKE pattern the service escapes.
+ * or description holds the search. A ticket is found when its text holds `search`, a LIKE pattern
+ * the service escapes, or when its words match `match`, a query for the ticket_search word index
+ * the service builds from quoted words.
  */
-export type Narrowing = { ownerId: string | null; unassigned: boolean; search: string | null };
-export const NO_NARROWING: Narrowing = { ownerId: null, unassigned: false, search: null };
+export type Narrowing = {
+  ownerId: string | null;
+  unassigned: boolean;
+  search: string | null;
+  match: string | null;
+};
+export const NO_NARROWING: Narrowing = {
+  ownerId: null,
+  unassigned: false,
+  search: null,
+  match: null,
+};
 
 /**
  * Whose tickets a list holds. The service decides this from who is asking, once, and the same
@@ -166,7 +178,9 @@ const SCOPE_SQL: Record<ListScope["kind"], string> = {
 // The same narrowing in every list and count. A fixed string: the values are bound.
 const NARROWED = `AND (@ownerId IS NULL OR owner_id = @ownerId)
        AND (@unassigned = 0 OR owner_id IS NULL)
-       AND (@search IS NULL OR title LIKE @search ESCAPE '\\' OR description LIKE @search ESCAPE '\\')`;
+       AND (@search IS NULL OR title LIKE @search ESCAPE '\\' OR description LIKE @search ESCAPE '\\'
+         OR (@match IS NOT NULL
+             AND id IN (SELECT rowid FROM ticket_search WHERE ticket_search MATCH @match)))`;
 
 // Each column's sort as SQL terms, each ending on the id, so the order is total and a page never
 // repeats or skips a ticket that did not change. Descending runs every term the other way, so it
@@ -193,14 +207,20 @@ function orderBy(sort: ListSort): string {
 
 /** The values the statements above bind, with only the ones this scope names. */
 function bound(scope: ListScope, narrow: Narrowing) {
-  const values: Record<string, unknown> = {
+  return {
     ownerId: narrow.ownerId,
     unassigned: narrow.unassigned ? 1 : 0,
     search: narrow.search,
+    match: narrow.match,
+    ...scopeValues(scope),
   };
-  if (scope.kind === "among") values.ids = JSON.stringify(scope.ids);
-  if (scope.kind === "filed_by") values.createdBy = scope.createdBy;
-  return values;
+}
+
+/** The values one scope's condition binds. */
+function scopeValues(scope: ListScope): Record<string, unknown> {
+  if (scope.kind === "among") return { ids: JSON.stringify(scope.ids) };
+  if (scope.kind === "filed_by") return { createdBy: scope.createdBy };
+  return {};
 }
 
 /** One page of the tickets in this scope, of one status or of every status, sorted this way. */
@@ -242,6 +262,37 @@ export function countTicketsByStatus(
   const counts: Record<TicketStatus, number> = { new: 0, in_progress: 0, resolved: 0 };
   for (const row of rows) counts[row.status] = row.n;
   return counts;
+}
+
+/** A ticket a similar title names: its id, its title and its status. */
+export type SimilarRow = { id: number; title: string; status: TicketStatus };
+
+/**
+ * The one ticket in this scope whose title holds at least `need` of these words, in any form:
+ * the one holding the most, then an open one before a resolved one, then the newest. Each word
+ * is looked for in the title only, inside double quotes, so it is never read as query syntax.
+ * The words hold only letters and digits. Only the count of matched words decides, never a
+ * score from the index, so the answer depends on the tickets in this scope alone.
+ */
+export function similarTitle(
+  db: Db,
+  scope: ListScope,
+  words: string[],
+  need: number,
+): SimilarRow | undefined {
+  return db
+    .prepare(
+      `WITH seen AS (SELECT id, title, status FROM tickets WHERE ${SCOPE_SQL[scope.kind]})
+       SELECT seen.id AS id, seen.title AS title, seen.status AS status
+       FROM json_each(@words) AS word
+       JOIN ticket_search ON ticket_search MATCH ('{title} : "' || word.value || '"')
+       JOIN seen ON seen.id = ticket_search.rowid
+       GROUP BY seen.id
+       HAVING COUNT(*) >= @need
+       ORDER BY COUNT(*) DESC, seen.status = 'resolved', seen.id DESC
+       LIMIT 1`,
+    )
+    .get({ ...scopeValues(scope), words: JSON.stringify(words), need }) as SimilarRow | undefined;
 }
 
 export type TicketText = {
@@ -453,24 +504,6 @@ export function evidenceChosenForCustomer(db: Db, ticketId: number): Set<number>
     )
     .all(ticketId) as { id: number }[];
   return new Set(rows.map((row) => row.id));
-}
-
-/**
- * True when the customer's latest word on a ticket says it is not fixed: their latest answer
- * or reopening is a reopening, or an answer of no.
- */
-export function customerSaysNotFixed(db: Db, ticketId: number): boolean {
-  const event = db
-    .prepare(
-      `SELECT type, data FROM ticket_events
-       WHERE ticket_id = ? AND type IN ('customer_answered', 'reopened')
-       ORDER BY id DESC LIMIT 1`,
-    )
-    .get(ticketId) as { type: string; data: string } | undefined;
-  if (event === undefined) return false;
-  if (event.type === "reopened") return true;
-  const data = JSON.parse(event.data) as { fixed?: boolean };
-  return data.fixed !== true;
 }
 
 /**

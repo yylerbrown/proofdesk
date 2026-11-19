@@ -49,15 +49,15 @@ function ruleFor(selector: string): string {
 }
 
 describe("the column", () => {
-  it("is one reading width, centred under the header, from the shared column token", () => {
-    expect(theme).toMatch(/--pd-column: 44rem;/);
-    const column = ruleFor(".ticket-page");
+  it("is the shared centred column, so the title and the saved line start on its left edge", async () => {
+    const { app } = await filed();
+    const html = await page(app);
+    expect(html.querySelector("main > .ticket-page")?.classList.contains("column")).toBe(true);
+    const column = ruleFor(".column,\n.column-narrow");
     expect(column).toContain("max-width: var(--pd-column);");
     expect(column).toContain("margin-inline: auto;");
-    // The line saying what was saved starts on the same left edge.
-    expect(ruleFor("main:has(> .ticket-page) > :is(p.saved, p.refused)")).toContain(
-      "margin-left: calc((100% - min(100%, var(--pd-column))) / 2);",
-    );
+    // Reading text and controls are 16px on a 24px line.
+    expect(ruleFor(".ticket-page")).toContain("font-size: 1.0667rem;");
   });
 
   it("has no side panel left in the stylesheet, and the check sits on the page's background", () => {

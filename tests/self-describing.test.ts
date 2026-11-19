@@ -172,6 +172,8 @@ describe("real answers", () => {
         .post(`${t}/answer`)
         .send({ fixed: "yes", ready_token: askedAgain.body.ready_token }),
     );
+    // Confirming a ticket the customer already confirmed returns it as it is.
+    expectShape("confirm_fix", await as(app, customerOne).post(`${t}/confirm`));
     expectShape("list_events", await admin(app).get(`${t}/events`));
     // Release is for the owner of a New ticket: a third one, taken and let go.
     await as(app, customerOne).post("/api/tickets").send(valid);

@@ -8,10 +8,10 @@ import { READ_ONLY_REFUSAL } from "../src/server/errors.js";
 import { createTicketService } from "../src/server/tickets/service.js";
 import { admin, as, buildTestApp, customerOne, teamActor, visitor } from "./helpers.js";
 
-// "Fixed, but the customer has not replied" follows the customer's standing word, the same one
-// the card's line at the top links to. The resolve form's note box shows only for Other, and a note
-// left in it after choosing another reason is not sent. A few smaller refusals say the right
-// thing.
+// "Fixed. Not customer-confirmed." stays open to the team after the customer's No, because
+// marking fixed tells the customer and asks them again. The resolve form's note box shows only
+// for Other, and a note left in it after choosing another reason is not sent. A few smaller
+// refusals say the right thing.
 
 const filed = { title: "Printer jams", description: "It jams.", fix_check: "Ten pages print" };
 const ask = { try_url: "https://example.com/t", tried: "Printed.", result: "No jam." };
@@ -47,28 +47,25 @@ const reasonsOffered = async (app: Express) =>
 const resolveNoReply = (app: Express) =>
   as(app, teamActor).post("/api/tickets/SUP-1/resolve").send({ reason: "fixed_no_reply" });
 
-describe("'Fixed, but the customer has not replied'", () => {
-  it("comes back once the team asks again after a No and the customer stays silent", async () => {
+describe("'Fixed. Not customer-confirmed.'", () => {
+  it("is offered and allowed after a No, since marking fixed asks the customer again", async () => {
     const { app } = await setup();
     await answer(app, "no", "Still jams on page two.");
-    expect(await reasonsOffered(app)).not.toContain("fixed_no_reply");
-    await askCustomer(app);
     expect(await reasonsOffered(app)).toContain("fixed_no_reply");
     const res = await resolveNoReply(app);
     expect([res.status, res.body.resolution?.reason]).toEqual([200, "fixed_no_reply"]);
   });
 
-  it("is not offered, and is refused, after the customer reopens", async () => {
+  it("is offered and allowed after the customer reopens", async () => {
     const { app } = await setup();
     await answer(app, "yes");
     const reopened = await as(app, customerOne)
       .post("/api/tickets/SUP-1/reopen")
       .send({ reason: "Broke again after the update." });
     expect(reopened.status).toBe(200);
-    expect(await reasonsOffered(app)).not.toContain("fixed_no_reply");
+    expect(await reasonsOffered(app)).toContain("fixed_no_reply");
     const res = await resolveNoReply(app);
-    expect(res.status).toBe(400);
-    expect((await admin(app).get("/api/tickets/SUP-1")).body.status).toBe("in_progress");
+    expect([res.status, res.body.resolution?.reason]).toEqual([200, "fixed_no_reply"]);
   });
 });
 

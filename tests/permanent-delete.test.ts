@@ -59,6 +59,28 @@ describe("permanent deletion", () => {
     expect(onDisk()).toBe(false);
   });
 
+  it("leaves no word of the ticket in the word index's copy on disk", async () => {
+    const { app, db } = buildTestApp();
+    const one = as(app, customerOne);
+    // The word index keeps its words lower-cased, so look for them that way.
+    await one
+      .post("/api/tickets")
+      .send({ title: "QUOKKAWORD jams", description: "ZEBRAWORD was here first" });
+    // Text edited away before the deletion must be gone as well.
+    await one.put("/api/tickets/SUP-1").send({ title: "QUOKKAWORD jams", description: "Later" });
+    const files = [db.name, `${db.name}-wal`];
+    const onDisk = (word: string) =>
+      files.filter(fs.existsSync).some((file) => fs.readFileSync(file).includes(word));
+    db.pragma("wal_checkpoint(PASSIVE)");
+    // Make sure the lower-case word really was on disk before, or the check proves nothing.
+    expect(onDisk("quokkaword")).toBe(true);
+
+    const res = await admin(app).delete("/api/tickets/SUP-1").send({ confirm: "SUP-1" });
+    expect(res.body).toEqual({ deleted: true, files_cleaned: true });
+    expect(onDisk("quokkaword")).toBe(false);
+    expect(onDisk("zebraword")).toBe(false);
+  });
+
   it("also removes the answer kept for retrying the filing of the ticket", async () => {
     const { app, db } = buildTestApp();
     await as(app, customerOne)

@@ -22,6 +22,7 @@ import { llmsRouter } from "./routes/llms.js";
 import { noticesRouter } from "./routes/notices.js";
 import { pagesRouter } from "./routes/pages.js";
 import { signInRouter } from "./routes/sign-in.js";
+import { SIMILAR_PATH, similarRouter } from "./routes/similar.js";
 import { checkDatabasePurpose } from "./purpose.js";
 import { sameOriginOnly } from "./same-origin.js";
 import { ticketsRouter } from "./routes/tickets.js";
@@ -40,7 +41,13 @@ import { siteAddress } from "./routes/connections.js";
 import { noticeCountFor } from "./notify/view.js";
 import { parseKey } from "./tickets/keys.js";
 // The limits live in limits.ts, where the API's guide reads them too.
-import { DEMO_CONNECTIONS_PER_HOUR, FILING_LIMIT, SIGN_IN_LIMIT, WRITE_LIMIT } from "./limits.js";
+import {
+  DEMO_CONNECTIONS_PER_HOUR,
+  FILING_LIMIT,
+  SIGN_IN_LIMIT,
+  SIMILAR_LIMIT,
+  WRITE_LIMIT,
+} from "./limits.js";
 
 // The top folder of the project. It is two levels above this file, both in src/server (when
 // run from source) and in dist/server (when run after a build).
@@ -157,12 +164,18 @@ export function createApp(config: Config, db: Db, options: { log?: LogLine } = {
     windowMs: 60 * 60 * 1000,
     limit: DEMO_CONNECTIONS_PER_HOUR,
   });
-  // One allowance for every request that changes something, pages and API together.
+  // The new ticket form's "Similar ticket" question has its own allowance. Over it, the form
+  // simply names nothing, and filing is not affected.
+  const similarLimit = rateLimit({ ...tooMany, windowMs: 10 * 60 * 1000, limit: SIMILAR_LIMIT });
+  // One allowance for every request that changes something, pages and API together. The
+  // "Similar ticket" question is a POST only to keep the title out of the address: it changes
+  // nothing, so it is not counted here.
   const writeLimit = rateLimit({
     ...tooMany,
     windowMs: 10 * 60 * 1000,
     limit: WRITE_LIMIT,
-    skip: (req) => req.method === "GET" || req.method === "HEAD",
+    skip: (req) =>
+      req.method === "GET" || req.method === "HEAD" || req.baseUrl + req.path === SIMILAR_PATH,
   });
   // GitHub sign-in, when its settings are present. Only GitHub's return reaches the sign-in
   // library: GitHub sends the browser to /api/auth/callback/github once the person agrees.
@@ -245,9 +258,12 @@ export function createApp(config: Config, db: Db, options: { log?: LogLine } = {
   app.post("/sign-in/github", signInLimit);
   app.post("/sign-in/microsoft", signInLimit);
   app.post("/demo/connection", demoConnectionLimit);
+  app.post(SIMILAR_PATH, similarLimit);
   app.use(express.urlencoded({ extended: false, limit: BODY_LIMIT }));
   app.use(assistantRunRouter(rootDir, () => tickets.recordedRunKey()));
   app.use(signInRouter(config, auth, db, () => tickets.hasDemoSeed()));
+  // Before the pages, so "similar" is never read as a ticket key.
+  app.use(similarRouter(tickets));
   app.use(
     pagesRouter(tickets, (key, actor) =>
       noticeCountFor(db, parseKey(config.ticketPrefix, key)!, actor),

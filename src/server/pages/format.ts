@@ -106,8 +106,7 @@ export function customerSaysNotFixed(ticket: Ticket, events: TicketEvent[]): Not
  * The customer's word that it is not fixed, for the card at the top of the ticket page: only
  * while it is their latest word and nothing the team did since answered it. Once the team
  * resolved or reopened the ticket after that word, the card is not shown, since it would read as
- * the customer's current answer. The resolve form still uses customerSaysNotFixed, the same rule
- * the service applies to the "Fixed" reason.
+ * the customer's current answer.
  */
 export function notFixedCard(ticket: Ticket, events: TicketEvent[]): NotFixed | null {
   const said = customerSaysNotFixed(ticket, events);

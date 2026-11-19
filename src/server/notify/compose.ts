@@ -27,6 +27,8 @@ export type NoticeInput = {
   tryUrl?: string | null;
   /** For a team resolution: the reason, in plain words. */
   resolvedReason?: string | null;
+  /** For a ticket marked fixed: how the customer said they will know, in their own words. */
+  customerCheck?: string | null;
 };
 
 export type ComposedNotice = { subject: string; body: string };
@@ -36,6 +38,7 @@ const SUBJECT_LEADS: Record<NoticeKind, string> = {
   asked_to_check: "Did this fix it?",
   team_replied: "New reply:",
   resolved_by_team: "Resolved:",
+  marked_fixed: "Did this fix it?",
   handed_to_you: "Handed to you:",
   customer_said_no: "Not fixed yet:",
   customer_replied: "Customer replied:",
@@ -50,8 +53,10 @@ export function composeNotice(input: NoticeInput): ComposedNotice {
 
   const lines: string[] = [`Hello ${oneLine(input.recipientName)},`, ""];
   lines.push(...whatHappened(input, title, link));
-  // "Did this fix it?" already ends with the link to answer it.
-  if (input.kind !== "asked_to_check") lines.push("", `Open the ticket: ${link}`);
+  // "Did this fix it?" already ends with the link to answer it, by either door.
+  if (input.kind !== "asked_to_check" && input.kind !== "marked_fixed") {
+    lines.push("", `Open the ticket: ${link}`);
+  }
   lines.push("", whyYouGotThis(input.kind));
   return { subject, body: lines.join("\n") };
 }
@@ -78,6 +83,20 @@ function whatHappened(input: NoticeInput, title: string, link: string): string[]
       // The team's note with a resolution is public: the ticket page shows it to the customer.
       if (input.publicText) lines.push("", quoted);
       lines.push("", "If it is still happening, you can reopen it from the ticket.");
+      return lines;
+    }
+    case "marked_fixed": {
+      const lines = [`${who} says ${about}, is fixed.`];
+      // The team's note with the reason Fixed says where the fix is, such as a version.
+      if (input.publicText) lines.push(`Fixed in: ${cut(oneLine(input.publicText), EXCERPT_MOST)}`);
+      if (input.customerCheck) {
+        lines.push("", "You said you would know by:", excerpt(input.customerCheck));
+      }
+      lines.push(
+        "",
+        `If it is not fixed, say so here: ${link}#did-this-fix-it`,
+        "If it is, you can confirm it there. If you do nothing, the ticket stays resolved.",
+      );
       return lines;
     }
     case "handed_to_you":
