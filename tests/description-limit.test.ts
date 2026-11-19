@@ -16,14 +16,15 @@ import { as, buildTestApp, customerOne } from "./helpers.js";
 const valid = { title: "Printer jams", description: "It jams on page two." };
 
 describe("the description box", () => {
-  it("says its limit and leaves the length to the server, not the browser", async () => {
+  it("leaves the length to the server, not the browser, and counts near the limit", async () => {
     const { app } = buildTestApp();
     const page = parse((await as(app, customerOne).get("/tickets/new").redirects(1)).text);
     const box = page.querySelector("textarea[name=description]")!;
     expect(box.hasAttribute("maxlength")).toBe(false);
     expect(box.getAttribute("data-count-limit")).toBe("5000");
-    expect(page.querySelector("#description-hint")?.text).toBe("Up to 5,000 characters.");
-    expect(box.getAttribute("aria-describedby")).toBe("description-hint description-count");
+    // No standing hint: the count shows near the limit, and a refused form says what is wrong.
+    expect(page.querySelector("#description-hint")).toBeNull();
+    expect(box.getAttribute("aria-describedby")).toBe("description-count");
   });
 
   it("has the same limit as the service", async () => {

@@ -25,22 +25,17 @@ async function pageFor(app: ReturnType<typeof demo>["app"], who: string) {
 }
 
 describe("the assistant run page, first look", () => {
-  it("opens with what happened, the way to the result, what it left, then the closed details", async () => {
+  it("opens with what happened and the way to the result, then the closed details", async () => {
     const { app } = demo();
     for (const who of VIEWERS) {
       const page = await pageFor(app, who);
       const order = page.children.map((child) => child.classList.value[0] ?? child.tagName);
-      expect(order, who).toEqual([
-        "H1",
-        "run-lead",
-        "run-result",
-        "run-left-heading",
-        "run-left",
-        "run-try",
-        "run-details",
-      ]);
-      expect(page.querySelector("p.run-lead")?.text, who).toContain("It resolved nothing");
-      expect(page.querySelectorAll("ul.run-left li").length, who).toBe(3);
+      expect(order, who).toEqual(["H1", "run-lead", "run-result", "run-try", "run-details"]);
+      // Two sentences, and the button shows what it left, so no list repeats it.
+      const lead = page.querySelector("p.run-lead")!.text;
+      expect(lead.split(". ").length, who).toBe(2);
+      expect(lead, who).toContain("it resolved nothing");
+      expect(page.text, who).not.toContain("What it left on the ticket");
     }
   });
 
@@ -51,10 +46,8 @@ describe("the assistant run page, first look", () => {
     expect(first).toContain("in a scratch file, from the ticket's text");
     expect(first).toContain("because it had no access to the product's code");
     // What it did there, as the run's summary records it.
-    expect(lead).toContain(
-      "reproduced the arithmetic problem and tested a fix, and three tests passed",
-    );
-    expect(lead).toContain("asked the ticket's owner to review");
+    expect(lead).toContain("reproduced the problem, tested a fix that passed three tests");
+    expect(lead).toContain("asked the owner to review");
     // Never the wider claim that it reproduced the customer's problem itself.
     expect(lead).not.toContain("reproduced the customer's problem");
   });

@@ -49,7 +49,7 @@ export function connectionsRouter(
     const actor = signedIn(req);
     res.status(status).render("connections", {
       ...shared,
-      title: "Agent connections",
+      title: "Assistant connections",
       connections: connections.list(actor),
       canManage: can(actor, "manage_connections"),
       form: { name: "", scopes: DEFAULT_SCOPES, errors: {}, ...form },

@@ -73,8 +73,7 @@ export type PeoplePage = {
 };
 
 /** What the People page says about the made-up people of the demo and the development entrance. */
-const DEMO_NOTE =
-  "On the real site an admin changes roles here, and it applies at once. The demo admin changes nothing.";
+const DEMO_NOTE = "Demo Admin (read-only) changes nothing here.";
 const DEV_NOTE =
   "These people are made up for development and keep their roles. People who sign in with GitHub appear here.";
 

@@ -55,20 +55,48 @@ describe("the header", () => {
     ]);
   });
 
-  it("puts the demo's roles first and About this demo last, with no Sign out", async () => {
-    expect(menuRows(await headerOf(demoTeam, DEMO))).toEqual([
+  it("names the demo's three people under Switch role, then Account, and nothing else", async () => {
+    const nav = await headerOf(demoTeam, DEMO);
+    expect(menuRows(nav)).toEqual([
       "Switch role",
-      "View as Demo Customer",
+      "Demo Customer",
       "Demo Team Member (you)",
-      "Admin preview (read-only)",
+      "Demo Admin (read-only)",
       "Account",
-      "About this demo",
     ]);
+    // No line under each name: the name is the whole choice.
+    expect(nav.querySelector(".person-menu small")).toBeNull();
+    // About this demo is in the footer of every page instead.
+    expect(nav.text).not.toContain("About this demo");
   });
 
   it("gives the read-only admin preview no New ticket and no Connections", async () => {
     const nav = await headerOf(demoAdmin, DEMO);
     expect(nav.querySelector("a[href='/tickets/new']")).toBeNull();
-    expect(menuRows(nav).slice(-3)).toEqual(["Account", "People", "About this demo"]);
+    expect(menuRows(nav).slice(-3)).toEqual(["Demo Admin (read-only) (you)", "Account", "People"]);
+  });
+
+  it("names a demo person without a role word, and a real person with one", async () => {
+    const demoSummary = (await headerOf(demoAdmin, DEMO)).querySelector(".person-menu summary")!;
+    expect(demoSummary.text.trim()).toBe("Demo Admin (read-only)");
+    expect(demoSummary.querySelector(".role-label")).toBeNull();
+    const realSummary = (await headerOf(teamActor)).querySelector(".person-menu summary")!;
+    expect(realSummary.querySelector(".role-label")?.text).toBe("Team member");
+  });
+
+  it("draws New ticket outlined, so a page's own next step is its only black button", async () => {
+    const link = (await headerOf(teamActor)).querySelector("a[href='/tickets/new']")!;
+    expect(link.getAttribute("role")).toBe("button");
+    expect(link.classList.contains("outline")).toBe(true);
+  });
+
+  it("leaves New ticket out on the new ticket form itself", async () => {
+    const { app } = buildTestApp();
+    const form = await as(app, customerOne).get("/tickets/new").redirects(1);
+    expect(parse(form.text).querySelector("header a[href='/tickets/new']")).toBeNull();
+    // A refused filing shows the same form, still without it.
+    const refused = await as(app, customerOne).post("/tickets").type("form").send({ title: "" });
+    expect(refused.status).toBe(400);
+    expect(parse(refused.text).querySelector("header a[href='/tickets/new']")).toBeNull();
   });
 });

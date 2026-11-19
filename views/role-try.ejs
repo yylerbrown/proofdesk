@@ -1,10 +1,10 @@
-<%# One thing to try as each kind of person, shown under their name wherever people are offered: the demo's Switch role menu, the development entrance and the page a ticket link opens. -%>
+<%# One thing to try as each kind of person, shown under their name wherever people are offered: the development entrance and the demo's page a ticket link opens. -%>
 <%
   const tries = {
     customer: "File a ticket, then follow it until the team asks whether it is fixed.",
     team: "Take a ticket, write an internal note, and ask the customer to check the fix.",
     admin: person.demo
-      ? "See every ticket and its full history. The demo admin changes nothing."
+      ? "See every ticket and its full history, and change nothing."
       : "See every ticket, restore archived ones, and delete one permanently.",
   };
 %><%= tries[person.role] %>

@@ -15,7 +15,7 @@
     <a href="#main" class="skip-link">Skip to main content</a>
     <header class="site-header">
       <% if (demo) { %>
-      <p class="demo-strip">Demo: sample data, shared with everyone who visits. It resets itself when it has been quiet for a while.</p>
+      <p class="demo-strip">Demo: sample data, shared with every visitor.</p>
       <% } %>
       <%# Two groups and nothing else. Left: the brand and Tickets. Right: New ticket and one menu named
           for the person, which holds everything about them. %>
@@ -26,29 +26,30 @@
         </ul>
         <% if (viewer) { %>
         <ul class="account">
-          <%# The read-only admin preview cannot file a ticket, so it is not offered one. %>
-          <% if (!viewer.readOnly) { %><li><a href="/tickets/new" role="button">New ticket</a></li><% } %>
+          <%# Outlined, since a page's one black button is its own next step. The read-only admin
+              preview cannot file a ticket, and the new ticket form is that page already, so
+              neither shows it. %>
+          <% if (!viewer.readOnly && !locals.onNewTicketForm) { %><li><a href="/tickets/new" role="button" class="outline">New ticket</a></li><% } %>
           <li class="viewer">
             <%# A native details element, so it opens and closes with scripts off. menus.js adds Escape and closing when focus leaves. %>
+            <%# A demo name already says the role, so only a real name has its role word after it. %>
             <details class="dropdown person-menu">
-              <summary><strong><%= viewer.name %></strong><% if (viewerRoleWord !== viewer.name) { %> <small class="role-label"><%= viewerRoleWord %></small><% } %></summary>
+              <summary><strong><%- include("demo-name", { person: viewer }) %></strong><% if (!viewer.demo && viewerRoleWord !== viewer.name) { %> <small class="role-label"><%= viewerRoleWord %></small><% } %></summary>
               <ul>
                 <% if (viewer.demo && demoPeople.length > 0) { %>
-                <%# All three roles, each with one line on what to try as it. The current one is named, not offered. %>
+                <%# The three made-up people by name. The current one is named, not offered. %>
                 <li class="menu-heading">Switch role</li>
                 <% for (const person of demoPeople) { %>
-                <% const roleName = person.readOnly ? "Admin preview (read-only)" : `View as ${person.name}`; %>
                 <li class="role">
                   <% if (person.id === viewer.id) { %>
-                  <span class="role-current" aria-current="true"><%= person.readOnly ? "Admin preview (read-only)" : person.name %> (you)</span>
+                  <span class="role-current" aria-current="true"><%- include("demo-name", { person }) %> (you)</span>
                   <% } else { %>
                   <form method="post" action="/sign-in/dev">
                     <input type="hidden" name="id" value="<%= person.id %>" />
                     <input type="hidden" name="next" value="<%= here %>" />
-                    <button type="submit" class="link" aria-describedby="role-try-<%= person.id %>"><%= roleName %></button>
+                    <button type="submit" class="link"><%- include("demo-name", { person }) %></button>
                   </form>
                   <% } %>
-                  <small class="role-try" id="role-try-<%= person.id %>"><%- include("role-try", { person }) %></small>
                 </li>
                 <% } %>
                 <% } %>
@@ -56,9 +57,8 @@
                 <%# Only an admin chooses who is on the team and issues assistant connections, so only an admin is shown the way there. %>
                 <% if (viewer.role === "admin" && viewer.kind === "person") { %><li class="menu-link"><a href="/people">People</a></li><% } %>
                 <% if (viewer.role === "admin" && viewer.kind === "person" && !viewer.readOnly) { %><li class="menu-link"><a href="/connections">Connections</a></li><% } %>
-                <% if (viewer.demo) { %>
-                <li class="menu-link"><a href="/sign-in">About this demo</a></li>
-                <% } else { %>
+                <%# The demo has nobody to sign out. Its About page is in every footer. %>
+                <% if (!viewer.demo) { %>
                 <li class="menu-link">
                   <form method="post" action="/sign-out" class="sign-out">
                     <button type="submit" class="link">Sign out</button>

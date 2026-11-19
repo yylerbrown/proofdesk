@@ -263,7 +263,7 @@ test("on a phone the admin's People link is a 44-pixel tap target", async ({ pag
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/tickets");
   await page.locator("details.person-menu > summary").click();
-  await page.getByRole("button", { name: "Admin preview (read-only)" }).click();
+  await page.getByRole("button", { name: "Demo Admin (read-only)" }).click();
   await page.goto("/tickets");
   await page.locator("details.person-menu > summary").click();
   await expectTapTargets(page, ".site-header .person-menu a[href='/people']");
@@ -294,15 +294,15 @@ test("nothing scrolls sideways at 390 and 320 pixels wide", async ({ page }) => 
   }
 });
 
-test("the demo strip says the demo resets, on one line wide and two on a phone", async ({
+test("the demo strip says the demo is shared, on one line wide and on a phone", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto("/sign-in");
   await expect(page.locator(".demo-strip")).toHaveText(
-    "Demo: sample data, shared with everyone who visits. It resets itself when it has been quiet for a while.",
+    "Demo: sample data, shared with every visitor.",
   );
   expect(await stripLines(page)).toBe(1);
   await page.setViewportSize({ width: 390, height: 844 });
-  expect(await stripLines(page)).toBeLessThanOrEqual(2);
+  expect(await stripLines(page)).toBe(1);
 });

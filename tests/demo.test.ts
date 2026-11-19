@@ -53,11 +53,11 @@ describe("the demo entrance", () => {
     expect(about.text).toContain("About this demo");
     expect(about.text).toContain("Do not type anything private here.");
     // A first visit opens as the demo customer, and the role menu names the other two. The
-    // admin is named for what it is before anyone picks it: a preview that changes nothing.
+    // admin is named for what it is before anyone picks it: it changes nothing.
     const page = await visitor(app).get("/tickets");
     expect(page.text).toContain("Demo Customer (you)");
-    expect(page.text).toContain("View as Demo Team Member");
-    expect(page.text).toContain("Admin preview (read-only)");
+    expect(page.text).toContain("Demo Team Member");
+    expect(page.text).toContain("Demo Admin (read-only)");
     for (const shown of [about, page]) {
       expect(shown.text).not.toContain("Customer One");
       expect(shown.text).not.toContain("Sign in with GitHub");
@@ -74,7 +74,7 @@ describe("the demo entrance", () => {
     const { app } = buildDemo();
     for (const address of ["/sign-in", "/tickets", "/tickets/SUP-1"]) {
       const res = await asDemo(app, demoTeam.id).get(address);
-      expect(res.text, address).toContain("Demo: sample data, shared with everyone who visits.");
+      expect(res.text, address).toContain("Demo: sample data, shared with every visitor.");
     }
     const normal = await visitor(buildTestApp().app).get("/sign-in");
     expect(normal.text).not.toContain("Demo: sample data");

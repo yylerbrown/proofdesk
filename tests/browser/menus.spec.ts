@@ -13,8 +13,14 @@ test("More options and Edit work from the keyboard, and text fields show a real 
 
   await test.step("a refused title keeps the focus ring", async () => {
     const title = page.getByLabel("Title");
+    // The browser itself stops a title under 3 characters, so nothing is sent.
     await title.fill("ab");
     await page.getByLabel("Description").fill("The menu test needs a ticket to open.");
+    await page.getByRole("button", { name: "File ticket" }).click();
+    await expect(page).toHaveURL(/\/tickets\/new\?form=/);
+    expect(await title.evaluate((box: HTMLInputElement) => box.validity.tooShort)).toBe(true);
+    // Three spaces pass the browser, and the server, which trims them, refuses the title.
+    await title.fill("   ");
     await page.getByRole("button", { name: "File ticket" }).click();
     await expect(title).toHaveAttribute("aria-invalid", "true");
     await title.focus();

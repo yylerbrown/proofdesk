@@ -40,12 +40,12 @@ function rowsOf(html: string) {
       const select = row.querySelector("select");
       return {
         name: cells[0]!.querySelector(".person-name")!.text.trim(),
-        email: cells[0]!.querySelector(".person-email")!.text.trim(),
+        email: cells[0]!.querySelector(".person-email")?.text.trim() ?? null,
         role: select
           ? (select.querySelector("option[selected]")?.getAttribute("value") ?? null)
           : null,
         disabled: select?.hasAttribute("disabled") ?? null,
-        says: select ? null : cells[2]!.text.replace(/\s+/g, " ").trim(),
+        says: select ? null : cells[1]!.text.replace(/\s+/g, " ").trim(),
       };
     });
 }
@@ -93,9 +93,21 @@ describe("the People page for an admin", () => {
       },
     ]);
     expect(res.text).toContain("Team member: works on every ticket and writes internal notes.");
-    expect(res.text).toContain("No role has been changed here yet.");
-    // Each row shows when that person first signed in.
-    expect(parse(res.text).querySelectorAll("table.people time")).toHaveLength(5);
+    // The role lines come after the table, and no role change means no record of them at all.
+    const main = parse(res.text).querySelector("main")!.toString();
+    expect(main.indexOf("role-lines")).toBeGreaterThan(main.indexOf("table"));
+    expect(parse(res.text).querySelector(".role-changes")).toBeNull();
+    expect(res.text).not.toContain("No role has been changed here yet.");
+    // Two columns, and each person's first sign-in as quiet words under their name.
+    expect(
+      parse(res.text)
+        .querySelectorAll("table.people th")
+        .map((th) => th.text),
+    ).toEqual(["Person", "Role"]);
+    const since = parse(res.text).querySelectorAll("table.people td .person-since");
+    expect(since).toHaveLength(5);
+    expect(since[0]!.text).toMatch(/^First signed in /);
+    expect(since[0]!.querySelector("time")).not.toBeNull();
   });
 
   it("keeps the order of signing in when two people signed in in the same millisecond", async () => {
@@ -120,7 +132,10 @@ describe("the People page for an admin", () => {
     expect(parse(page.text).querySelector("p.saved")?.text).toBe(
       "Sam Customer is now a team member.",
     );
-    expect(parse(page.text).querySelector("ul.role-changes li span")?.text).toBe(
+    const changes = parse(page.text).querySelector("details.role-changes")!;
+    expect(changes.hasAttribute("open")).toBe(false);
+    expect(changes.querySelector("summary")?.text).toBe("Role changes (1)");
+    expect(changes.querySelector("li span")?.text).toBe(
       "Ada Admin made Sam Customer a team member. Before: a customer.",
     );
     // A reload, or a link to the page, says nothing more.
@@ -365,25 +380,26 @@ describe("on the demo", () => {
     const { browser } = demoAs("demo-admin");
     const res = await browser.get("/people");
     expect(res.status).toBe(200);
-    expect(res.text).toContain(
-      "On the real site an admin changes roles here, and it applies at once. The demo admin changes nothing.",
+    const main = parse(res.text).querySelector("main")!;
+    expect(main.querySelector("h1 + p")?.text).toBe("Choose who is on the support team.");
+    expect(main.querySelector(".role-note")?.text).toBe(
+      "Demo Admin (read-only) changes nothing here.",
     );
+    expect(main.querySelectorAll("h2")).toHaveLength(0);
     const rows = rowsOf(res.text);
     expect(rows.map((row) => row.name)).toEqual([
       "Demo Customer",
       "Demo Team Member",
-      "Demo Admin",
+      "Demo Admin (read-only)",
     ]);
     // Nothing to press: each role as words, with no disabled selectors or Save buttons.
     expect(rows.map((row) => row.says)).toEqual(["Customer", "Team member", "You, Admin"]);
     expect(parse(res.text).querySelector("table.people select")).toBeNull();
-    expect(rows[0]!.email).toBe("Made up for the demo");
+    // A made-up person has no address and never signed in, so nothing stands under the name.
+    expect(rows.map((row) => row.email)).toEqual([null, null, null]);
+    expect(res.text).not.toContain("Made up for the demo");
+    expect(parse(res.text).querySelector("table.people .person-since")).toBeNull();
     expect(parse(res.text).querySelector("table.people button")).toBeNull();
-    // Made-up people never signed in, so that cell is empty rather than "Never".
-    const firstSignedIn = parse(res.text)
-      .querySelectorAll("table.people tbody tr")
-      .map((row) => row.querySelectorAll("td")[1]!.text.trim());
-    expect(firstSignedIn).toEqual(["", "", ""]);
   });
 
   it("changes nothing for the demo admin", async () => {
@@ -425,7 +441,7 @@ describe("on the development entrance", () => {
       "Team Member",
       "Admin",
     ]);
-    expect(rows[0]!.email).toBe("Made up for development");
+    expect(rows[0]!.email).toBeNull();
     expect(rows.map((row) => row.says)).toEqual([
       "Customer",
       "Customer",
