@@ -5,7 +5,8 @@ import { expect, test, type Page } from "@playwright/test";
 // the caret in Title, adds one tab stop (its link) between Title and Description, stays one line
 // tall at phone width, and never shows on load or on the edit form.
 
-// The browser tests share one database, so this file's titles are its own.
+// The browser tests share one database and one filing allowance per person, so this file's
+// titles are its own and it files as a person the other files rarely use.
 const EARLIER = "Kettle whistles during the morning standup";
 const TYPED = "Kettle whistles in standup";
 
@@ -28,7 +29,7 @@ async function file(page: Page, title: string): Promise<string> {
 const line = (page: Page) => page.locator("#title-similar");
 
 test.beforeEach(async ({ page }) => {
-  await signIn(page, "Customer One");
+  await signIn(page, "Customer Two");
 });
 
 test("names the earlier ticket soon after the title rests, without moving focus", async ({
