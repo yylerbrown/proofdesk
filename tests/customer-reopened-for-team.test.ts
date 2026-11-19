@@ -2,21 +2,20 @@ import { parse } from "node-html-parser";
 import type { Express } from "express";
 import { describe, expect, it } from "vitest";
 import { DEV_COOKIE, type Actor } from "../src/server/actor.js";
-import { waitingOn } from "../src/server/pages/format.js";
+import { turnTag } from "../src/server/pages/format.js";
 import type { Ticket } from "../src/server/tickets/service.js";
 import { as, buildTestApp, customerOne, resolveTicket, teamActor, visitor } from "./helpers.js";
 
 // When the customer reopens a ticket, the team sees it as plainly as after a No: a callout
-// with their reason at the top of the ticket, and the list's Waiting on column says why it is
-// back. A team member who reopens a ticket is told so in words written for them.
+// with their reason at the top of the ticket, and the list's quiet tag says why it is back. A team member who reopens a ticket is told so in words written for them.
 
 const valid = { title: "Printer jams", description: "It jams.", fix_check: "Ten pages print" };
 const reason = "It jams again on page three.";
 
-/** The Waiting on cell of SUP-1 in this person's list. */
-async function waitingCell(app: Express, who: Actor) {
+/** The quiet tag after SUP-1's status in this person's list, or null when there is none. */
+async function listTag(app: Express, who: Actor) {
   const row = parse((await as(app, who).get("/tickets")).text).querySelector("tbody tr");
-  return row?.querySelectorAll("td")[4]?.text.trim();
+  return row?.querySelector(".turn-tag")?.text ?? null;
 }
 
 /** Posts a ticket-page form as this person, then reads the message on the page it leads to. */
@@ -42,8 +41,8 @@ describe("a ticket the customer reopened", () => {
     const box = page.querySelector("#customer-said-no")!;
     expect(box.querySelector("h2")?.text).toBe("The customer reopened it");
     expect(box.querySelector("blockquote")?.text).toBe(reason);
-    expect(await waitingCell(app, teamActor)).toBe("Support team: customer reopened it");
-    expect(await waitingCell(app, customerOne)).toBe("Support team");
+    expect(await listTag(app, teamActor)).toBe("Customer reopened it");
+    expect(await listTag(app, customerOne)).toBeNull();
     // The history keeps their reason too.
     const history = page.querySelectorAll("details.history tbody tr").map((row) => row.text);
     expect(history.some((row) => row.includes(`Reopened by the customer: ${reason}`))).toBe(true);
@@ -51,12 +50,16 @@ describe("a ticket the customer reopened", () => {
 
   it("is told apart from an older No, which the reopening replaces", () => {
     const ticket = { waiting_on: "team", customer_answer: { fixed: false } } as Ticket;
-    expect(waitingOn(ticket, "team")).toBe("Support team: customer says it still fails");
-    expect(waitingOn(ticket, "team", true)).toBe("Support team: customer reopened it");
-    expect(waitingOn(ticket, "customer", true)).toBe("Support team");
+    expect(turnTag(ticket, "team", { reopened: false, signal: undefined })).toBe(
+      "Customer said no",
+    );
+    expect(turnTag(ticket, "team", { reopened: true, signal: undefined })).toBe(
+      "Customer reopened it",
+    );
+    expect(turnTag(ticket, "customer", { reopened: true, signal: undefined })).toBeNull();
   });
 
-  it("goes back to the plain word once the team asks the customer again", async () => {
+  it("reads as asked once the team asks the customer again", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
     await resolveTicket(app, "SUP-1", customerOne);
@@ -67,7 +70,7 @@ describe("a ticket the customer reopened", () => {
       .post("/api/tickets/SUP-1/ready")
       .send({})
       .expect(200);
-    expect(await waitingCell(app, teamActor)).toBe("Customer");
+    expect(await listTag(app, teamActor)).toBe("Asked the customer");
   });
 });
 

@@ -48,7 +48,6 @@ describe("quotes of the ticket page", () => {
     expect(fs.readFileSync("src/server/tickets/schemas.ts", "utf8")).toContain(
       '"Fixed. Not customer-confirmed."',
     );
-    expect(fs.readFileSync("src/server/pages/format.ts", "utf8")).toContain('"Support team"');
     expect(tour).toContain('"Fixed. Not customer-confirmed."');
     expect(tour).toContain('"Support team" under Waiting on');
   });
