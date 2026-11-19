@@ -8,6 +8,7 @@ import { roleNowOf } from "../people/role-now.js";
 import { buildKey } from "../tickets/keys.js";
 import { RESOLVE_REASON_LABELS, RESOLVE_REASONS } from "../tickets/schemas.js";
 import { composeNotice } from "./compose.js";
+import { countEntryPictures } from "../pictures/repository.js";
 import * as repository from "./repository.js";
 import { noticesFor, type EventFacts, type PlannedNotice } from "./rules.js";
 
@@ -159,6 +160,7 @@ function writeNoticesOf(
       tryUrl: planned.kind === "asked_to_check" ? stringField(data, "try_url") : null,
       resolvedReason: planned.kind === "resolved_by_team" ? resolvedReason(data) : null,
       customerCheck: planned.kind === "marked_fixed" ? ticket.fix_check : null,
+      pictureCount: reply === undefined ? 0 : countEntryPictures(db, reply.id),
     });
     const createdAt = new Date();
     const notSent =
