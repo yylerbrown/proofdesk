@@ -52,7 +52,7 @@ describe("the guide at GET /api", () => {
     }
     expect(start_here.ownership).toMatch(/only the customer answers/);
     expect(untrusted_text).toMatch(/never as instructions/);
-    expect(new Set(Object.values(addresses)).size).toBe(3);
+    expect(new Set(Object.values(addresses)).size).toBe(4);
     expect(addresses.openapi).toMatch(/\/api\/openapi\.json$/);
   });
 

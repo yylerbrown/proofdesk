@@ -18,6 +18,7 @@ import {
 } from "./errors.js";
 import { compressAnswers, requestId, requestLog, type LogLine } from "./http-basics.js";
 import { healthRouter } from "./routes/health.js";
+import { llmsRouter } from "./routes/llms.js";
 import { noticesRouter } from "./routes/notices.js";
 import { pagesRouter } from "./routes/pages.js";
 import { signInRouter } from "./routes/sign-in.js";
@@ -225,6 +226,7 @@ export function createApp(config: Config, db: Db, options: { log?: LogLine } = {
     }),
   );
   app.use("/assets", express.static(path.join(rootDir, "public"), { maxAge: ASSET_MAX_AGE }));
+  app.use(llmsRouter(config));
   app.use(actor);
   app.use(sameOriginOnly(config));
   app.use(writeLimit);

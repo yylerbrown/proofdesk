@@ -109,6 +109,7 @@ export function guide(actor: Actor | null, address: string, sourceUrl?: string) 
       guide: `${address}/api`,
       openapi: `${address}/api/openapi.json`,
       mcp: `${address}/mcp`,
+      llms: `${address}/llms.txt`,
       // The public source, with its README, when this server knows it.
       ...(sourceUrl ? { source: `${sourceUrl}#readme` } : {}),
     },
