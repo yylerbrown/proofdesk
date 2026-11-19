@@ -1,7 +1,7 @@
 import { Router, type Request, type RequestHandler, type Response } from "express";
 import type { Actor } from "../actor.js";
 import { DEMO_ACTORS, signedIn } from "../actor.js";
-import { forbidden, ValidationError } from "../errors.js";
+import { forbidden, HttpError, onTicketPage, ValidationError } from "../errors.js";
 import { can } from "../permissions.js";
 import {
   confirmedAt,
@@ -22,6 +22,7 @@ import {
   ticketFiledWith,
 } from "../pages/form-id.js";
 import { readListPageQuery } from "../pages/list-query.js";
+import { sameText } from "../tickets/schemas.js";
 import { statusControl } from "../pages/status-control.js";
 import { rememberSaved, takeProblem, takeSaved, type SavedKey } from "../pages/saved.js";
 import { RESOLVE_REASON_LABELS, TICKET_STATUSES } from "../tickets/schemas.js";
@@ -57,6 +58,8 @@ type Problem = {
   comment: string;
   /** What was typed in the form, so it can be shown again. */
   values?: Record<string, string>;
+  /** The evidence boxes that were ticked, so they are ticked again. */
+  evidenceIds?: string[];
   /** The box that gets focus when the page comes back, so the visitor lands on the error. */
   focus?: string;
 };
@@ -72,6 +75,10 @@ const FORM_FIELDS: Record<Problem["form"], string[]> = {
   handOff: ["to"],
   resolve: ["reason", "duplicate_of", "note"],
 };
+
+// The forms on the ticket page that carry the ticket's version and show what was typed again
+// when they are drawn after a refusal for an old version.
+const KEEPS_TEXT = new Set<Problem["form"]>(["ready", "reopen", "resolve"]);
 
 /** The box a refused form should focus: the first one with a message, or else its first box. */
 function focusField(form: Problem["form"], fieldErrors: Record<string, string[] | undefined>) {
@@ -232,8 +239,33 @@ function readTicketForm(body: Record<string, unknown> | undefined): typeof empty
   };
 }
 
+// The edit form's boxes, by the words the person sees above each one.
+const BOX_NAMES: [keyof typeof emptyForm, string][] = [
+  ["title", "Title"],
+  ["description", "Description"],
+  ["fix_check", "How will we know it's fixed?"],
+  ["where_url", "Page where it happened"],
+];
+
+/**
+ * The names of the boxes whose text differs from the ticket as it is now. They are compared the
+ * way a ticket stores them: trimmed, and with a browser's CR LF line breaks the same as plain ones.
+ */
+function differingBoxes(ticket: Ticket, values: typeof emptyForm): string[] {
+  return BOX_NAMES.filter(
+    ([field]) => !sameText((ticket[field] ?? "").trim(), values[field].trim()),
+  ).map(([, name]) => name);
+}
+
 export function pagesRouter(service: TicketService): Router {
   const router = Router();
+
+  // A cheap read for a ticket page left open, which asks it now and then to notice a change made
+  // elsewhere. It is registered before the middleware below, so asking never uses up the
+  // message a page shows once after a save. Reading is not counted against the write limit.
+  router.get("/tickets/:key/version", (req, res) => {
+    res.json(service.ticketStamp(req.params.key, signedIn(req)));
+  });
 
   // A page opened just after a save says what was saved.
   router.use((req, res, next) => {
@@ -324,6 +356,8 @@ export function pagesRouter(service: TicketService): Router {
       resolveReasons: RESOLVE_REASON_LABELS,
       entry: shownEntry,
       problem,
+      // What the page's watcher compares with the server's cheap read.
+      stamp: service.ticketStamp(ticket.key, actor),
     });
   }
 
@@ -340,17 +374,43 @@ export function pagesRouter(service: TicketService): Router {
         rememberSaved(res, FORM_SAVED[form](req.body, actor));
         res.redirect(303, `/tickets/${ticket.key}`);
       } catch (err) {
-        if (!(err instanceof ValidationError)) throw err;
-        const message = Object.values(err.fieldErrors).flat()[0] ?? err.message;
         const values: Record<string, string> = {};
         for (const [name, value] of Object.entries(req.body ?? {})) {
           if (typeof value === "string") values[name] = value;
         }
+        // Ticked boxes arrive as one text, or as a list when more than one is ticked.
+        const evidenceIds = [req.body?.evidence_ids].flat().filter((id) => typeof id === "string");
+        // The ticket changed since the page was opened. A form with text typed in it, or with
+        // evidence ticked, is shown again on the ticket as it is now, with that kept. Any other
+        // press goes back to the ticket with the reason, as for other refusals.
+        const firstTyped = FORM_FIELDS[form].find((name) => (values[name] ?? "").trim() !== "");
+        const somethingToKeep = firstTyped !== undefined || evidenceIds.length > 0;
+        if (
+          err instanceof HttpError &&
+          err.code === "ticket_changed" &&
+          somethingToKeep &&
+          KEEPS_TEXT.has(form)
+        ) {
+          res.locals.refused = onTicketPage(err);
+          showTicket(req, res, 409, emptyEntry, {
+            form,
+            message:
+              "What you entered is kept here. Look at the ticket as it is now, then send again.",
+            comment: asText(req.body?.comment ?? req.body?.reason),
+            values,
+            evidenceIds,
+            focus: firstTyped,
+          });
+          return;
+        }
+        if (!(err instanceof ValidationError)) throw err;
+        const message = Object.values(err.fieldErrors).flat()[0] ?? err.message;
         showTicket(req, res, 400, emptyEntry, {
           form,
           message,
           comment: asText(req.body?.comment ?? req.body?.reason),
           values,
+          evidenceIds,
           focus: focusField(form, err.fieldErrors),
         });
       }
@@ -551,25 +611,50 @@ export function pagesRouter(service: TicketService): Router {
       values,
       errors: {},
       checkLocked: ticket.created_by !== actor.id,
+      version: ticket.version,
     });
   });
 
   router.post("/tickets/:key/edit", (req, res) => {
     const actor = signedIn(req);
     const values = readTicketForm(req.body);
+    const expectedVersion = asText(req.body?.expected_version);
     try {
       const ticket = service.editTicket(
         req.params.key,
-        { ...values, where_url: values.where_url === "" ? undefined : values.where_url },
+        {
+          ...values,
+          where_url: values.where_url === "" ? undefined : values.where_url,
+          expected_version: expectedVersion,
+        },
         actor,
       );
       rememberSaved(res, "edited");
       res.redirect(303, `/tickets/${ticket.key}`);
     } catch (err) {
-      if (!(err instanceof ValidationError)) throw err;
-      // The key is checked before it is put in the form's address.
-      const key = service.getTicket(req.params.key, actor).key;
-      res.status(400).render("ticket-form", { ...editForm(key), values, errors: err.fieldErrors });
+      const changed = err instanceof HttpError && err.code === "ticket_changed";
+      if (!(err instanceof ValidationError) && !changed) throw err;
+      // The ticket as it is now. Its key is checked before it is put in the form's address.
+      const current = service.getTicket(req.params.key, actor);
+      const checkLocked = current.created_by !== actor.id;
+      // What the person typed stays. A check they may not change shows as it is now.
+      const shown = checkLocked ? { ...values, fix_check: current.fix_check ?? "" } : values;
+      const errors = err instanceof ValidationError ? err.fieldErrors : {};
+      res.status(changed ? 409 : 400).render("ticket-form", {
+        ...editForm(current.key),
+        values: shown,
+        errors,
+        // The boxes whose text on the ticket now differs from what the form holds, so a second
+        // save does not put old text back unnoticed.
+        differ: changed ? differingBoxes(current, shown) : [],
+        // The hidden version has no box of its own, so a problem with it is said at the top.
+        versionUnreadable: errors.expected_version !== undefined,
+        checkLocked,
+        // After a refusal for a newer version, the form carries that version, so saving again
+        // is a choice made with the change in view. After a mistake in a box, it keeps its own.
+        version: changed ? current.version : expectedVersion,
+        changedElsewhere: changed,
+      });
     }
   });
 
@@ -635,12 +720,12 @@ export function pagesRouter(service: TicketService): Router {
   router.post("/tickets/:key/reopen", ticketForm("reopen", service.reopen));
   router.post("/tickets/:key/resolve", ticketForm("resolve", service.resolveWithReason));
   router.post("/tickets/:key/adopt-check", (req, res) => {
-    const ticket = service.adoptCheck(req.params.key, signedIn(req));
+    const ticket = service.adoptCheck(req.params.key, signedIn(req), req.body);
     rememberSaved(res, "adopted");
     res.redirect(303, `/tickets/${ticket.key}`);
   });
   router.post("/tickets/:key/withdraw-question", (req, res) => {
-    const ticket = service.withdrawQuestionAsked(req.params.key, signedIn(req));
+    const ticket = service.withdrawQuestionAsked(req.params.key, signedIn(req), req.body);
     rememberSaved(res, "withdrawn");
     res.redirect(303, `/tickets/${ticket.key}`);
   });
@@ -651,12 +736,12 @@ export function pagesRouter(service: TicketService): Router {
     res.redirect(303, `/tickets/${ticket.key}`);
   });
   router.post("/tickets/:key/agent/end", (req, res) => {
-    const ticket = service.endAgentWork(req.params.key, signedIn(req));
+    const ticket = service.endAgentWork(req.params.key, signedIn(req), req.body);
     rememberSaved(res, "agentEnded");
     res.redirect(303, `/tickets/${ticket.key}`);
   });
   router.post("/tickets/:key/take-and-start", (req, res) => {
-    const ticket = service.takeAndStart(req.params.key, signedIn(req));
+    const ticket = service.takeAndStart(req.params.key, signedIn(req), req.body);
     rememberSaved(res, "started");
     res.redirect(303, `/tickets/${ticket.key}`);
   });
@@ -672,13 +757,13 @@ export function pagesRouter(service: TicketService): Router {
   );
 
   router.post("/tickets/:key/take", (req, res) => {
-    const ticket = service.takeTicket(req.params.key, signedIn(req));
+    const ticket = service.takeTicket(req.params.key, signedIn(req), req.body);
     rememberSaved(res, "taken");
     res.redirect(303, `/tickets/${ticket.key}`);
   });
 
   router.post("/tickets/:key/release", (req, res) => {
-    const ticket = service.releaseTicket(req.params.key, signedIn(req));
+    const ticket = service.releaseTicket(req.params.key, signedIn(req), req.body);
     rememberSaved(res, "released");
     res.redirect(303, `/tickets/${ticket.key}`);
   });

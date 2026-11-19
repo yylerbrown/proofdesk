@@ -264,6 +264,7 @@ describe("ticket service returns what is stored", () => {
       "title",
       "try_url",
       "updated_at",
+      "version",
       "waiting_on",
       "where_url",
     ]);

@@ -34,6 +34,8 @@ export type TicketRow = {
   resolved_by: string | null;
   resolved_by_name: string | null;
   resolved_at: string | null;
+  // Rises by one on every change to the row, by a trigger in the database.
+  version: number;
 };
 
 export type EventRow = {
@@ -91,6 +93,33 @@ export function insertTicket(db: Db, ticket: NewTicket): number {
 
 export function findTicket(db: Db, id: number): TicketRow | undefined {
   return db.prepare("SELECT * FROM tickets WHERE id = ?").get(id) as TicketRow | undefined;
+}
+
+/** The ticket's version as it is saved now, or undefined when there is no such ticket. */
+export function versionOf(db: Db, id: number): number | undefined {
+  const row = db.prepare("SELECT version FROM tickets WHERE id = ?").get(id) as
+    { version: number } | undefined;
+  return row?.version;
+}
+
+/** How many replies, and internal notes when asked for, the ticket has. */
+export function countEntries(db: Db, ticketId: number, includeNotes: boolean): number {
+  const row = db
+    .prepare(
+      "SELECT COUNT(*) AS n FROM ticket_entries WHERE ticket_id = ? AND (? = 1 OR kind = 'reply')",
+    )
+    .get(ticketId, includeNotes ? 1 : 0) as { n: number };
+  return row.n;
+}
+
+/** How many times the ticket was handed to an assistant, plus how many of those ended. */
+export function countHandoffChanges(db: Db, ticketId: number): number {
+  const row = db
+    .prepare(
+      "SELECT COUNT(*) + COUNT(ended_at) AS n FROM ticket_agent_handoffs WHERE ticket_id = ?",
+    )
+    .get(ticketId) as { n: number };
+  return row.n;
 }
 
 /** Which slice of a long list to read: at most `limit` rows, after skipping `offset`. */

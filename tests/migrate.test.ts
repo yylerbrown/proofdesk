@@ -56,6 +56,7 @@ const ALL = [
   "0027_email_retry_time.sql",
   "0028_people_roles.sql",
   "0029_email_setting.sql",
+  "0030_ticket_version.sql",
   "0031_connection_end_reason.sql",
 ];
 
