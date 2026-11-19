@@ -10,7 +10,7 @@ import { buildTestApp, visitor } from "./helpers.js";
 // who changes only the title and description never files a made-up address as their own.
 
 describe("the guided sample on the demo", () => {
-  it("fills the title, the description and the check, and leaves the page address empty", async () => {
+  it("fills the title, the description and the check, and sends no page address", async () => {
     const { app, db, config } = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
     seedDemo(createTicketService(db, config.ticketPrefix));
     const form = parse(
@@ -24,7 +24,7 @@ describe("the guided sample on the demo", () => {
     expect(form.querySelector("input[name=title]")?.getAttribute("value")).not.toBe("");
     expect(form.querySelector("textarea[name=description]")?.text).not.toBe("");
     expect(form.querySelector("textarea[name=fix_check]")?.text).not.toBe("");
-    expect(form.querySelector("input[name=where_url]")?.getAttribute("value")).toBe("");
+    expect(form.querySelector("input[name=where_url]")).toBeNull();
   });
 });
 

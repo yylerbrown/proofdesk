@@ -55,7 +55,7 @@ test.afterAll(() => {
   if (databaseDir !== undefined) rmSync(databaseDir, { recursive: true, force: true });
 });
 
-const LABEL = "See a ticket an AI assistant worked";
+const LABEL = "See a ticket an AI assistant worked, as the team";
 
 const screens: [number, number][] = [
   [1280, 800],

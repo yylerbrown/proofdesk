@@ -79,16 +79,18 @@ describe("the ticket form after a refused submit", () => {
 });
 
 describe("the Title box", () => {
-  it("says it takes 3 to 120 characters, as its description", async () => {
+  it("leaves its limits to the browser, which stops at 120 and says when it is under 3", async () => {
     const { app } = buildTestApp();
     const res = await admin(app).get("/tickets/new").redirects(1);
     const html = parse(res.text);
     const title = html.querySelector("[name=title]");
     expect(nameOf(html, title)).toBe("Title");
-    expect(descriptionOf(html, title)).toEqual(["3 to 120 characters."]);
+    expect(descriptionOf(html, title)).toEqual([]);
+    expect(title?.getAttribute("minlength")).toBe("3");
+    expect(title?.getAttribute("maxlength")).toBe("120");
   });
 
-  it("reads the message first, then the limits, when it is refused", async () => {
+  it("reads the server's message when it is refused", async () => {
     const { app } = buildTestApp();
     const res = await admin(app)
       .post("/tickets")
@@ -97,7 +99,6 @@ describe("the Title box", () => {
     const html = parse(res.text);
     expect(descriptionOf(html, html.querySelector("[name=title]"))).toEqual([
       "Must be at most 120 characters.",
-      "3 to 120 characters.",
     ]);
   });
 });

@@ -272,6 +272,8 @@ const emptyForm = { title: "", description: "", where_url: "", fix_check: "" };
 // Both show the description's limit.
 const newForm = {
   title: "New ticket",
+  // The header leaves out its "New ticket" button on the page it leads to.
+  onNewTicketForm: true,
   action: "/tickets",
   submitLabel: "File ticket",
   descriptionLimit: DESCRIPTION_LIMIT,

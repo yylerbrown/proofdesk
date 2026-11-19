@@ -62,7 +62,7 @@ describe("the header", () => {
     const { app } = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
     const demoAdmin = DEMO_ACTORS.find((who) => who.readOnly === true)!;
     const html = (await as(app, demoAdmin).get("/tickets")).text;
-    expect(headerViewer(html)).toBe("Demo Admin Admin, read-only");
+    expect(headerViewer(html)).toBe("Demo Admin (read-only)");
   });
 });
 

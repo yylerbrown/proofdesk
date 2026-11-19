@@ -8,7 +8,8 @@
 </hgroup>
 
 <% if (viewer) { %>
-<p class="signed-in">You are trying it as <strong><%= viewer.name %></strong>. <a href="/tickets">Back to the tickets</a>, or use Switch role at the top.</p>
+<%# Who the visitor is and how to change it, said once, with how the real site differs. %>
+<p class="signed-in">You are <strong><%- include("demo-name", { person: viewer }) %></strong>, one of three made-up people. Switch with the menu at the top right.<% if (locals.realSiteUrl) { %> On <a href="<%= realSiteUrl %>">the real site</a>, people sign in with GitHub.<% if (locals.sourceUrl) { %> <a href="<%= sourceUrl %>#sign-in-and-roles">How sign-in and roles work</a><% } %><% } %></p>
 <% } else if (nextTicket) { %>
 <%# A link to one ticket: whose view opens it is the visitor's choice, since a customer sees only their own. %>
 <p class="next-ticket" id="next-ticket">Pick a role to open <strong><%= nextTicket %></strong>.</p>
@@ -18,7 +19,7 @@
     <form method="post" action="/sign-in/dev">
       <input type="hidden" name="id" value="<%= person.id %>" />
       <input type="hidden" name="next" value="<%= next %>" />
-      <button type="submit" class="secondary" aria-describedby="next-ticket try-<%= person.id %>"><%= person.readOnly ? "Admin preview (read-only)" : `View as ${person.name}` %></button>
+      <button type="submit" class="secondary" aria-describedby="next-ticket try-<%= person.id %>">View as <%- include("demo-name", { person }) %></button>
     </form>
     <small class="try" id="try-<%= person.id %>"><%- include("role-try", { person }) %></small>
   </li>
@@ -35,13 +36,16 @@
 
 <section class="about-demo">
   <p>The tickets are sample data, shared with everyone who visits. Do not type anything private here. The demo resets itself when it has been quiet for a while.</p>
+  <% if (!viewer) { %>
+  <%# Signed out, the paragraph above has not said how roles work, so this one does. %>
   <% if (locals.realSiteUrl) { %>
   <p class="real-site">On <a href="<%= realSiteUrl %>">the real site</a>, people sign in with GitHub. Here you switch between three made-up people with Switch role at the top.<% if (locals.sourceUrl) { %> <a href="<%= sourceUrl %>#sign-in-and-roles">How sign-in and roles work</a><% } %></p>
   <% } else { %>
   <p class="roles-note">Here you switch between three made-up people with Switch role at the top.</p>
   <% } %>
-  <% if (locals.sourceUrl) { %>
-  <p class="source-link"><a href="<%= sourceUrl %>#readme">Source and setup</a></p>
+  <% } %>
+  <% if (viewer || locals.sourceUrl) { %>
+  <p class="source-link"><% if (viewer) { %><a href="/tickets">Back to the tickets</a><% } %><% if (viewer && locals.sourceUrl) { %> · <% } %><% if (locals.sourceUrl) { %><a href="<%= sourceUrl %>#readme">Source and setup</a><% } %></p>
   <% } %>
   <%# The assistant setup is extra, so it starts folded to one quiet line. Links to /sign-in#connect
       open it without a script: a browser opens a closed details element when the address's
@@ -50,7 +54,7 @@
     <summary>Connect your own AI assistant</summary>
     <div id="connect">
     <% if (locals.demoAgents) { %>
-    <p>Get a one-day key and one message to paste into your own AI agent, so it can work on the sample ticket made for it.</p>
+    <p>Get a one-day key and one message to paste into your own AI assistant, so it can work on the sample ticket made for it.</p>
     <form method="post" action="/demo/connection">
       <button type="submit" class="secondary">Get a demo connection</button>
     </form>
@@ -120,7 +124,7 @@
         <input type="hidden" name="id" value="<%= person.id %>" />
         <input type="hidden" name="next" value="<%= next %>" />
         <%# The button's description is its line below, and the ticket it opens when there is one. %>
-        <button type="submit" class="secondary" aria-describedby="<%= nextTicket ? "next-ticket " : "" %>try-<%= person.id %>"><%= person.readOnly ? "Admin preview (read-only)" : `View as ${person.name}` %></button>
+        <button type="submit" class="secondary" aria-describedby="<%= nextTicket ? "next-ticket " : "" %>try-<%= person.id %>">View as <%- include("demo-name", { person }) %></button>
       </form>
       <small class="try" id="try-<%= person.id %>"><%- include("role-try", { person }) %></small>
     </li>
