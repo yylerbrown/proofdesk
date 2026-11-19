@@ -37,7 +37,7 @@ describe("the README", () => {
       "**Ask the customer to verify**",
       "**Yes, resolve ticket**",
       "Customer confirmed it is fixed.",
-      'press "Resolved" under Status',
+      'press "Resolve with a reason…" under Status',
     ].map((text) => walk.replace(/\s+/g, " ").indexOf(text));
     expect(order.every((at) => at >= 0)).toBe(true);
     expect(order).toEqual([...order].sort((a, b) => a - b));

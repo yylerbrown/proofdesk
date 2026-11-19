@@ -40,12 +40,10 @@ describe("who may reopen a resolved ticket, in the README and the specification"
 
   it("names the Resolve button the ticket page really shows", () => {
     const page = fs.readFileSync("views/ticket-show.ejs", "utf8");
-    // Resolved, in the status row, opens the reasons; its form's button is Resolve.
-    expect(page).toMatch(
-      /<summary role="button"[^>]*><%= statusLabels\[choice\.status\] %><\/summary>/,
-    );
+    // The status row's third control opens the reasons; its form's button is Resolve.
+    expect(page).toMatch(/<summary role="button"[^>]*>Resolve with a reason…<\/summary>/);
     expect(page).toMatch(/aria-describedby="resolve-error"<% } %>>Resolve<\/button>/);
-    expect(readme).toMatch(/press "Resolved?" under Status/);
+    expect(readme).toContain('press "Resolve with a reason…" under Status');
     expect(readme).not.toContain('open "Resolve with a reason"');
   });
 });

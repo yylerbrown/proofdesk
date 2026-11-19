@@ -6,12 +6,12 @@ list. The twist: the customer writes how they will know it is fixed, and the tic
 "Did this fix it?" before it counts as confirmed.
 
 - **The demo, no account needed: <https://support-desk-demo.fly.dev>.** Sample data, shared with
-  everyone who visits, so do not type anything private. It returns to its samples by itself about
-  once a day.
+  everyone who visits, so do not type anything private. It returns to its samples by itself when
+  it has been quiet for a while.
 - **The production site, with GitHub sign-in: <https://proofdesk.fly.dev>.**
 - **The source: <https://github.com/yylerbrown/proofdesk>.**
 
-<img src="docs/img/ticket-list.png" width="720" alt="The team's ticket list on the demo: status filters All, New, In Progress, Resolved and Archived with a count beside each status, owner filters Everyone, Mine and Unassigned, a search box, eight sample tickets with their key, title, status, owner, who each one waits on and when it was filed, and an order choice under the table">
+<img src="docs/img/ticket-list.png" width="720" alt="The team's ticket list on the demo: status filters All, New, In Progress and Resolved with a count beside each status, owner filters Everyone, Mine and Unassigned, a search box, eight sample tickets with their key, title, status, owner, who each one waits on and when it was filed, and an order choice under the table">
 
 ## Run it yourself
 
@@ -44,9 +44,10 @@ On the demo, in about two minutes:
 
 <img src="docs/img/did-this-fix-it.png" width="560" alt="The customer's view of a ticket the team says is fixed: the box &quot;Did this fix it?&quot; quotes the customer's own check in their words, with &quot;Yes, resolve ticket&quot;, a box to say what is still wrong with &quot;No, send it back&quot;, and three quick No answers">
 
-The team also has a plain Status row with New, In Progress and Resolved, and moving to New or In
-Progress is one press. To resolve without the customer, press "Resolved" under Status and choose
-a reason; the ticket then shows `Resolved by the team: <reason>` to everyone.
+The team also has a plain Status row: New, In Progress, and "Resolve with a reason…". Moving to
+New or In Progress is one press. To resolve without the customer, press "Resolve with a reason…"
+under Status and choose a reason; the ticket then shows `Resolved by the team: <reason>` to
+everyone.
 
 [`docs/TOUR.md`](docs/TOUR.md) goes feature by feature: filters and search, two people on one
 ticket, email notices and the rest.
@@ -91,15 +92,16 @@ admin preview sees everything and changes nothing, and nobody archives or delete
 
 Proofdesk makes no AI calls of its own. A person's own assistant works on tickets through an MCP
 endpoint, with only the permissions its connection allows. **See an assistant's work**
-(<https://support-desk-demo.fly.dev/assistant-run>) shows one recorded run: an assistant
-reproduced the customer's problem, tested a fix, proposed a test, attached the run as evidence
-and asked the owner to review it. It resolved nothing, because only the customer's Yes confirms
-a fix: a test can pass while the customer is still stuck.
+(<https://support-desk-demo.fly.dev/assistant-run>) shows one recorded run. The assistant worked
+in a scratch file from the ticket's text, because it had no access to the product's code. There
+it reproduced the arithmetic problem and tested a fix, then proposed a test, attached the run as
+evidence and asked the owner to review it. It resolved nothing, because only the customer's Yes
+confirms a fix: a test can pass while the customer is still stuck.
 
-To try it, press **Get a demo connection** on the demo's welcome page for a one-day key and the
-command to paste. On the production site an admin issues connections, and a ticket's owner hands
-the ticket to one. [`docs/AGENTS_GUIDE.md`](docs/AGENTS_GUIDE.md) has the setup, the tools and
-the limits.
+To try it, press **Get a demo connection** on the demo's welcome page for a key that lasts a day
+at most, and the command to paste. On the production site an admin issues connections, and a
+ticket's owner hands the ticket to one. [`docs/AGENTS_GUIDE.md`](docs/AGENTS_GUIDE.md) has the
+setup, the tools and the limits.
 
 ## Read first
 
@@ -149,8 +151,11 @@ code. The specification ([`docs/SPEC.md`](docs/SPEC.md)), the history of every s
   login.
 - **`ops/prove` is not a sandbox.** It runs the candidate code on the machine with only the
   environment cleaned.
-- **Left out on purpose:** a board with status columns, priority ordering, any model call of
-  the site's own, and reassigning tickets when someone leaves the team.
+- **No bulk handover when someone leaves the team.** The People page will not make someone a
+  customer while they own open tickets, and names those tickets, so each is handed on first. A
+  reopened ticket whose owner has left goes back to New with no owner.
+- **Left out on purpose:** a board with status columns, priority ordering and any model call of
+  the site's own.
 - **Design debt** is listed with a plan for each item in
   [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#design-debt).
 

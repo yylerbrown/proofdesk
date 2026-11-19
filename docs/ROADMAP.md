@@ -21,13 +21,15 @@ desk and the product apart: the repository owns its tests, and the desk keeps wh
 | 1   | Regression tests                 | As above: permanent scenario ids, carried in the test's name; the desk keeps "Reported passing at commit <sha>".                                                                                                                                          |
 | 2   | Agent comments at three moments  | When the assistant is blocked, when it needs a decision, and when its evidence is ready. Blocked notes and review requests already show beside the check and in the list; a decision with recognisable answers comes next.                                |
 | 3   | Photos and video                 | A screenshot can make a bug reproducible. On the public demo, a few bundled sample screenshots and clips to pick from, so strangers never upload anything; real uploads bring storage, access and permanent-deletion work.                                |
-| 4   | Search                           | Across a ticket's text, with the match shown. Permissions are checked before anything can match, so a customer's search never matches internal-note text.                                                                                                 |
+| 4   | Search in the conversation       | The list already searches titles, descriptions and keys. Next: replies, and internal notes for the team, with the match shown. Permissions are checked before anything can match, so a customer's search never matches internal-note text.                |
 | 5   | Agent descriptions with versions | A version and a few words on each connection, worth adding when the team has two versions to tell apart in the history.                                                                                                                                   |
 | 6   | Reports                          | Compare versions on: reached the customer's check within 7 days; the customer replied within 7 days of the first ask; Yes on the first answer; reported broken within 30 days. Each is shown out of how many tickets it applies to.                       |
 | 7   | A budget                         | A number the agent is asked to respect ("Aim for $10, then ask"), with the spend recorded as the agent reported it, or shown as unknown. The assistant runs outside Proofdesk, so the desk cannot enforce a limit.                                        |
 | 8   | The top bar                      | Crowding alone does not justify a navigation change. Every control in it was checked usable at 375 and 320 pixels wide.                                                                                                                                   |
 | 9   | Personal assistant connections   | Each team member connects their own assistant. It can do no more than that person can, and the history labels it with their name and marks it as an assistant. Admins can see and revoke every connection. This is the pattern of personal access tokens. |
 | 10  | Customers' own assistants        | A customer can get a key that reaches only their own tickets, so their assistant can file a ticket and follow it. Like every assistant, it cannot answer for the customer or resolve a ticket.                                                            |
+| 11  | How long a ticket has waited     | A "waiting on" filter that shows how long each ticket has waited on that person, with a "longest waiting" order, so the oldest wait is answered first. Asked for by testers walking the demo.                                                             |
+| 12  | A filter by a named owner        | Beside Everyone, Mine and Unassigned, a choice of one team member, for handing work over when someone is away or leaving. Asked for by testers walking the demo.                                                                                          |
 
 ## Dropped
 
@@ -52,3 +54,9 @@ desk and the product apart: the repository owns its tests, and the desk keeps wh
 - **The blocked flag and review requests**, shown to the team beside the check and in the list.
 - **Quick answers:** plain words that fill the customer's No or the team's reply.
 - **One recorded assistant run**, with its transcript, on the page "An assistant's work".
+- **Search** of titles, descriptions and ticket keys, with a count beside each status and three
+  orders.
+- **Email notices** written from the ticket history, with a page of each ticket's notices.
+- **The People page**, where an admin chooses who is on the team.
+- **Two people on one ticket:** a save or a press from an old copy is refused, and the typed text
+  is kept.

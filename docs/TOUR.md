@@ -11,31 +11,31 @@ Each one takes under a minute on the demo, starting from its welcome page.
 
 - Start as: The welcome page
 - Press: **Try the ticket workflow**, then **File ticket**
-- You should see: The form says "Initial status: New" and is filled with a sample you can change. The filed ticket shows **New**.
+- You should see: The form says "Initial status: New" and is filled with a sample you can change. The filed ticket shows **New**, under "Ticket SUP-n filed. The support team has it now; come back to this page for updates."
 
 **Ticket list with filters**
 
 - Start as: **View as Demo Team Member**
 - Press: **New**, **In Progress**, **Resolved**; **Mine** and **Unassigned**; type words, or a ticket's key such as SUP-3, and press **Search**; under the table, **Oldest first** or **Recently updated**
-- You should see: "All tickets", with a count beside each status, and each filter changes the list. A typed key opens that ticket. Filters, search and order combine in the address, so a view can be shared. A customer's list is "My tickets": only their own, with the search.
+- You should see: "All tickets", with a count beside each status and "Support team" under Waiting on for tickets the team owes an answer, and each filter changes the list. A typed key opens that ticket. Filters, search and order combine in the address, so a view can be shared. A customer's list is "My tickets": only their own, with the search.
 
 **Update status: New to In Progress**
 
 - Start as: The ticket you just filed, then **View this ticket as a team member**
 - Press: **Take ticket and start work**, or **In Progress** in the Status row
-- You should see: **In Progress**, with you as its owner. The Status row shows New, In Progress and Resolved, and each other status is one press; New sends an In Progress ticket back to the inbox with no owner.
+- You should see: **In Progress**, with you as its owner. The Status row shows New, In Progress and "Resolve with a reason…". New and In Progress are one press each, and "Resolve with a reason…" opens a short form. New sends an In Progress ticket back to the inbox with no owner.
 
 **Update status: to Resolved**
 
 - Start as: Demo Team Member, owning the ticket you filed
 - Press: **Ask the customer to verify**, then **View this ticket as the customer who filed it** and **Yes, resolve ticket**
-- You should see: **Resolved**, and "Customer confirmed it is fixed." Asking takes one press; what was tried, the change link and evidence are optional details. The team can also resolve without the customer, on a New ticket nobody owns or on one they own: press "Resolved" under Status and choose a reason, and the ticket then shows `Resolved by the team: <reason>` to everyone.
+- You should see: **Resolved**, and "Customer confirmed it is fixed." Asking takes one press; what was tried, the change link and evidence are optional details. The team can also resolve without the customer, on a New ticket nobody owns or on one they own: press "Resolve with a reason…" under Status and choose a reason, such as "Fixed. Not customer-confirmed.", and the ticket then shows `Resolved by the team: <reason>` to everyone.
 
 **Two people on one ticket**
 
 - Start as: Demo Team Member, with the ticket you filed open in two tabs
 - Press: **Edit ticket** in both tabs, save a change in one, then save in the other
-- You should see: The second save is refused and keeps what you typed, naming what is different on the ticket now. A tab left open on a ticket someone else changed says "This ticket changed. Refresh to see it."
+- You should see: The second save is refused and keeps what you typed, naming only what the other person changed, such as `They changed: Title, now "..."`. A tab left open on a ticket someone else changed says what changed when it can, such as "This ticket is now In Progress. Refresh to see it." or "This ticket has a new message. Refresh to see it.", and otherwise "This ticket changed. Refresh to see it."
 
 **SSO with roles and permissions**
 
