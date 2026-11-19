@@ -25,6 +25,17 @@ describe("quotes of the ticket page", () => {
     }
   });
 
+  it("list the status row's controls as the page draws them, not three one-press statuses", () => {
+    for (const text of [readme, tour]) {
+      expect(text).not.toContain("Status row with New, In Progress and Resolved");
+      expect(text).not.toContain("Status row shows New, In Progress and Resolved");
+      expect(text).not.toContain("each other status is one press");
+    }
+    expect(readme).toContain('Status row: New, In Progress, and "Resolve with a reason…"');
+    expect(tour).toContain('The Status row shows New, In Progress and "Resolve with a reason…"');
+    expect(tour).toContain('"Resolve with a reason…" opens a short form');
+  });
+
   it("quote the filing receipt with its key and what happens next", () => {
     expect(fs.readFileSync("src/server/pages/saved.ts", "utf8")).toContain(
       '"The support team has it now; come back to this page for updates."',
@@ -49,6 +60,10 @@ describe("quotes of the ticket page", () => {
     );
     expect(tour).toContain('`They changed: Title, now "..."`');
     expect(tour).toContain('"This ticket is now In Progress. Refresh to see it."');
+    expect(fs.readFileSync("src/browser/ticket-changed.ts", "utf8")).toContain(
+      '"This ticket has a new message."',
+    );
+    expect(tour).toContain('"This ticket has a new message. Refresh to see it."');
     expect(tour).not.toContain("naming what is different on the ticket now");
   });
 });
@@ -114,6 +129,11 @@ describe("the roadmap", () => {
   it("plans the two filters readers asked for", () => {
     expect(planned).toContain('"longest waiting" order');
     expect(planned).toContain("A filter by a named owner");
+  });
+
+  it("credits those two filters to testers walking the demo, not to people in general", () => {
+    expect(planned).not.toContain("Asked for by people trying the demo.");
+    expect(planned.match(/Asked for by testers walking the demo\./g)).toHaveLength(2);
   });
 
   it("plans nothing that has shipped, and lists it as built", () => {

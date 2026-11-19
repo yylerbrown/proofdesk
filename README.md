@@ -44,9 +44,10 @@ On the demo, in about two minutes:
 
 <img src="docs/img/did-this-fix-it.png" width="560" alt="The customer's view of a ticket the team says is fixed: the box &quot;Did this fix it?&quot; quotes the customer's own check in their words, with &quot;Yes, resolve ticket&quot;, a box to say what is still wrong with &quot;No, send it back&quot;, and three quick No answers">
 
-The team also has a plain Status row with New, In Progress and Resolved, and moving to New or In
-Progress is one press. To resolve without the customer, press "Resolve with a reason…" under
-Status and choose a reason; the ticket then shows `Resolved by the team: <reason>` to everyone.
+The team also has a plain Status row: New, In Progress, and "Resolve with a reason…". Moving to
+New or In Progress is one press. To resolve without the customer, press "Resolve with a reason…"
+under Status and choose a reason; the ticket then shows `Resolved by the team: <reason>` to
+everyone.
 
 [`docs/TOUR.md`](docs/TOUR.md) goes feature by feature: filters and search, two people on one
 ticket, email notices and the rest.

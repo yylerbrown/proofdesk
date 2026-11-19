@@ -23,7 +23,7 @@ Each one takes under a minute on the demo, starting from its welcome page.
 
 - Start as: The ticket you just filed, then **View this ticket as a team member**
 - Press: **Take ticket and start work**, or **In Progress** in the Status row
-- You should see: **In Progress**, with you as its owner. The Status row shows New, In Progress and Resolved, and each other status is one press; New sends an In Progress ticket back to the inbox with no owner.
+- You should see: **In Progress**, with you as its owner. The Status row shows New, In Progress and "Resolve with a reason…". New and In Progress are one press each, and "Resolve with a reason…" opens a short form. New sends an In Progress ticket back to the inbox with no owner.
 
 **Update status: to Resolved**
 
@@ -35,7 +35,7 @@ Each one takes under a minute on the demo, starting from its welcome page.
 
 - Start as: Demo Team Member, with the ticket you filed open in two tabs
 - Press: **Edit ticket** in both tabs, save a change in one, then save in the other
-- You should see: The second save is refused and keeps what you typed, naming only what the other person changed, such as `They changed: Title, now "..."`. A tab left open on a ticket someone else changed says what changed when it can, such as "This ticket is now In Progress. Refresh to see it.", and otherwise "This ticket changed. Refresh to see it."
+- You should see: The second save is refused and keeps what you typed, naming only what the other person changed, such as `They changed: Title, now "..."`. A tab left open on a ticket someone else changed says what changed when it can, such as "This ticket is now In Progress. Refresh to see it." or "This ticket has a new message. Refresh to see it.", and otherwise "This ticket changed. Refresh to see it."
 
 **SSO with roles and permissions**
 
