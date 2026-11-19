@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import { describe, expect, it } from "vitest";
-import { admin, buildTestApp, visitor } from "./helpers.js";
+import { admin, buildTestApp, ticketServiceFiles, visitor } from "./helpers.js";
 
 const valid = { title: "Printer is broken", description: "It jams on every page." };
 
@@ -230,7 +230,7 @@ describe("SQL injection", () => {
 describe("where the SQL lives", () => {
   it("the ticket, connection and team services run no SQL of their own", () => {
     for (const file of [
-      "src/server/tickets/service.ts",
+      ...ticketServiceFiles(),
       "src/server/connections/service.ts",
       "src/server/team/service.ts",
     ]) {

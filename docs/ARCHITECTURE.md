@@ -42,7 +42,13 @@ once work has started.
   opens and migrates the database, refusing one labelled for the other purpose first.
 - `src/server/routes/` holds the thin routes: `pages.ts` for the pages, `tickets.ts` for the JSON
   API, `connections.ts`, `sign-in.ts`.
-- `src/server/tickets/` holds the ticket service, its repository and schemas.
+- `src/server/tickets/` holds the ticket service, its repository and schemas. `service.ts`
+  builds the service from one file per concern: `reads.ts`, `filing.ts`, `workflow.ts`,
+  `resolve-and-reopen.ts`, `customer-question.ts`, `conversation.ts`, `evidence-and-specs.ts`
+  and `assistants.ts`. They share `access.ts` (which tickets an actor may reach), `checks.ts`,
+  `history.ts`, `public-fields.ts` (rows as callers see them) and `once.ts` (the retry-safe
+  wrapper). Apart from the repository, none of its files is over 400 lines. The demo's seeding
+  record and budget are in `src/server/demo.ts`.
 - `src/server/permissions.ts` holds `can()` and the capability table.
 - `src/server/mcp.ts` is the MCP endpoint; `src/server/connections/` the agent connections;
   `src/server/team/` who can own a ticket.
@@ -57,9 +63,6 @@ once work has started.
 
 Shortcuts in the code that were kept for now, each with the plan for it.
 
-- **One large ticket service.** `src/server/tickets/service.ts` is over 2,000 lines doing about
-  eight jobs: workflow, conversation, evidence, specs, retries, demo seeding, demo visibility and
-  page helpers. It will be split behind the same exports, with the test suite as the safety net.
 - **Visibility is decided inline.** Who sees which rows (the customer, a handed agent, a demo
   agent, a notes reader) is checked in about 25 places across the read paths. The next read
   path, such as reports, goes through one visibility module first.

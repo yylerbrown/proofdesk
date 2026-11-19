@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { DEMO_ACTORS, DEV_COOKIE } from "../src/server/actor.js";
 import { WRITE_LIMIT } from "../src/server/limits.js";
+import { DEMO_BUDGET } from "../src/server/demo.js";
 import {
   createTicketService,
-  DEMO_BUDGET,
   LIST_PAGE_SIZE,
   THREAD_LIMIT,
 } from "../src/server/tickets/service.js";
