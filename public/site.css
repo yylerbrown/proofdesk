@@ -821,30 +821,26 @@ table.people .person-email {
   margin-bottom: var(--pd-space-3);
 }
 form.list-search {
+  --pico-group-box-shadow-focus-with-input: none;
   flex: 1 1 16rem;
   max-width: 24rem;
   margin: 0 0 0 auto;
 }
-form.list-search :is(input, button) {
+form.list-search input {
   margin: 0;
   font-size: var(--pd-text-sm);
 }
 /*
- * The box and its button join into one pill, so focus rings the whole pill, following its round
- * ends. The control that has focus turns its own edge blue and draws a blue line inside it, and
- * the button also turns grey, so the box and the button never look the same when focused.
+ * One round box with its search icon. Focus draws the one ring every control has, which follows
+ * the box's round ends. The group halo Pico adds around a search form, and the box's own blue
+ * edge and halo, are taken off, so nothing draws a second line or a square inside the ring.
+ * The form's first rule above takes off the group halo.
  */
-form.list-search:has(:focus-visible) {
+form.list-search input:is(:focus, :focus-visible) {
   outline: 2px solid var(--pd-focus);
   outline-offset: 2px;
-}
-form.list-search :is(input, button):focus-visible {
-  outline: none;
-  border-color: var(--pd-focus);
-  box-shadow: inset 0 0 0 1px var(--pd-focus);
-}
-form.list-search button:focus-visible {
-  background-color: var(--pd-subtle);
+  border-color: var(--pico-form-element-border-color);
+  box-shadow: none;
 }
 /* How many tickets each status filter holds: smaller and muted, inside the filter's own link. */
 .filter-count {

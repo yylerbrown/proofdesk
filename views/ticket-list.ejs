@@ -49,8 +49,8 @@
   <% if (current !== "all") { %><input type="hidden" name="status" value="<%= current %>" /><% } %>
   <% if (filters.owner) { %><input type="hidden" name="owner" value="<%= filters.owner %>" /><% } %>
   <% if (filters.sort !== "open_first") { %><input type="hidden" name="sort" value="<%= filters.sort.by %>" /><input type="hidden" name="direction" value="<%= filters.sort.direction %>" /><% } %>
+  <%# One box and no button: pressing Enter sends a form with one text box. %>
   <input type="search" name="q" value="<%= filters.q ?? "" %>" placeholder="Search titles, descriptions or a key" aria-label="Search titles and descriptions, or open a ticket by its key" maxlength="100" />
-  <button type="submit" class="secondary">Search</button>
 </form>
 </div>
 
