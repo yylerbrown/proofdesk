@@ -175,16 +175,40 @@ test("on a phone no keyboard stop hides in the list's undrawn header row", async
 test("on a phone the header keeps one row, with the person menu inside the screen", async ({
   page,
 }) => {
-  await signInAsTeam(page);
-  for (const width of [390, 320]) {
-    await page.setViewportSize({ width, height: 844 });
-    await page.goto("/tickets");
-    const brand = await page.locator(".site-header a.brand").boundingBox();
-    const menu = await page.locator("details.person-menu > summary").boundingBox();
-    // Side by side on one row: the menu's button starts above the brand's bottom edge.
-    expect(menu!.y, `at ${width}px`).toBeLessThan(brand!.y + brand!.height);
-    expect(menu!.x + menu!.width, `at ${width}px`).toBeLessThanOrEqual(width);
+  // A first visit opens as the customer; the team member comes second.
+  for (const who of ["customer", "team member"]) {
+    if (who === "team member") await signInAsTeam(page);
+    for (const width of [390, 360, 320]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto("/tickets");
+      const brand = await page.locator(".site-header a.brand").boundingBox();
+      // The word itself, not its link: a squeezed link is narrower than the word that spills out of it.
+      const word = await page.locator(".site-header a.brand strong").boundingBox();
+      const newTicket = await page.locator('.site-header a[href="/tickets/new"]').boundingBox();
+      const menu = await page.locator("details.person-menu > summary").boundingBox();
+      const where = `as the ${who} at ${width}px`;
+      // Side by side on one row: the menu's button starts above the brand's bottom edge.
+      expect(menu!.y, where).toBeLessThan(brand!.y + brand!.height);
+      expect(menu!.x + menu!.width, where).toBeLessThanOrEqual(width);
+      // New ticket starts after the brand ends, so it never covers the word Proofdesk.
+      expect(word!.x + word!.width, where).toBeLessThanOrEqual(newTicket!.x);
+    }
   }
+});
+
+test("a long name is cut short, so the header keeps its height just above phone width", async ({
+  page,
+}) => {
+  await signInAsTeam(page);
+  await page.setViewportSize({ width: 640, height: 844 });
+  await page.goto("/tickets");
+  const nav = page.locator(".site-header nav");
+  const before = (await nav.boundingBox())!.height;
+  // A name as long as a real one can be, put in place of the demo's short one.
+  await page
+    .locator("details.person-menu > summary strong")
+    .evaluate((name) => (name.textContent = "Alexandra Catherine Montgomery-Smith"));
+  expect((await nav.boundingBox())!.height).toBe(before);
 });
 
 test("on a 390 by 664 phone the team's first ticket row is on the first screen", async ({

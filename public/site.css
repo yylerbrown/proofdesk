@@ -349,8 +349,14 @@ header nav .viewer {
 }
 /* The person's name, with their role as a quiet word after it. */
 header nav .viewer summary strong {
+  display: inline-block;
+  overflow: hidden;
+  /* A long name is cut short, so the header keeps one row at every width. */
+  max-width: 10rem;
   color: var(--pd-text);
   font-weight: var(--pd-weight-medium);
+  text-overflow: ellipsis;
+  vertical-align: bottom;
 }
 .role-label {
   margin-left: var(--pd-space-1);
@@ -434,6 +440,10 @@ header nav .viewer summary strong {
     column-gap: var(--pd-space-2);
     min-height: 0;
     padding-block: 6px;
+  }
+  /* The brand never gives way: the person menu, whose name cuts itself short, takes the squeeze. */
+  .site-header nav ul.links {
+    flex-shrink: 0;
   }
   .site-header nav ul.account {
     gap: var(--pd-space-1);
