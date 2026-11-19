@@ -47,7 +47,7 @@ describe("a new ticket", () => {
       .type("form")
       .send({ title: "Printer jams", description: "It jams on page two.", fix_check: "" });
     expect(res.status).toBe(303);
-    expect((await page(app, customerOne)).querySelector("hgroup .badge")?.text).toBe("New");
+    expect((await page(app, customerOne)).querySelector(".ticket-panel .badge")?.text).toBe("New");
     // Editing an existing ticket says nothing about how it starts.
     const edit = parse((await as(app, customerOne).get("/tickets/SUP-1/edit")).text);
     expect(edit.querySelector(".initial-status")).toBeNull();
@@ -139,14 +139,13 @@ describe("where Resolved comes from", () => {
       .send({ try_url: "https://example.com/print", tried: "Printed.", result: "No jam." });
 
     const team = await page(app, teamActor);
-    expect(team.querySelector("hgroup .meta")?.text).toContain(
-      "In Progress, waiting for the customer who filed this ticket",
-    );
-    // Said once, under the title, and not again in the panel.
+    expect(team.querySelector(".ticket-panel .badge")?.text).toBe("In Progress");
+    expect(team.querySelector(".waiting-line")?.text).toBe("Waiting for the customer's answer.");
+    // Said once, in the main column, and not again in the panel.
     expect(rule(team)).toBeUndefined();
 
     const customer = await page(app, customerOne);
-    expect(customer.querySelector("main")!.text).toContain("In Progress, waiting for you");
+    expect(customer.querySelector(".ticket-panel .badge")?.text).toBe("In Progress");
     // The question itself is on the page, in place of a line saying it is waiting.
     expect(customer.querySelector("#did-this-fix-it")).not.toBeNull();
     expect(customer.querySelector("main")!.text).not.toContain("Waiting for the customer");

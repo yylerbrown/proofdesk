@@ -91,11 +91,10 @@ describe("the demo", () => {
   it("says beside Ask the customer to verify that the sample skips the fix, on the sample only", async () => {
     const { app } = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
     const sample = await sampleValues(app);
-    expect(await askNote(app, sample)).toBe(
-      'Sends the customer "Did this fix it?". The sample skips the fix.',
-    );
+    expect(await askNote(app, sample)).toBe("The sample skips the fix.");
+    // Any other ticket has the button alone: its label says what it does.
     expect(await askNote(app, { ...sample, description: "Something I typed myself." })).toBe(
-      'Sends the customer "Did this fix it?".',
+      undefined,
     );
   });
 });

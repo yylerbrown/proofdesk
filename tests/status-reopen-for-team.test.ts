@@ -44,12 +44,10 @@ describe("Reopen for whoever the rules allow", () => {
     expect(reopen.querySelector("summary[role=button]")?.text).toBe("In Progress");
     expect(reopen.querySelector("form")?.getAttribute("action")).toBe("/tickets/SUP-1/reopen");
     expect(reopen.querySelector("form button")?.text).toBe("Reopen");
-    // The customer's own "Still happening?" stays theirs, and the line beside the row says
-    // where reopening takes it, not who may.
+    // The customer's own "Still happening?" stays theirs. The button already names where
+    // reopening takes it, so no line beside the row repeats it.
     expect(html.querySelector("#reopen")).toBeNull();
-    expect(panel.querySelector(".status-rule")?.text.trim()).toBe(
-      "Reopening takes it to In Progress.",
-    );
+    expect(panel.querySelector(".status-rule")).toBeNull();
 
     const done = await as(app, teamActor)
       .post("/tickets/SUP-1/reopen")

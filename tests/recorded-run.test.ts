@@ -105,13 +105,16 @@ describe("the recorded run on the demo", () => {
     );
   });
 
-  it("says at the top that it is a recorded run and links to how it was run", async () => {
+  it("says inside the assistant card that it is a recorded run and links to how it was run", async () => {
     const { asTeam, recorded } = demo();
     const html = parse((await asTeam().get(`/tickets/${recorded}`)).text);
-    const note = html.querySelector(".recorded-run")!;
-    // The title and the description are the customer's problem alone, so this line is the
-    // one place on the ticket that says a real assistant's recorded run is shown.
-    expect(note.text).toBe("A recorded run of a real AI assistant. How this was run");
+    const note = html.querySelector(".assistant-card .card-recorded")!;
+    // The title and the description are the customer's problem alone, so this one line in the
+    // assistant's card is the one place on the ticket that says a recorded run is shown, and
+    // under which key the assistant knew the sample.
+    expect(note.text).toBe("Recorded on 18 Nov 2026, when this sample was SUP-4. How this was run");
+    expect(html.querySelectorAll(".card-recorded")).toHaveLength(1);
+    expect(html.querySelector(".recorded-run")).toBeNull();
     const link = note.querySelector("a")!;
     expect(link.text).toBe("How this was run");
     expect(link.getAttribute("href")).toBe("/assistant-run#how-it-was-run");

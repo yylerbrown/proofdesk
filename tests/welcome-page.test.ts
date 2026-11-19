@@ -121,7 +121,7 @@ describe("the welcome card's way to a ticket an AI assistant worked", () => {
     expect(pressed.status).toBe(303);
     expect(pressed.headers.location).toBe(`/tickets/${recorded}`);
     const ticket = parse((await browser.get(`/tickets/${recorded}`)).text);
-    expect(ticket.querySelector(".recorded-run")).not.toBeNull();
+    expect(ticket.querySelector(".assistant-card .card-recorded")).not.toBeNull();
   });
 
   it("is not offered before the demo is seeded", async () => {

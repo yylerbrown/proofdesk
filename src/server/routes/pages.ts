@@ -128,11 +128,11 @@ function isWalkthroughSample(ticket: Ticket, actor: Actor): boolean {
  * On the demo, the next role to view this ticket as, so one ticket can be followed from the
  * customer's words to their Yes: the team after the customer has filed or answered No, and the
  * customer who filed it once the team has asked them to verify, so the team's own next step comes
- * first. After the Yes, the list of resolved tickets.
+ * first. Nothing once it is resolved.
  */
 function demoNext(ticket: Ticket, actor: Actor) {
   if (actor.demo !== true || ticket.archived_at !== null) return null;
-  if (ticket.status === "resolved") return { resolved: true as const };
+  if (ticket.status === "resolved") return null;
   const filer = DEMO_ACTORS.find((person) => person.id === ticket.created_by);
   const team = DEMO_ACTORS.find((person) => person.role === "team");
   if (actor.id === ticket.created_by && ticket.ready_at === null && team !== undefined) {
@@ -197,32 +197,14 @@ function demoWelcome(actor: Actor, hidden: boolean, recordedRunKey: string | nul
   return welcome;
 }
 
-/**
- * Where to connect an assistant, for the team only: an admin's connections page, or on the demo
- * the welcome page's own demo connection. Null for a team member, who cannot connect one.
- */
-function connectUrl(actor: Actor): string | null {
-  if (actor.demo === true) return "/sign-in#connect";
-  return can(actor, "manage_connections") ? "/connections" : null;
-}
-
 /** The one step a viewer can take now, as the ticket page's primary button. */
 type NextStep = {
   label: string;
   /** A form the button submits, or else the place on the page the button leads to. */
   form?: { action: string; fields?: Record<string, string> };
   href?: string;
-  /** One line saying what this step is for, after the button. */
+  /** One short line after the button: only on the demo's sample, which skips the fix. */
   note?: string;
-  /**
-   * Before asking the customer: the check they wrote when filing, shown in one line above the
-   * button so the owner reads it before asking. Null when they gave none.
-   */
-  customerCheck?: string | null;
-  /** The team's clearer wording of the check, said instead when the customer gave none. */
-  teamCheck?: string | null;
-  /** A quiet link beside the button to the optional form with more to say, by its id. */
-  detailsId?: string;
 };
 
 /**
@@ -246,18 +228,11 @@ function nextStep(
     };
   }
   // One press asks the customer. What the owner tried, a page to try and evidence are optional,
-  // in the form under "More options".
+  // in the form "Ask with details" under "More options".
   if (allowed.markReady) {
-    return {
-      label: "Ask the customer to verify",
-      form: { action: `${at}/ready` },
-      note: sample
-        ? 'Sends the customer "Did this fix it?". The sample skips the fix.'
-        : 'Sends the customer "Did this fix it?".',
-      customerCheck: ticket.fix_check,
-      teamCheck: ticket.agreed_check,
-      detailsId: "ask",
-    };
+    const step: NextStep = { label: "Ask the customer to verify", form: { action: `${at}/ready` } };
+    if (sample) step.note = "The sample skips the fix.";
+    return step;
   }
   return null;
 }
@@ -454,23 +429,6 @@ export function pagesRouter(service: TicketService): Router {
       spec: service.getSpec(ticket.key, actor),
       canDecide: allowed.decideSpec,
     };
-    // One quiet line under the conversation suggesting the team ask an assistant for a spec,
-    // while there is none.
-    // On the demo, a visitor's key reads only the sample made for assistants, so the line shows
-    // there and nowhere else. On the real site it shows while no assistant has the ticket.
-    const specPrompt =
-      !specPanel.spec &&
-      ticket.archived_at === null &&
-      ticket.status !== "resolved" &&
-      can(actor, "list_all") &&
-      (actor.demo === true ? agentHelp.demoSample : agentHelp.current === null)
-        ? {
-            key: ticket.key,
-            // Once an assistant is connected, the line need not say how to connect one.
-            connectUrl:
-              actor.demo !== true && agentHelp.candidates.length > 0 ? null : connectUrl(actor),
-          }
-        : null;
     // Everything an assistant left on the ticket, for one card under the description: what it
     // last asked for, its test spec and its evidence, and how a person's decision on the spec
     // ended. A customer sees only a spec the team accepted.
@@ -504,6 +462,8 @@ export function pagesRouter(service: TicketService): Router {
           discardedBy,
           canDecide: specPanel.canDecide,
           evidence: staff ? evidence : [],
+          // On the demo's recorded run, the key the sample had when the run was recorded.
+          recordedAs: staff && service.recordedRunKey() === ticket.key ? RECORDED_SAMPLE_KEY : null,
         }
       : null;
     res.status(status).render("ticket-show", {
@@ -516,7 +476,6 @@ export function pagesRouter(service: TicketService): Router {
       demoNext: demoNext(ticket, actor),
       nextStep: nextStep(ticket, allowed, isWalkthroughSample(ticket, actor)),
       statusRow: statusControl(ticket, allowed, actor),
-      recordedRun: service.recordedRunKey() === ticket.key,
       assistantSampleKey: service.assistantSampleKey(),
       recordedSampleKey: RECORDED_SAMPLE_KEY,
       handOffTo: service.handOffCandidates(ticket),
@@ -530,7 +489,6 @@ export function pagesRouter(service: TicketService): Router {
       notFixedCard: notFixedCard(ticket, events),
       evidence,
       specPanel,
-      specPrompt,
       allowed,
       resolveReasons: RESOLVE_REASON_LABELS,
       entry: shownEntry,

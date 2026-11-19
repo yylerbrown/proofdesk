@@ -10,8 +10,8 @@ import { createTicketService } from "../src/server/tickets/service.js";
 // On a ticket page the status row and the button at the top read as one control: both post to
 // the same place, so the same message follows either press, and that message says the viewer
 // owns the ticket now. Resolving starts on the "Fixed." reason when that reason is offered.
-// "Edit ticket" is a quiet link under the title, and the list's empty search names only what
-// is set.
+// "Edit ticket" is a quiet link on the side panel's last line, and the list's empty search
+// names only what is set.
 
 const valid = {
   title: "Printer jams",
@@ -84,20 +84,20 @@ describe("the resolve form's first choice", () => {
 });
 
 describe("Edit ticket", () => {
-  it("is a quiet link under the title, and More options is left out when it would be empty", async () => {
+  it("is a quiet link on the panel's last line, and More options is left out when it would be empty", async () => {
     // SUP-5 is the demo customer's confirmed ticket; they may edit it and nothing else.
     const html = await demoPage("demo-customer", "/tickets/SUP-5");
-    const edit = html.querySelector("hgroup .meta a.edit-link");
+    const edit = html.querySelector("aside.ticket-panel > .panel-edit:last-child a.edit-link");
     expect(edit?.getAttribute("href")).toBe("/tickets/SUP-5/edit");
     expect(edit?.text.trim()).toBe("Edit ticket");
-    expect(html.querySelector("aside.ticket-panel a[href$='/edit']")).toBeNull();
+    expect(html.querySelectorAll("a[href$='/edit']")).toHaveLength(1);
     expect(html.querySelector("details.more-options")).toBeNull();
   });
 
   it("leaves the customer's archive under More options", async () => {
     const { app } = await filed();
     const html = await page(app, customerOne);
-    expect(html.querySelector("hgroup .meta a.edit-link")?.text.trim()).toBe("Edit ticket");
+    expect(html.querySelector("aside.ticket-panel a.edit-link")?.text.trim()).toBe("Edit ticket");
     const more = html.querySelector("details.more-options")!;
     expect(more.querySelectorAll("a, button").map((el) => el.text.trim())).toEqual([
       "Archive ticket",

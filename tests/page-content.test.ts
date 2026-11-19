@@ -83,7 +83,7 @@ describe("status badges", () => {
     const list = await page(admin(app), "/tickets");
     expect(list.querySelector("td .badge.status-new")?.text).toBe("New");
     const ticket = await page(admin(app), "/tickets/SUP-1");
-    expect(ticket.querySelector("hgroup .badge.status-new")?.text).toBe("New");
+    expect(ticket.querySelector(".ticket-panel .badge.status-new")?.text).toBe("New");
   });
 });
 

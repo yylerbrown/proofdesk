@@ -37,9 +37,10 @@ function listRow(page: Page, key: string) {
   return page.getByRole("row").filter({ has: page.getByRole("link", { name: key, exact: true }) });
 }
 
-/** The line under the ticket's title: its key, then its status. */
+/** The ticket's key, in the line above its title, and its status, in the side panel. */
 async function expectTicketStatus(page: Page, key: string, status: string) {
-  await expect(page.getByRole("main")).toContainText(`${key} ${status}`);
+  await expect(page.locator("main .back")).toHaveText(new RegExp(`/ ${key}$`));
+  await expect(page.locator(".ticket-panel .status-control .badge").first()).toHaveText(status);
 }
 
 /** The banner a page shows after a form saved something. */
@@ -227,13 +228,13 @@ test("the long path: a check, a change link and evidence, a No, then the custome
   await test.step("the ticket is back with the team member, with the customer's words", async () => {
     await team.goto(`/tickets/${key}`);
     await expectTicketStatus(team, key, "In Progress");
-    // The customer's No comes first on the ticket, with their words and whose hands it is in.
+    // The customer's No comes first on the ticket, with their words. The owner is in the panel.
     const saidNo = team.locator("#customer-said-no");
     await expect(
       saidNo.getByRole("heading", { name: "The customer says it is not fixed" }),
     ).toBeVisible();
     await expect(saidNo.getByText(notFixedComment)).toBeVisible();
-    await expect(saidNo).toContainText("It is back with Team Member");
+    await expect(team.locator(".ticket-panel .panel-owner")).toContainText("Team Member");
     await team.goto("/tickets");
     // Still owned by the same team member, and the list says why it is back with the team.
     await expect(listRow(team, key)).toContainText("Team Member");

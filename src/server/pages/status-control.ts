@@ -20,8 +20,12 @@ export type StatusChoice =
   | { status: TicketStatus; kind: "reopen" }
   | { status: TicketStatus; kind: "disabled" };
 
-/** The row's choices, and one short line saying why some cannot be pressed, if any. */
-export type StatusControl = { choices: StatusChoice[]; why: string | null };
+/**
+ * The row's choices, and one short line saying why some cannot be pressed, if any. When this
+ * viewer can press none of them, pressable is false and the page shows the status in plain words
+ * with that line, instead of a row of greyed buttons.
+ */
+export type StatusControl = { choices: StatusChoice[]; why: string | null; pressable: boolean };
 
 /** The row for a team member or admin, or null for a customer, who has no status control. */
 export function statusControl(
@@ -33,7 +37,10 @@ export function statusControl(
   const choices = TICKET_STATUSES.map((status) => choiceFor(status, ticket, allowed, actor));
   const disabled = choices.filter((choice) => choice.kind === "disabled");
   const why = disabled.length === 0 ? null : whyDisabled(ticket, allowed, actor);
-  return { choices, why };
+  const pressable = choices.some(
+    (choice) => choice.kind !== "current" && choice.kind !== "disabled",
+  );
+  return { choices, why, pressable };
 }
 
 /** What pressing this status does for this viewer, if anything. */
@@ -74,15 +81,16 @@ function reopenTarget(ticket: Ticket): TicketStatus {
   return ticket.owner_id === null ? "new" : "in_progress";
 }
 
-/** One short line saying why some of the row cannot be pressed by this viewer. */
-function whyDisabled(ticket: Ticket, allowed: Allowed, actor: Actor): string {
+/**
+ * One short line saying why some of the row cannot be pressed by this viewer, or null when the
+ * buttons already say it: a resolved ticket this viewer can reopen names where it goes.
+ */
+function whyDisabled(ticket: Ticket, allowed: Allowed, actor: Actor): string | null {
   if (ticket.archived_at !== null) return "It is archived. Restore it to change its status.";
   if (actor.readOnly === true) return "The preview is read-only.";
   const owner = ticket.owner_name === null ? "its owner" : `${ticket.owner_name}, who owns it,`;
   if (ticket.status === "resolved") {
-    if (allowed.reopen) {
-      return `Reopening takes it to ${reopenTarget(ticket) === "new" ? "New" : "In Progress"}.`;
-    }
+    if (allowed.reopen) return null;
     if (ticket.resolution?.by === "customer") {
       return "Only the customer can reopen a ticket they confirmed.";
     }

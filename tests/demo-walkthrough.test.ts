@@ -151,11 +151,10 @@ describe("following one ticket across roles on the demo", () => {
       .type("form")
       .send({ fixed: "yes", ready_token: ticket.ready_token });
     const resolved = parse((await asDemo(app, "demo-customer").get(`/tickets/${key}`)).text);
-    expect(resolved.querySelector(".demo-next a")?.getAttribute("href")).toBe(
-      "/tickets?status=resolved",
-    );
-    // The confirmed card already says the customer's Yes resolved it, so the line is only the link.
-    expect(resolved.querySelector(".demo-next")?.text.trim()).toBe("See every resolved ticket");
+    // The confirmed card says the customer's Yes resolved it, and the way back is above the
+    // title, so nothing more is added.
+    expect(resolved.querySelector(".demo-next")).toBeNull();
+    expect(resolved.text).not.toContain("See every resolved ticket");
   });
 
   it("offers a switch in the header that comes back to the page the visitor was on", async () => {
@@ -210,7 +209,7 @@ describe("the next action on the demo", () => {
     const main = html.querySelector("main")!.toString();
     const next = html.querySelector(".next-action button")!;
     expect(next.text).toBe("Take ticket and start work");
-    expect(main.indexOf(html.querySelector("hgroup")!.toString())).toBeLessThan(
+    expect(main.indexOf(html.querySelector("h1")!.toString())).toBeLessThan(
       main.indexOf(next.toString()),
     );
     // The switch to the customer waits until the team has asked them, so it never competes.

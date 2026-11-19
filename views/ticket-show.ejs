@@ -1,11 +1,9 @@
 <%- include("header") %>
-<p class="back"><a href="/tickets">Back to all tickets</a></p>
-
-<hgroup>
-  <h1 class="user-text"><%= ticket.title %></h1>
-  <p class="meta"><%= ticket.key %> <%- include("status-badge", { status: ticket.status }) %><% if (ticket.ready_at && ticket.status === "in_progress") { %>, waiting for <%= viewerRole === "customer" ? "you" : "the customer who filed this ticket" %><% } %> · <% if (ticket.owner_name) { %>Owner <%= ticket.owner_name %><% } else { %>Unassigned<% } %> · filed <%- include("time", { iso: ticket.created_at }) %><% if (allowed.edit) { %> · <a href="/tickets/<%= ticket.key %>/edit" class="edit-link">Edit ticket</a><% } %></p>
-</hgroup>
 <% const staff = viewerRole !== "customer"; %>
+<%# The way back and the ticket's key, in one line above the title. Nothing goes under the title:
+    status and owner are in the panel, and the filing time is the first row of History. %>
+<p class="back"><a href="/tickets"><%= staff ? "All tickets" : "My tickets" %></a> / <%= ticket.key %></p>
+<h1 class="user-text"><%= ticket.title %></h1>
 <%
   // After a refused form, its box with the message gets focus, so the visitor lands on it.
   const focusIf = (form, name) => (problem?.form === form && problem.focus === name ? "autofocus" : "");
@@ -14,13 +12,18 @@
   const versionField = `<input type="hidden" name="expected_version" value="${Number(ticket.version)}" />`;
 %>
 
-<%# The viewer's one next action, right under the status: the step that is possible now. %>
+<%# Wide screens: what the ticket is about on the left, what a person acts on in the panel on
+    the right, level with the top of the left column, the conversation and history under the left
+    part. Narrow screens: one column, with the panel first, directly under the title. %>
+<div class="ticket-layout" data-ticket-key="<%= ticket.key %>" data-ticket-version="<%= stamp.version %>" data-ticket-entries="<%= stamp.entries %>" data-ticket-handoffs="<%= stamp.handoffs %>" data-ticket-status="<%= ticket.status %>">
+<div class="ticket-summary">
+<%# While the customer is asked, the team reads that it is their turn. The customer has the question itself. %>
+<% if (staff && ticket.ready_at && ticket.status === "in_progress") { %>
+<p class="waiting-line">Waiting for the customer's answer.</p>
+<% } %>
+<%# The viewer's one next step: the page's one black button. %>
 <% if (locals.nextStep) { %>
 <div class="next-action">
-  <%# Before the owner asks, the customer's own check, so they read what will be checked first. %>
-  <% if (nextStep.customerCheck !== undefined) { %>
-  <p class="next-check"><% if (nextStep.customerCheck) { %>The customer will check: <span class="user-text"><%= nextStep.customerCheck %></span><% } else if (nextStep.teamCheck) { %>The customer will check the team's check: <span class="user-text"><%= nextStep.teamCheck %></span><% } else { %>The customer gave no check.<% } %></p>
-  <% } %>
   <% if (nextStep.form) { %>
   <form method="post" action="<%= nextStep.form.action %>">
     <%- versionField %>
@@ -33,30 +36,17 @@
   <a href="<%= nextStep.href %>" role="button"><%= nextStep.label %></a>
   <% } %>
   <% if (nextStep.note) { %><small class="next-note"><%= nextStep.note %></small><% } %>
-  <%# The optional details form is further down; this link leads there, and opens it with scripts. %>
-  <% if (nextStep.detailsId) { %><small class="next-details"><a href="#<%= nextStep.detailsId %>" data-opens="<%= nextStep.detailsId %>">Add details first (optional)</a></small><% } %>
 </div>
 <% } %>
 
-<%# Another demo customer filed the recorded run, so only the team opens it. %>
-<% if (locals.recordedRun && viewerRole !== "customer") { %>
-<%# The title and the description are the customer's problem alone, so this one line says the
-    ticket shows a recorded run. The run page says why the assistant's words name another key. %>
-<p class="recorded-run">A recorded run of a real AI assistant. <a href="/assistant-run#how-it-was-run">How this was run</a></p>
-<% } %>
-<%# On the demo: the next role to view this same ticket as, or where resolved tickets are listed. %>
+<%# On the demo: the next role to view this same ticket as. %>
 <% if (locals.demoNext) { %>
 <div class="demo-next">
-  <% if (demoNext.resolved) { %>
-  <%# The card below already says who resolved it, so this is only the way on. %>
-  <p><a href="/tickets?status=resolved">See every resolved ticket</a></p>
-  <% } else { %>
   <form method="post" action="/sign-in/dev">
     <input type="hidden" name="id" value="<%= demoNext.switchTo %>" />
     <input type="hidden" name="next" value="/tickets/<%= ticket.key %>" />
     <button type="submit" class="secondary outline"><%= demoNext.label %></button>
   </form>
-  <% } %>
 </div>
 <% } %>
 
@@ -71,11 +61,6 @@
 </article>
 <% } %>
 
-<%# Wide screens: what the ticket is about on the left, what a person acts on in the panel on
-    the right, the conversation and history under the left part. Narrow screens: one column,
-    with the panel between the description and the conversation. %>
-<div class="ticket-layout" data-ticket-key="<%= ticket.key %>" data-ticket-version="<%= stamp.version %>" data-ticket-entries="<%= stamp.entries %>" data-ticket-handoffs="<%= stamp.handoffs %>" data-ticket-status="<%= ticket.status %>">
-<div class="ticket-summary">
 <%# The customer said it is not fixed, with a No or by reopening it: shown first, until the team
     asks them again, resolves it or reopens it. Their latest word is the one shown. %>
 <% if (notFixedCard) { %>
@@ -88,11 +73,8 @@
   <% if (notFixedCard.words) { %>
   <blockquote class="user-text"><%= notFixedCard.words %></blockquote>
   <% } %>
-  <p><small><%= notFixedCard.reopened ? "Reopened" : "Answered" %> <%- include("time", { iso: notFixedCard.at }) %>.</small></p>
   <% if (viewerRole === "customer") { %>
   <p>The team has your words. You will be asked again when they think it is fixed.</p>
-  <% } else { %>
-  <p>It is back with <strong><%= ticket.owner_name ?? "the team" %></strong>. Fix what the customer describes, then ask them again.</p>
   <% } %>
 </article>
 <% } %>
@@ -185,7 +167,7 @@
 </article>
 <% } %>
 
-<h2>Description</h2>
+<h2 class="visually-hidden">Description</h2>
 <p class="user-text"><%= ticket.description %></p>
 
 <% if (ticket.where_url) { %>
@@ -208,55 +190,17 @@
 <% } %>
 </div>
 
-<%# The panel holds three things: who owns the ticket, its status, and the customer's check.
-    Everything else the team can do waits under "More options" at the bottom of the main column. %>
-<aside class="ticket-panel" aria-label="Owner and status">
-<section>
-  <h2>Owner</h2>
-  <p><%= ticket.owner_name ?? "Unassigned" %></p>
-  <% if (staff && allowed.take) { %>
-  <form method="post" action="/tickets/<%= ticket.key %>/take">
-    <%- versionField %>
-    <button type="submit" class="secondary compact">Assign to me</button>
-  </form>
-  <% } %>
-  <% if (staff && allowed.handOff && handOffTo.length > 0) { %>
-  <details <% if (problem?.form === "handOff") { %>open<% } %>>
-    <summary>Hand off to…</summary>
-    <form method="post" action="/tickets/<%= ticket.key %>/hand-off">
-      <input type="hidden" name="expected_owner" value="<%= ticket.owner_id ?? "" %>" />
-      <%- versionField %>
-      <label>
-        Team member
-        <select name="to" <% if (problem?.form === "handOff") { %>aria-describedby="hand-off-error"<% } %> <%= focusIf("handOff", "to") %>>
-          <% for (const member of handOffTo) { %>
-          <option value="<%= member.id %>"><%= member.name %></option>
-          <% } %>
-        </select>
-      </label>
-      <% if (problem?.form === "handOff") { %><small id="hand-off-error" role="alert"><%= problem.message %></small><% } %>
-      <button type="submit" class="secondary compact">Hand off</button>
-    </form>
-  </details>
-  <% } %>
-  <% if (staff && agentHelp.demoSample) { %>
-  <p class="agent-help">Handed to <strong>demo assistants</strong>: each visitor's assistant connection works on this sample.</p>
-  <% } %>
-  <% if (staff && agentHelp.current) { %>
-  <p class="agent-help">Handed to <strong><%= agentHelp.current.name %></strong> (AI assistant), since <%- include("time", { iso: agentHelp.current.granted_at }) %>.</p>
-  <% if (allowed.endAgentWork) { %>
-  <form method="post" action="/tickets/<%= ticket.key %>/agent/end">
-    <%- versionField %>
-    <button type="submit" class="secondary outline compact">Stop the assistant</button>
-  </form>
-  <% } %>
-  <% } %>
-</section>
-
+<%# The panel holds the ticket's status and its owner, two rows with small labels, then the
+    quiet link to edit it. Everything else the team can do waits under "More options" at the
+    bottom of the main column. %>
+<aside class="ticket-panel" aria-label="Status and owner">
 <section class="status-control">
-  <h2>Status</h2>
-  <% if (!staff) { %>
+  <p class="panel-label">Status</p>
+  <%# A row in which this viewer can press nothing is the status in plain words, with the one
+      line saying why when there is one. %>
+  <% if (!staff || !statusRow.pressable) { %>
   <p><%- include("status-badge", { status: ticket.status }) %></p>
+  <% if (staff && statusRow.why) { %><p class="status-rule" id="status-why"><small><%= statusRow.why %></small></p><% } %>
   <% } else { %>
   <%# The three statuses in one row: the current one marked, each other one a single press, or
       greyed with one short line saying why. Each comes from the allowed actions, so the page
@@ -329,6 +273,47 @@
   <% } %>
 </section>
 
+<% if (staff || ticket.owner_name) { %>
+<section class="panel-owner">
+  <p class="panel-label">Owner</p>
+  <p><%= ticket.owner_name ?? "Unassigned" %></p>
+  <% if (staff && allowed.take) { %>
+  <form method="post" action="/tickets/<%= ticket.key %>/take">
+    <%- versionField %>
+    <button type="submit" class="secondary compact">Assign to me</button>
+  </form>
+  <% } %>
+  <% if (staff && allowed.handOff && handOffTo.length > 0) { %>
+  <details <% if (problem?.form === "handOff") { %>open<% } %>>
+    <summary>Hand off to…</summary>
+    <form method="post" action="/tickets/<%= ticket.key %>/hand-off">
+      <input type="hidden" name="expected_owner" value="<%= ticket.owner_id ?? "" %>" />
+      <%- versionField %>
+      <label>
+        Team member
+        <select name="to" <% if (problem?.form === "handOff") { %>aria-describedby="hand-off-error"<% } %> <%= focusIf("handOff", "to") %>>
+          <% for (const member of handOffTo) { %>
+          <option value="<%= member.id %>"><%= member.name %></option>
+          <% } %>
+        </select>
+      </label>
+      <% if (problem?.form === "handOff") { %><small id="hand-off-error" role="alert"><%= problem.message %></small><% } %>
+      <button type="submit" class="secondary compact">Hand off</button>
+    </form>
+  </details>
+  <% } %>
+  <% if (staff && agentHelp.current) { %>
+  <p class="agent-help">Handed to <strong><%= agentHelp.current.name %></strong> (AI assistant), since <%- include("time", { iso: agentHelp.current.granted_at }) %>.</p>
+  <% if (allowed.endAgentWork) { %>
+  <form method="post" action="/tickets/<%= ticket.key %>/agent/end">
+    <%- versionField %>
+    <button type="submit" class="secondary outline compact">Stop the assistant</button>
+  </form>
+  <% } %>
+  <% } %>
+</section>
+<% } %>
+
 <%# The customer's check, in one quoted line. While the customer is asked, their answer card
     above shows it instead. %>
 <% if ((ticket.fix_check || (!staff && ticket.agreed_check)) && !allowed.answer) { %>
@@ -351,13 +336,13 @@
   <% } %>
 </section>
 <% } %>
+<% if (allowed.edit) { %>
+<p class="panel-edit"><a href="/tickets/<%= ticket.key %>/edit" class="edit-link">Edit ticket</a></p>
+<% } %>
 </aside>
 
 <div class="ticket-thread">
-<h2 id="conversation">Conversation</h2>
-<% if (entries.length === 0) { %>
-<p>No replies yet.</p>
-<% } %>
+<h2 id="conversation" class="visually-hidden">Conversation</h2>
 <% for (const item of entries) { %>
 <article class="entry<% if (item.kind === "note") { %> note<% } %>">
   <header>
@@ -410,7 +395,7 @@
   <textarea id="entry-body" name="body" rows="3" required <% if (entry.error) { %>aria-invalid="true" aria-describedby="body-error" autofocus<% } %>><%= entry.body %></textarea>
   <% if (entry.error) { %><small id="body-error"><%= entry.error %></small><% } %>
   <%# With a choice of who sees it, a small script makes the button name that audience. %>
-  <button type="submit" class="compact" <% if (allowed.note) { %>data-label-reply="Send reply to customer" data-label-note="Save internal note"<% } %>>Send</button>
+  <button type="submit" class="secondary compact" <% if (allowed.note) { %>data-label-reply="Send reply to customer" data-label-note="Save internal note"<% } %>>Send</button>
 </form>
 <% } %>
 
@@ -442,11 +427,10 @@
     After a refused form inside it, it opens on that form and its message. %>
 <% const moreForms = ["agreedCheck", "evidence", "changeLink", "ready"]; %>
 <% const removeAny = allowed.archive || allowed.delete; %>
-<% const hasMore = specPrompt || (staff && (allowed.agreeCheck || allowed.attachEvidence || allowed.linkChange || allowed.markReady || allowed.withdrawQuestion || (allowed.giveToAgent && !agentHelp.current && agentHelp.candidates.length > 0))) || allowed.release || removeAny; %>
+<% const hasMore = (staff && (allowed.agreeCheck || allowed.attachEvidence || allowed.linkChange || allowed.markReady || allowed.withdrawQuestion || (allowed.giveToAgent && !agentHelp.current && agentHelp.candidates.length > 0))) || allowed.release || removeAny; %>
 <% if (hasMore) { %>
 <details class="more-options" id="more-options" <% if (moreForms.includes(problem?.form)) { %>open<% } %>>
 <summary>More options</summary>
-<%- include("spec-prompt", { specPrompt }) %>
 <% if (staff && allowed.agreeCheck) { %>
 <details <% if (problem?.form === "agreedCheck") { %>open<% } %>>
   <summary>Offer a clearer check</summary>
@@ -457,7 +441,7 @@
       <textarea name="agreed_check" rows="3" <% if (problem?.form === "agreedCheck") { %>aria-invalid="true" aria-describedby="agreed-check-error"<% } %> <%= focusIf("agreedCheck", "agreed_check") %>><%= ticket.agreed_check ?? ticket.fix_check ?? "" %></textarea>
     </label>
     <% if (problem?.form === "agreedCheck") { %><small id="agreed-check-error"><%= problem.message %></small><% } %>
-    <button type="submit" class="compact">Save team's check</button>
+    <button type="submit" class="secondary compact">Save team's check</button>
   </form>
 </details>
 <% } %>

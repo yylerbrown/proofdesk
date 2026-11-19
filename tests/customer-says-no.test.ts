@@ -40,16 +40,20 @@ async function saidNo(app: Express) {
 }
 
 describe("after the customer says No", () => {
-  it("shows the owner the No and the customer's words first, and says it is back with them", async () => {
+  it("shows the owner the No and the customer's words first, under the next step", async () => {
     const { app } = buildTestApp();
     await saidNo(app);
     const html = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     const box = html.querySelector("#customer-said-no");
     expect(box?.querySelector("h2")?.text).toBe("The customer says it is not fixed");
     expect(box?.querySelector("blockquote")?.text).toBe(comment);
-    expect(box?.text).toContain("It is back with Team Member");
-    // It is the first thing in the main part of the page.
-    expect(html.querySelector(".ticket-summary")?.firstElementChild).toBe(box);
+    // The page says each fact once: the owner is in the panel, and the time is in History.
+    expect(box?.text).not.toContain("It is back with");
+    expect(box?.text).not.toContain("Answered");
+    // Only the owner's next step, asking again, comes before it in the main part of the page.
+    const summary = html.querySelector(".ticket-summary")!;
+    expect(summary.firstElementChild?.classList.contains("next-action")).toBe(true);
+    expect(summary.firstElementChild?.nextElementSibling).toBe(box);
     const ticket = (await as(app, teamActor).get("/api/tickets/SUP-1")).body;
     expect(ticket).toMatchObject({
       status: "in_progress",

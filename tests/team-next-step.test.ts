@@ -108,7 +108,7 @@ describe("the team's next step", () => {
     expect(step(askStep)).toEqual({
       label: "Ask the customer to verify",
       to: "/tickets/SUP-1/ready",
-      note: 'Sends the customer "Did this fix it?".',
+      note: null,
     });
     // The longer form, with its optional boxes, works too: never a greyed button.
     expect(askStep.querySelector("#ask form button[type=submit]")?.hasAttribute("disabled")).toBe(

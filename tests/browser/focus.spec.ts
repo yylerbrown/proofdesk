@@ -45,6 +45,8 @@ test("focus starts from the saved line, the sent line or the search box", async 
   });
 
   await test.step("a reply lands on the sent line by the message box, which has focus", async () => {
+    // A short window, so the sent line starts below the first screen and the browser must scroll to it.
+    await page.setViewportSize({ width: 1280, height: 480 });
     await page.locator("#entry-body").fill("A reply that lands on the conversation.");
     await page.getByRole("button", { name: "Send", exact: true }).click();
     await expect(page).toHaveURL(/#sent$/);

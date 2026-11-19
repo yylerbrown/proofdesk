@@ -20,9 +20,9 @@ describe("the ticket page layout", () => {
     await as(app, customerOne).post("/api/tickets").send(valid);
     const html = await ticketPage(admin(app));
     const panel = html.querySelector("aside.ticket-panel");
-    const panelHeadings = panel?.querySelectorAll("h2").map((h) => h.text);
-    // The panel holds three things and nothing more.
-    expect(panelHeadings).toEqual(["Owner", "Status", "How will we know it's fixed?"]);
+    const panelLabels = panel?.querySelectorAll(".panel-label, h2").map((h) => h.text);
+    // The panel holds the status, the owner and, for now, the customer's check.
+    expect(panelLabels).toEqual(["Status", "Owner", "How will we know it's fixed?"]);
     // Nobody owns it, so the owner's one control assigns it to the viewer.
     expect(panel?.querySelector("form[action$='/take'] button")?.text).toBe("Assign to me");
     // Everything secondary is behind one closed disclosure, last in the main column.
@@ -32,7 +32,6 @@ describe("the ticket page layout", () => {
     expect(more?.hasAttribute("open")).toBe(false);
     expect(more?.querySelector("summary")?.text).toBe("More options");
     expect(more?.querySelectorAll("details > summary").map((el) => el.text.trim())).toEqual([
-      "Ask your assistant to spec this ticket",
       "Offer a clearer check",
       "Attach evidence",
       "Add the code change link",
@@ -41,12 +40,15 @@ describe("the ticket page layout", () => {
       "Archive ticket",
       "Delete permanently",
     ]);
-    // Edit is a quiet link under the title.
-    expect(html.querySelector("hgroup .meta a.edit-link")?.text).toBe("Edit ticket");
-    // The next action sits under the status.
+    // Edit is a quiet link, the panel's last line.
+    expect(panel?.lastElementChild?.querySelector("a.edit-link")?.text).toBe("Edit ticket");
+    // The next action leads the main column.
     expect(html.querySelector(".next-action form[action$='/take-and-start']")).not.toBeNull();
-    expect(html.querySelector(".ticket-summary h2")?.text).toBe("Description");
-    expect(html.querySelector(".ticket-thread #conversation")).not.toBeNull();
+    // The description and the conversation keep their headings for screen readers only.
+    const description = html.querySelector(".ticket-summary h2")!;
+    expect(description.text).toBe("Description");
+    expect(description.classList.contains("visually-hidden")).toBe(true);
+    expect(html.querySelector(".ticket-thread #conversation.visually-hidden")).not.toBeNull();
     expect(html.querySelector(".ticket-thread form[action$='/entries']")).not.toBeNull();
   });
 
@@ -70,9 +72,9 @@ describe("the ticket page layout", () => {
     await as(app, customerOne).post("/api/tickets").send(valid);
     const html = await ticketPage(as(app, customerOne));
     const panel = html.querySelector("aside.ticket-panel");
-    // The customer's panel holds the owner, the status and their check: nothing of the team's.
-    expect(panel?.querySelectorAll("h2").map((h) => h.text)).toEqual([
-      "Owner",
+    // The customer's panel holds the status and their check: nothing of the team's, and no
+    // owner until somebody owns it.
+    expect(panel?.querySelectorAll(".panel-label, h2").map((h) => h.text)).toEqual([
       "Status",
       "How will we know it's fixed?",
     ]);
@@ -89,8 +91,8 @@ describe("times", () => {
     await as(app, teamActor).post("/api/tickets/SUP-1/entries").send({ kind: "note", body: "x" });
     const html = await ticketPage(admin(app));
     const times = html.querySelectorAll("time");
-    // Filed, one conversation entry, and three history rows.
-    expect(times.length).toBe(5);
+    // One conversation entry and three history rows, the first of them the filing.
+    expect(times.length).toBe(4);
     for (const time of times) {
       expect(time.getAttribute("datetime")).toMatch(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/);
       expect(time.text).toMatch(/ UTC$/);
@@ -173,30 +175,5 @@ describe("the ticket page's quiet parts", () => {
       expect(folded?.querySelector("summary")?.text).toBe("Add the code change link");
       expect(folded?.hasAttribute("open")).toBe(false);
     }
-  });
-
-  it("keeps the spec prompt to one line under More options that opens to the command", async () => {
-    const { app } = buildTestApp();
-    await as(app, customerOne).post("/api/tickets").send(valid);
-    const prompt = (await ticketPage(as(app, teamActor))).querySelector(
-      "details.more-options details.spec-prompt",
-    )!;
-    expect(prompt.hasAttribute("open")).toBe(false);
-    expect(prompt.querySelector("summary")?.text).toBe("Ask your assistant to spec this ticket");
-    expect(prompt.text).toContain("Using Proofdesk, write a test spec for SUP-1");
-  });
-
-  it("offers a real assistant's work beside connecting one", async () => {
-    const { app } = buildTestApp();
-    await as(app, customerOne)
-      .post("/api/tickets")
-      .send({ title: "Printer jams", description: "x", fix_check: "Ten pages print" });
-    const prompt = parse((await admin(app).get("/tickets/SUP-1")).text).querySelector(
-      ".spec-prompt",
-    )!;
-    expect(prompt.querySelectorAll("a").map((a) => [a.text, a.getAttribute("href")])).toEqual([
-      ["Connect your assistant", "/connections"],
-      ["See an assistant's work", "/assistant-run"],
-    ]);
   });
 });
