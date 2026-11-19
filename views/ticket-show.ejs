@@ -14,182 +14,10 @@
 
 <%# Wide screens: what the ticket is about on the left, what a person acts on in the panel on
     the right, level with the top of the left column, the conversation and history under the left
-    part. Narrow screens: one column, with the panel first, directly under the title. %>
+    part. Narrow screens: one column, with the panel first, directly under the title. The panel
+    comes first in the page too, so the keyboard reaches the status and the owner before the
+    card's step. %>
 <div class="ticket-layout" data-ticket-key="<%= ticket.key %>" data-ticket-version="<%= stamp.version %>" data-ticket-entries="<%= stamp.entries %>" data-ticket-handoffs="<%= stamp.handoffs %>" data-ticket-status="<%= ticket.status %>">
-<div class="ticket-summary">
-<%# While the customer is asked, the team reads that it is their turn. The customer has the question itself. %>
-<% if (staff && ticket.ready_at && ticket.status === "in_progress") { %>
-<p class="waiting-line">Waiting for the customer's answer.</p>
-<% } %>
-<%# The viewer's one next step: the page's one black button. %>
-<% if (locals.nextStep) { %>
-<div class="next-action">
-  <% if (nextStep.form) { %>
-  <form method="post" action="<%= nextStep.form.action %>">
-    <%- versionField %>
-    <% for (const [name, value] of Object.entries(nextStep.form.fields ?? {})) { %>
-    <input type="hidden" name="<%= name %>" value="<%= value %>" />
-    <% } %>
-    <button type="submit"><%= nextStep.label %></button>
-  </form>
-  <% } else { %>
-  <a href="<%= nextStep.href %>" role="button"><%= nextStep.label %></a>
-  <% } %>
-  <% if (nextStep.note) { %><small class="next-note"><%= nextStep.note %></small><% } %>
-</div>
-<% } %>
-
-<%# On the demo: the next role to view this same ticket as. %>
-<% if (locals.demoNext) { %>
-<div class="demo-next">
-  <form method="post" action="/sign-in/dev">
-    <input type="hidden" name="id" value="<%= demoNext.switchTo %>" />
-    <input type="hidden" name="next" value="/tickets/<%= ticket.key %>" />
-    <button type="submit" class="secondary outline"><%= demoNext.label %></button>
-  </form>
-</div>
-<% } %>
-
-<% if (ticket.archived_at) { %>
-<article>
-  <p>This ticket was archived on <%- include("time", { iso: ticket.archived_at }) %>. It is hidden from the lists and cannot be changed until it is restored.</p>
-  <% if (allowed.restore) { %>
-  <form method="post" action="/tickets/<%= ticket.key %>/restore">
-    <button type="submit" class="compact">Restore ticket</button>
-  </form>
-  <% } %>
-</article>
-<% } %>
-
-<%# The customer said it is not fixed, with a No or by reopening it: shown first, until the team
-    asks them again, resolves it or reopens it. Their latest word is the one shown. %>
-<% if (notFixedCard) { %>
-<article class="customer-said-no" id="customer-said-no">
-  <% if (viewerRole === "customer") { %>
-  <h2><%= notFixedCard.reopened ? "You reopened it" : "You said it is not fixed" %></h2>
-  <% } else { %>
-  <h2><%= notFixedCard.reopened ? "The customer reopened it" : "The customer says it is not fixed" %></h2>
-  <% } %>
-  <% if (notFixedCard.words) { %>
-  <blockquote class="user-text"><%= notFixedCard.words %></blockquote>
-  <% } %>
-  <% if (viewerRole === "customer") { %>
-  <p>The team has your words. You will be asked again when they think it is fixed.</p>
-  <% } %>
-</article>
-<% } %>
-<%# The only tick inside the product, always with the words "Customer confirmed". %>
-<% if (confirmed) { %>
-<article class="confirmed">
-  <img src="/assets/mark.svg" alt="" width="32" height="32" class="tick" />
-  <p><strong>Customer confirmed it is fixed.</strong> <%- include("time", { iso: confirmed }) %></p>
-</article>
-<% } %>
-<%# Resolved by the team, without the customer's Yes: said plainly to everyone, with the reason, and never with the tick. %>
-<% if (ticket.resolution && ticket.resolution.by === "team") { %>
-<article class="resolved-by-team">
-  <% if (teamSaysFixed(ticket, viewerRole)) { %>
-  <%# The customer reads it in their terms: the team's word, and that theirs is still to come. %>
-  <p><strong>The team says it is fixed</strong></p>
-  <p>You have not confirmed it.</p>
-  <% } else { %>
-  <p><strong><%= ticket.resolution.label %></strong></p>
-  <% } %>
-  <% if (ticket.resolution.note) { %><p class="user-text"><%= ticket.resolution.note %></p><% } %>
-  <p><small><% if (ticket.resolution.resolved_by_name) { %><%= ticket.resolution.resolved_by_name %>, <% } %><%- include("time", { iso: ticket.resolution.at }) %>. <%= viewerRole === "customer" ? "If it is still happening, you can reopen it." : "The customer did not confirm it, and can reopen it." %><% if (staff && ticket.resolution.duplicate_of) { %> <a href="/tickets/<%= ticket.resolution.duplicate_of %>">Open <%= ticket.resolution.duplicate_of %></a><% } %></small></p>
-</article>
-<% } %>
-<%# The customer's way back in. The team's Reopen sits with the status, in the side panel. %>
-<% if (allowed.reopen && !staff) { %>
-<details id="reopen" <% if (problem?.form === "reopen") { %>open<% } %>>
-  <summary>Still happening?</summary>
-  <form method="post" action="/tickets/<%= ticket.key %>/reopen">
-    <%- versionField %>
-    <label for="reopen-reason">What is happening again?</label>
-    <textarea id="reopen-reason" name="reason" rows="3" required <% if (problem?.form === "reopen") { %>aria-invalid="true" aria-describedby="reopen-error"<% } %> <%= focusIf("reopen", "reason") %>><%= problem?.form === "reopen" ? problem.comment : "" %></textarea>
-    <% if (problem?.form === "reopen") { %><small id="reopen-error"><%= problem.message %></small><% } %>
-    <button type="submit" class="secondary compact">Still happening, reopen</button>
-  </form>
-</details>
-<% } %>
-<% if (allowed.answer) { %>
-<article id="did-this-fix-it">
-  <h2>Did this fix it?</h2>
-  <p>The team says it is fixed. Please check it<% if (ticket.try_url) { %> here: <a href="<%= ticket.try_url %>" rel="noopener noreferrer nofollow" class="user-text"><%= ticket.try_url %></a><% } %>.</p>
-  <% if (ticket.ask) { %>
-  <% if (ticket.ask.response_to_no) { %>
-  <p>What changed since you said it still fails:</p>
-  <blockquote class="user-text"><%= ticket.ask.response_to_no %></blockquote>
-  <% } %>
-  <% if (ticket.ask.tried) { %>
-  <p><%= ticket.owner_name ?? "The team" %> tried:</p>
-  <blockquote class="user-text"><%= ticket.ask.tried %></blockquote>
-  <% } %>
-  <% if (ticket.ask.result) { %>
-  <p>What happened:</p>
-  <blockquote class="user-text"><%= ticket.ask.result %></blockquote>
-  <% } %>
-  <% } %>
-  <% if (ticket.agreed_check) { %>
-  <p>Team's check:</p>
-  <blockquote class="user-text"><%= ticket.agreed_check %></blockquote>
-  <% if (allowed.adoptCheck) { %>
-  <form method="post" action="/tickets/<%= ticket.key %>/adopt-check">
-    <%- versionField %>
-    <button type="submit" class="secondary compact">Use these words as my check</button>
-  </form>
-  <% } %>
-  <% } %>
-  <% if (ticket.fix_check) { %>
-  <p>In your words:</p>
-  <blockquote class="user-text"><%= ticket.fix_check %></blockquote>
-  <% } %>
-  <% if (evidence.length > 0) { %>
-  <p>What the team showed as proof. They report it; Proofdesk has not checked it.</p>
-  <%- include("evidence", { evidence }) %>
-  <% } %>
-  <%- include("spec-coverage", { specPanel }) %>
-  <form method="post" action="/tickets/<%= ticket.key %>/answer">
-    <input type="hidden" name="fixed" value="yes" />
-    <input type="hidden" name="ready_token" value="<%= ticket.ready_token %>" />
-    <button type="submit" class="large">Yes, resolve ticket</button>
-  </form>
-  <form method="post" action="/tickets/<%= ticket.key %>/answer">
-    <input type="hidden" name="fixed" value="no" />
-    <input type="hidden" name="ready_token" value="<%= ticket.ready_token %>" />
-    <label>
-      No, it is not fixed. What is still wrong?
-      <textarea id="answer-comment" name="comment" rows="3" required <% if (problem?.form === "answer") { %>aria-invalid="true" aria-describedby="answer-error"<% } %> <%= focusIf("answer", "comment") %>><%= problem?.form === "answer" ? problem.comment : "" %></textarea>
-    </label>
-    <% if (problem?.form === "answer") { %><small id="answer-error"><%= problem.message %></small><% } %>
-    <button type="submit" class="secondary large">No, send it back</button>
-  </form>
-</article>
-<% } %>
-
-<h2 class="visually-hidden">Description</h2>
-<p class="user-text"><%= ticket.description %></p>
-
-<% if (ticket.where_url) { %>
-<p class="page-link">Page: <a href="<%= ticket.where_url %>" rel="noopener noreferrer nofollow" class="user-text"><%= ticket.where_url %></a></p>
-<% } %>
-<%# The code change, for the team, as one plain line like the page above. %>
-<% if (staff && ticket.change_url) { %>
-<p class="page-link">Change: <a href="<%= ticket.change_url %>" rel="noopener noreferrer nofollow" class="user-text"><%= ticket.change_url %></a></p>
-<% } %>
-<%# Everything an assistant left on the ticket is one card. Evidence a person attached, with no
-    assistant's work beside it, is one closed line. The customer sees the proof when asked. %>
-<% if (assistantCard) { %>
-<%- include("assistant-card", { card: assistantCard }) %>
-<% } else if (staff && evidence.length > 0) { %>
-<details class="evidence-list">
-  <summary>Evidence (<%= evidence.length %>)</summary>
-  <p class="evidence-note">As reported by whoever attached it. Not checked by Proofdesk.</p>
-  <%- include("evidence", { evidence }) %>
-</details>
-<% } %>
-</div>
-
 <%# The panel holds the ticket's status and its owner, two rows with small labels, then the
     quiet link to edit it. Everything else the team can do waits under "More options" at the
     bottom of the main column. %>
@@ -234,7 +62,7 @@
             <% if (!chosenReason) { %><option value="" selected>Choose a reason</option><% } %>
             <% for (const [value, label] of Object.entries(resolveReasons)) { %>
             <%# While the customer's No or reopening is their standing word, "Fixed" would
-                contradict them. The same rule as the callout at the top and the service. %>
+                contradict them. The same rule as the service. %>
             <% if (value === "fixed_no_reply" && notFixed) continue; %>
             <option value="<%= value %>" <% if (chosenReason === value) { %>selected<% } %>><%= label %></option>
             <% } %>
@@ -314,37 +142,174 @@
 </section>
 <% } %>
 
-<%# The customer's check, in one quoted line. While the customer is asked, their answer card
-    above shows it instead. %>
-<% if ((ticket.fix_check || (!staff && ticket.agreed_check)) && !allowed.answer) { %>
-<section>
-  <h2>How will we know it's fixed?</h2>
-  <%# The customer may take the team's clearer wording as their own. %>
-  <% if (!staff && ticket.agreed_check) { %>
-  <p><strong>Team's check</strong></p>
-  <blockquote class="user-text"><%= ticket.agreed_check %></blockquote>
-  <% if (allowed.adoptCheck) { %>
-  <form method="post" action="/tickets/<%= ticket.key %>/adopt-check">
-    <%- versionField %>
-    <button type="submit" class="secondary compact">Use these words as my check</button>
-  </form>
-  <% } %>
-  <% if (ticket.fix_check) { %><p><strong>In your words</strong></p><% } %>
-  <% } %>
-  <% if (ticket.fix_check) { %>
-  <blockquote class="user-text"><%= ticket.fix_check %></blockquote>
-  <% } %>
-</section>
-<% } %>
 <% if (allowed.edit) { %>
 <p class="panel-edit"><a href="/tickets/<%= ticket.key %>/edit" class="edit-link">Edit ticket</a></p>
 <% } %>
 </aside>
 
+<div class="ticket-summary">
+<h2 class="visually-hidden">Description</h2>
+<p class="user-text"><%= ticket.description %></p>
+
+<% if (ticket.where_url) { %>
+<p class="page-link">Page: <a href="<%= ticket.where_url %>" rel="noopener noreferrer nofollow" class="user-text"><%= ticket.where_url %></a></p>
+<% } %>
+<%# The code change, for the team, as one plain line like the page above. %>
+<% if (staff && ticket.change_url) { %>
+<p class="page-link">Change: <a href="<%= ticket.change_url %>" rel="noopener noreferrer nofollow" class="user-text"><%= ticket.change_url %></a></p>
+<% } %>
+
+<%# The card: how the customer will know it is fixed, where the ticket stands, and the one step
+    this viewer can take. The same card in every state and for every role; a state changes what
+    it holds. While the customer is asked, it is their question, "Did this fix it?". %>
+<%
+  const asking = allowed.answer;
+  const restoring = ticket.archived_at !== null && allowed.restore;
+  const reopening = allowed.reopen && !staff;
+  const hasStep = Boolean(locals.nextStep || locals.demoNext || restoring || reopening);
+  const showCard = asking || ticket.fix_check || ticket.agreed_check || card.line || card.asked || hasStep;
+%>
+<% if (showCard) { %>
+<article class="ticket-card" <% if (asking) { %>id="did-this-fix-it"<% } %>>
+  <% if (asking) { %>
+  <h2>Did this fix it?</h2>
+  <% } else if (ticket.fix_check) { %>
+  <p class="card-label">How will we know it's fixed?</p>
+  <% } %>
+  <% if (ticket.fix_check) { %>
+  <blockquote class="user-text"><%= ticket.fix_check %></blockquote>
+  <% } %>
+  <% if (ticket.agreed_check) { %>
+  <p class="card-team-check"><small>Team's check: <span class="user-text"><%= ticket.agreed_check %></span></small></p>
+  <% } %>
+
+  <%# Just after asking, the card says so once, in place of its line. %>
+  <% if (card.asked) { %>
+  <p class="card-line" role="status"><%= card.asked %></p>
+  <% } else if (card.line) { %>
+  <p class="card-line">
+    <%# The only tick inside the product, always with the words "Customer confirmed". %>
+    <% if (card.line.tick) { %><img src="/assets/mark.svg" alt="" width="20" height="20" class="tick" /><% } %>
+    <%# The day is a <time>, so the visitor's browser writes it in their own time zone. The span
+        keeps the words and the day one sentence inside the line's row. %>
+    <span><% if (card.lineHref) { %><a href="<%= card.lineHref %>"><% } %><%= card.line.text %><% if (card.line.day) { %><time datetime="<%= card.line.day %>" data-day><%= formatDay(card.line.day) %></time><% } %><%= card.line.after %><% if (card.lineHref) { %></a><% } %></span>
+    <% if (staff && ticket.resolution?.duplicate_of) { %><a href="/tickets/<%= ticket.resolution.duplicate_of %>">Open <%= ticket.resolution.duplicate_of %></a><% } %>
+  </p>
+  <% } %>
+
+  <% if (asking) { %>
+  <% if (ticket.try_url) { %>
+  <p class="card-try">Check it here: <a href="<%= ticket.try_url %>" rel="noopener noreferrer nofollow" class="user-text"><%= ticket.try_url %></a></p>
+  <% } %>
+  <%# What the team gave when asking, between the check and the answer. %>
+  <% if (ticket.ask) { %>
+  <% if (ticket.ask.response_to_no) { %>
+  <p class="card-detail">What changed since you said it still fails:</p>
+  <blockquote class="user-text"><%= ticket.ask.response_to_no %></blockquote>
+  <% } %>
+  <% if (ticket.ask.tried) { %>
+  <p class="card-detail"><%= ticket.owner_name ?? "The team" %> tried:</p>
+  <blockquote class="user-text"><%= ticket.ask.tried %></blockquote>
+  <% } %>
+  <% if (ticket.ask.result) { %>
+  <p class="card-detail">What happened:</p>
+  <blockquote class="user-text"><%= ticket.ask.result %></blockquote>
+  <% } %>
+  <% } %>
+  <% if (evidence.length > 0) { %>
+  <details class="card-evidence">
+    <summary>What the team showed (<%= evidence.length %>)</summary>
+    <p class="evidence-note"><small>The team reports it; Proofdesk has not checked it.</small></p>
+    <%- include("evidence", { evidence }) %>
+  </details>
+  <% } %>
+  <%# Yes is one press. No opens its box, and stays open with its message after a refused try. %>
+  <div class="card-answer">
+    <form method="post" action="/tickets/<%= ticket.key %>/answer">
+      <input type="hidden" name="fixed" value="yes" />
+      <input type="hidden" name="ready_token" value="<%= ticket.ready_token %>" />
+      <button type="submit">Yes, resolve ticket</button>
+    </form>
+    <details class="answer-no" <% if (problem?.form === "answer") { %>open<% } %>>
+      <summary role="button" class="secondary outline">No, it is not fixed</summary>
+      <form method="post" action="/tickets/<%= ticket.key %>/answer">
+        <input type="hidden" name="fixed" value="no" />
+        <input type="hidden" name="ready_token" value="<%= ticket.ready_token %>" />
+        <label for="answer-comment">What is still wrong?</label>
+        <textarea id="answer-comment" name="comment" rows="3" required <% if (problem?.form === "answer") { %>aria-invalid="true" aria-describedby="answer-error"<% } %> <%= focusIf("answer", "comment") %>><%= problem?.form === "answer" ? problem.comment : "" %></textarea>
+        <% if (problem?.form === "answer") { %><small id="answer-error"><%= problem.message %></small><% } %>
+        <button type="submit" class="secondary">No, send it back</button>
+      </form>
+    </details>
+  </div>
+  <% } %>
+
+  <%# The viewer's one step: filled when it is the page's next step, outlined while an
+      assistant's request for review comes first. %>
+  <% if (locals.nextStep) { %>
+  <div class="card-step next-action">
+    <% if (nextStep.form) { %>
+    <form method="post" action="<%= nextStep.form.action %>">
+      <%- versionField %>
+      <% for (const [name, value] of Object.entries(nextStep.form.fields ?? {})) { %>
+      <input type="hidden" name="<%= name %>" value="<%= value %>" />
+      <% } %>
+      <button type="submit" <% if (nextStep.outlined) { %>class="secondary"<% } %>><%= nextStep.label %></button>
+    </form>
+    <% } else { %>
+    <a href="<%= nextStep.href %>" role="button" <% if (nextStep.outlined) { %>class="secondary"<% } %>><%= nextStep.label %></a>
+    <% } %>
+    <% if (nextStep.note) { %><small class="next-note"><%= nextStep.note %></small><% } %>
+  </div>
+  <% } %>
+  <%# On the demo: the next role to view this same ticket as. %>
+  <% if (locals.demoNext) { %>
+  <div class="card-step demo-next">
+    <form method="post" action="/sign-in/dev">
+      <input type="hidden" name="id" value="<%= demoNext.switchTo %>" />
+      <input type="hidden" name="next" value="/tickets/<%= ticket.key %>" />
+      <button type="submit" class="secondary outline"><%= demoNext.label %></button>
+    </form>
+  </div>
+  <% } %>
+  <% if (restoring) { %>
+  <form method="post" action="/tickets/<%= ticket.key %>/restore" class="card-step">
+    <button type="submit" class="secondary">Restore ticket</button>
+  </form>
+  <% } %>
+  <%# The customer's way back in. The team's Reopen sits with the status, in the side panel. %>
+  <% if (reopening) { %>
+  <details id="reopen" class="card-step" <% if (problem?.form === "reopen") { %>open<% } %>>
+    <summary>Still happening?</summary>
+    <form method="post" action="/tickets/<%= ticket.key %>/reopen">
+      <%- versionField %>
+      <label for="reopen-reason">What is happening again?</label>
+      <textarea id="reopen-reason" name="reason" rows="3" required <% if (problem?.form === "reopen") { %>aria-invalid="true" aria-describedby="reopen-error"<% } %> <%= focusIf("reopen", "reason") %>><%= problem?.form === "reopen" ? problem.comment : "" %></textarea>
+      <% if (problem?.form === "reopen") { %><small id="reopen-error"><%= problem.message %></small><% } %>
+      <button type="submit" class="secondary compact">Still happening, reopen</button>
+    </form>
+  </details>
+  <% } %>
+</article>
+<% } %>
+
+<%# Everything an assistant left on the ticket is one card. Evidence a person attached, with no
+    assistant's work beside it, is one closed line. The customer sees the proof when asked. %>
+<% if (assistantCard) { %>
+<%- include("assistant-card", { card: assistantCard }) %>
+<% } else if (staff && evidence.length > 0) { %>
+<details class="evidence-list">
+  <summary>Evidence (<%= evidence.length %>)</summary>
+  <p class="evidence-note">As reported by whoever attached it. Not checked by Proofdesk.</p>
+  <%- include("evidence", { evidence }) %>
+</details>
+<% } %>
+</div>
+
 <div class="ticket-thread">
 <h2 id="conversation" class="visually-hidden">Conversation</h2>
 <% for (const item of entries) { %>
-<article class="entry<% if (item.kind === "note") { %> note<% } %>">
+<article class="entry<% if (item.kind === "note") { %> note<% } %>" id="entry-<%= item.id %>">
   <header>
     <strong><%= item.author_name %></strong><% if (item.author_kind === "agent") { %> <span class="tag">AI agent</span><% } %>
     <small><% if (item.author_kind !== "agent") { %><%= item.author_role %> · <% } %><% if (item.kind === "note") { %><span class="note-label">internal note, the customer does not see this</span> · <% } %><%- include("time", { iso: item.created_at }) %></small>

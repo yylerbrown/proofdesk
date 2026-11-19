@@ -48,12 +48,15 @@ describe("a review request", () => {
       .post("/api/tickets/SUP-1/owner-review")
       .set("Authorization", `Bearer ${key}`)
       .send({ message: "Evidence attached." });
-    expect((await teamPage(app)).querySelector(".review-requested")?.text).toBe(
-      "Review requested by Helper",
+    // The ticket's card says it once, with the ask outlined while the request stands.
+    const page = await teamPage(app);
+    expect(page.querySelector(".ticket-card .card-line")?.text.trim()).toBe(
+      "Helper asks for your review.",
     );
+    expect(page.querySelector(".review-requested")).toBeNull();
     expect(await listTag(app)).toBe("Assistant asks for review");
     const customer = parse((await as(app, customerOne).get("/tickets/SUP-1")).text);
-    expect(customer.querySelector("main")!.text).not.toContain("Review requested");
+    expect(customer.querySelector("main")!.text).not.toContain("asks for your review");
 
     await as(app, teamActor)
       .put("/api/tickets/SUP-1/change-link")
@@ -61,7 +64,7 @@ describe("a review request", () => {
     await as(app, teamActor)
       .post("/api/tickets/SUP-1/ready")
       .send({ try_url: "https://example.com/t", tried: "Printed.", result: "No jam." });
-    expect((await teamPage(app)).querySelector(".review-requested")).toBeNull();
+    expect((await teamPage(app)).querySelector("main")!.text).not.toContain("asks for your review");
     expect(await listTag(app)).toBe("Asked the customer");
   });
 });

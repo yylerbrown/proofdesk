@@ -5,14 +5,15 @@ import { RECORDED_SAMPLE_KEY } from "../demo.js";
 import { forbidden, HttpError, onTicketPage, ValidationError } from "../errors.js";
 import { can } from "../permissions.js";
 import {
+  cardLine,
   confirmedAt,
   customerSaysNotFixed,
   describeActor,
   describeEvent,
+  formatDay,
   formatTime,
   notFixedCard,
   STATUS_LABELS,
-  teamSaysFixed,
   timeAgo,
   reportFields,
   turnTag,
@@ -49,9 +50,9 @@ const helpers = {
   statusLabels: STATUS_LABELS,
   statuses: TICKET_STATUSES,
   formatTime,
+  formatDay,
   timeAgo,
   reportFields,
-  teamSaysFixed,
 };
 
 // What the reply form holds: the kind chosen, the text typed, and a message if it was refused.
@@ -205,17 +206,21 @@ type NextStep = {
   href?: string;
   /** One short line after the button: only on the demo's sample, which skips the fix. */
   note?: string;
+  /** Outlined rather than filled: while an assistant asks for a review, the review comes first. */
+  outlined?: boolean;
 };
 
 /**
  * The step this viewer can take now: take the ticket and start work, start work, then ask the
  * customer to verify. Each is possible when it is shown; null when there is nothing for this
- * viewer to press. On the demo's sample, the ask says the sample skips the fix.
+ * viewer to press. On the demo's sample, the ask says the sample skips the fix. While an
+ * assistant asks for a review, the ask is outlined, since the review is the thing to do first.
  */
 function nextStep(
   ticket: Ticket,
   allowed: ReturnType<TicketService["allowedActions"]>,
   sample: boolean,
+  reviewRequested: boolean,
 ): NextStep | null {
   const at = `/tickets/${ticket.key}`;
   if (allowed.takeAndStart) {
@@ -232,6 +237,7 @@ function nextStep(
   if (allowed.markReady) {
     const step: NextStep = { label: "Ask the customer to verify", form: { action: `${at}/ready` } };
     if (sample) step.note = "The sample skips the fix.";
+    if (reviewRequested) step.outlined = true;
     return step;
   }
   return null;
@@ -449,15 +455,17 @@ export function pagesRouter(service: TicketService): Router {
           ? describeActor(lastProposal, names)
           : null;
     const agentEvidence = evidence.some((item) => item.reported_by.kind === "agent");
+    // A request for review is said on the ticket's card above, so only a blocked assistant
+    // counts here.
+    const blocked = signal?.label === "Assistant blocked:" ? signal.text : null;
     const showCard = staff
-      ? signal !== null || specPanel.spec !== null || agentEvidence || discardedBy !== null
+      ? blocked !== null || specPanel.spec !== null || agentEvidence || discardedBy !== null
       : specPanel.spec !== null;
     const assistantCard = showCard
       ? {
           key: ticket.key,
           from: proposedBy === null ? "From the AI assistant" : `From ${proposedBy}`,
-          reviewBy: signal?.label === "Review requested by" ? signal.text : null,
-          blocked: signal?.label === "Assistant blocked:" ? signal.text : null,
+          blocked,
           spec: specPanel.spec,
           discardedBy,
           canDecide: specPanel.canDecide,
@@ -466,6 +474,31 @@ export function pagesRouter(service: TicketService): Router {
           recordedAs: staff && service.recordedRunKey() === ticket.key ? RECORDED_SAMPLE_KEY : null,
         }
       : null;
+    // The card at the top of the main column: the customer's check, the one line saying where the
+    // ticket stands, and the one step. The line about a No or a reopening links to the customer's
+    // own message, which their answer wrote into the conversation at the same moment.
+    const reviewBy = signal?.label === "Review requested by" ? signal.text : null;
+    const notFixed = notFixedCard(ticket, events);
+    const line = cardLine(ticket, actor.role, {
+      confirmed: confirmedAt(ticket, events),
+      notFixed,
+      reviewBy,
+    });
+    // The ask is outlined only while the card's line is the request for review. The customer's
+    // No comes first on that line, and then the ask is the thing to do.
+    const message =
+      line?.messageAt == null
+        ? undefined
+        : entries.find(
+            (item) => item.author_role === "customer" && item.created_at === line.messageAt,
+          );
+    const card = {
+      line,
+      lineHref: message === undefined ? null : `#entry-${message.id}`,
+      // Just after asking, the card says so once, in place of its line.
+      asked: res.locals.saved === SAVED_MESSAGES.ready ? SAVED_MESSAGES.ready : null,
+    };
+    if (card.asked !== null) res.locals.saved = null;
     res.status(status).render("ticket-show", {
       ...helpers,
       title: `${ticket.key}: ${ticket.title}`,
@@ -473,8 +506,14 @@ export function pagesRouter(service: TicketService): Router {
       viewerRole: actor.role,
       viewerId: actor.id,
       assistantCard,
+      card,
       demoNext: demoNext(ticket, actor),
-      nextStep: nextStep(ticket, allowed, isWalkthroughSample(ticket, actor)),
+      nextStep: nextStep(
+        ticket,
+        allowed,
+        isWalkthroughSample(ticket, actor),
+        reviewBy !== null && notFixed === null,
+      ),
       statusRow: statusControl(ticket, allowed, actor),
       assistantSampleKey: service.assistantSampleKey(),
       recordedSampleKey: RECORDED_SAMPLE_KEY,
@@ -482,13 +521,9 @@ export function pagesRouter(service: TicketService): Router {
       agentHelp,
       entries,
       history,
-      confirmed: confirmedAt(ticket, events),
-      // The customer's standing No, which the resolve form's reasons follow, and the card at the
-      // top, which only shows their word while nothing the team did since has answered it.
+      // The customer's standing No, which the resolve form's reasons follow.
       notFixed: customerSaysNotFixed(ticket, events),
-      notFixedCard: notFixedCard(ticket, events),
       evidence,
-      specPanel,
       allowed,
       resolveReasons: RESOLVE_REASON_LABELS,
       entry: shownEntry,

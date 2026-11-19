@@ -354,3 +354,52 @@ test("the ticket's side panel starts level with its main column, and under the t
     expect(await sidewaysScroll(page), key).toBeLessThanOrEqual(0);
   }
 });
+
+/** Where the focused element sits on a ticket page: which part of the page holds it. */
+function focusedPart(page: Page) {
+  return page.evaluate(() => {
+    const element = document.activeElement;
+    if (element === null) return "nothing";
+    if (element.closest(".back")) return "back";
+    if (element.closest(".ticket-panel .status-control")) return "status";
+    if (element.closest(".ticket-panel .panel-owner")) return "owner";
+    if (element.closest(".ticket-panel .panel-edit")) return "edit";
+    if (element.closest(".ticket-card")) return "card";
+    return "other";
+  });
+}
+
+test("the keyboard reaches the status and the owner before the card's step, at 1280 wide", async ({
+  page,
+}) => {
+  await signInAsTeam(page);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  // In Progress after the customer's No, and New with no owner: two different steps.
+  for (const key of ["SUP-7", "SUP-8"]) {
+    await page.goto(`/tickets/${key}`);
+    await page.locator("main .back a").focus();
+    const parts: string[] = [];
+    for (let presses = 0; presses < 25; presses += 1) {
+      const part = await focusedPart(page);
+      if (parts.at(-1) !== part) parts.push(part);
+      if (part === "card") break;
+      await page.keyboard.press("Tab");
+    }
+    // The way back, the status row, the owner (when it has a control) and Edit ticket, then
+    // the card's step. Links in the description, such as its page, may come between.
+    const ownerControls = await page
+      .locator(".ticket-panel .panel-owner :is(button, summary, select, a)")
+      .count();
+    const expected =
+      ownerControls > 0 ? ["back", "status", "owner", "edit"] : ["back", "status", "edit"];
+    expect(parts.filter((part) => part !== "other").slice(0, -1), key).toEqual(expected);
+    expect(parts.at(-1), key).toBe("card");
+    // Inside the card, the line's link to the customer's words may come first, then the step.
+    const step = page.locator(".ticket-card .next-action :is(button, [role=button])");
+    for (let presses = 0; presses < 2; presses += 1) {
+      if (await step.evaluate((element) => element === document.activeElement)) break;
+      await page.keyboard.press("Tab");
+    }
+    await expect(step).toBeFocused();
+  }
+});

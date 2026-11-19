@@ -126,26 +126,24 @@ describe("the recorded run on the demo", () => {
     expect(target.parentNode?.querySelector("summary")?.text).toBe("How this was run");
   });
 
-  it("keeps the assistant's review request apart from the customer's check", async () => {
+  it("says the review request once, on the ticket's card, apart from the assistant's card", async () => {
     const { asTeam, recorded } = demo();
     const html = parse((await asTeam().get(`/tickets/${recorded}`)).text);
-    const check = html
-      .querySelectorAll("section")
-      .find((s) => s.querySelector("h2")?.text === "How will we know it's fixed?")!;
-    // The panel's check holds the customer's words alone; the request sits in the main column.
-    expect(check.querySelector("blockquote")).not.toBeNull();
-    expect(check.querySelector(".assistant-card")).toBeNull();
-    // Everything the assistant left is one card, which says whose it is and who asked for review.
+    // The ticket's card holds the customer's words and the one line about the request.
+    const card = html.querySelector(".ticket-card")!;
+    expect(card.querySelector(".card-label")?.text).toBe("How will we know it's fixed?");
+    expect(card.querySelector("blockquote")).not.toBeNull();
+    expect(card.querySelector(".card-line")?.text.trim()).toBe(
+      "Demo visitor's assistant asks for your review.",
+    );
+    expect(card.querySelector(".assistant-card")).toBeNull();
+    // Everything the assistant left is one card, which says whose it is, with no headings.
     const cards = html.querySelectorAll(".ticket-summary .assistant-card");
     expect(cards).toHaveLength(1);
     const signal = cards[0]!;
-    expect(signal.querySelector(".card-from")?.text).toBe(
-      "From the AI assistant · Review requested by Demo visitor's assistant",
-    );
+    expect(signal.querySelector(".card-from")?.text).toBe("From the AI assistant");
     expect(signal.querySelectorAll("h2, h3")).toHaveLength(0);
-    expect(signal.querySelector(".review-requested")?.text).toBe(
-      "Review requested by Demo visitor's assistant",
-    );
+    expect(html.querySelector("main")!.text).not.toContain("Review requested by");
   });
 
   it("says on the run page, not on the ticket, why the assistant's words name SUP-4", async () => {

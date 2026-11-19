@@ -21,8 +21,11 @@ describe("the ticket page layout", () => {
     const html = await ticketPage(admin(app));
     const panel = html.querySelector("aside.ticket-panel");
     const panelLabels = panel?.querySelectorAll(".panel-label, h2").map((h) => h.text);
-    // The panel holds the status, the owner and, for now, the customer's check.
-    expect(panelLabels).toEqual(["Status", "Owner", "How will we know it's fixed?"]);
+    // The panel holds the status and the owner. The customer's check is on the card.
+    expect(panelLabels).toEqual(["Status", "Owner"]);
+    expect(html.querySelector(".ticket-summary .ticket-card .card-label")?.text).toBe(
+      "How will we know it's fixed?",
+    );
     // Nobody owns it, so the owner's one control assigns it to the viewer.
     expect(panel?.querySelector("form[action$='/take'] button")?.text).toBe("Assign to me");
     // Everything secondary is behind one closed disclosure, last in the main column.
@@ -42,8 +45,10 @@ describe("the ticket page layout", () => {
     ]);
     // Edit is a quiet link, the panel's last line.
     expect(panel?.lastElementChild?.querySelector("a.edit-link")?.text).toBe("Edit ticket");
-    // The next action leads the main column.
-    expect(html.querySelector(".next-action form[action$='/take-and-start']")).not.toBeNull();
+    // The next step is the card's.
+    expect(
+      html.querySelector(".ticket-card .next-action form[action$='/take-and-start']"),
+    ).not.toBeNull();
     // The description and the conversation keep their headings for screen readers only.
     const description = html.querySelector(".ticket-summary h2")!;
     expect(description.text).toBe("Description");
@@ -72,12 +77,9 @@ describe("the ticket page layout", () => {
     await as(app, customerOne).post("/api/tickets").send(valid);
     const html = await ticketPage(as(app, customerOne));
     const panel = html.querySelector("aside.ticket-panel");
-    // The customer's panel holds the status and their check: nothing of the team's, and no
-    // owner until somebody owns it.
-    expect(panel?.querySelectorAll(".panel-label, h2").map((h) => h.text)).toEqual([
-      "Status",
-      "How will we know it's fixed?",
-    ]);
+    // The customer's panel holds the status: nothing of the team's, and no owner until somebody
+    // owns it. Their check is on the card.
+    expect(panel?.querySelectorAll(".panel-label, h2").map((h) => h.text)).toEqual(["Status"]);
     expect(panel?.querySelector("form, button, details")).toBeNull();
     expect(html.querySelectorAll(".danger-zone a").map((a) => a.text)).toEqual(["Archive ticket"]);
   });
@@ -118,6 +120,10 @@ describe("showLocalTimes", () => {
     // A zone with no clock changes, so the answer does not depend on the time-zone data.
     timeZone: "Asia/Tokyo",
   });
+  const dayFormat = new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeZone: "Asia/Tokyo",
+  });
   const element = (dateTime: string, relative = false): TimeElement => ({
     dateTime,
     title: "",
@@ -127,20 +133,28 @@ describe("showLocalTimes", () => {
 
   it("rewrites an exact time into the visitor's time zone", () => {
     const exact = element("2026-11-17T20:00:00.000Z");
-    showLocalTimes([exact], format);
+    showLocalTimes([exact], format, dayFormat);
     expect(exact.textContent).toBe("Nov 18, 2026, 5:00 AM");
   });
 
   it("keeps the words of a relative time and puts the exact time on hover", () => {
     const relative = { ...element("2026-11-17T20:00:00.000Z", true), textContent: "3 hours ago" };
-    showLocalTimes([relative], format);
+    showLocalTimes([relative], format, dayFormat);
     expect(relative.textContent).toBe("3 hours ago");
     expect(relative.title).toBe("Nov 18, 2026, 5:00 AM");
   });
 
+  it("writes a time marked as a day as the visitor's own day, which can differ from UTC's", () => {
+    // 20:00 UTC on the 17th is already the 18th in Tokyo.
+    const day = { ...element("2026-11-17T20:00:00.000Z"), textContent: "17 Nov 2026" };
+    day.dataset = { day: "" };
+    showLocalTimes([day], format, dayFormat);
+    expect(day.textContent).toBe("Nov 18, 2026");
+  });
+
   it("leaves the UTC text when the time cannot be read", () => {
     const broken = element("not a time");
-    showLocalTimes([broken], format);
+    showLocalTimes([broken], format, dayFormat);
     expect(broken.textContent).toBe("17 Nov 2026, 20:00 UTC");
   });
 });

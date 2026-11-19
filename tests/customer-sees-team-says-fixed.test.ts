@@ -39,14 +39,15 @@ describe("a ticket the team resolved as fixed, for its customer", () => {
   it("says the same on their ticket, with the way to reopen it", async () => {
     const { page } = await resolvedByTeam("fixed_no_reply");
     const ticket = await page(customerOne, "/tickets/SUP-1");
-    const card = ticket.querySelector("article.resolved-by-team")!;
-    expect(card.querySelector("strong")?.text).toBe("The team says it is fixed");
-    expect(card.text).toContain("You have not confirmed it.");
-    expect(ticket.querySelector("details#reopen summary")?.text).toBe("Still happening?");
-    // The team's ticket keeps the label it had.
+    const card = ticket.querySelector(".ticket-card")!;
+    expect(card.querySelector(".card-line")?.text.trim()).toBe(
+      "The team says it is fixed. You have not confirmed it.",
+    );
+    expect(card.querySelector("details#reopen summary")?.text).toBe("Still happening?");
+    // The team reads the reason, who and when, and that the customer has not confirmed it.
     const team = await page(teamActor, "/tickets/SUP-1");
-    expect(team.querySelector("article.resolved-by-team strong")?.text).toBe(
-      "Resolved by the team: Fixed. Not customer-confirmed.",
+    expect(team.querySelector(".ticket-card .card-line")?.text.trim()).toMatch(
+      /^Resolved by the team: Fixed\. .+, \d{1,2} [A-Z][a-z]{2} \d{4}\. Not confirmed by the customer\.$/,
     );
   });
 
@@ -54,8 +55,8 @@ describe("a ticket the team resolved as fixed, for its customer", () => {
     const { page } = await resolvedByTeam("wont_fix", { note: "Works as designed." });
     expect(statusCell(await page(customerOne, "/tickets"))).toBe("Resolved");
     const ticket = await page(customerOne, "/tickets/SUP-1");
-    expect(ticket.querySelector("article.resolved-by-team strong")?.text).toBe(
-      "Resolved by the team: Won't fix",
+    expect(ticket.querySelector(".ticket-card .card-line")?.text.trim()).toBe(
+      "Resolved by the team: Won't fix (Works as designed). You have not confirmed it.",
     );
   });
 });

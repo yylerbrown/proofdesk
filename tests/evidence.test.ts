@@ -200,8 +200,11 @@ describe("evidence on the ticket page", () => {
     const box = parse((await as(app, customerOne).get("/tickets/SUP-1")).text).querySelector(
       "#did-this-fix-it",
     );
-    expect(box?.text).toContain("What the team showed as proof");
-    expect(box?.text).toContain("Printed ten pages twice");
+    // One closed line in the question, opened to read the proof.
+    const shown = box?.querySelector("details.card-evidence");
+    expect(shown?.hasAttribute("open")).toBe(false);
+    expect(shown?.querySelector("summary")?.text).toBe("What the team showed (1)");
+    expect(shown?.text).toContain("Printed ten pages twice");
     expect(box?.querySelector("a[href='https://example.com/run/1']")).not.toBeNull();
   });
 });

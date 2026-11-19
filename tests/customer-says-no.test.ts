@@ -40,20 +40,23 @@ async function saidNo(app: Express) {
 }
 
 describe("after the customer says No", () => {
-  it("shows the owner the No and the customer's words first, under the next step", async () => {
+  it("tells the owner on the card, linked to the customer's words, with the ask again", async () => {
     const { app } = buildTestApp();
     await saidNo(app);
     const html = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    const box = html.querySelector("#customer-said-no");
-    expect(box?.querySelector("h2")?.text).toBe("The customer says it is not fixed");
-    expect(box?.querySelector("blockquote")?.text).toBe(comment);
-    // The page says each fact once: the owner is in the panel, and the time is in History.
-    expect(box?.text).not.toContain("It is back with");
-    expect(box?.text).not.toContain("Answered");
-    // Only the owner's next step, asking again, comes before it in the main part of the page.
-    const summary = html.querySelector(".ticket-summary")!;
-    expect(summary.firstElementChild?.classList.contains("next-action")).toBe(true);
-    expect(summary.firstElementChild?.nextElementSibling).toBe(box);
+    const card = html.querySelector(".ticket-card")!;
+    const line = card.querySelector(".card-line")!;
+    expect(line.text.trim()).toMatch(/^The customer said no on \d{1,2} [A-Z][a-z]{2} \d{4}\.$/);
+    // Their words stand once, in the conversation, and the line links to that message.
+    expect(card.text).not.toContain(comment);
+    const message = html.querySelector(line.querySelector("a")!.getAttribute("href")!)!;
+    expect(message.classList.contains("entry")).toBe(true);
+    expect(message.text).toContain(comment);
+    // The card's step is to ask again, after the line. No red block of its own.
+    expect(line.nextElementSibling?.querySelector("button")?.text).toBe(
+      "Ask the customer to verify",
+    );
+    expect(html.querySelector("#customer-said-no")).toBeNull();
     const ticket = (await as(app, teamActor).get("/api/tickets/SUP-1")).body;
     expect(ticket).toMatchObject({
       status: "in_progress",
@@ -63,16 +66,17 @@ describe("after the customer says No", () => {
     });
   });
 
-  it("says so in the team's list, and the customer reads it in their own words", async () => {
+  it("says so in the team's list, and the customer reads it in their own terms", async () => {
     const { app } = buildTestApp();
     await saidNo(app);
     const row = parse((await as(app, teamActor).get("/tickets")).text).querySelector("tbody tr");
     expect(row?.querySelector(".turn-tag")?.text).toBe("Customer said no");
     const mine = parse((await as(app, customerOne).get("/tickets/SUP-1")).text).querySelector(
-      "#customer-said-no",
+      ".ticket-card .card-line",
     );
-    expect(mine?.querySelector("h2")?.text).toBe("You said it is not fixed");
-    expect(mine?.text).toContain("You will be asked again");
+    expect(mine?.text.trim()).toMatch(
+      /^You said no on \d{1,2} [A-Z][a-z]{2} \d{4}\. The team will ask you again\.$/,
+    );
   });
 
   it("goes away once the team asks again, and after a Yes", async () => {
@@ -86,17 +90,15 @@ describe("after the customer says No", () => {
         response: "Fixed double-sided printing too.",
       })
     ).body.ready_token;
-    expect(
-      parse((await as(app, teamActor).get("/tickets/SUP-1")).text).querySelector(
-        "#customer-said-no",
-      ),
-    ).toBeNull();
+    const line = async () =>
+      parse((await as(app, teamActor).get("/tickets/SUP-1")).text)
+        .querySelector(".ticket-card .card-line")
+        ?.text.trim();
+    expect(await line()).toMatch(/^Waiting for the customer's answer\./);
     await as(app, customerOne)
       .post("/api/tickets/SUP-1/answer")
       .send({ fixed: "yes", ready_token: token });
-    const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    expect(page.querySelector("#customer-said-no")).toBeNull();
-    expect(page.querySelector(".confirmed")).not.toBeNull();
+    expect(await line()).toMatch(/^Customer confirmed it is fixed\./);
   });
 
   it("is never shown to another customer, who cannot see the ticket at all", async () => {

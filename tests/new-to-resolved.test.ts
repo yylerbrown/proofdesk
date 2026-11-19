@@ -56,7 +56,7 @@ describe("a new ticket", () => {
   it("is owned and in progress after one action from the team", async () => {
     const { app } = await filed();
     const html = await page(app, teamActor);
-    const take = html.querySelector("form[action$='/take-and-start'] button");
+    const take = html.querySelector(".next-action form[action$='/take-and-start'] button");
     expect(take?.text).toBe("Take ticket and start work");
     expect((await as(app, teamActor).post("/tickets/SUP-1/take-and-start")).status).toBe(303);
     const ticket = (await admin(app).get("/api/tickets/SUP-1")).body;
@@ -140,7 +140,9 @@ describe("where Resolved comes from", () => {
 
     const team = await page(app, teamActor);
     expect(team.querySelector(".ticket-panel .badge")?.text).toBe("In Progress");
-    expect(team.querySelector(".waiting-line")?.text).toBe("Waiting for the customer's answer.");
+    expect(team.querySelector(".ticket-card .card-line")?.text.trim()).toMatch(
+      /^Waiting for the customer's answer\. Asked /,
+    );
     // Said once, in the main column, and not again in the panel.
     expect(rule(team)).toBeUndefined();
 
@@ -164,7 +166,7 @@ describe("where Resolved comes from", () => {
 });
 
 describe("the customer's answer", () => {
-  it("offers Yes and No at the same size, and No as a quiet button", async () => {
+  it("offers Yes as the one filled button, and No as a quiet fold-open with its own box", async () => {
     const { app } = await filed();
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
     await as(app, teamActor)
@@ -177,7 +179,13 @@ describe("the customer's answer", () => {
     // The two answers, and nothing else to press.
     const buttons = box.querySelectorAll("button");
     expect(buttons.map((b) => b.text)).toEqual(["Yes, resolve ticket", "No, send it back"]);
-    for (const button of buttons) expect(button.classList.contains("large")).toBe(true);
+    expect(buttons[0]!.classList.contains("secondary")).toBe(false);
+    // No opens with a native fold-open, so it works with scripts off, closed at first.
+    const no = box.querySelector("details.answer-no")!;
+    expect(no.hasAttribute("open")).toBe(false);
+    expect(no.querySelector("summary")?.text).toBe("No, it is not fixed");
+    expect(no.querySelector("label[for=answer-comment]")?.text).toBe("What is still wrong?");
+    expect(no.querySelector("button")?.classList.contains("secondary")).toBe(true);
     expect(box.querySelector("button.danger")).toBeNull();
   });
 });

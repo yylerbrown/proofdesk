@@ -40,7 +40,7 @@ test("the resolve form shows each box only for the reason that needs it", async 
   // Resolving with another reason leaves the hidden note behind.
   await reason.selectOption("wont_fix");
   await resolve.getByRole("button", { name: "Resolve", exact: true }).click();
-  const block = page.locator("article.resolved-by-team");
-  await expect(block.locator("strong")).toHaveText("Resolved by the team: Won't fix");
-  await expect(block).not.toContainText("Typed under Other.");
+  const line = page.locator(".ticket-card .card-line");
+  await expect(line).toContainText("Resolved by the team: Won't fix.");
+  await expect(line).not.toContainText("Typed under Other.");
 });

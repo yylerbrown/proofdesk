@@ -173,12 +173,13 @@ describe("a resolved ticket", () => {
   });
 });
 
-describe("the callout after the customer reopens", () => {
-  it("shows the reopen words, not the older No", async () => {
+describe("the card's line after the customer reopens", () => {
+  it("says they reopened it, not the older No, and never repeats their words", async () => {
     const { app } = await setup();
     await customerSaysNo(app, "Still jams on page two.");
-    const said = (await ticketPage(app)).querySelector("#customer-said-no")!;
-    expect(said.querySelector("h2")?.text).toBe("The customer says it is not fixed");
+    const line = async (who = teamActor) =>
+      (await ticketPage(app, who)).querySelector(".ticket-card .card-line")?.text.trim() ?? null;
+    expect(await line()).toMatch(/^The customer said no on /);
     await as(app, teamActor)
       .post("/api/tickets/SUP-1/resolve")
       .send({ reason: "cannot_reproduce" });
@@ -186,16 +187,13 @@ describe("the callout after the customer reopens", () => {
       .post("/api/tickets/SUP-1/reopen")
       .send({ reason: "It jams again since Monday." });
     expect(reopened.status).toBe(200);
-    for (const [who, heading] of [
-      [teamActor, "The customer reopened it"],
-      [customerOne, "You reopened it"],
-    ] as const) {
-      const callout = (await ticketPage(app, who)).querySelector("#customer-said-no")!;
-      expect(callout.querySelector("h2")?.text).toBe(heading);
-      expect(callout.querySelector("blockquote")?.text).toBe("It jams again since Monday.");
-      // When it happened is in History, so the callout does not repeat it.
-      expect(callout.querySelector("time")).toBeNull();
-      expect(callout.text).not.toContain("Still jams on page two.");
+    expect(await line()).toMatch(/^The customer reopened it on /);
+    // The customer's own ticket is simply back with the team, so their card has no line.
+    expect(await line(customerOne)).toBeNull();
+    for (const who of [teamActor, customerOne]) {
+      const card = (await ticketPage(app, who)).querySelector(".ticket-card")!;
+      expect(card.text).not.toContain("It jams again since Monday.");
+      expect(card.text).not.toContain("Still jams on page two.");
     }
   });
 });

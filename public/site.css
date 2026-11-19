@@ -657,20 +657,6 @@ table button.danger:is(:hover, :active) {
   color: var(--pd-danger);
   text-decoration: underline;
 }
-/* Only the decisive button is large: "Yes, resolve ticket". */
-button.large {
-  min-height: 40px;
-  padding: 9px 18px;
-  border-radius: var(--pd-radius);
-  font-size: var(--pd-text-md);
-  letter-spacing: -0.011em;
-}
-/* Its quiet partner, "No, send it back", is a normal button. */
-button.secondary.large {
-  min-height: 0;
-  padding: 6px 12px;
-  font-size: var(--pd-text-sm);
-}
 /* Keep and the destructive button side by side, each as wide as its words. */
 .choice {
   display: flex;
@@ -1310,93 +1296,134 @@ article {
   }
 }
 /*
- * The answer box: a white card with the page's one dark edge, holding the only decisive button.
- * Inside, small muted labels over the quoted words, then Yes, then a hairline, then No.
+ * The ticket's card, under the description: the customer's check, the one line saying where it
+ * stands, and the one step. A white card with a hairline. While the customer is asked "Did this
+ * fix it?" it takes the page's one dark edge, since that is the one moment the page asks them.
  */
-article#did-this-fix-it {
-  margin-bottom: var(--pd-space-6);
-  padding: 28px;
-  border: 1.5px solid var(--pd-ink);
+article.ticket-card {
+  margin: var(--pd-space-5) 0 var(--pd-space-6);
+  padding: 20px 24px;
+  border: var(--pd-hairline);
   border-radius: 12px;
   background: var(--pd-surface);
 }
+article.ticket-card#did-this-fix-it {
+  border: 1.5px solid var(--pd-ink);
+}
 @media (max-width: 639px) {
-  article#did-this-fix-it {
-    padding: 20px var(--pd-space-4);
+  article.ticket-card {
+    padding: var(--pd-space-4);
   }
 }
-#did-this-fix-it h2 {
-  margin-bottom: 6px;
+.ticket-card > :last-child {
+  margin-bottom: 0;
+}
+.ticket-card h2 {
+  margin-bottom: var(--pd-space-2);
   letter-spacing: -0.016em;
 }
-#did-this-fix-it > p:first-of-type {
-  margin-bottom: var(--pd-space-5);
-  color: var(--pd-muted);
-}
-#did-this-fix-it > p:first-of-type a {
-  color: var(--pd-text);
-}
-#did-this-fix-it > p:not(:first-of-type) {
-  margin-bottom: 6px;
+.ticket-card .card-label,
+.ticket-card .card-detail {
+  margin-bottom: var(--pd-space-1);
   color: var(--pd-muted);
   font-size: var(--pd-text-xs);
   font-weight: var(--pd-weight-medium);
-  letter-spacing: 0;
 }
-#did-this-fix-it blockquote {
-  margin-bottom: 20px;
+.ticket-card blockquote {
+  margin: 0 0 var(--pd-space-3);
   font-weight: var(--pd-weight-medium);
 }
-#did-this-fix-it form {
-  margin: 0;
+.ticket-card .card-team-check {
+  margin-bottom: var(--pd-space-3);
+  color: var(--pd-muted);
 }
-/* Between the box's own Yes and No forms. */
-#did-this-fix-it > form + form {
-  margin-top: var(--pd-space-5);
-  padding-top: var(--pd-space-5);
-  border-top: var(--pd-hairline);
-}
-#did-this-fix-it form > button {
-  margin: 0;
-}
-#did-this-fix-it > form:first-of-type {
-  margin-top: var(--pd-space-2);
-}
-@media (max-width: 639px) {
-  #did-this-fix-it button.large {
-    width: 100%;
-    min-height: 44px;
-  }
-}
-
-/* ---------- 10. The customer's confirmation ---------- */
-
-/* The one place inside the product that shows the tick. No card: a row with a hairline. */
-article.confirmed {
+/* Where it stands: one muted line; the tick sits before it only for the customer's Yes. */
+.ticket-card .card-line {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--pd-space-3);
-  margin-bottom: var(--pd-space-5);
-  padding: 0 0 var(--pd-space-3);
-  border: 0;
-  border-bottom: var(--pd-hairline);
-  border-radius: 0;
-  background: none;
-}
-.confirmed img {
-  flex: none;
-  width: 24px;
-  height: 24px;
-}
-.confirmed p {
-  margin: 0;
+  gap: var(--pd-space-1) var(--pd-space-2);
+  margin-bottom: var(--pd-space-3);
   color: var(--pd-muted);
   font-size: var(--pd-text-sm);
 }
-.confirmed strong {
+.ticket-card .card-line a {
+  color: inherit;
+}
+/*
+ * Just after asking the customer, the page puts focus on this line so a screen reader reads it.
+ * The line is words, not a control, so it draws no focus ring.
+ */
+.ticket-card .card-line[tabindex="-1"]:focus {
+  outline: none;
+}
+.ticket-card .card-line .tick {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+.ticket-card .card-try a {
   color: var(--pd-text);
-  font-size: var(--pd-text-md);
-  font-weight: var(--pd-weight-medium);
+}
+.ticket-card form {
+  margin: 0;
+}
+/* The one step, and the demo's quieter change of seat after it. */
+.ticket-card .card-step {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pd-space-2) var(--pd-space-3);
+  margin: var(--pd-space-3) 0 0;
+}
+.ticket-card .card-step form,
+.ticket-card .card-step button,
+.ticket-card .card-step [role="button"] {
+  margin: 0;
+}
+.ticket-card details.card-step {
+  display: block;
+}
+.ticket-card details.card-evidence {
+  margin-bottom: var(--pd-space-3);
+}
+/* Yes and No side by side; No opens its box under both. */
+.ticket-card .card-answer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--pd-space-3);
+  margin-top: var(--pd-space-4);
+}
+.ticket-card .card-answer button,
+.ticket-card .card-answer summary[role="button"] {
+  margin: 0;
+}
+.ticket-card details.answer-no {
+  margin: 0;
+}
+.ticket-card details.answer-no[open] {
+  flex-basis: 100%;
+}
+.ticket-card details.answer-no form {
+  margin-top: var(--pd-space-3);
+}
+@media (max-width: 639px) {
+  .ticket-card .card-answer > *,
+  .ticket-card .card-answer button,
+  .ticket-card .card-answer summary[role="button"] {
+    width: 100%;
+    min-height: 44px;
+  }
+  /* "No, it is not fixed" keeps its words in the middle of its tall box, like Yes. */
+  .ticket-card .card-answer summary[role="button"] {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ticket-card details.answer-no form button {
+    margin-top: var(--pd-space-3);
+  }
 }
 
 /* ---------- 11. Evidence ---------- */
@@ -1535,6 +1562,7 @@ details#reopen > summary,
 .ticket-panel details > summary,
 details.more-options summary,
 details.evidence-list > summary,
+details.card-evidence > summary,
 .assistant-card details.card-details > summary,
 .ticket-thread details.publish > summary,
 .welcome details.connect > summary {
@@ -1550,6 +1578,7 @@ details#reopen > summary:hover,
 .ticket-panel details > summary:hover,
 details.more-options summary:hover,
 details.evidence-list > summary:hover,
+details.card-evidence > summary:hover,
 .assistant-card details.card-details > summary:hover,
 .ticket-thread details.publish > summary:hover,
 .welcome details.connect > summary:hover {
@@ -1560,6 +1589,7 @@ details#reopen > summary::after,
 .ticket-panel details > summary::after,
 details.more-options summary::after,
 details.evidence-list > summary::after,
+details.card-evidence > summary::after,
 .assistant-card details.card-details > summary::after,
 .ticket-thread details.publish > summary::after,
 .welcome details.connect > summary::after {
@@ -1571,7 +1601,7 @@ details.evidence-list > summary::after,
   opacity: 0.7;
 }
 details#reopen {
-  margin-bottom: var(--pd-space-5);
+  margin-bottom: 0;
   border-bottom: 0;
 }
 details.history td {
@@ -1996,12 +2026,6 @@ main > p:is([role="status"], [role="alert"])[tabindex="-1"]:focus {
 
 /* ---------- Admin pages ---------- */
 
-.callout {
-  padding: var(--pd-space-3) var(--pd-space-4);
-  border-left: 2px solid var(--pd-ink);
-  border-radius: 0 var(--pd-radius) var(--pd-radius) 0;
-  background: var(--pd-subtle);
-}
 /* A command to copy: it wraps instead of widening the page. */
 pre.paste {
   padding: var(--pd-space-3);
@@ -2081,20 +2105,6 @@ textarea:focus-visible {
 /* The test spec's scenarios, under Details in the assistant's card: numbered and plain. */
 .scenarios li p {
   margin-bottom: 0.25rem;
-}
-
-/* The customer's no, first on the ticket, until the team asks them again: a card with a red edge. */
-article.customer-said-no {
-  margin-bottom: var(--pd-space-6);
-  border-left: 2px solid var(--pd-danger);
-  border-radius: 0 var(--pd-radius-lg) var(--pd-radius-lg) 0;
-  background: var(--pd-surface);
-}
-.customer-said-no h2 {
-  margin-bottom: var(--pd-space-3);
-}
-.customer-said-no > p:last-child {
-  margin-bottom: 0;
 }
 
 /* Why a ticket action was refused, at the top of the ticket it came from. */
@@ -2235,15 +2245,6 @@ article.customer-said-no {
 .site-footer a {
   color: inherit;
 }
-/* On the demo, the next role to view a ticket as, just under its title. */
-.demo-next {
-  margin-bottom: var(--pd-space-5);
-}
-.demo-next form,
-.demo-next p {
-  margin: 0;
-}
-
 /* A Copy button beside a command, prompt or key meant to be pasted: small, under its text. */
 button.copy {
   min-height: 0;
@@ -2261,6 +2262,7 @@ button.copy {
   .ticket-panel details > summary,
   details.more-options summary,
   details.evidence-list > summary,
+  details.card-evidence > summary,
   .assistant-card details.card-details > summary,
   .ticket-thread details.publish > summary,
   .welcome details.connect > summary {
@@ -2382,27 +2384,9 @@ table.tickets td.title-cell a:hover {
 }
 /* The phone fixes, kept together at the end. */
 
-/* The viewer's one next action, right under the status line. */
-.next-action {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--pd-space-2) var(--pd-space-3);
-  margin: 0 0 var(--pd-space-4);
-}
-.next-action form,
-.next-action button,
-.next-action [role="button"] {
-  margin: 0;
-}
 .next-note {
   color: var(--pd-muted);
 }
-/* On the demo, the next role to view as: quieter than the next action, and below it. */
-.demo-next button {
-  font-size: var(--pd-text-sm);
-}
-
 /* The recorded run's facts: each label above its paragraph, in the normal body size. */
 dl.run-facts dt {
   color: var(--pd-muted);
@@ -2438,16 +2422,6 @@ dl.run-facts dd {
   color: var(--pd-status-resolved);
   font-weight: var(--pd-weight-semibold);
 }
-article.resolved-by-team {
-  padding: var(--pd-space-3) var(--pd-space-4);
-  border: var(--pd-hairline);
-  border-radius: var(--pd-radius);
-  background: var(--pd-subtle);
-}
-article.resolved-by-team p {
-  margin-bottom: var(--pd-space-1);
-}
-
 /* Words for a screen reader only, such as what a Copy button just did. */
 .visually-hidden {
   position: absolute;
