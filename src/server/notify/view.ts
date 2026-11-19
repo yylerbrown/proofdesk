@@ -7,7 +7,7 @@ import { NOT_SENT_REASONS, noticesForViewer, type VisibleNotice } from "./outbox
 
 /** How each reason a notice was kept and not sent reads on the page. */
 const NOT_SENT_WORDS = new Map<string, string>([
-  [NOT_SENT_REASONS.demo, "Not sent: this demo never sends email"],
+  [NOT_SENT_REASONS.demo, "Not sent: the demo sends no email"],
   [NOT_SENT_REASONS.noMailServer, "Not sent: no mail server is set up on this site"],
   [NOT_SENT_REASONS.madeUp, "Not sent: this person is made up and has no address"],
   [NOT_SENT_REASONS.unverified, "Not sent: the address is not verified"],
