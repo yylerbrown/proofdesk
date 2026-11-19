@@ -36,10 +36,10 @@ async function handed() {
 
 const teamPage = async (app: Express) =>
   parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-const waitingCell = async (app: Express) =>
-  parse((await as(app, teamActor).get("/tickets")).text).querySelectorAll(
-    "table.tickets tbody tr td",
-  )[4]?.text;
+/** The quiet tag after the one ticket's status in the team's list, or null when there is none. */
+const listTag = async (app: Express) =>
+  parse((await as(app, teamActor).get("/tickets")).text).querySelector("table.tickets .turn-tag")
+    ?.text ?? null;
 
 describe("a review request", () => {
   it("shows beside the check and in the list until the owner asks the customer", async () => {
@@ -51,7 +51,7 @@ describe("a review request", () => {
     expect((await teamPage(app)).querySelector(".review-requested")?.text).toBe(
       "Review requested by Helper",
     );
-    expect(await waitingCell(app)).toBe("Review requested by Helper");
+    expect(await listTag(app)).toBe("Assistant asks for review");
     const customer = parse((await as(app, customerOne).get("/tickets/SUP-1")).text);
     expect(customer.querySelector("main")!.text).not.toContain("Review requested");
 
@@ -62,7 +62,7 @@ describe("a review request", () => {
       .post("/api/tickets/SUP-1/ready")
       .send({ try_url: "https://example.com/t", tried: "Printed.", result: "No jam." });
     expect((await teamPage(app)).querySelector(".review-requested")).toBeNull();
-    expect(await waitingCell(app)).toBe("Customer");
+    expect(await listTag(app)).toBe("Asked the customer");
   });
 });
 

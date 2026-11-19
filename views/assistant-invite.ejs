@@ -1,19 +1,4 @@
-<%# The invitation to bring your own AI assistant, for the team only: one quiet line under the tickets, until an assistant is connected, then a shorter one. "Not now" hides it in this browser. Proofdesk makes no AI calls itself. %>
-<% if (invite && invite.connected > 0) { %>
-<p class="assistant-connected"><small><%= invite.connected %> <%= invite.connected === 1 ? "assistant" : "assistants" %> connected<% if (invite.manage) { %> · <a href="/connections">Manage connections</a><% } %> · <a href="/assistant-run">See an assistant's work</a></small></p>
-<% } else if (invite) { %>
-<aside class="assistant-invite" aria-label="Connect your AI assistant">
-  <p>Connect your own AI assistant: it reproduces a ticket's problem and tests a fix, for a person to check. Proofdesk makes no AI calls itself.</p>
-  <div class="invite-actions">
-    <% if (invite.connectUrl) { %>
-    <a href="<%= invite.connectUrl %>" class="invite-connect">Connect your assistant</a>
-    <% } else { %>
-    <span class="invite-who">Only an admin can connect an assistant.</span>
-    <% } %>
-    <a href="/assistant-run">See an assistant's work</a>
-    <form method="post" action="/assistant-invite/hide">
-      <button type="submit" class="link">Not now</button>
-    </form>
-  </div>
-</aside>
+<%# One quiet line under the team's tickets: Proofdesk works with the team's own AI assistant and makes no AI calls itself. Its link shows an assistant's recorded work, which leads on to connecting one. %>
+<% if (invite) { %>
+<p class="assistant-invite"><small>Works with your own AI assistant. Proofdesk makes no AI calls itself. <a href="/assistant-run">See an example</a></small></p>
 <% } %>

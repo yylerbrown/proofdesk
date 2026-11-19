@@ -31,11 +31,10 @@ async function handed() {
 
 const blockedLine = async (app: Express, who: typeof teamActor) =>
   parse((await as(app, who).get("/tickets/SUP-1")).text).querySelector(".assistant-blocked")?.text;
-/** The list's "Waiting on" cell for the one ticket: the fifth column. */
-const waitingCell = async (app: Express) =>
-  parse((await as(app, teamActor).get("/tickets")).text).querySelectorAll(
-    "table.tickets tbody tr td",
-  )[4]?.text;
+/** The quiet tag after the one ticket's status in the team's list, or null when there is none. */
+const listTag = async (app: Express) =>
+  parse((await as(app, teamActor).get("/tickets")).text).querySelector("table.tickets .turn-tag")
+    ?.text ?? null;
 
 describe("an assistant that is blocked", () => {
   it("is shown to the team beside the check and in the list, with its note's first line", async () => {
@@ -48,9 +47,7 @@ describe("an assistant that is blocked", () => {
     expect(await blockedLine(app, teamActor)).toBe(
       "Assistant blocked: I cannot run code in this environment.",
     );
-    expect(await waitingCell(app)).toBe(
-      "Assistant blocked: I cannot run code in this environment.",
-    );
+    expect(await listTag(app)).toBe("Assistant is blocked");
     // The note is internal, so the customer sees nothing of it.
     expect(await blockedLine(app, customerOne)).toBeUndefined();
     const own = parse((await as(app, customerOne).get("/tickets")).text).querySelector(
@@ -64,7 +61,7 @@ describe("an assistant that is blocked", () => {
     await note({ body: "Blocked on access.", blocked: true });
     await note({ body: "Access granted, carrying on." });
     expect(await blockedLine(app, teamActor)).toBeUndefined();
-    expect(await waitingCell(app)).toBe("Support team");
+    expect(await listTag(app)).toBeNull();
   });
 
   it("is a mark only an assistant can make", async () => {

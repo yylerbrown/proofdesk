@@ -15,7 +15,7 @@ import {
   teamSaysFixed,
   timeAgo,
   reportFields,
-  waitingOn,
+  turnTag,
 } from "../pages/format.js";
 import {
   fileOnce,
@@ -170,13 +170,10 @@ function listHref(filters: ListFilters, page?: number): string {
   return query ? `/tickets?${query}` : "/tickets";
 }
 
-// A person who pressed "Not now" on the invitation to connect an assistant: kept in their
-// browser, so it needs no account setting and no script.
-const INVITE_COOKIE = "assistant_invite";
-const INVITE_HIDDEN_FOR = 365 * 24 * 60 * 60 * 1000;
-
-// A demo visitor who pressed "Hide" on the welcome card above their ticket list, kept the same way.
+// A demo visitor who pressed "Hide" on the welcome card above their ticket list: kept in their
+// browser for a year, so it needs no account setting and no script.
 const WELCOME_COOKIE = "demo_welcome";
+const WELCOME_HIDDEN_FOR = 365 * 24 * 60 * 60 * 1000;
 
 /** The demo's welcome card: where its two quiet links lead, as the demo team member. */
 type DemoWelcome = {
@@ -290,6 +287,15 @@ function editForm(key: string) {
 
 // The heading of each list, for the page title.
 const FILTER_TITLES = { ...STATUS_LABELS, all: "All", archived: "Archived" };
+
+// The reasons the list's bar offers for resolving many tickets at once: the three that need no
+// more words, so the bar never holds a text box. A duplicate or an odd case is one ticket's
+// judgement, made on its own page. The rules and the JSON API keep all five.
+const BULK_RESOLVE_REASONS = {
+  fixed_no_reply: RESOLVE_REASON_LABELS.fixed_no_reply,
+  wont_fix: RESOLVE_REASON_LABELS.wont_fix,
+  cannot_reproduce: RESOLVE_REASON_LABELS.cannot_reproduce,
+};
 
 function asText(value: unknown): string {
   return typeof value === "string" ? value : "";
@@ -653,18 +659,6 @@ export function pagesRouter(service: TicketService): Router {
     const signals = service.assistantSignals(tickets, actor);
     const reopened =
       actor.role === "customer" ? new Set<string>() : service.reopenedByCustomer(tickets);
-    // The invitation to bring an assistant: for the team only, until one is connected. On the
-    // demo every visitor gets their own connection, so it always invites.
-    const connected = actor.demo === true ? 0 : service.connectedAssistants();
-    // The read-only admin preview can connect nothing, so it is not invited.
-    const invite =
-      actor.role === "customer" || actor.readOnly === true
-        ? null
-        : connected > 0
-          ? { connected, manage: can(actor, "manage_connections") }
-          : req.cookies?.[INVITE_COOKIE] === "hidden"
-            ? null
-            : { connected: 0, connectUrl: connectUrl(actor) };
     // The team ticks tickets and changes them together. The read-only preview, customers and
     // assistants do not.
     // Its form posts to the list's own address with "/bulk" added, so it comes back to this view.
@@ -674,7 +668,7 @@ export function pagesRouter(service: TicketService): Router {
           ...bulkForm,
           action: thisView.replace("/tickets", "/tickets/bulk"),
           members: service.teamMembers().filter((member) => member.id !== actor.id),
-          resolveReasons: RESOLVE_REASON_LABELS,
+          resolveReasons: BULK_RESOLVE_REASONS,
         }
       : null;
     res.status(status).render("ticket-list", {
@@ -689,10 +683,10 @@ export function pagesRouter(service: TicketService): Router {
       current,
       tickets: tickets.map((ticket) => ({
         ...ticket,
-        // What an assistant said it needs is what the team needs to see first.
-        waiting: signals.has(ticket.key)
-          ? `${signals.get(ticket.key)!.label} ${signals.get(ticket.key)!.text}`
-          : waitingOn(ticket, actor.role, reopened.has(ticket.key)),
+        tag: turnTag(ticket, actor.role, {
+          reopened: reopened.has(ticket.key),
+          signal: signals.get(ticket.key),
+        }),
       })),
       viewerRole: actor.role,
       // A full page means there may be older tickets on the next one.
@@ -712,7 +706,8 @@ export function pagesRouter(service: TicketService): Router {
       // Nobody archives on the demo, so its Archived tab would always be empty. The address
       // still works there, and says why it is empty.
       showArchivedFilter: can(actor, "list_archived") && actor.demo !== true,
-      invite,
+      // One quiet line under the team's tickets: Proofdesk works with their own AI assistant.
+      invite: actor.role !== "customer",
       welcome: demoWelcome(
         actor,
         req.cookies?.[WELCOME_COOKIE] === "hidden",
@@ -727,19 +722,7 @@ export function pagesRouter(service: TicketService): Router {
     res.cookie(WELCOME_COOKIE, "hidden", {
       httpOnly: true,
       sameSite: "lax",
-      maxAge: INVITE_HIDDEN_FOR,
-      path: "/",
-    });
-    res.redirect(303, "/tickets");
-  });
-
-  // "Not now" on the invitation to connect an assistant hides it in this browser.
-  router.post("/assistant-invite/hide", (req, res) => {
-    signedIn(req);
-    res.cookie(INVITE_COOKIE, "hidden", {
-      httpOnly: true,
-      sameSite: "lax",
-      maxAge: INVITE_HIDDEN_FOR,
+      maxAge: WELCOME_HIDDEN_FOR,
       path: "/",
     });
     res.redirect(303, "/tickets");
