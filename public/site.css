@@ -2485,18 +2485,11 @@ dl.run-facts dd {
   }
 }
 
-/*
- * How a resolved ticket was resolved: "Customer confirmed" or "Resolved by the team: <reason>",
- * small and muted beside the status. A ticket the team resolved says so in a plain block, with
- * no tick: the tick is only for the customer's Yes.
- */
-.resolution-label {
-  color: var(--pd-muted);
-}
-table.tickets .resolution-label {
-  display: block;
-  font-size: var(--pd-text-xs);
-  white-space: normal;
+/* In the list, a ticket the customer confirmed carries a small check mark after "Resolved". */
+.confirmed-mark {
+  margin-left: var(--pd-space-1);
+  color: var(--pd-status-resolved);
+  font-weight: var(--pd-weight-semibold);
 }
 article.resolved-by-team {
   padding: var(--pd-space-3) var(--pd-space-4);
@@ -2579,15 +2572,6 @@ pre.paste.command {
     grid-row: 2;
     font-size: var(--pd-text-md);
     line-height: 1.35;
-  }
-  table.tickets tbody .resolution-label {
-    display: inline;
-    margin-left: var(--pd-space-2);
-  }
-  /* A second line, such as "You have not confirmed it", sits beneath the first. */
-  table.tickets tbody .resolution-label + .resolution-label {
-    display: block;
-    margin-left: 0;
   }
 }
 

@@ -2,9 +2,10 @@ import { parse } from "node-html-parser";
 import { describe, expect, it } from "vitest";
 import { as, buildTestApp, customerOne, teamActor } from "./helpers.js";
 
-// When the team resolves a ticket as fixed without the customer's Yes, the customer's list and
-// ticket say so in their terms: "The team says it is fixed", and beneath it "You have not
-// confirmed it", with the way to reopen it. The team keeps its own wording.
+// When the team resolves a ticket as fixed without the customer's Yes, the customer's ticket says
+// so in their terms: "The team says it is fixed", and beneath it "You have not confirmed it",
+// with the way to reopen it. The team keeps its own wording. In the list the status is one word
+// for everyone, with no check mark, since the customer did not confirm it.
 
 const valid = { title: "Printer jams", description: "x", fix_check: "Ten pages print" };
 
@@ -20,25 +21,19 @@ async function resolvedByTeam(reason: string, extra: object = {}) {
   return { page };
 }
 
-/** The words under the status in the list's row for SUP-1. */
-function rowLabels(list: ReturnType<typeof parse>): string[] {
+/** The status cell of the list's row for SUP-1, as text. */
+function statusCell(list: ReturnType<typeof parse>): string {
   const row = list
     .querySelectorAll("table.tickets tbody tr")
     .find((tr) => tr.querySelector("td")?.text.trim() === "SUP-1")!;
-  return row.querySelectorAll(".resolution-label").map((label) => label.text);
+  return row.querySelectorAll("td")[2]!.text.trim();
 }
 
 describe("a ticket the team resolved as fixed, for its customer", () => {
-  it("says the team says it is fixed and they have not confirmed it, in the list", async () => {
+  it("shows only Resolved in the list, for the customer and the team", async () => {
     const { page } = await resolvedByTeam("fixed_no_reply");
-    expect(rowLabels(await page(customerOne, "/tickets"))).toEqual([
-      "The team says it is fixed",
-      "You have not confirmed it",
-    ]);
-    // The team's list keeps its own words.
-    expect(rowLabels(await page(teamActor, "/tickets"))).toEqual([
-      "By the team: Fixed. Not customer-confirmed.",
-    ]);
+    expect(statusCell(await page(customerOne, "/tickets"))).toBe("Resolved");
+    expect(statusCell(await page(teamActor, "/tickets"))).toBe("Resolved");
   });
 
   it("says the same on their ticket, with the way to reopen it", async () => {
@@ -57,7 +52,7 @@ describe("a ticket the team resolved as fixed, for its customer", () => {
 
   it("leaves the team's other reasons as they are, since they do not claim a fix", async () => {
     const { page } = await resolvedByTeam("wont_fix", { note: "Works as designed." });
-    expect(rowLabels(await page(customerOne, "/tickets"))).toEqual(["By the team: Won't fix"]);
+    expect(statusCell(await page(customerOne, "/tickets"))).toBe("Resolved");
     const ticket = await page(customerOne, "/tickets/SUP-1");
     expect(ticket.querySelector("article.resolved-by-team strong")?.text).toBe(
       "Resolved by the team: Won't fix",

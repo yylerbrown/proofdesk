@@ -134,7 +134,8 @@
         <%# The title is the row's one keyboard stop; the key stays a link for the mouse. %>
         <td><% if (bulk) { %><input type="checkbox" class="bulk-tick" name="keys" value="<%= ticket.key %>" aria-label="Tick <%= ticket.key %>" <% if (bulk.ticked.has(ticket.key)) { %>checked<% } %> /><% } %><a href="/tickets/<%= ticket.key %>" tabindex="-1"><%= ticket.key %></a></td>
         <td class="user-text title-cell" title="<%= ticket.title %>"><a href="/tickets/<%= ticket.key %>"><%= ticket.title %></a></td>
-        <td><%- include("status-badge", { status: ticket.status }) %><% if (teamSaysFixed(ticket, viewerRole)) { %><small class="resolution-label">The team says it is fixed</small><small class="resolution-label">You have not confirmed it</small><% } else if (ticket.resolution) { %><small class="resolution-label"><%= ticket.resolution.by === "team" ? `By the team: ${ticket.resolution.reason_label}` : "Customer confirmed" %></small><% } %></td>
+        <%# One line: the status word, and a check mark when the customer confirmed the fix. How the team resolved a ticket is on its own page. %>
+        <td><%- include("status-badge", { status: ticket.status }) %><% if (ticket.resolution && ticket.resolution.by === "customer") { %> <span class="confirmed-mark" role="img" aria-label="Customer confirmed" title="Customer confirmed">✓</span><% } %></td>
         <td><%= ticket.owner_name ?? "Unassigned" %></td>
         <td><%= ticket.waiting %></td>
         <% const when = byUpdated ? ticket.updated_at : ticket.created_at; %>
