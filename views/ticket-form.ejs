@@ -48,7 +48,7 @@
   <% if (locals.formId) { %><input type="hidden" name="form" value="<%= formId %>" /><% } %>
   <%# The version of the ticket this form was filled from, so a save over a newer one is refused. %>
   <% if (locals.version) { %><input type="hidden" name="expected_version" value="<%= version %>" /><% } %>
-  <%# What the boxes held when the form was opened, used only to say what someone else changed. %>
+  <%# A fingerprint of what each box held when the form was opened, used only to say what someone else changed. %>
   <% if (locals.loaded) { %>
   <% for (const field of ["title", "description", "where_url", "fix_check"]) { %>
   <input type="hidden" name="loaded_<%= field %>" value="<%= loaded[field] %>" />

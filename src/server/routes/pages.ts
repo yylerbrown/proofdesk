@@ -24,6 +24,7 @@ import {
   formMatchesTicket,
   ticketFiledWith,
 } from "../pages/form-id.js";
+import { fingerprint } from "../pages/loaded-text.js";
 import { LIST_ORDER_LABELS, noMatchWords, readListPageQuery } from "../pages/list-query.js";
 import { sameText, type ListOrder } from "../tickets/schemas.js";
 import { statusControl } from "../pages/status-control.js";
@@ -171,6 +172,8 @@ type NextStep = {
    * button so the owner reads it before asking. Null when they gave none.
    */
   customerCheck?: string | null;
+  /** The team's clearer wording of the check, said instead when the customer gave none. */
+  teamCheck?: string | null;
   /** A quiet link beside the button to the optional form with more to say, by its id. */
   detailsId?: string;
 };
@@ -202,6 +205,7 @@ function nextStep(
       form: { action: `${at}/ready` },
       note: 'Sends the customer "Did this fix it?".',
       customerCheck: ticket.fix_check,
+      teamCheck: ticket.agreed_check,
       detailsId: "ask",
     };
   }
@@ -290,10 +294,20 @@ function ticketValues(ticket: Ticket): typeof emptyForm {
   };
 }
 
+/** A fingerprint of each of the four boxes, as the ticket holds them now. */
+function ticketFingerprints(ticket: Ticket): typeof emptyForm {
+  return {
+    title: fingerprint(ticket.title),
+    description: fingerprint(ticket.description),
+    where_url: fingerprint(ticket.where_url),
+    fix_check: fingerprint(ticket.fix_check),
+  };
+}
+
 /**
- * What the edit form held when it was opened, from its hidden "loaded_" boxes, or null when it
- * has none. These come from the browser, so they only word the message after a refused save:
- * the save itself is checked against the ticket's version, never against these.
+ * What the edit form held when it was opened, as the fingerprints in its hidden "loaded_" boxes,
+ * or null when it has none. These come from the browser, so they only word the message after a
+ * refused save: the save itself is checked against the ticket's version, never against these.
  */
 function readLoaded(body: Record<string, unknown> | undefined): typeof emptyForm | null {
   const sent = BOX_NAMES.some(([field]) => typeof body?.[`loaded_${field}`] === "string");
@@ -308,12 +322,12 @@ function readLoaded(body: Record<string, unknown> | undefined): typeof emptyForm
 
 /**
  * The boxes someone else changed since the form was opened, each with the text it holds now, so
- * the person need not compare the ticket and their draft box by box. Compared like differingBoxes.
+ * the person need not compare the ticket and their draft box by box.
  */
 function changedSinceLoaded(ticket: Ticket, loaded: typeof emptyForm) {
-  return BOX_NAMES.filter(
-    ([field]) => !sameText((ticket[field] ?? "").trim(), loaded[field].trim()),
-  ).map(([field, name]) => ({ name, now: (ticket[field] ?? "").trim() }));
+  return BOX_NAMES.filter(([field]) => fingerprint(ticket[field]) !== loaded[field]).map(
+    ([field, name]) => ({ name, now: (ticket[field] ?? "").trim() }),
+  );
 }
 
 /**
@@ -722,7 +736,7 @@ export function pagesRouter(service: TicketService): Router {
       ...editForm(ticket.key),
       values,
       // What the form was opened with, so a refused save can say what someone else changed.
-      loaded: values,
+      loaded: ticketFingerprints(ticket),
       errors: {},
       checkLocked: ticket.created_by !== actor.id,
       version: ticket.version,
@@ -766,7 +780,7 @@ export function pagesRouter(service: TicketService): Router {
         differ: changed && loaded === null ? differingBoxes(current, shown) : [],
         // After a refusal for a newer version the form is now based on the ticket as it is;
         // after a mistake in a box it is still based on what it was opened with.
-        loaded: changed ? ticketValues(current) : loaded,
+        loaded: changed ? ticketFingerprints(current) : loaded,
         // The hidden version has no box of its own, so a problem with it is said at the top.
         versionUnreadable: errors.expected_version !== undefined,
         checkLocked,

@@ -1,12 +1,13 @@
 import type { Express } from "express";
 import { parse } from "node-html-parser";
 import { describe, expect, it } from "vitest";
+import { fingerprint } from "../src/server/pages/loaded-text.js";
 import { admin, as, buildTestApp, customerOne, teamActor } from "./helpers.js";
 
 // When a save is refused because someone else changed the ticket while the form was open, the
 // message names only what that other person changed, with the text it has now. The form carries
-// what it was opened with in hidden boxes, which word this message and are trusted for nothing
-// else.
+// a fingerprint of what it was opened with in hidden boxes, which word this message and are
+// trusted for nothing else.
 
 const valid = {
   title: "Printer jams",
@@ -36,7 +37,7 @@ describe("the refused save's message", () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
     const form = await openForm(app, teamActor);
-    expect(form.loaded_title).toBe("Printer jams");
+    expect(form.loaded_title).toBe(fingerprint("Printer jams"));
 
     // Someone else changes only the title; this person changes only the description.
     await admin(app)
@@ -95,6 +96,26 @@ describe("the refused save's message", () => {
       .type("form")
       .send({ ...form, description: "Jams on every second page." });
     const loaded = parse(refused.text).querySelector("input[name=loaded_title]");
-    expect(loaded?.getAttribute("value")).toBe("Printer jams on page two");
+    expect(loaded?.getAttribute("value")).toBe(fingerprint("Printer jams on page two"));
+  });
+
+  it("saves an edit with every box near its limit in three-byte characters", async () => {
+    // A three-byte character is nine bytes in a sent form. A second copy of every box would
+    // push this form over the size limit for a request; a fingerprint of each does not.
+    const { app } = buildTestApp();
+    await as(app, customerOne)
+      .post("/api/tickets")
+      .send({
+        title: "字".repeat(120),
+        description: "字".repeat(5000),
+        fix_check: "字".repeat(500),
+      });
+    const form = await openForm(app, customerOne);
+    const res = await as(app, customerOne)
+      .post("/tickets/SUP-1/edit")
+      .type("form")
+      .send({ ...form, where_url: `https://example.com/${"字".repeat(470)}` });
+    expect(res.status).toBe(303);
+    expect(form.loaded_description?.length).toBe(64);
   });
 });
