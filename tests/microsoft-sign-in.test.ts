@@ -130,10 +130,9 @@ function cookiesOf(res: request.Response): string {
 /** Who the header says is signed in, such as "Ada Admin (admin)", or null. */
 async function signedInAs(app: TestApp, cookie: string): Promise<string | null> {
   const page = await request(app).get("/tickets").set("Cookie", cookie);
-  const found =
-    /Signed in as <a href="\/account" class="account-link"><strong>([^<]*)<\/strong><\/a> <small class="role-label">([^<]*)</.exec(
-      page.text,
-    );
+  const found = /<summary><strong>([^<]*)<\/strong> <small class="role-label">([^<]*)</.exec(
+    page.text,
+  );
   return found === null ? null : `${found[1]} (${(found[2] ?? "").toLowerCase()})`;
 }
 

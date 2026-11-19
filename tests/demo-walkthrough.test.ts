@@ -155,8 +155,9 @@ describe("following one ticket across roles on the demo", () => {
   it("offers a switch in the header that comes back to the page the visitor was on", async () => {
     const { app } = buildDemo();
     const html = parse((await asDemo(app, "demo-customer").get("/tickets/SUP-3")).text);
-    const menu = html.querySelector("header details.switch-role")!;
-    expect(menu.querySelector("summary")?.text).toContain("Switch role");
+    const menu = html.querySelector("header details.person-menu")!;
+    expect(menu.querySelector("summary")?.text).toContain("Demo Customer");
+    expect(menu.querySelector(".menu-heading")?.text).toBe("Switch role");
     const forms = menu.querySelectorAll("form");
     expect(forms.map((f) => f.querySelector("button")?.text)).toEqual([
       "View as Demo Team Member",
@@ -177,7 +178,7 @@ describe("following one ticket across roles on the demo", () => {
       .post("/api/tickets")
       .send({ title: "Printer jams", description: "x" });
     const html = parse((await as(app, customerOne).get("/tickets/SUP-1")).text);
-    expect(html.querySelector(".switch-role")).toBeNull();
+    expect(html.querySelector(".person-menu .role")).toBeNull();
     expect(html.querySelector(".demo-next")).toBeNull();
   });
 });

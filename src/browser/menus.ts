@@ -1,5 +1,5 @@
-// The small "Switch role" menu in the header is a native details element, so it opens and
-// closes without any script. This script adds what a menu is expected to do from the keyboard:
+// The person menu in the header, named for whoever is signed in, is a native details element, so
+// it opens and closes without any script. This script adds what a menu is expected to do from the keyboard:
 // Escape closes it and puts focus back on the button that opened it, and moving focus or
 // clicking somewhere else on the page closes it too.
 //
@@ -44,7 +44,7 @@ export function wireMenu(menu: Menu, button: MenuButton, page: Page) {
 }
 
 if (typeof document !== "undefined") {
-  for (const menu of document.querySelectorAll<HTMLDetailsElement>("details.switch-role")) {
+  for (const menu of document.querySelectorAll<HTMLDetailsElement>("details.person-menu")) {
     const button = menu.querySelector("summary");
     if (button === null) continue;
     // A real details element has all the parts Menu names; its event types are only wider.

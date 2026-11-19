@@ -28,7 +28,7 @@ async function signInAs(browser: Browser, person: string): Promise<Page> {
   const page = await context.newPage();
   await page.goto("/sign-in");
   await page.getByRole("button", { name: `View as ${person}` }).click();
-  await expect(page.getByText(`Signed in as ${person}`)).toBeVisible();
+  await expect(page.locator(".person-menu summary strong")).toHaveText(person);
   return page;
 }
 

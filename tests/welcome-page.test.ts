@@ -127,10 +127,10 @@ describe("the welcome card's way to a ticket an AI assistant worked", () => {
   });
 });
 
-describe("the demo's Switch role menu", () => {
+describe("the roles in the demo's person menu", () => {
   it("lists the three roles, each with its one line on what to try", async () => {
     const html = await pageAs(demo().app, "demo-customer", "/tickets");
-    const rows = html.querySelectorAll("header .switch-role ul li");
+    const rows = html.querySelectorAll("header .person-menu ul li.role");
     expect(rows.length).toBe(3);
     expect(rows.map((row) => row.querySelector(".role-try")?.text.trim())).toEqual([
       "File a ticket, then follow it until the team asks whether it is fixed.",

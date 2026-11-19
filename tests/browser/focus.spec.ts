@@ -10,7 +10,7 @@ import { expect, test, type Page } from "@playwright/test";
 async function signIn(page: Page, person: string) {
   await page.goto("/sign-in");
   await page.getByRole("button", { name: `View as ${person}` }).click();
-  await expect(page.getByText(`Signed in as ${person}`)).toBeVisible();
+  await expect(page.locator(".person-menu summary strong")).toHaveText(person);
 }
 
 /** Describes the focused element, so a failure says where focus went. */

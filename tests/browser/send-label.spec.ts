@@ -9,7 +9,7 @@ import { expect, test, type Page } from "@playwright/test";
 async function signIn(page: Page, person: string) {
   await page.goto("/sign-in");
   await page.getByRole("button", { name: `View as ${person}` }).click();
-  await expect(page.getByText(`Signed in as ${person}`)).toBeVisible();
+  await expect(page.locator(".person-menu summary strong")).toHaveText(person);
 }
 
 test("a quick reply switches the send button back to the customer", async ({ page }) => {

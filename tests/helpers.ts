@@ -60,12 +60,12 @@ export const customerOne = person("dev-customer-1");
 export const customerTwo = person("dev-customer-2");
 
 /**
- * The header line that says who is signed in: their name, linking to their account page, then
- * their role as a plain word.
+ * The button of the header's person menu: the name of whoever is signed in, then their role as a
+ * quiet word.
  */
 export function signedInLine(name: string, role: "customer" | "team" | "admin"): string {
   const word = { customer: "Customer", team: "Team member", admin: "Admin" }[role];
-  return `Signed in as <a href="/account" class="account-link"><strong>${name}</strong></a> <small class="role-label">${word}</small>`;
+  return `<summary><strong>${name}</strong> <small class="role-label">${word}</small></summary>`;
 }
 
 /** What a browser sends with a request made from one of this site's own pages. */

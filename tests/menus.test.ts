@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { closeOnEscape, wireMenu, type Menu, type Page } from "../src/browser/menus.js";
 import { admin, buildTestApp } from "./helpers.js";
 
-// "Switch role" and "More" are native details menus. The menus script closes them on Escape,
+// The header's person menu and "More" are native details menus. The menus script closes them on Escape,
 // with focus back on their button, and when focus or a click goes somewhere else on the page.
 // More scrolls into view when it opens below the window. The ticket's Resolve panel holds a
 // form, so it closes on Escape only. Text fields show the same focus ring as buttons and links.
@@ -105,9 +105,9 @@ describe("the menus' look", () => {
     expect(css).not.toMatch(/\[aria-invalid="true"\][^{]*:focus[^{]*\{[^}]*outline: none/);
   });
 
-  it("measures the Switch role list against a box as wide as its button", () => {
+  it("measures the person menu's list against a box as wide as its button", () => {
     expect(css).toMatch(
-      /\.site-header details\.dropdown\.switch-role \{\s*display: inline-block;\s*margin-block: 0;\s*\}/,
+      /\.site-header details\.dropdown\.person-menu \{\s*display: inline-block;\s*margin-block: 0;\s*\}/,
     );
   });
 });

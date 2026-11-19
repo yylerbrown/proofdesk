@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
 
-// The demo's "Switch role" menu in the header, at phone width. It only exists when the server
+// The person menu in the demo's header, with its roles, at phone width. It only exists when the server
 // runs as the demo, so this file starts a second copy of the app with DEMO=on on the next port,
 // and stops it at the end. The checks: the button stays inside its row of the header, the list
 // is at least as wide as the button and stays on the screen, a click outside the open menu
@@ -52,14 +52,14 @@ test.afterAll(() => {
   if (databaseDir !== undefined) rmSync(databaseDir, { recursive: true, force: true });
 });
 
-test("Switch role fits its row at phone width and lets clicks outside it through", async ({
+test("the person menu fits its row at phone width and lets clicks outside it through", async ({
   page,
 }) => {
   await page.goto("/tickets");
   await page.getByRole("button", { name: "See the team's side" }).click();
   await page.goto("/tickets");
 
-  const menu = page.locator("details.switch-role");
+  const menu = page.locator("details.person-menu");
   const summary = menu.locator("summary");
 
   await test.step("the button lies inside its row of the header", async () => {

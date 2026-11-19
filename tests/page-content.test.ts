@@ -54,7 +54,7 @@ describe("the welcome for a signed-out visitor", () => {
   it("offers each demo person with one thing to try, in the role menu it lands under", async () => {
     const { app } = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
     const html = await page(visitor(app), "/tickets");
-    const people = html.querySelectorAll("header .switch-role ul li");
+    const people = html.querySelectorAll("header .person-menu ul li.role");
     expect(people.map((li) => li.querySelector("button, .role-current")?.text)).toEqual([
       "Demo Customer (you)",
       "View as Demo Team Member",
@@ -68,13 +68,13 @@ describe("the welcome for a signed-out visitor", () => {
 });
 
 describe("the header", () => {
-  it("shows the name, the role as a label and a Sign out button in one line", async () => {
+  it("shows the name with the role as a quiet word, and keeps Sign out in its menu", async () => {
     const { app } = buildTestApp();
     const res = await as(app, teamActor).get("/tickets");
     expect(res.text).toContain(signedInLine("Team Member", "team"));
     const nav = parse(res.text).querySelector("header nav");
     expect(nav?.querySelector(".role-label")?.text).toBe("Team member");
-    expect(nav?.querySelector("form.sign-out button")?.text).toBe("Sign out");
+    expect(nav?.querySelector(".person-menu form.sign-out button")?.text).toBe("Sign out");
     // Nothing about who is signed in is left in the page body under the header.
     expect(parse(res.text).querySelector("main form[action='/sign-out']")).toBeNull();
   });
