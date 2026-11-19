@@ -17,7 +17,8 @@ import { buildTestApp, FROM_THIS_SITE } from "./helpers.js";
 
 // The shared public demo must never become a place to host pictures for strangers. A visitor's
 // picture is served only to the browser that added it; everyone else is told it is there and
-// gets no bytes. The demo's own sample picture is shown to everyone, and its caps are smaller.
+// gets no bytes. The demo's own sample picture is shown to everyone who can open its ticket, and
+// its caps are smaller.
 
 const [demoCustomer, demoTeam] = DEMO_ACTORS as [
   (typeof DEMO_ACTORS)[number],
@@ -58,7 +59,7 @@ function tokenCookie(setCookie: string | string[] | undefined): string {
 }
 
 describe("the demo's sample picture", () => {
-  it("is on the dark-mode sample, and every visitor's browser is shown it", async () => {
+  it("is on the dark-mode sample, and shown to every browser that can open that ticket", async () => {
     const { app, service, db } = buildDemo();
     const sample = service
       .listTickets("all", demoTeam, 1)

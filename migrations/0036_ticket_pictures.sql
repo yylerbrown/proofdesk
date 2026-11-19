@@ -15,9 +15,10 @@ CREATE TABLE ticket_pictures (
   added_by TEXT NOT NULL,
   type TEXT NOT NULL CHECK (type IN ('image/png', 'image/jpeg', 'image/gif', 'image/webp')),
   size INTEGER NOT NULL CHECK (size > 0),
-  bytes BLOB NOT NULL,
   shown_only_to TEXT,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  -- Last, so that listing a ticket's pictures never has to read past the bytes.
+  bytes BLOB NOT NULL
 );
 
 CREATE INDEX idx_ticket_pictures_ticket_id ON ticket_pictures (ticket_id, entry_id);

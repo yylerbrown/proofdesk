@@ -13,6 +13,7 @@ import {
   teamActor,
 } from "./helpers.js";
 import type { Actor } from "../src/server/actor.js";
+import { createConnectionService } from "../src/server/connections/service.js";
 import { pictureTypeOf } from "../src/server/pictures/kinds.js";
 import { samplePicture } from "../src/server/pictures/sample.js";
 import { createTicketService } from "../src/server/tickets/service.js";
@@ -278,9 +279,11 @@ describe("who sees a picture", () => {
     const loaded = await asAgent(`/tickets/SUP-1/pictures/${description}`);
     expect(loaded.status).toBe(303);
     expect(loaded.headers["content-type"] ?? "").not.toContain("image");
-    // Inside the service, an assistant gets no bytes either.
+    // Inside the service, an assistant gets no bytes either: the very connection the ticket was
+    // handed to, which may list the ticket's pictures, is refused the picture itself.
     const service = createTicketService(db, "SUP");
-    const agent: Actor = { id: "agent-1", kind: "agent", role: "team", name: "Helper" };
+    const agent = createConnectionService(db, () => true).authenticate(key)!;
+    expect(service.listPictures("SUP-1", agent, null).description).toHaveLength(1);
     expect(() => service.readPicture("SUP-1", description, agent, null)).toThrow(/no picture/);
     // And the API takes no pictures with a note.
     const before = pictureRows(db);
@@ -309,6 +312,8 @@ describe("a picture as it is served", () => {
     expect(loaded.headers["content-security-policy"]).toBe("default-src 'none'; sandbox");
     expect(loaded.headers["cache-control"]).toBe("private, max-age=3600");
     expect(loaded.headers["content-disposition"]).toBe("inline");
+    // A cache never hands one person's picture to another browser.
+    expect(loaded.headers.vary).toContain("Cookie");
     expect(JSON.stringify(loaded.headers)).not.toContain("evil");
   });
 
@@ -380,5 +385,13 @@ describe("deleting a ticket for good", () => {
     expect((await admin(app).get("/api/tickets/SUP-1")).status).toBe(410);
     expect(pictureRows(db)).toBe(0);
     expect((await admin(app).get("/tickets/SUP-1/pictures/1")).status).toBe(404);
+  });
+});
+
+describe("the pictures table", () => {
+  it("keeps each picture's bytes as its last column, so listing pictures never reads them", () => {
+    const { db } = buildTestApp();
+    const columns = db.prepare("PRAGMA table_info(ticket_pictures)").all() as { name: string }[];
+    expect(columns.at(-1)?.name).toBe("bytes");
   });
 });

@@ -132,7 +132,7 @@ export function seedDemo(service: TicketService): void {
   });
 
   // The one sample with a picture: a drawing of the settings panel the customer means. The
-  // demo seeds it, so every visitor sees it.
+  // demo seeds it, so everyone who can open this ticket sees it.
   service.createTicketWithPictures(
     {
       title: "Settings page text is hard to read in dark mode",

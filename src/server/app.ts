@@ -55,7 +55,9 @@ import {
 // run from source) and in dist/server (when run after a build).
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 // The largest request body the server reads, for JSON and for forms. A larger one is
-// refused with 413 before it is parsed. The biggest valid ticket is about 6 KB. The sign-in
+// refused with 413 before it is parsed. The biggest valid ticket is about 6 KB. The one
+// exception is the two forms that may send pictures, filing a ticket and writing a message:
+// their limits are in pictures/limits.ts and pictures/upload.ts. The sign-in
 // library reads no request body at all: the only request it is given is GitHub's return,
 // a GET, and every other address under /api/auth answers 404 before reading anything.
 const BODY_LIMIT = "100kb";
@@ -266,15 +268,18 @@ export function createApp(config: Config, db: Db, options: { log?: LogLine } = {
   app.use(express.urlencoded({ extended: false, limit: BODY_LIMIT }));
   // The two forms that take text, filing a ticket and writing a reply or a note, may also send
   // pictures. Those come as multipart/form-data, which only these two addresses read. The
-  // checks above, of where the request comes from and how often, have already run.
+  // checks above, of who is asking, where the request comes from and how often, have already
+  // run, so pictures are never read for someone who may not add them.
   app.post(["/tickets", "/tickets/:key/entries"], readPictures(pictureLimitsFor(config.demo)));
   app.use(assistantRunRouter(rootDir, () => tickets.recordedRunKey()));
   app.use(signInRouter(config, auth, db, () => tickets.hasDemoSeed()));
   // Before the pages, so "similar" is never read as a ticket key.
   app.use(similarRouter(tickets));
   app.use(
-    pagesRouter(tickets, (key, actor) =>
-      noticeCountFor(db, parseKey(config.ticketPrefix, key)!, actor),
+    pagesRouter(
+      tickets,
+      (key, actor) => noticeCountFor(db, parseKey(config.ticketPrefix, key)!, actor),
+      { secureCookies: config.nodeEnv === "production" },
     ),
   );
   app.use(peopleRouter(createPeopleService(db, config)));
