@@ -197,15 +197,6 @@ function demoWelcome(actor: Actor, hidden: boolean, recordedRunKey: string | nul
   return welcome;
 }
 
-/**
- * Where to connect an assistant, for the team only: an admin's connections page, or on the demo
- * the welcome page's own demo connection. Null for a team member, who cannot connect one.
- */
-function connectUrl(actor: Actor): string | null {
-  if (actor.demo === true) return "/sign-in#connect";
-  return can(actor, "manage_connections") ? "/connections" : null;
-}
-
 /** The one step a viewer can take now, as the ticket page's primary button. */
 type NextStep = {
   label: string;
