@@ -37,11 +37,12 @@
   </ul>
 </nav>
 <% if (ownerFilters) { %>
+<%# Two toggles: neither is lit until pressed, and pressing the lit one clears it. They stay links, so the address names the view. %>
 <nav aria-label="Filter by owner">
   <ul>
-    <li><a href="<%= href({ owner: undefined }) %>" <% if (!filters.owner) { %>aria-current="page"<% } %>>Everyone</a></li>
-    <li><a href="<%= href({ owner: "me" }) %>" <% if (filters.owner === "me") { %>aria-current="page"<% } %>>Mine</a></li>
-    <li><a href="<%= href({ owner: "none" }) %>" <% if (filters.owner === "none") { %>aria-current="page"<% } %>>Unassigned</a></li>
+    <% for (const [owner, label] of [["me", "Mine"], ["none", "Unassigned"]]) { %>
+    <li><a href="<%= href({ owner: filters.owner === owner ? undefined : owner }) %>" <% if (filters.owner === owner) { %>aria-current="page"<% } %>><%= label %></a></li>
+    <% } %>
   </ul>
 </nav>
 <% } %>
@@ -86,20 +87,16 @@
     <option value="">Set status</option>
     <% for (const status of statuses) { %><option value="<%= status %>" <% if (bulk.values.status === status) { %>selected<% } %>><%= statusLabels[status] %></option><% } %>
   </select>
-  <%# The stylesheet shows the reason only for Resolved, right after the status, and each box after it only for the reason that needs it. %>
-  <div class="bulk-reasons">
-    <select name="reason" aria-label="Reason" class="bulk-reason">
-      <option value="">Choose a reason</option>
-      <% for (const [value, label] of Object.entries(bulk.resolveReasons)) { %><option value="<%= value %>" <% if (bulk.values.reason === value) { %>selected<% } %>><%= label %></option><% } %>
-    </select>
-    <input type="text" name="duplicate_of" aria-label="Duplicate of" placeholder="Duplicate of SUP-3" maxlength="20" class="bulk-duplicate" value="<%= bulk.values.duplicate_of ?? "" %>" />
-    <input type="text" name="note" aria-label="Why?" placeholder="Why?" maxlength="500" class="bulk-note" value="<%= bulk.values.note ?? "" %>" />
-  </div>
+  <%# The stylesheet shows the reason only for Resolved, right after the status. Only reasons that need no more words are offered, so the bar never holds a text box. %>
+  <select name="reason" aria-label="Reason" class="bulk-reason">
+    <option value="">Reason</option>
+    <% for (const [value, label] of Object.entries(bulk.resolveReasons)) { %><option value="<%= value %>" <% if (bulk.values.reason === value) { %>selected<% } %>><%= label %></option><% } %>
+  </select>
   <select name="owner" aria-label="Assign to">
     <option value="">Assign to</option>
     <option value="me" <% if (bulk.values.owner === "me") { %>selected<% } %>>Me</option>
     <% for (const member of bulk.members) { %><option value="<%= member.id %>" <% if (bulk.values.owner === member.id) { %>selected<% } %>><%= member.name %></option><% } %>
-    <option value="nobody" <% if (bulk.values.owner === "nobody") { %>selected<% } %>>Nobody</option>
+    <option value="nobody" <% if (bulk.values.owner === "nobody") { %>selected<% } %>>Unassigned</option>
   </select>
   <button type="submit" class="compact">Apply</button>
   <%# Shown by the script, which unticks every row. %>
@@ -113,7 +110,6 @@
     <thead>
       <tr>
         <% sortHeaders.forEach((header, index) => { %>
-        <% if (index === 4) { %><th scope="col">Waiting on</th><% } %>
         <%# The plain name stands in for the link on a phone, where the header row is not drawn, so no keyboard stop hides there. %>
         <th scope="col" <% if (header.ariaSort) { %>aria-sort="<%= header.ariaSort %>"<% } %>><% if (bulk && index === 0) { %><input type="checkbox" class="bulk-tick" aria-label="Tick every ticket shown" hidden data-bulk-all /><% } %><a href="<%= header.href %>" class="sort-link" aria-label="<%= header.name %>"><%= header.label %><span class="sort-arrow" aria-hidden="true"><%= arrow(header) %></span></a><span class="sort-label"><%= header.label %></span></th>
         <% }) %>
@@ -125,10 +121,9 @@
         <%# The title is the row's one keyboard stop; the key stays a link for the mouse. %>
         <td><% if (bulk) { %><input type="checkbox" class="bulk-tick" name="keys" value="<%= ticket.key %>" aria-label="Tick <%= ticket.key %>" <% if (bulk.ticked.has(ticket.key)) { %>checked<% } %> /><% } %><a href="/tickets/<%= ticket.key %>" tabindex="-1"><%= ticket.key %></a></td>
         <td class="user-text title-cell" title="<%= ticket.title %>"><a href="/tickets/<%= ticket.key %>"><%= ticket.title %></a></td>
-        <%# One line: the status word, and a check mark when the customer confirmed the fix. How the team resolved a ticket is on its own page. %>
-        <td><%- include("status-badge", { status: ticket.status }) %><% if (ticket.resolution && ticket.resolution.by === "customer") { %> <span class="confirmed-mark" role="img" aria-label="Customer confirmed" title="Customer confirmed">✓</span><% } %></td>
+        <%# One line: the status word, a check mark when the customer confirmed the fix, and a quiet tag only when it is not simply the team's turn. How the team resolved a ticket is on its own page. %>
+        <td class="status-cell"><%- include("status-badge", { status: ticket.status }) %><% if (ticket.resolution && ticket.resolution.by === "customer") { %> <span class="confirmed-mark" role="img" aria-label="Customer confirmed" title="Customer confirmed">✓</span><% } %><% if (ticket.tag) { %> <span class="turn-tag"><%= ticket.tag %></span><% } %></td>
         <td><%= ticket.owner_name ?? "Unassigned" %></td>
-        <td><%= ticket.waiting %></td>
         <% const when = byUpdated ? ticket.updated_at : ticket.created_at; %>
         <td><time datetime="<%= when %>" data-relative title="<%= formatTime(when) %>"><%= timeAgo(when) %></time></td>
       </tr>

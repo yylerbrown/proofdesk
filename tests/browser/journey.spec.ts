@@ -235,9 +235,9 @@ test("the long path: a check, a change link and evidence, a No, then the custome
     await expect(saidNo.getByText(notFixedComment)).toBeVisible();
     await expect(saidNo).toContainText("It is back with Team Member");
     await team.goto("/tickets");
-    // Still owned by the same team member, and waiting on the team again.
+    // Still owned by the same team member, and the list says why it is back with the team.
     await expect(listRow(team, key)).toContainText("Team Member");
-    await expect(listRow(team, key)).not.toContainText("Customer");
+    await expect(listRow(team, key)).toContainText("Customer said no");
   });
 
   await test.step("the team member asks again and the customer answers Yes", async () => {

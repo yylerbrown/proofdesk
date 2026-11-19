@@ -178,8 +178,6 @@ describe("the list's column headers", () => {
         name: "Owner, sort A to Z",
         href: "/tickets?sort=owner&direction=asc",
       },
-      // Who a ticket waits on is worked out, not stored, so it does not sort.
-      { text: "Waiting on", sort: null, name: null, href: null },
       {
         text: "Filed",
         sort: null,
@@ -192,7 +190,7 @@ describe("the list's column headers", () => {
     const plain = html
       .querySelectorAll("table.tickets thead th")
       .map((th) => th.querySelector("span.sort-label")?.text ?? null);
-    expect(plain).toEqual(["Key", "Title", "Status", "Owner", null, "Filed"]);
+    expect(plain).toEqual(["Key", "Title", "Status", "Owner", "Filed"]);
     // The default list is open first, newest first, as before.
     const keys = html
       .querySelectorAll("table.tickets tbody tr td:first-child")
