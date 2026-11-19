@@ -254,6 +254,7 @@ const OWN_SCRIPTS = [
   '<script type="module" src="/assets/js/open-details.js"></script>',
   '<script type="module" src="/assets/js/send-label.js"></script>',
   '<script type="module" src="/assets/js/bulk.js"></script>',
+  '<script type="module" src="/assets/js/pictures.js"></script>',
 ];
 
 // The one image tag: the mark beside the name in the header.

@@ -1243,6 +1243,112 @@ small.similar-ticket {
 small.similar-ticket[hidden] {
   display: none;
 }
+/*
+ * "Add pictures": a quiet small control, never a button-shaped block. With scripts off the
+ * browser's own picker sits after the words. With scripts on (.enhanced) the picker is hidden
+ * but still takes focus, and the words are the control, ringed when it has the keyboard.
+ */
+label.add-pictures {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pd-space-2);
+  margin: 0;
+  color: var(--pd-muted);
+  font-size: var(--pd-text-sm);
+  font-weight: var(--pd-weight-regular);
+  cursor: pointer;
+}
+label.add-pictures input[type="file"] {
+  width: auto;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: var(--pd-text-sm);
+}
+label.add-pictures.enhanced {
+  position: relative;
+}
+label.add-pictures.enhanced input[type="file"] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  opacity: 0;
+}
+label.add-pictures.enhanced .add-pictures-words {
+  text-decoration: underline;
+  text-decoration-color: var(--pd-border-strong);
+  text-underline-offset: 3px;
+}
+label.add-pictures.enhanced:hover .add-pictures-words {
+  color: var(--pd-text);
+}
+label.add-pictures.enhanced:has(input:focus-visible) {
+  border-radius: var(--pd-radius);
+  outline: 2px solid var(--pd-focus);
+  outline-offset: 2px;
+}
+/* At the limit the words read "4 of 4 pictures" and choose nothing more. */
+label.add-pictures.full {
+  cursor: default;
+}
+label.add-pictures.full .add-pictures-words {
+  text-decoration: none;
+}
+/* On the new ticket form the control sits directly under the Description box. */
+.ticket-form label.add-pictures {
+  margin-bottom: var(--pd-space-5);
+}
+.ticket-form small.picture-refused {
+  display: block;
+  margin: calc(var(--pd-space-5) * -1) 0 var(--pd-space-5);
+  color: var(--pd-danger);
+  font-size: var(--pd-text-sm);
+}
+/* Chosen pictures, before sending: 56px squares, each with its remove button on its corner. */
+.picture-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pd-space-2);
+  margin: 0 0 var(--pd-space-3);
+}
+.picture-strip[hidden] {
+  display: none;
+}
+.picture-strip .picture-chosen {
+  position: relative;
+  width: 56px;
+  height: 56px;
+}
+.picture-strip img {
+  display: block;
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border: var(--pd-hairline);
+  border-radius: var(--pd-radius);
+}
+.picture-strip button.picture-remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  padding: 0;
+  border: var(--pd-hairline);
+  border-radius: 50%;
+  background: var(--pd-surface);
+  color: var(--pd-text);
+  font-size: var(--pd-text-sm);
+  line-height: 1;
+}
 /* A message under a box: red, 13px. */
 :where(input, select, textarea) + small {
   margin-top: 6px;
@@ -1731,6 +1837,32 @@ details.history td:first-child {
 }
 .ticket-description {
   margin-bottom: 0;
+}
+/*
+ * Pictures under the words they came with: 80px squares, 8px apart and 8px under the words, so
+ * four fit on one line at phone width. Each opens the full picture in a new tab.
+ */
+.ticket-page .pictures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pd-space-2);
+  margin-top: var(--pd-space-2);
+}
+.ticket-page .pictures a {
+  display: block;
+  line-height: 0;
+  border-radius: var(--pd-radius);
+}
+.ticket-page .pictures img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border: var(--pd-hairline);
+  border-radius: var(--pd-radius);
+}
+.ticket-page p.picture-hidden {
+  margin: var(--pd-space-2) 0 0;
+  color: var(--pd-muted);
 }
 /* Text boxes and lists on the ticket page type at the size of the words round them. */
 .ticket-page :is(textarea, select, input[type="text"], input[type="url"]) {

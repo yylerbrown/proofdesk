@@ -1,0 +1,7 @@
+<%# The quiet "Add pictures" control: an ordinary file input that offers only pictures and takes
+    several. With scripts off it is the browser's own picker, and the form sends what was chosen.
+    With scripts on, a small script shows the chosen pictures in the strip named by strip, each
+    with its remove button, and adds a picture pasted into or dropped on the box named by box.
+    line is the sentence for a refused post, shown under the control, or null. -%>
+<label class="add-pictures"><span class="add-pictures-words">Add pictures</span><input type="file" name="pictures" accept="image/png,image/jpeg,image/gif,image/webp" multiple data-pictures-limit="<%= limit %>" data-pictures-strip="<%= strip %>" data-pictures-box="<%= box %>" <% if (line) { %>aria-invalid="true" aria-describedby="pictures-error"<% } %> <%= locals.focus ? "autofocus" : "" %> /></label>
+<% if (line) { %><small id="pictures-error" class="picture-refused"><%= line %></small><% } %>

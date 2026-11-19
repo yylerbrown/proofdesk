@@ -5,7 +5,7 @@
   const fixCheckDescribedBy = errors.fix_check ? "fix_check-error fix_check-hint" : "fix_check-hint";
   // After a refused submit, focus goes to the first box with a message, in form order, so a
   // keyboard or screen reader user lands on what to fix.
-  const firstError = ["title", "description", "fix_check", "where_url"].find((name) => errors[name]);
+  const firstError = ["title", "description", "pictures", "fix_check", "where_url"].find((name) => errors[name]);
   const focusIf = (name) => (firstError === name ? "autofocus" : "");
 %>
 <div class="column ticket-form">
@@ -34,7 +34,8 @@
 <% if (locals.sample) { %>
 <p class="notice sample-note">These boxes hold a sample. File it as it is, or change it first.</p>
 <% } %>
-<form method="post" action="<%= action %>">
+<%# A new ticket may carry pictures, so its form is sent as multipart. The edit form takes none. %>
+<form method="post" action="<%= action %>"<% if (!editKey) { %> enctype="multipart/form-data"<% } %>>
   <% if (locals.formId) { %><input type="hidden" name="form" value="<%= formId %>" /><% } %>
   <%# The version of the ticket this form was filled from, so a save over a newer one is refused. %>
   <% if (locals.version) { %><input type="hidden" name="expected_version" value="<%= version %>" /><% } %>
@@ -67,6 +68,12 @@
     <small id="description-count" class="hint char-count" aria-live="polite" hidden></small>
   </label>
   <% if (errors.description) { %><small id="description-error"><%= errors.description.join(" ") %></small><% } %>
+
+  <%# Pictures go with the description: chosen ones show in the strip, then the quiet control. %>
+  <% if (!editKey) { %>
+  <div class="picture-strip" id="ticket-picture-strip" hidden></div>
+  <%- include("add-pictures", { limit: pictureLimits.perMessage, strip: "ticket-picture-strip", box: "description", line: locals.pictureLine, focus: firstError === "pictures" }) %>
+  <% } %>
 
   <label>
     <span id="fix_check-label">How will we know it's fixed? (optional)</span>
