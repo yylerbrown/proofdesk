@@ -42,12 +42,12 @@ describe("the real site's sign-in page", () => {
   });
 });
 
-describe("the demo's welcome", () => {
-  it("keeps its heading and has no GitHub button", async () => {
+describe("the page about the demo", () => {
+  it("is headed for what it is and has no GitHub button", async () => {
     const built = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
     seedDemo(createTicketService(built.db, built.config.ticketPrefix));
     const html = await signInPage(visitor(built.app).get("/sign-in"));
-    expect(html.querySelector("h1")?.text).toBe("Proofdesk");
+    expect(html.querySelector("h1")?.text).toBe("About this demo");
     expect(html.querySelector(".github-reads")).toBeNull();
   });
 });

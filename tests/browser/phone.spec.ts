@@ -53,10 +53,13 @@ test.afterAll(() => {
   if (databaseDir !== undefined) rmSync(databaseDir, { recursive: true, force: true });
 });
 
-/** Signs in as the demo's team member, who sees the filters, the invite and the side panel. */
+/**
+ * Signs in as the demo's team member, who sees the filters, the invite and the side panel: a
+ * first visit opens as the customer, and the welcome card's link switches to the team.
+ */
 async function signInAsTeam(page: Page) {
-  await page.goto("/sign-in");
-  await page.getByRole("button", { name: "View as Demo Team Member" }).click();
+  await page.goto("/tickets");
+  await page.getByRole("button", { name: "See the team's side" }).click();
 }
 
 /** The height of every visible element the selector finds, with its words to name it. */
@@ -231,7 +234,8 @@ test("on a phone each ticket row puts the key and status on one line over the ti
 
 test("on a phone the admin's People link is a 44-pixel tap target", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/sign-in");
+  await page.goto("/tickets");
+  await page.locator("details.switch-role > summary").click();
   await page.getByRole("button", { name: "Admin preview (read-only)" }).click();
   await page.goto("/tickets");
   await expectTapTargets(page, ".site-header li.people-link a");

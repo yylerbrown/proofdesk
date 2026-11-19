@@ -194,7 +194,6 @@ main > form,
 .status-rule,
 .agent-help,
 .initial-status,
-.try-steps,
 .real-site {
   color: var(--pd-muted);
   font-size: var(--pd-text-sm);
@@ -702,7 +701,7 @@ table button.danger:is(:hover, :active) {
   color: var(--pd-danger);
   text-decoration: underline;
 }
-/* Only the decisive buttons are large: "Yes, resolve ticket" and "Try the ticket workflow". */
+/* Only the decisive button is large: "Yes, resolve ticket". */
 button.large {
   min-height: 40px;
   padding: 9px 18px;
@@ -1890,9 +1889,6 @@ main > p:is([role="status"], [role="alert"])[tabindex="-1"]:focus {
 .welcome .source-link {
   font-size: var(--pd-text-sm);
 }
-.welcome .try-workflow {
-  margin-bottom: var(--pd-space-2);
-}
 .welcome hgroup > p:not(:first-child):last-child {
   color: var(--pd-muted);
   font-size: var(--pd-text-md);
@@ -2188,40 +2184,101 @@ p.ask-blocked {
 .switch-role ul button.link:is(:hover, :active) {
   background-color: var(--pd-subtle);
 }
+/*
+ * Each role in the menu has one line under it on what to try as it, so the menu is wide enough
+ * for those lines, and opens from its right edge so it stays on the screen. The current role is
+ * named, not offered.
+ */
+.site-header details.dropdown.switch-role > summary + ul {
+  right: 0;
+  left: auto;
+  width: 18rem;
+  max-width: calc(100vw - 32px);
+}
+.switch-role .role-current {
+  display: block;
+  padding: 6px 10px 0;
+  color: var(--pd-text);
+  font-size: var(--pd-text-sm);
+  font-weight: var(--pd-weight-medium);
+}
+.switch-role .role-try {
+  display: block;
+  padding: 0 10px 6px;
+  color: var(--pd-muted);
+  font-size: var(--pd-text-xs);
+  line-height: 1.4;
+  white-space: normal;
+}
 
-/* The demo's walk-through: the first and strongest choice on the welcome page. */
-/* The steps sit just under the button they describe. */
-.try-workflow button {
-  width: 100%;
-  margin-bottom: 0;
+/*
+ * The demo's welcome card, above a first-time visitor's ticket list: a calm bordered box with one
+ * sentence, one button and a quiet line of links. Hide sits at the end of that line.
+ */
+.demo-welcome {
+  max-width: var(--pd-measure);
+  margin: 0 0 var(--pd-space-5);
+  padding: var(--pd-space-4);
+  border: var(--pd-hairline);
+  border-radius: var(--pd-radius-lg);
+  background: var(--pd-surface);
 }
-.try-steps {
-  margin-bottom: var(--pd-space-5);
+.demo-welcome > p {
+  margin-bottom: var(--pd-space-3);
 }
-/* Under the steps, one quiet line to a ticket an AI assistant worked. It is small print and
-   reads as a link, whether it is a link or the button that switches to the team's view. */
-.try-steps:has(+ .recorded-run-entry) {
-  margin-bottom: var(--pd-space-2);
-}
-.welcome .recorded-run-entry {
+.demo-welcome-start [role="button"] {
   margin: 0;
+}
+.demo-welcome-more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--pd-space-1) var(--pd-space-4);
   font-size: var(--pd-text-sm);
 }
-.welcome .recorded-run-entry button.link,
-.welcome .recorded-run-entry button.link:is(:hover, :active) {
-  width: auto;
+.demo-welcome-more form {
+  margin: 0;
+}
+.demo-welcome-more button.link {
   min-height: 0;
   margin: 0;
   padding: 0;
-  border: 0;
-  color: var(--pd-text);
   font-size: inherit;
-  font-weight: inherit;
   line-height: inherit;
-  text-align: left;
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 0.22em;
+}
+.demo-welcome-more .demo-welcome-hide {
+  margin-inline-start: auto;
+}
+.demo-welcome-hide button.link {
+  color: var(--pd-muted);
+}
+/* On a phone each link keeps a 44-pixel tap area without making the line taller. */
+@media (max-width: 639px) {
+  .demo-welcome-more button.link {
+    display: inline-block;
+    margin-block: -12px;
+    padding-block: 12px;
+  }
+  .demo-welcome-more {
+    row-gap: 24px;
+  }
+}
+
+/* The demo's About page: one button back in after Sign out, then short muted paragraphs. */
+.start-again {
+  margin-bottom: var(--pd-space-5);
+}
+.about-demo > p {
+  font-size: var(--pd-text-sm);
+}
+
+/* On the demo, every page ends with one quiet link to the About page. */
+.site-footer {
+  padding-block: var(--pd-space-6) var(--pd-space-5);
+  color: var(--pd-muted);
+}
+.site-footer a {
+  color: inherit;
 }
 /* On the demo, the next role to view a ticket as, just under its title. */
 .demo-next {

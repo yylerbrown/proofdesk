@@ -51,17 +51,19 @@ describe("the welcome for a signed-out visitor", () => {
     expect(html.querySelector("hgroup p")?.text).toContain("follow it while the team works on it");
   });
 
-  it("offers each demo person with one thing to try", async () => {
+  it("offers each demo person with one thing to try, in the role menu it lands under", async () => {
     const { app } = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
-    const html = await page(visitor(app), "/sign-in");
-    const people = html.querySelectorAll(".people li");
-    expect(people.map((li) => li.querySelector("button")?.text)).toEqual([
-      "View as Demo Customer",
+    const html = await page(visitor(app), "/tickets");
+    const people = html.querySelectorAll("header .switch-role ul li");
+    expect(people.map((li) => li.querySelector("button, .role-current")?.text)).toEqual([
+      "Demo Customer (you)",
       "View as Demo Team Member",
       "Admin preview (read-only)",
     ]);
-    for (const li of people) expect(li.querySelector(".try")?.text.length).toBeGreaterThan(20);
-    expect(people[2]?.querySelector(".try")?.text).toContain("changes nothing");
+    for (const li of people) {
+      expect(li.querySelector(".role-try")?.text.length).toBeGreaterThan(20);
+    }
+    expect(people[2]?.querySelector(".role-try")?.text).toContain("changes nothing");
   });
 });
 

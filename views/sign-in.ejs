@@ -1,23 +1,76 @@
 <%- include("header") %>
-<%
-  // One thing to try as each kind of person, shown under their name in the same row.
-  const tries = {
-    customer: "File a ticket, then follow it until the team asks whether it is fixed.",
-    team: "Take a ticket, write an internal note, and ask the customer to check the fix.",
-    admin: demo
-      ? "See every ticket and its full history. The demo admin changes nothing."
-      : "See every ticket, restore archived ones, and delete one permanently.",
-  };
-%>
 <div class="welcome">
+<% if (demo) { %>
+<%# On the demo this is the page about it: a visitor starts in the product, and comes here from any footer, after Sign out, or from a link to a page that needs a role. %>
 <hgroup>
-  <%# The real site's sign-in says what the page is for. The demo and a signed-in visitor get a welcome. %>
+  <h1>About this demo</h1>
+  <p>Proofdesk is a support desk where the customer says how they will know a fix worked.</p>
+</hgroup>
+
+<% if (viewer) { %>
+<p class="signed-in">You are trying it as <strong><%= viewer.name %></strong>. <a href="/tickets">Back to the tickets</a>, or use Switch role at the top.</p>
+<% } else if (nextTicket) { %>
+<%# A link to one ticket: whose view opens it is the visitor's choice, since a customer sees only their own. %>
+<p class="next-ticket" id="next-ticket">Pick a role to open <strong><%= nextTicket %></strong>.</p>
+<ul class="people">
+  <% for (const person of people) { %>
+  <li>
+    <form method="post" action="/sign-in/dev">
+      <input type="hidden" name="id" value="<%= person.id %>" />
+      <input type="hidden" name="next" value="<%= next %>" />
+      <button type="submit" class="secondary" aria-describedby="next-ticket try-<%= person.id %>"><%= person.readOnly ? "Admin preview (read-only)" : `View as ${person.name}` %></button>
+    </form>
+    <small class="try" id="try-<%= person.id %>"><%- include("role-try", { person }) %></small>
+  </li>
+  <% } %>
+</ul>
+<% } else if (locals.walkthrough) { %>
+<%# After Sign out, or a link to a page that needs a role: one button back in, as the customer. %>
+<form method="post" action="/sign-in/dev" class="start-again">
+  <input type="hidden" name="id" value="<%= walkthrough.id %>" />
+  <input type="hidden" name="next" value="<%= next %>" />
+  <button type="submit"><%= next === "/tickets" ? "Start again" : "Continue as the demo customer" %></button>
+</form>
+<% } %>
+
+<section class="about-demo">
+  <p>The tickets are sample data, shared with everyone who visits. Do not type anything private here. The demo resets itself when it has been quiet for a while.</p>
+  <% if (locals.realSiteUrl) { %>
+  <p class="real-site">On <a href="<%= realSiteUrl %>">the real site</a>, people sign in with GitHub. Here you switch between three made-up people with Switch role at the top.<% if (locals.sourceUrl) { %> <a href="<%= sourceUrl %>#sign-in-and-roles">How sign-in and roles work</a><% } %></p>
+  <% } else { %>
+  <p class="roles-note">Here you switch between three made-up people with Switch role at the top.</p>
+  <% } %>
+  <% if (locals.sourceUrl) { %>
+  <p class="source-link"><a href="<%= sourceUrl %>#readme">Source and setup</a></p>
+  <% } %>
+  <%# The assistant setup is extra, so it starts folded to one quiet line. Links to /sign-in#connect
+      open it without a script: a browser opens a closed details element when the address's
+      #part names something inside it. %>
+  <details class="connect">
+    <summary>Connect your own AI assistant</summary>
+    <div id="connect">
+    <% if (locals.demoAgents) { %>
+    <p>Get a key for your own assistant, for example Claude Code, to work on the sample tickets: read a ticket, check it, attach evidence. It lasts a day at most, since the demo resets itself when it has been quiet for a while, and sees only the sample ticket made for assistants, which is handed to it, and what it writes itself. Proofdesk makes no AI calls of its own.</p>
+    <form method="post" action="/demo/connection">
+      <button type="submit" class="secondary">Get a demo connection</button>
+    </form>
+    <p><small>A key is shown only once, on the page that makes it. Get a new one here at any time.</small></p>
+    <% } else { %>
+    <p class="notice">Assistant connections are off on this demo until its operator resets it.</p>
+    <% } %>
+    <p class="assistant-run-link"><a href="/assistant-run">See an assistant's work</a>: one real run on a sample ticket, with its transcript.</p>
+    </div>
+  </details>
+</section>
+<% } else { %>
+<hgroup>
+  <%# The real site's sign-in says what the page is for. A signed-in visitor gets a welcome. %>
   <h1><%= github && !viewer ? "Sign in to Proofdesk" : "Proofdesk" %></h1>
   <p>Tell us what went wrong, follow it while the team works on it, and say when it is fixed.</p>
 </hgroup>
 
 <% if (viewer) { %>
-<p class="signed-in">You are signed in as <strong><%= viewer.name %></strong>. <a href="/tickets">Go to the tickets</a>, or <%= viewer.demo ? "use Switch role at the top" : "sign out at the top to switch" %>.</p>
+<p class="signed-in">You are signed in as <strong><%= viewer.name %></strong>. <a href="/tickets">Go to the tickets</a>, or sign out at the top to switch.</p>
 <% } %>
 
 <%# Fixed text from the server. A failed sign-in is an alert; signed out is a status. %>
@@ -48,45 +101,10 @@
 
 <% if (people.length > 0) { %>
 <section aria-labelledby="entrance">
-  <% if (demo) { %>
-  <h2 id="entrance">Try the demo</h2>
-  <p>The tickets are sample data, shared with everyone who visits. Do not type anything private here.</p>
-  <% if (locals.realSiteUrl) { %>
-  <p class="real-site"><small>On <a href="<%= realSiteUrl %>">the real site</a>, people sign in with GitHub.<% if (locals.sourceUrl) { %> <a href="<%= sourceUrl %>#sign-in-and-roles">How sign-in and roles work</a><% } %></small></p>
-  <% } %>
-  <% if (nextTicket) { %>
-  <p class="next-ticket" id="next-ticket">Pick a role below to open <strong><%= nextTicket %></strong>.<% if (locals.walkthrough) { %> Try the ticket workflow files a new ticket instead.<% } %></p>
-  <% } %>
-  <% if (locals.walkthrough) { %>
-  <%# The first and strongest choice: one ticket, from the customer's words to their Yes. %>
-  <form method="post" action="/sign-in/dev" class="try-workflow">
-    <input type="hidden" name="id" value="<%= walkthrough.id %>" />
-    <input type="hidden" name="next" value="/tickets/new?try=1" />
-    <button type="submit" class="large" aria-describedby="try-steps">Try the ticket workflow</button>
-  </form>
-  <p class="try-steps" id="try-steps"><small>File a ticket as the customer, work on it as the team, then say whether it is fixed as the customer. The same ticket stays open as you switch. About two minutes.</small></p>
-  <%# One quiet line to the result of a real assistant run, for a visitor asking where the AI is.
-      The ticket is the team's, so anyone else switches to the team member in the same press. %>
-  <% if (locals.recordedRun) { %>
-  <% const recordedLabel = "Or see a ticket an AI assistant worked (a recorded run)"; %>
-  <% if (recordedRun.switchTo) { %>
-  <form method="post" action="/sign-in/dev" class="recorded-run-entry">
-    <input type="hidden" name="id" value="<%= recordedRun.switchTo.id %>" />
-    <input type="hidden" name="next" value="<%= recordedRun.href %>" />
-    <button type="submit" class="link"><%= recordedLabel %></button>
-  </form>
-  <% } else { %>
-  <p class="recorded-run-entry"><a href="<%= recordedRun.href %>"><%= recordedLabel %></a></p>
-  <% } %>
-  <% } %>
-  <h3>Or look around as</h3>
-  <% } %>
-  <% } else { %>
   <h2 id="entrance">Development entrance</h2>
   <p>These people are made up. Pick one to act as. This is only offered when the server runs with DEV_SIGN_IN=on, which it refuses to do in production.</p>
   <% if (nextTicket) { %>
   <p class="next-ticket" id="next-ticket">Pick a person below to open <strong><%= nextTicket %></strong>.</p>
-  <% } %>
   <% } %>
   <ul class="people">
     <% for (const person of people) { %>
@@ -97,37 +115,13 @@
         <%# The button's description is its line below, and the ticket it opens when there is one. %>
         <button type="submit" class="secondary" aria-describedby="<%= nextTicket ? "next-ticket " : "" %>try-<%= person.id %>"><%= person.readOnly ? "Admin preview (read-only)" : `View as ${person.name}` %></button>
       </form>
-      <small class="try" id="try-<%= person.id %>"><%= tries[person.role] %></small>
+      <small class="try" id="try-<%= person.id %>"><%- include("role-try", { person }) %></small>
     </li>
     <% } %>
   </ul>
-  <%# Under the roles, so the workflow button and all three roles fit on the first screen. %>
-  <% if (locals.walkthrough && locals.sourceUrl) { %>
-  <p class="source-link"><a href="<%= sourceUrl %>#readme">Source and setup</a></p>
-  <% } %>
-  <% if (demo) { %>
-  <%# The assistant setup is extra, so it starts folded to one quiet line. Links to /sign-in#connect
-      open it without a script: a browser opens a closed details element when the address's
-      #part names something inside it. %>
-  <details class="connect">
-    <summary>Connect your own AI assistant</summary>
-    <div id="connect">
-    <% if (locals.demoAgents) { %>
-    <p>Get a key for your own assistant, for example Claude Code, to work on the sample tickets: read a ticket, check it, attach evidence. It lasts a day at most, since the demo resets itself when it has been quiet for a while, and sees only the sample ticket made for assistants, which is handed to it, and what it writes itself. Proofdesk makes no AI calls of its own.</p>
-    <form method="post" action="/demo/connection">
-      <button type="submit" class="secondary">Get a demo connection</button>
-    </form>
-    <p><small>A key is shown only once, on the page that makes it. Get a new one here at any time.</small></p>
-    <% } else { %>
-    <p class="notice">Assistant connections are off on this demo until its operator resets it.</p>
-    <% } %>
-    <p class="assistant-run-link"><a href="/assistant-run">See an assistant's work</a>: one real run on a sample ticket, with its transcript.</p>
-    </div>
-  </details>
-  <% } else { %>
   <p class="assistant-run-link"><a href="/assistant-run">See an assistant's work</a>: one real run on a sample ticket, with its transcript.</p>
-  <% } %>
 </section>
 <% } %>
+<% } %>
 </div>
-<%- include("footer") %>
+<%- include("footer", { aboutDemo: demo }) %>

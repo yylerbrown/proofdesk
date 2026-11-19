@@ -68,6 +68,22 @@ export function entrancePeople(config: Config): Actor[] {
 
 export const DEV_COOKIE = "dev_actor";
 
+/** The demo's customer, as whom a first-time visitor to the demo starts. */
+const DEMO_CUSTOMER: Actor = DEMO_ACTORS[0]!;
+
+/**
+ * True when a visitor with no sign-in opens the demo's ticket list, its home page: they start
+ * there as the demo customer, with no page of choices first. Only on the demo, whose people are
+ * made up and whose sign-in is a plain cookie, so nothing is made for them. Only for opening a
+ * page, never for a request that changes something. Every other page still sends a signed-out
+ * visitor to the page about the demo, which keeps the address they asked for.
+ */
+export function landsInDemo(config: Config, method: string, path: string): boolean {
+  if (!config.demo || config.devSignIn) return false;
+  if (method !== "GET" && method !== "HEAD") return false;
+  return path === "/" || path === "/tickets";
+}
+
 // Tell TypeScript that every request carries an actor (or null when nobody is signed in)
 // once the middleware below has run.
 declare global {
@@ -134,6 +150,16 @@ export function actorMiddleware(
     if (req.actor === null) {
       const id: unknown = req.cookies[DEV_COOKIE];
       req.actor = entrancePeople(config).find((actor) => actor.id === id) ?? null;
+    }
+    // The whole path, with the router's own part, so the API's "/api/tickets" never counts.
+    if (req.actor === null && landsInDemo(config, req.method, req.baseUrl + req.path)) {
+      req.actor = DEMO_CUSTOMER;
+      // The same cookie, with the same settings, as the demo entrance in routes/sign-in.ts.
+      res.cookie(DEV_COOKIE, DEMO_CUSTOMER.id, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: config.nodeEnv === "production",
+      });
     }
     res.locals.viewer = req.actor;
     // The role as the header shows it, such as "Team member".
