@@ -40,8 +40,9 @@
 
 <%# Another demo customer filed the recorded run, so only the team opens it. %>
 <% if (locals.recordedRun && viewerRole !== "customer") { %>
-<%# The title and the description say it is a recorded run and why its words name another key, so this line is only the way to how it was run. %>
-<p class="recorded-run"><a href="/assistant-run#how-it-was-run">How this was run</a></p>
+<%# The title and the description are the customer's problem alone, so this one line says the
+    ticket shows a recorded run. The run page says why the assistant's words name another key. %>
+<p class="recorded-run">A recorded run of a real AI assistant. <a href="/assistant-run#how-it-was-run">How this was run</a></p>
 <% } %>
 <%# On the demo: the next role to view this same ticket as, or where resolved tickets are listed. %>
 <% if (locals.demoNext) { %>
@@ -403,7 +404,9 @@
   <% } else { %>
   <input type="hidden" name="kind" value="reply" />
   <% } %>
-  <label for="entry-body" class="visually-hidden">Your message</label>
+  <%# The tabs say what the team's box is for, so its label is for screen readers only. The
+      customer has no tabs, so they see the label. %>
+  <label for="entry-body" <% if (allowed.note) { %>class="visually-hidden"<% } %>>Your message</label>
   <textarea id="entry-body" name="body" rows="3" required <% if (entry.error) { %>aria-invalid="true" aria-describedby="body-error" autofocus<% } %>><%= entry.body %></textarea>
   <% if (entry.error) { %><small id="body-error"><%= entry.error %></small><% } %>
   <%# With a choice of who sees it, a small script makes the button name that audience. %>
