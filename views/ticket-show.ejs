@@ -255,7 +255,8 @@
   <div class="quick-answers status-row">
     <% for (const choice of statusRow.choices) { %>
     <% if (choice.kind === "current") { %>
-    <span aria-current="true"><%- include("status-badge", { status: choice.status }) %></span>
+    <%# Marked the way the list marks its selected filter, so "this is the current one" looks the same in both places. %>
+    <span aria-current="true" class="status-current"><%- include("status-badge", { status: choice.status }) %></span>
     <% } else if (choice.kind === "press") { %>
     <form method="post" action="<%= choice.action %>">
       <%- versionField %>
@@ -274,6 +275,7 @@
       <summary role="button" class="secondary outline"><%= statusLabels[choice.status] %></summary>
       <form method="post" action="/tickets/<%= ticket.key %>/resolve">
         <%- versionField %>
+        <p class="resolve-lead"><small>Resolves the ticket now, with the reason you pick. The customer sees it and can reopen it.</small></p>
         <label>
           Reason
           <select name="reason" required <%= focusIf("resolve", "reason") %>>
@@ -296,7 +298,6 @@
           <textarea name="note" rows="2" maxlength="500" <%= focusIf("resolve", "note") %>><%= resolving.note ?? "" %></textarea>
         </label>
         <% if (problem?.form === "resolve") { %><p><small id="resolve-error" role="alert"><%= problem.message %></small></p><% } %>
-        <p><small>The customer sees your reason and can reopen it.</small></p>
         <button type="submit" class="secondary compact" <% if (problem?.form === "resolve") { %>aria-describedby="resolve-error"<% } %>>Resolve</button>
       </form>
     </details>
