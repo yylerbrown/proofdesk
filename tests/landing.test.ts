@@ -75,6 +75,20 @@ describe("the landing script", () => {
     expect(message.attributes.tabindex).toBeUndefined();
   });
 
+  it("still focuses the message line when the address names that line", () => {
+    const message = fakeElement();
+    const named = landing({ hash: "#sent", message: message.element, messageId: "sent" });
+    expect(focusLanding(named)).toBe(message.element);
+    expect(message.focusCalls).toEqual([{ preventScroll: true }]);
+  });
+
+  it("leaves focus alone when the address names some other part of the page", () => {
+    const message = fakeElement();
+    const other = landing({ hash: "#history", message: message.element, messageId: "sent" });
+    expect(focusLanding(other)).toBeNull();
+    expect(focusLanding(landing({ hash: "#sent", message: message.element }))).toBeNull();
+  });
+
   it("leaves focus alone when the page has already focused a box to fix", () => {
     const message = fakeElement();
     expect(focusLanding(landing({ focusTaken: true, message: message.element }))).toBeNull();

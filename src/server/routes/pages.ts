@@ -25,7 +25,13 @@ import {
 import { LIST_ORDER_LABELS, noMatchWords, readListPageQuery } from "../pages/list-query.js";
 import { sameText, type ListOrder } from "../tickets/schemas.js";
 import { statusControl } from "../pages/status-control.js";
-import { rememberSaved, takeProblem, takeSaved, type SavedKey } from "../pages/saved.js";
+import {
+  rememberSaved,
+  SAVED_MESSAGES,
+  takeProblem,
+  takeSaved,
+  type SavedKey,
+} from "../pages/saved.js";
 import { RESOLVE_REASON_LABELS, TICKET_STATUSES } from "../tickets/schemas.js";
 import { LIST_PAGE_SIZE, type Ticket, type TicketService } from "../tickets/service.js";
 
@@ -583,7 +589,22 @@ export function pagesRouter(service: TicketService): Router {
   });
 
   router.get("/tickets/:key", (req, res) => {
-    showTicket(req, res, 200, emptyEntry);
+    // Just after a message was sent, the line saying so sits by the message box, where the
+    // browser lands, and the box keeps the choice of who sees it for this page load, so a second
+    // note is not sent to the customer by accident.
+    const sentKind =
+      res.locals.saved === SAVED_MESSAGES.note
+        ? "note"
+        : res.locals.saved === SAVED_MESSAGES.reply
+          ? "reply"
+          : null;
+    if (sentKind === null) {
+      showTicket(req, res, 200, emptyEntry);
+      return;
+    }
+    res.locals.sent = res.locals.saved;
+    res.locals.saved = null;
+    showTicket(req, res, 200, { kind: sentKind, body: "" });
   });
 
   // Adds a reply or a note from the form under the conversation.
@@ -600,7 +621,8 @@ export function pagesRouter(service: TicketService): Router {
         actor,
       );
       rememberSaved(res, added.kind === "note" ? "note" : "reply");
-      res.redirect(303, `/tickets/${ticket.key}#conversation`);
+      // The line that says it was sent is drawn by the message box, with this id.
+      res.redirect(303, `/tickets/${ticket.key}#sent`);
     } catch (err) {
       if (!(err instanceof ValidationError)) throw err;
       // Show the ticket again with what was typed and the message under the box.

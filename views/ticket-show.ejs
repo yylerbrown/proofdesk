@@ -555,6 +555,11 @@
 </article>
 <% } %>
 
+<%# Just after a message was sent: the line saying so, under the message it sent, where the
+    browser lands. The landing script gives it focus. %>
+<% if (locals.sent) { %>
+<p role="status" class="saved" id="sent"><%= sent %></p>
+<% } %>
 <% if (allowed.reply) { %>
 <form method="post" action="/tickets/<%= ticket.key %>/entries">
   <% if (allowed.note) { %>
