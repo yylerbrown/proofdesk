@@ -334,6 +334,21 @@ const TABLE: Record<string, Row> = {
     handedAgent: whileHanded(NO),
     ...outsiders,
   },
+  // Resolving from the ticket list, with the ticket ticked: only people on the team may ask at
+  // all, and then the ticket gets exactly the answer resolving it on its own page gets. The
+  // cell is that ticket's answer inside the list's reply.
+  bulk_change: {
+    filer: all(NO),
+    otherCustomer: all(NO),
+    owner: [OK, OK, OK, OK, NOT_NOW, NOT_NOW, NOT_NOW],
+    teamNotOwner: [OK, NO, NO, NO, REFUSED, REFUSED, REFUSED],
+    demoTeam: [OK, NO, NO, NO, REFUSED, REFUSED, REFUSED],
+    admin: [OK, OK, OK, OK, NOT_NOW, NOT_NOW, NOT_NOW],
+    preview: all(NO),
+    handedAgent: all(NO),
+    otherAgent: all(NO),
+    nobody: all(SIGN_IN),
+  },
   // The owner or an admin hands an open ticket to another team member.
   hand_off: {
     filer: [NO, NO, NO, NO, NO, NO, HIDDEN],
@@ -666,6 +681,11 @@ function callFor(action: string, template: Template, demo: boolean): Call {
     take_and_start: post("/take-and-start"),
     reopen: post("/reopen", { reason: "It still jams." }),
     resolve_with_reason: post("/resolve", RESOLVE),
+    bulk_change: {
+      method: "post",
+      path: "/api/tickets/bulk",
+      body: { keys: [TICKET], status: "resolved", ...RESOLVE },
+    },
     hand_off: post("/hand-off", { to: handTo, expected_owner: template.owner ?? "" }),
     give_to_agent: post("/agent", { connection_id: OTHER_CONNECTION }),
     end_agent_work: post("/agent/end"),
@@ -716,6 +736,12 @@ function outcome(status: number, body: unknown, action: string): Cell | number {
     return keys.includes(TICKET) ? SEES : EMPTY;
   }
   if (status < 200 || status >= 300) return status;
+  // The list's reply names each ticket it left as it was, with the answer it got there.
+  if (action === "bulk_change") {
+    const kept = (body as { not_changed: { key: string; status: number }[] }).not_changed;
+    const answer = kept.find((ticket) => ticket.key === TICKET)?.status ?? 200;
+    return answer < 300 ? OK : answer;
+  }
   if (action === "list_entries") {
     const kinds = (body as { kind: string }[]).map((entry) => entry.kind);
     return kinds.includes("note") ? NOTES : NO_NOTES;

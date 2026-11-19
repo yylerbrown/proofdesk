@@ -2622,3 +2622,106 @@ pre.paste.command {
     margin-left: 0;
   }
 }
+
+/*
+ * Changing ticked tickets from the list: a tick box before each key, and one quiet bar above the
+ * table with the count and two changes, each with its own Apply. Its boxes are a size smaller
+ * than a form's. With scripts on, the bar shows only while something is ticked.
+ */
+/* The form holds the whole list, so it is as wide as the list, not a form page's column. */
+main > form.bulk {
+  max-width: none;
+}
+.bulk-bar {
+  --pico-form-element-spacing-vertical: 0.375rem;
+  --pico-form-element-spacing-horizontal: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--pd-space-3) var(--pd-space-5);
+  margin-bottom: var(--pd-space-3);
+  padding: var(--pd-space-3) var(--pd-space-4);
+  border: var(--pd-hairline);
+  border-radius: var(--pd-radius-lg);
+  background: var(--pd-surface);
+}
+.bulk-bar[hidden] {
+  display: none;
+}
+.bulk-count {
+  align-self: center;
+  margin: 0;
+  color: var(--pd-text);
+  font-size: var(--pd-text-sm);
+  font-weight: var(--pd-weight-medium);
+}
+.bulk-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--pd-space-2);
+}
+.bulk-control label {
+  margin: 0;
+  color: var(--pd-muted);
+  font-size: var(--pd-text-xs);
+}
+.bulk-control label > :where(input, select) {
+  width: auto;
+  max-width: 100%;
+  margin-top: 2px;
+  font-size: var(--pd-text-sm);
+}
+.bulk-control button {
+  margin: 0;
+}
+.bulk-error {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--pd-danger);
+}
+/* The reason shows only for Resolved, "Duplicate of" only for a duplicate and the note only for
+   Other, as on the ticket page. A browser that cannot read :has shows them all, which still works. */
+.bulk:not(:has(select[name="status"] option[value="resolved"]:checked)) .bulk-reason,
+.bulk:not(:has(select[name="status"] option[value="resolved"]:checked)) .bulk-duplicate,
+.bulk:not(:has(select[name="status"] option[value="resolved"]:checked)) .bulk-note,
+.bulk:not(:has(select[name="reason"] option[value="duplicate"]:checked)) .bulk-duplicate,
+.bulk:not(:has(select[name="reason"] option[value="other"]:checked)) .bulk-note {
+  display: none;
+}
+/* The tick box sits above the row's link to its ticket, so a press ticks it instead of opening it. */
+table.tickets .bulk-tick {
+  position: relative;
+  z-index: 1;
+  margin: 0 var(--pd-space-3) 0 0;
+  vertical-align: middle;
+}
+table.tickets .bulk-tick[hidden] {
+  display: none;
+}
+@media (min-width: 1100px) {
+  form.bulk table.tickets th:nth-child(1) {
+    width: 8.5rem;
+  }
+}
+/* On a phone the header row is not drawn, so "Tick all shown" sits above the list instead. */
+.bulk-all-phone {
+  display: none;
+}
+@media (max-width: 639px) {
+  /* The header row is not drawn here, so its box leaves the tab order too. */
+  table.tickets thead .bulk-tick {
+    display: none;
+  }
+  .bulk-all-phone:not([hidden]) {
+    display: block;
+    margin-bottom: var(--pd-space-3);
+    font-size: var(--pd-text-sm);
+  }
+  .bulk-all-phone label {
+    margin: 0;
+  }
+  .bulk-bar {
+    padding: var(--pd-space-3);
+  }
+}

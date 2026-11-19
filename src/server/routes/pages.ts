@@ -26,7 +26,8 @@ import {
 } from "../pages/form-id.js";
 import { fingerprint } from "../pages/loaded-text.js";
 import { noMatchWords, readListPageQuery, sortHeaders } from "../pages/list-query.js";
-import { sameText, type ListSort } from "../tickets/schemas.js";
+import { sameText, type ListSort, type TicketListFilter } from "../tickets/schemas.js";
+import { rememberBulkOutcome, takeBulkOutcome } from "../pages/bulk-outcome.js";
 import { statusControl } from "../pages/status-control.js";
 import { DESCRIPTION_LIMIT, withHowFarOver } from "../pages/text-limit.js";
 import {
@@ -134,6 +135,13 @@ function demoNext(ticket: Ticket, actor: Actor) {
 
 /** The ticket list's filters and sort, as they stand in its address. */
 type ListFilters = { status: string; owner?: "me" | "none"; q?: string; sort: ListSort };
+
+/** The list's filters as read from its address, with the page. */
+type ListView = ListFilters & { status: TicketListFilter; page: number };
+
+/** What the list's bar for changing ticked tickets shows: after a refusal, what was chosen. */
+type BulkForm = { ticked: Set<string>; values: Record<string, string>; message: string | null };
+const emptyBulkForm: BulkForm = { ticked: new Set(), values: {}, message: null };
 
 /** The address of the ticket list with these filters, leaving out the ones at their default. */
 function listHref(filters: ListFilters, page?: number): string {
@@ -534,16 +542,23 @@ export function pagesRouter(service: TicketService): Router {
     res.redirect("/tickets");
   });
 
+  /**
+   * The list's filters, sort and page, as its address names them, for this viewer. A filter this
+   * viewer cannot use, such as Archived for a customer after a role switch or from a bookmark,
+   * shows their whole list instead of a refusal. A customer's list is their own tickets, so it
+   * has no owner filter to keep.
+   */
+  function listView(req: Request, actor: Actor): ListView {
+    const query = readListPageQuery(req.query);
+    const status =
+      query.status === "archived" && !can(actor, "list_archived") ? "all" : query.status;
+    const owner = actor.role === "customer" ? undefined : query.owner;
+    return { status, owner, q: query.q, sort: query.sort, page: query.page };
+  }
+
   router.get("/tickets", (req, res) => {
     const actor = signedIn(req);
-    const query = readListPageQuery(req.query);
-    // A filter this viewer cannot use, such as Archived for a customer after a role switch or
-    // from a bookmark, shows their whole list instead of a refusal.
-    const current =
-      query.status === "archived" && !can(actor, "list_archived") ? "all" : query.status;
-    // A customer's list is their own tickets, so it has no owner filter to keep.
-    const owner = actor.role === "customer" ? undefined : query.owner;
-    const q = query.q;
+    const { q } = listView(req, actor);
     // A ticket key typed into the search, such as "sup-3", opens that ticket when this viewer
     // may see it. Any other text, another customer's key included, is an ordinary search.
     const typedKey = q === undefined ? null : service.visibleKey(q, actor);
@@ -551,8 +566,59 @@ export function pagesRouter(service: TicketService): Router {
       res.redirect(`/tickets/${typedKey}`);
       return;
     }
-    const pageNumber = query.page;
-    const sort = query.sort;
+    // Just after a change to many tickets, the list says what it did.
+    const names = (id: string) => service.peopleNames([id]).get(id);
+    const outcome = takeBulkOutcome(req, res, names);
+    if (outcome !== null) res.locals.saved = outcome;
+    showList(req, res, 200, emptyBulkForm);
+  });
+
+  /**
+   * Changes many tickets at once from the list: the ticked ones, to one status or one owner.
+   * The form's address carries the list's own, so the browser goes back to the same view, which
+   * says what changed. A refused form shows the list again with the boxes still ticked.
+   */
+  router.post("/tickets/bulk", (req, res) => {
+    const actor = signedIn(req);
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    // The bar has one Apply for the status and one for the owner; only the pressed one counts.
+    // The page shows the note box only for Other, so a note left there for another reason is
+    // not sent, as on the ticket page.
+    const input = {
+      keys: body.keys,
+      ...(body.apply === "owner"
+        ? { owner: body.owner }
+        : {
+            status: body.status,
+            reason: body.reason,
+            duplicate_of: body.duplicate_of,
+            ...(body.reason === "other" ? { note: body.note } : {}),
+          }),
+    };
+    try {
+      const outcome = service.changeTickets(input, actor);
+      rememberBulkOutcome(res, outcome);
+      const view = listView(req, actor);
+      res.redirect(303, listHref(view, view.page > 1 ? view.page : undefined));
+    } catch (err) {
+      if (!(err instanceof ValidationError)) throw err;
+      const ticked = [body.keys].flat().filter((key): key is string => typeof key === "string");
+      const values: Record<string, string> = {};
+      for (const name of ["status", "reason", "note", "duplicate_of", "owner"]) {
+        if (typeof body[name] === "string") values[name] = body[name];
+      }
+      const message = Object.values(err.fieldErrors).flat()[0] ?? err.message;
+      showList(req, res, 400, { ticked: new Set(ticked), values, message });
+    }
+  });
+
+  /** Renders the ticket list, with the bar for changing ticked tickets when the viewer may. */
+  function showList(req: Request, res: Response, status: number, bulkForm: BulkForm): void {
+    const actor = signedIn(req);
+    const view = listView(req, actor);
+    const current = view.status;
+    const { owner, q, sort } = view;
+    const pageNumber = view.page;
     const tickets = service.listTickets(current, actor, pageNumber, { owner, q }, sort);
     // Beside each status filter: how many tickets it holds with the same owner filter and search.
     const counts = service.countTickets(actor, { owner, q });
@@ -573,8 +639,21 @@ export function pagesRouter(service: TicketService): Router {
           : req.cookies?.[INVITE_COOKIE] === "hidden"
             ? null
             : { connected: 0, connectUrl: connectUrl(actor) };
-    res.render("ticket-list", {
+    // The team ticks tickets and changes them together. The read-only preview, customers and
+    // assistants do not.
+    // Its form posts to the list's own address with "/bulk" added, so it comes back to this view.
+    const thisView = listHref(filters, pageNumber > 1 ? pageNumber : undefined);
+    const bulk = can(actor, "bulk_change")
+      ? {
+          ...bulkForm,
+          action: thisView.replace("/tickets", "/tickets/bulk"),
+          members: service.teamMembers().filter((member) => member.id !== actor.id),
+          resolveReasons: RESOLVE_REASON_LABELS,
+        }
+      : null;
+    res.status(status).render("ticket-list", {
       ...helpers,
+      bulk,
       title:
         current !== "all"
           ? `${FILTER_TITLES[current]} tickets`
@@ -614,7 +693,7 @@ export function pagesRouter(service: TicketService): Router {
         service.recordedRunKey(),
       ),
     });
-  });
+  }
 
   // "Hide" on the demo's welcome card hides it in this browser for good.
   router.post("/welcome/hide", (req, res) => {

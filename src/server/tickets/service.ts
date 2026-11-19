@@ -2,6 +2,7 @@ import type { Db } from "../db.js";
 import { createDemoRecord } from "../demo.js";
 import { allowedActions } from "./allowed-actions.js";
 import { createAssistants } from "./assistants.js";
+import { createBulk } from "./bulk.js";
 import { createConversation } from "./conversation.js";
 import { createCustomerQuestion } from "./customer-question.js";
 import { createEvidenceAndSpecs } from "./evidence-and-specs.js";
@@ -75,19 +76,26 @@ export function createTicketService(
     options.teamMembers === undefined || teamMembers().some((member) => member.id === personId);
   pinPrefix(db, prefix);
   const shared = createShared(db, prefix, budget);
+  const reads = createReads(shared, options);
+  const workflow = createWorkflow(shared, teamMembers);
+  const resolveAndReopen = createResolveAndReopen(shared, isOnTeam);
 
   return {
     // reads.ts: listTickets, countTickets, visibleKey, getTicket, ticketStamp, listEvents,
     // reopenedByCustomer, peopleRoles, peopleNames, hasNoTickets
-    ...createReads(shared, options),
+    ...reads,
     // filing.ts: createTicket, editTicket, adoptCheck, agreeCheck, linkChange, archiveTicket,
     // restoreTicket, deleteTicket
     ...createFiling(shared),
     // workflow.ts: changeStatus, takeTicket, takeAndStart, releaseTicket, handOff,
     // handOffCandidates
-    ...createWorkflow(shared, teamMembers),
+    ...workflow,
     // resolve-and-reopen.ts: resolveWithReason, reopen
-    ...createResolveAndReopen(shared, isOnTeam),
+    ...resolveAndReopen,
+    // bulk.ts: changeTickets, one change to many tickets through the functions above
+    ...createBulk({ ...reads, ...workflow, ...resolveAndReopen }, teamMembers),
+    // Who a ticket can be given to: everyone on the team.
+    teamMembers,
     // customer-question.ts: markReady, withdrawQuestionAsked, answer
     ...createCustomerQuestion(shared),
     // conversation.ts: addEntry, addNote, askOwnerToReview, requestReview, listEntries

@@ -74,6 +74,49 @@
   <% } %>
   </small>
 </nav>
+<% if (bulk) { %>
+<%# The team ticks tickets, then changes them together: one form, so it works without scripts. With
+    scripts on, the bar shows only while something is ticked and counts what is. %>
+<form method="post" action="<%= bulk.action %>" class="bulk" data-bulk>
+<div class="bulk-bar" role="group" aria-labelledby="bulk-count" data-bulk-bar>
+  <p id="bulk-count" class="bulk-count" aria-live="polite" data-bulk-count>Change the ticked tickets:</p>
+  <div class="bulk-control">
+    <label>Status
+      <select name="status">
+        <option value="">Choose</option>
+        <% for (const status of statuses) { %><option value="<%= status %>" <% if (bulk.values.status === status) { %>selected<% } %>><%= statusLabels[status] %></option><% } %>
+      </select>
+    </label>
+    <%# The stylesheet shows the reason only for Resolved, and each box after it only for the reason that needs it. %>
+    <label class="bulk-reason">Reason
+      <select name="reason">
+        <option value="">Choose a reason</option>
+        <% for (const [value, label] of Object.entries(bulk.resolveReasons)) { %><option value="<%= value %>" <% if (bulk.values.reason === value) { %>selected<% } %>><%= label %></option><% } %>
+      </select>
+    </label>
+    <label class="bulk-duplicate">Duplicate of
+      <input type="text" name="duplicate_of" placeholder="SUP-3" maxlength="20" value="<%= bulk.values.duplicate_of ?? "" %>" />
+    </label>
+    <label class="bulk-note">Why?
+      <input type="text" name="note" maxlength="500" value="<%= bulk.values.note ?? "" %>" />
+    </label>
+    <button type="submit" name="apply" value="status" class="secondary compact" aria-label="Apply status">Apply</button>
+  </div>
+  <div class="bulk-control">
+    <label>Assign to
+      <select name="owner">
+        <option value="">Choose</option>
+        <option value="me" <% if (bulk.values.owner === "me") { %>selected<% } %>>Me</option>
+        <% for (const member of bulk.members) { %><option value="<%= member.id %>" <% if (bulk.values.owner === member.id) { %>selected<% } %>><%= member.name %></option><% } %>
+        <option value="nobody" <% if (bulk.values.owner === "nobody") { %>selected<% } %>>Nobody</option>
+      </select>
+    </label>
+    <button type="submit" name="apply" value="owner" class="secondary compact" aria-label="Apply owner">Apply</button>
+  </div>
+  <% if (bulk.message) { %><p class="bulk-error" role="alert" data-bulk-error><small><%= bulk.message %></small></p><% } %>
+</div>
+<p class="bulk-all-phone" hidden data-bulk-phone><label><input type="checkbox" class="bulk-tick" data-bulk-all /> Tick all shown</label></p>
+<% } %>
 <div class="overflow-auto">
   <table class="tickets">
     <thead>
@@ -81,7 +124,7 @@
         <% sortHeaders.forEach((header, index) => { %>
         <% if (index === 4) { %><th scope="col">Waiting on</th><% } %>
         <%# The plain name stands in for the link on a phone, where the header row is not drawn, so no keyboard stop hides there. %>
-        <th scope="col" <% if (header.ariaSort) { %>aria-sort="<%= header.ariaSort %>"<% } %>><a href="<%= header.href %>" class="sort-link" aria-label="<%= header.name %>"><%= header.label %><span class="sort-arrow" aria-hidden="true"><%= arrow(header) %></span></a><span class="sort-label"><%= header.label %></span></th>
+        <th scope="col" <% if (header.ariaSort) { %>aria-sort="<%= header.ariaSort %>"<% } %>><% if (bulk && index === 0) { %><input type="checkbox" class="bulk-tick" aria-label="Tick every ticket shown" hidden data-bulk-all /><% } %><a href="<%= header.href %>" class="sort-link" aria-label="<%= header.name %>"><%= header.label %><span class="sort-arrow" aria-hidden="true"><%= arrow(header) %></span></a><span class="sort-label"><%= header.label %></span></th>
         <% }) %>
       </tr>
     </thead>
@@ -89,7 +132,7 @@
       <% for (const ticket of tickets) { %>
       <tr>
         <%# The title is the row's one keyboard stop; the key stays a link for the mouse. %>
-        <td><a href="/tickets/<%= ticket.key %>" tabindex="-1"><%= ticket.key %></a></td>
+        <td><% if (bulk) { %><input type="checkbox" class="bulk-tick" name="keys" value="<%= ticket.key %>" aria-label="Tick <%= ticket.key %>" <% if (bulk.ticked.has(ticket.key)) { %>checked<% } %> /><% } %><a href="/tickets/<%= ticket.key %>" tabindex="-1"><%= ticket.key %></a></td>
         <td class="user-text title-cell" title="<%= ticket.title %>"><a href="/tickets/<%= ticket.key %>"><%= ticket.title %></a></td>
         <td><%- include("status-badge", { status: ticket.status }) %><% if (teamSaysFixed(ticket, viewerRole)) { %><small class="resolution-label">The team says it is fixed</small><small class="resolution-label">You have not confirmed it</small><% } else if (ticket.resolution) { %><small class="resolution-label"><%= ticket.resolution.by === "team" ? `By the team: ${ticket.resolution.reason_label}` : "Customer confirmed" %></small><% } %></td>
         <td><%= ticket.owner_name ?? "Unassigned" %></td>
@@ -101,6 +144,7 @@
     </tbody>
   </table>
 </div>
+<% if (bulk) { %></form><% } %>
 <% if (nextPage) { %>
 <p><a href="<%= nextPage %>">Next page</a></p>
 <% } %>

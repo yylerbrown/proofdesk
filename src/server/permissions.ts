@@ -29,6 +29,7 @@ export type Action =
   | "hand_to_agent"
   | "adopt_check"
   | "resolve_with_reason"
+  | "bulk_change"
   | "list_people"
   | "change_role";
 
@@ -100,6 +101,11 @@ export const CAPABILITIES: Record<Action, Capability> = {
       "The ticket's owner, a team member for a ticket nobody owns yet (they become its owner), or an admin, with a reason.",
     agent: "people_only",
   },
+  bulk_change: {
+    people:
+      "The team, from the ticket list: each ticked ticket then follows the rules of the same change made on its own page.",
+    agent: "people_only",
+  },
   list_people: { people: "An admin.", agent: "people_only" },
   change_role: { people: "An admin, for someone else.", agent: "people_only" },
 };
@@ -156,6 +162,9 @@ export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean
   if (action === "list_archived") return isStaff;
   if (action === "manage_connections") return actor.role === "admin" && actor.kind === "person";
   if (action === "read_activity") return isStaff && actor.kind === "person";
+  // Changing many tickets from the list is for people on the team. Each ticket is then checked
+  // again by the change the ticket service makes to it.
+  if (action === "bulk_change") return isStaff && actor.kind === "person";
   // Choosing who is on the team. The people service adds who may be changed.
   if (action === "list_people") return actor.role === "admin" && actor.kind === "person";
   if (action === "change_role") return actor.role === "admin" && actor.kind === "person";
