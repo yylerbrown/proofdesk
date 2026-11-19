@@ -109,6 +109,8 @@ test("the team's ticket page: Shift+Tab, Escape on the Status and Owner menus, a
     });
     expect(await top(send)).toBeLessThan(await headerBottom());
     await nextOne.evaluate((button) => button.focus({ preventScroll: true }));
+    // The first press lands on "Add pictures", which follows Send on its row.
+    await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Shift+Tab");
     await expect(send).toBeFocused();
     expect(await top(send)).toBeGreaterThanOrEqual(await headerBottom());

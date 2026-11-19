@@ -76,7 +76,9 @@ describe("new ticket form", () => {
     const { app } = buildTestApp();
     const res = await admin(app).get("/tickets/new").redirects(1);
     expect(res.status).toBe(200);
-    expect(res.text).toContain('<form method="post" action="/tickets">');
+    expect(res.text).toContain(
+      '<form method="post" action="/tickets" enctype="multipart/form-data">',
+    );
     expect(res.text).toContain("How will we know it's fixed?");
   });
 

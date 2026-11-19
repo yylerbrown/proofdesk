@@ -21,7 +21,8 @@ describe("the new ticket form", () => {
     const html = parse((await as(app, customerOne).get("/tickets/new").redirects(1)).text);
     const main = html.querySelector("main")!;
     expect(main.querySelectorAll("h1").map((h) => h.text)).toEqual(["New ticket"]);
-    expect(boxesOf(html)).toEqual(["title", "description", "fix_check"]);
+    // The picture picker goes with the description.
+    expect(boxesOf(html)).toEqual(["title", "description", "pictures", "fix_check"]);
     expect(main.querySelector("nav")).toBeNull();
     expect(main.text).not.toContain("Page where it happened");
     expect(main.text).not.toContain("Initial status");

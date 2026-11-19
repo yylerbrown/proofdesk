@@ -28,6 +28,7 @@ import {
   ticketFiledWith,
 } from "../pages/form-id.js";
 import { fingerprint } from "../pages/loaded-text.js";
+import { messageRefusalLine, ticketFormPictureLine } from "../pages/picture-refusal.js";
 import { sendPicturesFewAtOnce } from "../pictures/sending.js";
 import { keepUploaderToken, picturesOf, uploaderToken, viewerToken } from "../pictures/upload.js";
 import { noMatchWords, readListPageQuery, sortHeaders } from "../pages/list-query.js";
@@ -433,6 +434,11 @@ const stepQuery = z.enum(["resolve", "reopen"]);
 /** The address of one picture: its ticket's key and its own id. */
 type PictureParams = { key: string; id: string };
 
+/** True when the form that came in carried at least one chosen picture. */
+function picturesSent(res: Response): boolean {
+  return picturesOf(res).files.some((bytes) => bytes.length > 0);
+}
+
 /** What the pages need to know about this server. */
 export type PageOptions = {
   /** True in production, where cookies are sent over https only. */
@@ -510,6 +516,11 @@ export function pagesRouter(
     if (res.locals.saved === SAVED_MESSAGES.filed) res.locals.saved = filedMessage(ticket.key);
     const entries = service.listEntries(ticket.key, actor);
     const pictures = service.listPictures(ticket.key, actor, viewerToken(req));
+    // The description's pictures were added by whoever filed the ticket, named in their text.
+    const filerName =
+      ticket.created_by === null
+        ? "Unknown person"
+        : (service.peopleNames([ticket.created_by]).get(ticket.created_by) ?? "Unknown person");
     const events = service.listEvents(ticket.key, actor);
     const names = service.peopleNames(events.map((event) => event.actor));
     // A person's role beside their name, as in the conversation, since the name is theirs to set.
@@ -631,6 +642,7 @@ export function pagesRouter(
       // Each message carries its own pictures; the description's are ticketPictures.
       entries: entries.map((item) => ({ ...item, pictures: pictures.byEntry.get(item.id) ?? [] })),
       ticketPictures: pictures.description,
+      filerName,
       history,
       evidence,
       allowed,
@@ -942,12 +954,14 @@ export function pagesRouter(
       }
     } catch (err) {
       if (!(err instanceof ValidationError)) throw err;
-      // Show the form again with what was typed and one message under each wrong box.
+      // Show the form again with what was typed and one message under each wrong box. The
+      // browser has dropped any chosen pictures, so the line by the picture control says so.
       res.status(400).render("ticket-form", {
         ...newForm,
         formId,
         values,
         errors: withHowFarOver(err.fieldErrors, values.description),
+        pictureLine: ticketFormPictureLine(err.fieldErrors.pictures?.join(" "), picturesSent(res)),
       });
     }
   });
@@ -995,10 +1009,16 @@ export function pagesRouter(
       res.redirect(303, `/tickets/${ticket.key}#sent`);
     } catch (err) {
       if (!(err instanceof ValidationError)) throw err;
-      // Show the ticket again with what was typed and the message under the box.
+      // Show the ticket again with what was typed and the message under the box. The browser
+      // has dropped any chosen pictures, so the message says to choose them again.
       showTicket(req, res, 400, {
         ...entry,
-        error: err.fieldErrors.body?.join(" ") ?? err.message,
+        error: messageRefusalLine(
+          err.fieldErrors.body?.join(" ") ?? err.message,
+          err.fieldErrors.pictures?.join(" "),
+          picturesSent(res),
+          entry.body,
+        ),
       });
     }
   });

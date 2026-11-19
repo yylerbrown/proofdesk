@@ -129,6 +129,7 @@
 
 <h2 class="visually-hidden">Description</h2>
 <p class="user-text ticket-description"><%= ticket.description %></p>
+<%- include("pictures", { pictures: ticketPictures, author: filerName }) %>
 
 <% if (ticket.where_url) { %>
 <p class="page-link">Page: <a href="<%= ticket.where_url %>" rel="noopener noreferrer nofollow" class="user-text"><%= ticket.where_url %></a></p>
@@ -391,6 +392,7 @@
     <p class="user-text"><%= parts.rest %></p>
   </details>
   <% } %>
+  <%- include("pictures", { pictures: item.pictures, author: item.author_name }) %>
   <% if (item.based_on) { const source = entries.find((e) => e.id === item.based_on); if (source) { %>
   <p><small>Published from a note by <%= source.author_name %><% if (source.author_kind === "agent") { %> (AI assistant)<% } %>. Only the team sees this line.</small></p>
   <% } } %>
@@ -427,7 +429,8 @@
 <% if (allowed.reply) { %>
 <details class="reply-fold" <% if (entry.body || entry.error) { %>open<% } %>>
 <summary><%= allowed.note ? "Reply or add a note" : "Write a message" %></summary>
-<form method="post" action="/tickets/<%= ticket.key %>/entries" class="reply-box">
+<%# Sent as multipart, since a message may carry pictures. %>
+<form method="post" action="/tickets/<%= ticket.key %>/entries" class="reply-box" enctype="multipart/form-data">
   <% if (allowed.note) { %>
   <%# Who sees it: two tabs directly on top of the box. %>
   <fieldset class="kind-tabs">
@@ -443,9 +446,12 @@
   <label for="entry-body" class="visually-hidden">Your message</label>
   <textarea id="entry-body" name="body" rows="3" required <% if (entry.error) { %>aria-invalid="true" aria-describedby="body-error" autofocus<% } %>><%= entry.body %></textarea>
   <% if (entry.error) { %><small id="body-error"><%= entry.error %></small><% } %>
+  <%# Chosen pictures show here, between the box and the send button's row. %>
+  <div class="picture-strip" id="reply-picture-strip" hidden></div>
   <div class="reply-actions">
     <%# With a choice of who sees it, a small script makes the button name that audience. %>
     <button type="submit" class="secondary compact" <% if (allowed.note) { %>data-label-reply="Send reply to customer" data-label-note="Save internal note"<% } %>>Send</button>
+    <%- include("add-pictures", { limit: pictureLimits.perMessage, strip: "reply-picture-strip", box: "body", line: null }) %>
     <%# Shown only while Internal note is chosen, at the row's right end. %>
     <% if (allowed.note) { %><small class="note-hint">Only the team can see this.</small><% } %>
   </div>

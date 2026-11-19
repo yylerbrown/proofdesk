@@ -1,0 +1,18 @@
+<%# The pictures added with the description or with one message, under its words, in the order
+    they were added. Each is a small square that opens the full picture in a new tab. A picture
+    this viewer may not be shown, on the shared demo, is one grey line instead. Nothing is drawn
+    when there are none. -%>
+<% if (pictures.length > 0) { -%>
+<% const shown = pictures.filter((picture) => picture.url !== null); -%>
+<% const hidden = pictures.find((picture) => picture.url === null); -%>
+<% if (shown.length > 0) { -%>
+<div class="pictures">
+  <% pictures.forEach((picture, index) => { if (picture.url !== null) { -%>
+  <a href="<%= picture.url %>" target="_blank" rel="noopener"><img src="<%= picture.url %>" alt="Picture <%= index + 1 %> of <%= pictures.length %> from <%= author %>" width="80" height="80" loading="lazy" /></a>
+  <% } }) -%>
+</div>
+<% } -%>
+<% if (hidden) { -%>
+<p class="picture-hidden"><small><%= hidden.hidden %></small></p>
+<% } -%>
+<% } -%>
