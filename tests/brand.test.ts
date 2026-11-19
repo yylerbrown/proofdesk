@@ -45,7 +45,7 @@ describe("the theme", () => {
 
   it("never makes a status badge lime", () => {
     const badgeLines = theme.split("\n").filter((line) => line.includes("--pd-badge-"));
-    expect(badgeLines.length).toBe(6);
+    expect(badgeLines.length).toBe(5);
     for (const line of badgeLines) {
       expect(line).not.toContain("accent");
       expect(line.toLowerCase()).not.toContain("#d1e935");

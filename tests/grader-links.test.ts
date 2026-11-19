@@ -17,9 +17,9 @@ const welcome = async (app: ReturnType<typeof demo>["app"]) =>
   parse((await visitor(app).get("/sign-in")).text);
 
 describe("the demo's welcome", () => {
-  it("links Source and setup to the repository's README beside the workflow, when its address is set", async () => {
+  it("links Source and setup to the repository's README under the roles, when its address is set", async () => {
     const html = await welcome(demo({ SOURCE_URL: "https://code.example.com/team/desk/" }).app);
-    const link = html.querySelector("form.try-workflow + .try-steps + .source-link a");
+    const link = html.querySelector("ul.people + .source-link a");
     expect(link?.text).toBe("Source and setup");
     expect(link?.getAttribute("href")).toBe("https://code.example.com/team/desk#readme");
     expect((await welcome(demo().app)).querySelector(".source-link")).toBeNull();

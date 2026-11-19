@@ -49,7 +49,10 @@ export function openSite(config: Config, log: LogLine, sayMigrations = true): Si
     forgetRolesNamedInSettings(db, config);
     // A connection whose issuer is no longer an admin is refused when it signs in. Ending it
     // here, with its reason, keeps the Connections page and the hand-off list saying the same.
-    endConnectionsOfFormerAdmins(db, config);
+    // The operator's log says how many it ended, so a connection that stopped has a reason there.
+    const ended = endConnectionsOfFormerAdmins(db, config);
+    const noun = ended === 1 ? "connection" : "connections";
+    if (ended > 0) log(`Ended ${ended} assistant ${noun} whose issuer is no longer an admin.`);
     // createApp checks the database's purpose first, so the demo is only seeded into a demo
     // database. It logs one line per request.
     const app = createApp(config, db, { log });

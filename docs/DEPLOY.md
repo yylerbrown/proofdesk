@@ -36,7 +36,8 @@ Done once, already done:
    members). A number can be read at `https://api.github.com/users/<user name>`. Name at least
    one admin here: the server warns at start when none is named. Everyone else is chosen on the
    site's People page by an admin, and it applies at once; the people named here keep their role
-   and show there as locked.
+   and show there as locked. Removing an admin from `ADMIN_GITHUB_IDS` ends the assistant
+   connections they issued at the next restart, and the log says how many.
 
    ```sh
    fly secrets set --app proofdesk \

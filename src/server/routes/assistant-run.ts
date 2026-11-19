@@ -1,7 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import express, { Router } from "express";
+import type { Actor } from "../actor.js";
 import { HttpError } from "../errors.js";
+import { can } from "../permissions.js";
 
 // "An assistant's work": one real assistant run, kept in docs/assistant-run, for anyone, signed
 // in or not. The page shows the summary as headed sections; the transcript and the assistant's
@@ -13,18 +15,29 @@ export function runCommand(summary: string): string | null {
   return /^```sh\n([\s\S]*?)\n```$/m.exec(section)?.[1] ?? null;
 }
 
+/**
+ * Where a visitor can connect an assistant of their own: on the demo, the welcome page's connect
+ * section, open to anyone; elsewhere an admin's connections page. Null for anyone else.
+ */
+export function tryItUrl(demo: boolean, actor: Actor | null): string | null {
+  if (demo) return "/sign-in#connect";
+  if (actor !== null && can(actor, "manage_connections")) return "/connections";
+  return null;
+}
+
 export function assistantRunRouter(rootDir: string, recordedKey: () => string | null): Router {
   const dir = path.join(rootDir, "docs", "assistant-run");
   const summaryFile = path.join(dir, "summary.md");
   const kept = fs.existsSync(summaryFile);
   const command = kept ? runCommand(fs.readFileSync(summaryFile, "utf8")) : null;
   const router = Router();
-  router.get("/assistant-run", (_req, res) => {
+  router.get("/assistant-run", (req, res) => {
     if (!kept) throw new HttpError(404, "not_found", "There is no page at this address.");
     res.render("assistant-run", {
       title: "An assistant's work",
       recordedKey: recordedKey(),
       command,
+      tryUrl: tryItUrl(req.app.locals.demo === true, req.actor),
     });
   });
   router.use(

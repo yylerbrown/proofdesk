@@ -45,6 +45,31 @@ describe("the welcome page's buttons", () => {
   });
 });
 
+describe("the demo welcome's first screen", () => {
+  it("goes from the workflow's steps straight to the roles, with Source and setup under them", async () => {
+    const built = buildTestApp({
+      DEMO: "on",
+      DEV_SIGN_IN: "off",
+      SOURCE_URL: "https://code.example.com/team/desk",
+    });
+    seedDemo(createTicketService(built.db, built.config.ticketPrefix));
+    const html = await page(built.app);
+    // Nothing sits between the steps and the roles, so all three roles fit on a laptop's
+    // first screen. The source link waits under them, and the assistant setup stays last.
+    expect(
+      html.querySelector(".try-steps + h3 + ul.people + .source-link + details.connect"),
+    ).not.toBeNull();
+    expect(html.querySelectorAll(".source-link").length).toBe(1);
+    expect(html.querySelector("section")!.lastElementChild?.classNames).toBe("connect");
+  });
+
+  it("keeps each role's line on one row at laptop width, and the steps right under their button", () => {
+    const css = fs.readFileSync("public/site.css", "utf8");
+    expect(css).toMatch(/\.welcome \{\s*max-width: 520px;/);
+    expect(css).toMatch(/\.try-workflow button \{\s*width: 100%;\s*margin-bottom: 0;/);
+  });
+});
+
 describe("the welcome page's assistant setup", () => {
   it("is one closed line at the end, after the roles, with everything about keys inside it", async () => {
     const html = await page(demo().app);
@@ -65,6 +90,17 @@ describe("the welcome page's assistant setup", () => {
     // Its summary reads as a quiet link, like the other small disclosures, not a full-width row.
     const css = fs.readFileSync("public/site.css", "utf8");
     expect(css).toMatch(/\.welcome details\.connect > summary \{\s*display: inline-block;/);
+  });
+
+  it("explains itself, once opened, in muted small print like the rest of the page", async () => {
+    const html = await page(demo().app);
+    const explanation = html.querySelector("#connect > p");
+    expect(explanation?.text).toContain("Get a key for your own assistant");
+    expect(explanation?.classNames).not.toContain("notice");
+    const css = fs.readFileSync("public/site.css", "utf8");
+    expect(css).toMatch(
+      /\.welcome #connect > p:not\(\.notice\) \{\s*color: var\(--pd-muted\);\s*font-size: var\(--pd-text-sm\);/,
+    );
   });
 
   it("opens by itself for links to #connect, which name a place inside it, with no script", async () => {
