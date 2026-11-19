@@ -55,10 +55,13 @@ export function timeAgo(iso: string, now: Date = new Date()): string {
 export function waitingOn(ticket: Ticket, viewer: Role, reopened = false): string {
   if (ticket.waiting_on === "nobody") return "Nobody";
   if (ticket.waiting_on === "customer") return viewer === "customer" ? "You" : "Customer";
+  // The team has one name for every viewer, so the customer and the team read the same word.
   if (viewer === "customer") return "Support team";
   // After a reopening or a no, the team sees why the ticket is back with them.
-  if (reopened) return "Team: customer reopened it";
-  return ticket.customer_answer?.fixed === false ? "Team: customer says it still fails" : "Team";
+  if (reopened) return "Support team: customer reopened it";
+  return ticket.customer_answer?.fixed === false
+    ? "Support team: customer says it still fails"
+    : "Support team";
 }
 
 /** The customer's latest word that the ticket is not fixed: a No, or their reopening it. */

@@ -104,7 +104,7 @@ describe("the ticket list", () => {
     const rows = html.querySelectorAll("tbody tr").map((tr) => tr.querySelectorAll("td"));
     expect(rows[0]?.[3]?.text).toBe("Team Member");
     expect(rows[1]?.[3]?.text).toBe("Unassigned");
-    expect(rows[0]?.[4]?.text).toBe("Team");
+    expect(rows[0]?.[4]?.text).toBe("Support team");
     const time = rows[0]?.[5]?.querySelector("time");
     expect(time?.getAttribute("datetime")).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(time?.getAttribute("title")).toMatch(/ UTC$/);
@@ -153,7 +153,7 @@ describe("who is waiting", () => {
   const on = (waiting_on: string) => ({ waiting_on }) as unknown as Ticket;
 
   it("is said in the viewer's words", () => {
-    expect(waitingOn(on("team"), "team")).toBe("Team");
+    expect(waitingOn(on("team"), "team")).toBe("Support team");
     expect(waitingOn(on("team"), "customer")).toBe("Support team");
     expect(waitingOn(on("customer"), "team")).toBe("Customer");
     expect(waitingOn(on("customer"), "customer")).toBe("You");

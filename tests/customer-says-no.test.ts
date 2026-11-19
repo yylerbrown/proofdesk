@@ -63,7 +63,7 @@ describe("after the customer says No", () => {
     const { app } = buildTestApp();
     await saidNo(app);
     const row = parse((await as(app, teamActor).get("/tickets")).text).querySelector("tbody tr");
-    expect(row?.querySelectorAll("td")[4]?.text).toBe("Team: customer says it still fails");
+    expect(row?.querySelectorAll("td")[4]?.text).toBe("Support team: customer says it still fails");
     const mine = parse((await as(app, customerOne).get("/tickets/SUP-1")).text).querySelector(
       "#customer-said-no",
     );
