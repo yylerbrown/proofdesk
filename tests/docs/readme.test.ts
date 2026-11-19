@@ -73,6 +73,7 @@ describe("the README's feature list", () => {
     const pages = [
       await visitor(demo.app).get("/sign-in"),
       await as("demo-customer").get("/tickets/new?try=1").redirects(1),
+      await as("demo-customer").get(`/tickets/${key}`),
       await as("demo-team").get("/tickets"),
       await as("demo-team").get(`/tickets/${key}`),
     ];

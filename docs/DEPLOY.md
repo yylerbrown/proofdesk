@@ -90,7 +90,7 @@ kept as not sent, with the reason, and nothing is emailed. The demo never sends,
 
 Only addresses GitHub verified are mailed, and only to the people the notice rules name who left
 "Email me about my tickets" on, on their account page. Each ticket's notices page,
-`/tickets/SUP-1/notices`, shows what it sent or would have sent.
+`/tickets/<key>/notices`, shows what it sent or would have sent.
 
 ## Deploy
 

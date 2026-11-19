@@ -11,7 +11,7 @@ list. The twist: the customer writes how they will know it is fixed, and the tic
 - **The production site, with GitHub sign-in: <https://proofdesk.fly.dev>.**
 - **The source: <https://github.com/yylerbrown/proofdesk>.**
 
-<img src="docs/img/ticket-list.png" width="720" alt="The team's ticket list on the demo: status filters All, New, In Progress, Resolved and Archived, owner filters Everyone, Mine and Unassigned, a search box, and eight sample tickets with their key, title, status, owner, who each one waits on and when it was filed">
+<img src="docs/img/ticket-list.png" width="720" alt="The team's ticket list on the demo: status filters All, New, In Progress, Resolved and Archived with a count beside each status, owner filters Everyone, Mine and Unassigned, a search box, eight sample tickets with their key, title, status, owner, who each one waits on and when it was filed, and an order choice under the table">
 
 ## Run it yourself
 
@@ -42,20 +42,26 @@ Each one takes under a minute on the demo, starting from its welcome page.
 **Ticket list with filters**
 
 - Start as: **View as Demo Team Member**
-- Press: **Tickets**, then **New**, **In Progress**, **Resolved**; **Mine** and **Unassigned**; or type words and press **Search**
-- You should see: "All tickets", and each filter changes the list. They combine in the address, so a filtered view can be shared. A customer's list is "My tickets": only their own, with the search.
+- Press: **New**, **In Progress**, **Resolved**; **Mine** and **Unassigned**; type words, or a ticket's key such as SUP-3, and press **Search**; under the table, **Oldest first** or **Recently updated**
+- You should see: "All tickets", with a count beside each status, and each filter changes the list. A typed key opens that ticket. Filters, search and order combine in the address, so a view can be shared. A customer's list is "My tickets": only their own, with the search.
 
 **Update status: New to In Progress**
 
-- Start as: Demo Team Member, on a New ticket
-- Press: **Take ticket and start work**
-- You should see: **In Progress**, with you as its owner.
+- Start as: The ticket you just filed, then **View this ticket as a team member**
+- Press: **Take ticket and start work**, or **In Progress** in the Status row
+- You should see: **In Progress**, with you as its owner. The Status row shows New, In Progress and Resolved, and each other status is one press; New sends an In Progress ticket back to the inbox with no owner.
 
 **Update status: to Resolved**
 
-- Start as: Demo Team Member, owning the ticket
+- Start as: Demo Team Member, owning the ticket you filed
 - Press: **Ask the customer to verify**, then **View this ticket as the customer who filed it** and **Yes, resolve ticket**
-- You should see: **Resolved**, and "Customer confirmed it is fixed." Asking takes one press; what was tried, the change link and evidence are optional details. The team can also resolve without the customer, on a New ticket nobody owns or on one they own: press "Resolve" under Status and choose a reason, and the ticket then shows "Resolved by the team: <reason>" to everyone.
+- You should see: **Resolved**, and "Customer confirmed it is fixed." Asking takes one press; what was tried, the change link and evidence are optional details. The team can also resolve without the customer, on a New ticket nobody owns or on one they own: press "Resolved" under Status and choose a reason, and the ticket then shows "Resolved by the team: <reason>" to everyone.
+
+**Two people on one ticket**
+
+- Start as: Demo Team Member, with the ticket you filed open in two tabs
+- Press: **Edit ticket** in both tabs, save a change in one, then save in the other
+- You should see: The second save is refused and keeps what you typed, naming what is different on the ticket now. A tab left open on a ticket someone else changed says "This ticket changed. Refresh to see it."
 
 **A working product**
 
@@ -72,18 +78,18 @@ Each one takes under a minute on the demo, starting from its welcome page.
 **AI features**
 
 - Start as: The welcome page
-- Press: **Get a demo connection**, then paste the command into your own assistant, for example Claude Code
-- You should see: Your assistant, through MCP, reads a sample ticket and its check, proposes a test spec, writes notes and attaches evidence. **See an assistant's work**, also on the welcome page, shows one real run.
+- Press: **Connect your own AI assistant**, then **Get a demo connection**, and paste the command into your own assistant, for example Claude Code
+- You should see: Your assistant, through MCP, reads the sample ticket made for assistants and its check, proposes a test spec, writes notes and attaches evidence. **See an assistant's work**, in the same section, opens with what one real run did and resolved nothing.
 
 **Creative extras**
 
 - Start as: Any ticket
 - Press: **How will we know it's fixed?** on the form; **Did this fix it?** for the customer
-- You should see: The customer's own check stays on the ticket. Their Yes resolves it as "Customer confirmed"; a No goes back to the named owner with their words. Evidence is labelled as reported, never as verified. The history cannot be changed. Proofdesk writes an email notice to the customer or the owner when the ticket needs them, and a ticket's notices page (`/tickets/SUP-1/notices`) shows each one in its exact words.
+- You should see: The customer's own check stays on the ticket. Their Yes resolves it as "Customer confirmed"; a No goes back to the named owner with their words. Evidence is labelled as reported, never as verified. The history cannot be changed. Proofdesk writes an email notice to the customer or the owner when the ticket needs them, and a ticket's notices page (`/tickets/<key>/notices`, such as the ticket you filed) shows each one in its exact words.
 
-This is what the customer meets when the team says it is fixed, here with the optional details the team can add:
+This is what the customer meets after one press of "Ask the customer to verify":
 
-<img src="docs/img/did-this-fix-it.png" width="560" alt="The customer's view of a ticket the team says is fixed: the box &quot;Did this fix it?&quot; shows the optional details the team gave, what they tried and what happened, and the customer's own check, with &quot;Yes, resolve ticket&quot; and a way to say No">
+<img src="docs/img/did-this-fix-it.png" width="560" alt="The customer's view of a ticket the team says is fixed: the box &quot;Did this fix it?&quot; quotes the customer's own check in their words, with &quot;Yes, resolve ticket&quot;, a box to say what is still wrong with &quot;No, send it back&quot;, and three quick No answers">
 
 ## Sign-in and roles
 
@@ -258,15 +264,12 @@ fails before the change and passes after ([`ops/prove/README.md`](ops/prove/READ
 | `npm run lint`         | ESLint.                                                                                                                                                                                                                                       |
 | `npm run format:check` | Prettier, without changing files. `npm run format` rewrites them.                                                                                                                                                                             |
 
-All of them pass before a pull request merges, with one early exception that
-[`AGENTS.md`](AGENTS.md) names. GitHub's CI ran them until 18 November, when it stopped starting
-jobs on the private working repository; since then a local gate runs the same commands on the
-exact commit being merged. Many changes were also broken on purpose to see their
-test fail; each pull request says which. A few tests read this README, so a route, label or
-command it names cannot drift from the code.
-Pull request numbers, here and in [`BUILD_LOG.md`](BUILD_LOG.md), refer to the private working
-repository, which stays private; the public copy's `docs/PULL_REQUESTS.md` holds each one's title
-and description.
+All of them pass on the exact commit before a pull request merges, run by CI or by a local gate,
+as [`AGENTS.md`](AGENTS.md) says; [`docs/SPEC.md`](docs/SPEC.md#standing-rules) records the one
+exception. A few tests read this README, so a route, label or command it names cannot drift from
+the code. Pull request numbers, here and in [`BUILD_LOG.md`](BUILD_LOG.md),
+refer to the private working repository; this repository's `docs/PULL_REQUESTS.md` holds each
+one's title and description.
 
 ## How the work was directed
 
@@ -277,12 +280,13 @@ code. The specification ([`docs/SPEC.md`](docs/SPEC.md)), the history of every s
 
 ## Known limits
 
-- **Last writer wins** for edits to a ticket and to the team's check. Only the customer's answer
-  carries a version check, so an old page cannot answer a newer question.
+- **The version check is up to API callers.** The pages always send the version they show, so a
+  save or a press from an old copy is refused. A JSON or MCP caller that leaves out
+  `expected_version` is not checked, and archive and restore take no version.
 - **Email needs a mail server.** Notices are written to an outbox from the ticket history and
   sent with nodemailer only once `SMTP_URL` and `MAIL_FROM` are set; each person can switch them
   off on their account page. The demo never sends, so there a ticket's notices page
-  (`/tickets/SUP-1/notices`) shows each one as not sent, with its exact words.
+  (`/tickets/<key>/notices`) shows each one as not sent, with its exact words.
 - **Evidence is reported, not verified.** Proofdesk shows who reported it and checks none of it.
 - **One machine.** SQLite on one disk; rate-limit counts are in memory and reset on a restart.
   Several machines would need Postgres and a shared store for the rate limits.

@@ -86,6 +86,5 @@ Shortcuts in the code that were kept for now, each with the plan for it.
   kept, and a demo seed recorded before the sample for assistants was named. They stay until the
   live databases are checked, then go or get a test.
 - **Test setup is copied between files.** Several files build their own ask-the-customer setup,
-  agent keys are issued by reading the admin page, files are named after pull requests rather
-  than rules, and the people side of the permission rules is picked by hand rather than
-  generated from the table.
+  agent keys are issued by reading the admin page, and the people side of the permission rules
+  is picked by hand rather than generated from the table.
