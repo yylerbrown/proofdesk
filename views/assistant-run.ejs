@@ -3,7 +3,9 @@
 <h1>An assistant's work</h1>
 <%# What happened first, in plain words, with one press to the result. How the run was set up
     stays one quiet click away, in the closed section below. %>
-<p class="run-lead">On 18 Nov 2026 a visitor connected their own AI assistant to the Proofdesk demo and pointed it at the sample ticket the team keeps for assistants. The assistant reproduced the customer's problem, tested a fix, proposed a test, attached the test run as evidence and asked the ticket's owner to review it. It resolved nothing: accepting the test and asking the customer are left to people.</p>
+<%# The first sentence says the scope, so no claim reaches further than the run's evidence in
+    docs/assistant-run/summary.md. %>
+<p class="run-lead">On 18 Nov 2026 a visitor's own AI assistant worked the demo's sample ticket for assistants in a scratch file, from the ticket's text, because it had no access to the product's code. There it reproduced the arithmetic problem and tested a fix, and three tests passed. It then proposed a test, attached the run as evidence and asked the ticket's owner to review. It resolved nothing and changed no product code: accepting the test and asking the customer are left to people.</p>
 <% if (recordedKey && viewer && viewer.role !== "customer") { %>
 <p class="run-result"><a href="/tickets/<%= recordedKey %>" role="button">See what it left on <%= recordedKey %></a></p>
 <% } else if (recordedKey) { %>
