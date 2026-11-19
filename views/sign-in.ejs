@@ -65,9 +65,6 @@
     <button type="submit" class="large" aria-describedby="try-steps">Try the ticket workflow</button>
   </form>
   <p class="try-steps" id="try-steps"><small>File a ticket as the customer, work on it as the team, then say whether it is fixed as the customer. The same ticket stays open as you switch. About two minutes.</small></p>
-  <% if (locals.sourceUrl) { %>
-  <p class="source-link"><a href="<%= sourceUrl %>#readme">Source and setup</a></p>
-  <% } %>
   <h3>Or look around as</h3>
   <% } %>
   <% } else { %>
@@ -90,6 +87,10 @@
     </li>
     <% } %>
   </ul>
+  <%# Under the roles, so the workflow button and all three roles fit on the first screen. %>
+  <% if (locals.walkthrough && locals.sourceUrl) { %>
+  <p class="source-link"><a href="<%= sourceUrl %>#readme">Source and setup</a></p>
+  <% } %>
   <% if (demo) { %>
   <%# The assistant setup is extra, so it starts folded to one quiet line. Links to /sign-in#connect
       open it without a script: a browser opens a closed details element when the address's

@@ -698,30 +698,6 @@ table button.danger:is(:hover, :active) {
   color: var(--pd-danger);
   text-decoration: underline;
 }
-/*
- * Row button: a small quiet button inside a list row, such as "Take and start" or "Up". Plain
- * buttons, one click each; nothing in the list is dragged.
- */
-:is(button, [type="submit"], [role="button"]).row-action {
-  min-height: 0;
-  margin: 0;
-  padding: 2px 8px;
-  border-color: var(--pd-border);
-  background-color: var(--pd-surface);
-  color: var(--pd-muted);
-  font-size: var(--pd-text-xs);
-  letter-spacing: 0;
-}
-:is(button, [type="submit"], [role="button"]).row-action:is(:hover, :active) {
-  border-color: var(--pd-border-strong);
-  background-color: var(--pd-subtle);
-  color: var(--pd-text);
-}
-@media (max-width: 639px) {
-  :is(button, [type="submit"], [role="button"]).row-action {
-    min-height: 32px;
-  }
-}
 /* Only the decisive buttons are large: "Yes, resolve ticket" and "Try the ticket workflow". */
 button.large {
   min-height: 40px;
@@ -812,11 +788,6 @@ table.people .person-email {
 .status-resolved::before {
   border-color: var(--pd-badge-resolved);
   background-color: var(--pd-badge-resolved);
-}
-.status-archived::before {
-  border-color: var(--pd-badge-archived);
-  border-radius: 3px;
-  background-color: var(--pd-badge-archived);
 }
 
 /* ---------- 6. Filter tabs ---------- */
@@ -987,24 +958,6 @@ table.tickets td:first-child a::after {
   inset: 0;
   content: "";
 }
-/*
- * Room for row actions: a last cell holding small row buttons, right-aligned on one line. Its
- * buttons sit above the whole-row link, so a click on them never opens the ticket.
- */
-table.tickets td.row-actions {
-  padding-left: var(--pd-space-3);
-  text-align: right;
-  white-space: nowrap;
-}
-table.tickets td.row-actions :is(form, button, a) {
-  display: inline-flex;
-  position: relative;
-  z-index: 1;
-  margin: 0;
-}
-table.tickets td.row-actions > * + * {
-  margin-left: var(--pd-space-1);
-}
 @media (min-width: 640px) {
   table.tickets th,
   table.tickets td {
@@ -1063,8 +1016,8 @@ table.tickets td.row-actions > * + * {
 }
 /* On a phone: key, title and status. Owner, waiting and filed are on the ticket page. */
 @media (max-width: 639px) {
-  table.tickets th:nth-child(n + 4):not(.row-actions),
-  table.tickets td:nth-child(n + 4):not(.row-actions) {
+  table.tickets th:nth-child(n + 4),
+  table.tickets td:nth-child(n + 4) {
     display: none;
   }
   table.tickets th:nth-child(3),
@@ -1078,14 +1031,6 @@ table.tickets td.row-actions > * + * {
   table.tickets td.user-text {
     min-width: 0;
     line-height: 1.4;
-  }
-  /* Row buttons wrap under each other rather than widening the row. */
-  table.tickets td.row-actions {
-    min-width: 4.5rem;
-    white-space: normal;
-  }
-  table.tickets td.row-actions > * {
-    margin-block: 2px;
   }
   /* A short name stays whole rather than breaking letter by letter in a squeezed cell. */
   table.connections td.user-text {
@@ -1797,9 +1742,10 @@ main > p:is([role="status"], [role="alert"])[tabindex="-1"]:focus {
 
 /* ---------- The welcome page ---------- */
 
+/* Wide enough that each role's line fits on one row, so all three show on the first screen. */
 .welcome {
-  max-width: 440px;
-  margin: var(--pd-space-8) auto 0;
+  max-width: 520px;
+  margin: var(--pd-space-5) auto 0;
 }
 @media (max-width: 639px) {
   .welcome {
@@ -1815,13 +1761,13 @@ main > p:is([role="status"], [role="alert"])[tabindex="-1"]:focus {
   margin-bottom: var(--pd-space-2);
 }
 .welcome h3 {
-  margin: var(--pd-space-6) 0 var(--pd-space-3);
+  margin: var(--pd-space-5) 0 var(--pd-space-3);
 }
 .welcome .source-link {
   font-size: var(--pd-text-sm);
 }
 .welcome .try-workflow {
-  margin-bottom: var(--pd-space-3);
+  margin-bottom: var(--pd-space-2);
 }
 .welcome hgroup > p:not(:first-child):last-child {
   color: var(--pd-muted);
@@ -1835,6 +1781,11 @@ main > p:is([role="status"], [role="alert"])[tabindex="-1"]:focus {
 }
 .welcome section > p {
   color: var(--pd-muted);
+}
+/* Inside the open assistant setup, the words are small print like the rest of the page's. */
+.welcome #connect > p:not(.notice) {
+  color: var(--pd-muted);
+  font-size: var(--pd-text-sm);
 }
 /* GitHub's mark on its sign-in button, in the button's own text colour. */
 .github-mark {
@@ -2115,11 +2066,13 @@ p.ask-blocked {
 }
 
 /* The demo's walk-through: the first and strongest choice on the welcome page. */
+/* The steps sit just under the button they describe. */
 .try-workflow button {
   width: 100%;
+  margin-bottom: 0;
 }
 .try-steps {
-  margin-bottom: var(--pd-space-6);
+  margin-bottom: var(--pd-space-5);
 }
 /* On the demo, the next role to view a ticket as, just under its title. */
 .demo-next {
