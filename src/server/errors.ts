@@ -58,7 +58,7 @@ type ShownError = {
 
 // What to do next, for each error code a caller can meet. A code not listed falls back to a
 // hint for its status.
-const HINTS: Record<string, string> = {
+export const HINTS: Record<string, string> = {
   validation_error: "Fix the fields named in `fields` and send again.",
   invalid_key: "Ticket keys look like SUP-42. Check the key and send again.",
   not_signed_in: "Sign in first. A program sends a connection key: Authorization: Bearer <key>.",
