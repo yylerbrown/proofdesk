@@ -13,9 +13,11 @@ import { NO_PICTURES, type PictureUpload } from "./service.js";
 // over the size limit is cut off as it arrives instead of being held whole. A plain form, sent
 // the usual way, passes straight through to the ordinary form parser's result.
 //
-// Pictures are held in memory while a request is read, so two more rules keep that small: a
+// Pictures are held in memory while a request is read, so more rules keep that small: a
 // visitor who may add nothing (signed out, or the read-only preview) never has theirs read,
-// and the whole server reads only a few uploads at a time.
+// the whole server reads only a few large uploads at a time, and each large upload must finish
+// arriving within a deadline. A form no larger than an ordinary one is not counted, so a reply
+// with text only is never turned away while pictures are being sent.
 
 /** The field a form sends its pictures in. */
 export const PICTURES_FIELD = "pictures";
@@ -28,8 +30,26 @@ export const PICTURES_FIELD = "pictures";
 const MOST_FIELDS = 12;
 const LARGEST_FIELD = 100 * 1024;
 
-/** The most uploads this server reads at once. Each holds at most a few pictures in memory. */
+/** The most large uploads this server reads at once. Each holds a few pictures in memory. */
 export const UPLOADS_AT_ONCE = 6;
+
+/**
+ * How long a large upload may take to arrive. After that it is cut off and its place freed.
+ * A minute lets a phone send four large pictures on a slow connection.
+ */
+export const UPLOAD_DEADLINE_MS = 60 * 1000;
+
+/**
+ * A form whose declared length is at most this is not counted towards UPLOADS_AT_ONCE: it is
+ * no larger than the ordinary form parser allows, so it cannot hold much memory.
+ */
+const ORDINARY_FORM_BYTES = 100 * 1024;
+
+/** True when a form may be larger than an ordinary one, or does not say how large it is. */
+function isLarge(req: Request): boolean {
+  const declared = Number(req.headers["content-length"]);
+  return !(Number.isFinite(declared) && declared <= ORDINARY_FORM_BYTES);
+}
 
 export const UPLOAD_REFUSALS = {
   busy: "Many pictures are being sent right now. Wait a minute and send the form again.",
@@ -54,7 +74,11 @@ function refusalFor(err: multer.MulterError, limits: PictureLimits): string | nu
  * picture the limits refuse is not an error here: the route shows the form again with the
  * reason and what was typed, as for any other mistake. Mount it after the actor is known.
  */
-export function readPictures(limits: PictureLimits, atOnce = UPLOADS_AT_ONCE): RequestHandler {
+export function readPictures(
+  limits: PictureLimits,
+  atOnce = UPLOADS_AT_ONCE,
+  deadlineMs = UPLOAD_DEADLINE_MS,
+): RequestHandler {
   const upload = multer({
     storage: multer.memoryStorage(),
     limits: {
@@ -65,7 +89,7 @@ export function readPictures(limits: PictureLimits, atOnce = UPLOADS_AT_ONCE): R
       parts: limits.perMessage + MOST_FIELDS,
     },
   }).array(PICTURES_FIELD, limits.perMessage);
-  // How many uploads are being read now, across the whole server.
+  // How many large uploads are being read now, across the whole server.
   let reading = 0;
 
   return (req, res, next) => {
@@ -79,22 +103,26 @@ export function readPictures(limits: PictureLimits, atOnce = UPLOADS_AT_ONCE): R
       next();
       return;
     }
-    if (reading >= atOnce) {
-      next(new HttpError(503, "busy", UPLOAD_REFUSALS.busy));
-      return;
+    let deadline: NodeJS.Timeout | undefined;
+    if (isLarge(req)) {
+      if (reading >= atOnce) {
+        next(new HttpError(503, "busy", UPLOAD_REFUSALS.busy));
+        return;
+      }
+      reading += 1;
+      // An upload that is still arriving at the deadline is cut off. Its connection then
+      // closes, which gives its place back.
+      deadline = setTimeout(() => req.destroy(), deadlineMs);
+      // A response always closes, whether it was sent or the connection dropped.
+      res.once("close", () => {
+        clearTimeout(deadline);
+        reading -= 1;
+      });
     }
-    reading += 1;
-    // The place is given back once, when the answer is sent or the connection closes.
-    let released = false;
-    const release = () => {
-      if (released) return;
-      released = true;
-      reading -= 1;
-    };
-    res.once("finish", release);
-    res.once("close", release);
 
     upload(req, res, (err: unknown) => {
+      // The form has arrived, or will not: the deadline no longer applies.
+      clearTimeout(deadline);
       if (err instanceof multer.MulterError) {
         const refused = refusalFor(err, limits);
         if (refused !== null) {

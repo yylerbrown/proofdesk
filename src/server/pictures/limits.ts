@@ -10,6 +10,13 @@ export type PictureLimits = {
   /** The most pictures one ticket holds, its description and messages together. */
   perTicket: number;
   /**
+   * The most bytes of pictures one person may add in all, across every ticket. Pictures are
+   * kept in the database, so this and the site's total keep its disk from filling.
+   */
+  personTotalBytes: number;
+  /** The most bytes of pictures the whole site keeps. */
+  siteTotalBytes: number;
+  /**
    * The shared demo only: the most pictures its visitors may add in all, until the demo next
    * resets. Undefined on a real site.
    */
@@ -18,13 +25,22 @@ export type PictureLimits = {
 
 const MB = 1024 * 1024;
 
-export const PICTURE_LIMITS: PictureLimits = { maxBytes: 3 * MB, perMessage: 4, perTicket: 20 };
+export const PICTURE_LIMITS: PictureLimits = {
+  maxBytes: 3 * MB,
+  perMessage: 4,
+  perTicket: 20,
+  personTotalBytes: 40 * MB,
+  siteTotalBytes: 300 * MB,
+};
 
 /** The shared public demo keeps less, so it can never become a place to host pictures. */
 export const DEMO_PICTURE_LIMITS: PictureLimits = {
   maxBytes: 1 * MB,
   perMessage: 2,
   perTicket: 20,
+  // The demo's visitors share three people, so visitorTotal is the limit that binds here.
+  personTotalBytes: 60 * MB,
+  siteTotalBytes: 60 * MB,
   visitorTotal: 40,
 };
 
@@ -47,6 +63,10 @@ export const PICTURE_REFUSALS = {
     `Attach at most ${limits.perMessage} pictures at a time.`,
   tooManyOnTicket: (limits: PictureLimits) =>
     `A ticket holds at most ${limits.perTicket} pictures.`,
+  personFull: (limits: PictureLimits) =>
+    `You can add at most ${sizeInWords(limits.personTotalBytes)} of pictures in all.`,
+  siteFull: (limits: PictureLimits) =>
+    `This site holds at most ${sizeInWords(limits.siteTotalBytes)} of pictures in all.`,
   demoFull: (limits: PictureLimits) =>
     `This shared demo holds at most ${limits.visitorTotal} visitors' pictures until it next resets.`,
 };

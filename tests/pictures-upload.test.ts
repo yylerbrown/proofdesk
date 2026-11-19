@@ -16,7 +16,15 @@ import { as, buildTestApp, customerOne, FROM_THIS_SITE, visitor } from "./helper
 // may add nothing, and reads only a few uploads at a time across the server.
 
 const PNG = samplePicture();
-const SMALL: PictureLimits = { maxBytes: PNG.length + 10, perMessage: 2, perTicket: 20 };
+const SMALL: PictureLimits = {
+  maxBytes: PNG.length + 10,
+  perMessage: 2,
+  perTicket: 20,
+  personTotalBytes: 1024 * 1024,
+  siteTotalBytes: 1024 * 1024,
+};
+/** A picture larger than an ordinary form, so its form counts towards the uploads at once. */
+const LARGE = Buffer.concat([PNG, Buffer.alloc(200 * 1024)]);
 const [demoCustomer, , demoAdmin] = DEMO_ACTORS as [Actor, Actor, Actor];
 
 /**
@@ -26,7 +34,12 @@ const [demoCustomer, , demoAdmin] = DEMO_ACTORS as [Actor, Actor, Actor];
  */
 function parserApp(
   limits: PictureLimits,
-  options: { actor?: Actor | null; atOnce?: number; arrived?: () => void } = {},
+  options: {
+    actor?: Actor | null;
+    atOnce?: number;
+    deadlineMs?: number;
+    arrived?: () => void;
+  } = {},
 ): Express {
   const app = express();
   app.use((req, _res, next) => {
@@ -34,7 +47,7 @@ function parserApp(
     options.arrived?.();
     next();
   });
-  app.post("/form", readPictures(limits, options.atOnce), (_req, res) => {
+  app.post("/form", readPictures(limits, options.atOnce, options.deadlineMs), (_req, res) => {
     const read = res.locals.pictures as { files: Buffer[]; refused: string | null } | undefined;
     res.json(
       read === undefined
@@ -147,42 +160,80 @@ describe("pictures from someone who may add nothing", () => {
   });
 });
 
+/** Starts a large upload that never finishes arriving. */
+function holdUpload(address: string): http.ClientRequest {
+  const held = http.request(`${address}/form`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "multipart/form-data; boundary=held",
+      "Content-Length": "1000000",
+    },
+  });
+  held.on("error", () => {});
+  held.write('--held\r\nContent-Disposition: form-data; name="pictures"; filename="a.png"\r\n\r\n');
+  return held;
+}
+
+/** Sends a large upload, retrying for a while if the server is busy, and gives its status. */
+async function largeUploadStatus(address: string, tries = 1): Promise<number> {
+  let status = 0;
+  for (let attempt = 0; attempt < tries; attempt += 1) {
+    if (attempt > 0) await new Promise((done) => setTimeout(done, 20));
+    status = (await request(address).post("/form").attach("pictures", LARGE, "big.png")).status;
+    if (status !== 503) break;
+  }
+  return status;
+}
+
 describe("how many uploads the server reads at once", () => {
-  it("refuses one more than it reads at once, and frees a place when one ends", async () => {
+  /** A server that reads one large upload at once, and resolves firstArrived as one arrives. */
+  async function oneAtOnce(deadlineMs?: number) {
     let arrivedFirst = () => {};
     const firstArrived = new Promise<void>((done) => (arrivedFirst = done));
-    const port = await listen(parserApp(SMALL, { atOnce: 1, arrived: () => arrivedFirst() }));
-    const address = `http://127.0.0.1:${port}`;
-
-    // The first upload starts and is never finished.
-    const held = http.request(`${address}/form`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "multipart/form-data; boundary=held",
-        "Content-Length": "100000",
-      },
-    });
-    held.on("error", () => {});
-    held.write(
-      '--held\r\nContent-Disposition: form-data; name="pictures"; filename="a.png"\r\n\r\n',
+    const port = await listen(
+      parserApp(SMALL, { atOnce: 1, deadlineMs, arrived: () => arrivedFirst() }),
     );
+    return { address: `http://127.0.0.1:${port}`, firstArrived };
+  }
+
+  it("refuses one more than it reads at once, and frees a place when one ends", async () => {
+    const { address, firstArrived } = await oneAtOnce();
+    const held = holdUpload(address);
     await firstArrived;
 
-    const refused = await request(address).post("/form").attach("pictures", PNG, "b.png");
+    const refused = await request(address).post("/form").attach("pictures", LARGE, "b.png");
     expect(refused.status).toBe(503);
     expect(refused.body).toEqual({ error: UPLOAD_REFUSALS.busy });
 
     // The first one's connection closes, and its place is free again.
     held.destroy();
-    let next = await request(address).post("/form").attach("pictures", PNG, "c.png");
-    for (let tries = 0; next.status === 503 && tries < 50; tries += 1) {
-      await new Promise((done) => setTimeout(done, 20));
-      next = await request(address).post("/form").attach("pictures", PNG, "c.png");
-    }
-    expect(next.status).toBe(200);
+    expect(await largeUploadStatus(address, 50)).toBe(200);
     // A finished upload frees its place too.
-    const after = await request(address).post("/form").attach("pictures", PNG, "d.png");
-    expect(after.status).toBe(200);
+    expect(await largeUploadStatus(address)).toBe(200);
+  });
+
+  it("still reads a form no larger than an ordinary one while every place is taken", async () => {
+    const { address, firstArrived } = await oneAtOnce();
+    const held = holdUpload(address);
+    await firstArrived;
+    expect(await largeUploadStatus(address)).toBe(503);
+
+    const textOnly = await request(address).post("/form").field("body", "Here is what I see.");
+    expect(textOnly.status).toBe(200);
+    expect(textOnly.body).toEqual({ read: true, files: [], refused: null });
+    held.destroy();
+  });
+
+  it("cuts off an upload still arriving at its deadline, and frees its place", async () => {
+    const { address, firstArrived } = await oneAtOnce(100);
+    const held = holdUpload(address);
+    const cutOff = new Promise<void>((done) => held.on("close", () => done()));
+    await firstArrived;
+    expect(await largeUploadStatus(address)).toBe(503);
+
+    // The held upload never stops on its own: only the deadline ends it.
+    await cutOff;
+    expect(await largeUploadStatus(address, 50)).toBe(200);
   });
 });
 

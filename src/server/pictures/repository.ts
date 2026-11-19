@@ -62,6 +62,22 @@ export function countTicketPictures(db: Db, ticketId: number): number {
   return row.n;
 }
 
+/** How many bytes of pictures one person has added, across every ticket. */
+export function sumPersonPictureBytes(db: Db, addedBy: string): number {
+  const row = db
+    .prepare("SELECT COALESCE(SUM(size), 0) AS bytes FROM ticket_pictures WHERE added_by = ?")
+    .get(addedBy) as { bytes: number };
+  return row.bytes;
+}
+
+/** How many bytes of pictures the whole site keeps. */
+export function sumSitePictureBytes(db: Db): number {
+  const row = db.prepare("SELECT COALESCE(SUM(size), 0) AS bytes FROM ticket_pictures").get() as {
+    bytes: number;
+  };
+  return row.bytes;
+}
+
 /** On the demo: how many pictures its visitors have added, across every ticket. */
 export function countVisitorPictures(db: Db): number {
   const row = db

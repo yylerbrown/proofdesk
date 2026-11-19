@@ -103,6 +103,13 @@ export function createPictures(shared: Shared, tickets: TicketDoors) {
     if (repository.countTicketPictures(db, ticketId) + files.length > limits.perTicket) {
       throw refusal(PICTURE_REFUSALS.tooManyOnTicket(limits));
     }
+    const adding = files.reduce((total, bytes) => total + bytes.length, 0);
+    if (repository.sumPersonPictureBytes(db, actor.id) + adding > limits.personTotalBytes) {
+      throw refusal(PICTURE_REFUSALS.personFull(limits));
+    }
+    if (repository.sumSitePictureBytes(db) + adding > limits.siteTotalBytes) {
+      throw refusal(PICTURE_REFUSALS.siteFull(limits));
+    }
     if (
       limits.visitorTotal !== undefined &&
       uploaderToken !== null &&

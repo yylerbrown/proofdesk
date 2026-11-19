@@ -22,3 +22,6 @@ CREATE TABLE ticket_pictures (
 );
 
 CREATE INDEX idx_ticket_pictures_ticket_id ON ticket_pictures (ticket_id, entry_id);
+
+-- For the total each person may add, read before each new picture is saved.
+CREATE INDEX idx_ticket_pictures_added_by ON ticket_pictures (added_by, size);

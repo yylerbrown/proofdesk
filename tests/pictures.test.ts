@@ -14,7 +14,13 @@ import {
 } from "./helpers.js";
 import type { Actor } from "../src/server/actor.js";
 import { createConnectionService } from "../src/server/connections/service.js";
+import { ValidationError } from "../src/server/errors.js";
 import { pictureTypeOf } from "../src/server/pictures/kinds.js";
+import {
+  PICTURE_LIMITS,
+  PICTURE_REFUSALS,
+  type PictureLimits,
+} from "../src/server/pictures/limits.js";
 import { samplePicture } from "../src/server/pictures/sample.js";
 import { createTicketService } from "../src/server/tickets/service.js";
 
@@ -370,7 +376,107 @@ describe("the page's data for pictures", () => {
       maxBytes: 3 * 1024 * 1024,
       perMessage: 4,
       perTicket: 20,
+      personTotalBytes: 40 * 1024 * 1024,
+      siteTotalBytes: 300 * 1024 * 1024,
     });
+  });
+});
+
+describe("the ticket service's own picture limits", () => {
+  // The upload parser meets most of these first. The service checks them again, so a caller
+  // that skips the parser is held to the same limits.
+  const limits: PictureLimits = {
+    maxBytes: PNG.length,
+    perMessage: 2,
+    perTicket: 20,
+    personTotalBytes: PNG.length * 3,
+    siteTotalBytes: PNG.length * 5,
+  };
+  const reply = { kind: "reply", body: "Here is what I see." };
+
+  function serviceWith(budgetLimits = limits) {
+    const { db } = buildTestApp();
+    const service = createTicketService(db, "SUP", { pictures: budgetLimits });
+    service.createTicketWithPictures(ticket, { files: [], refused: null }, customerOne, null);
+    return { db, service };
+  }
+
+  /** The sentence a refusal of pictures gives, or null when nothing was refused. */
+  function refusedWith(add: () => unknown): string | null {
+    try {
+      add();
+      return null;
+    } catch (err) {
+      if (err instanceof ValidationError) return err.fieldErrors.pictures?.[0] ?? err.message;
+      throw err;
+    }
+  }
+
+  it("refuses a picture over the size limit, and saves nothing", () => {
+    const { db, service } = serviceWith();
+    const big = Buffer.concat([PNG, Buffer.alloc(1)]);
+    const refused = refusedWith(() =>
+      service.addEntryWithPictures(
+        "SUP-1",
+        reply,
+        { files: [big], refused: null },
+        customerOne,
+        null,
+      ),
+    );
+    expect(refused).toBe(PICTURE_REFUSALS.tooLarge(limits));
+    expect(pictureRows(db)).toBe(0);
+    expect(service.listEntries("SUP-1", customerOne)).toHaveLength(0);
+  });
+
+  it("refuses one picture more than a message takes, and saves nothing", () => {
+    const { db, service } = serviceWith();
+    const refused = refusedWith(() =>
+      service.addEntryWithPictures(
+        "SUP-1",
+        reply,
+        { files: [PNG, PNG, PNG], refused: null },
+        customerOne,
+        null,
+      ),
+    );
+    expect(refused).toBe(PICTURE_REFUSALS.tooManyInMessage(limits));
+    expect(pictureRows(db)).toBe(0);
+  });
+
+  it("refuses pictures past one person's total, and saves nothing", () => {
+    const { db, service } = serviceWith();
+    const two = { files: [PNG, PNG], refused: null };
+    service.addEntryWithPictures("SUP-1", reply, two, customerOne, null);
+    const refused = refusedWith(() =>
+      service.addEntryWithPictures("SUP-1", reply, two, customerOne, null),
+    );
+    expect(refused).toBe(PICTURE_REFUSALS.personFull(limits));
+    expect(pictureRows(db)).toBe(2);
+    // Someone else still may add theirs.
+    service.addEntryWithPictures("SUP-1", reply, two, teamActor, null);
+    expect(pictureRows(db)).toBe(4);
+  });
+
+  it("refuses pictures past the whole site's total, and saves nothing", () => {
+    const { db, service } = serviceWith();
+    const two = { files: [PNG, PNG], refused: null };
+    service.addEntryWithPictures("SUP-1", reply, two, customerOne, null);
+    service.addEntryWithPictures("SUP-1", reply, two, teamActor, null);
+    const refused = refusedWith(() =>
+      service.addEntryWithPictures("SUP-1", reply, two, adminActor, null),
+    );
+    expect(refused).toBe(PICTURE_REFUSALS.siteFull(limits));
+    expect(pictureRows(db)).toBe(4);
+  });
+
+  it("names each total in words", () => {
+    expect(PICTURE_REFUSALS.personFull(PICTURE_LIMITS)).toBe(
+      "You can add at most 40 MB of pictures in all.",
+    );
+    expect(PICTURE_REFUSALS.siteFull(PICTURE_LIMITS)).toBe(
+      "This site holds at most 300 MB of pictures in all.",
+    );
   });
 });
 
