@@ -13,9 +13,9 @@
 %>
 <% if (locals.welcome) { %><%- include("demo-welcome", { welcome }) %><% } %>
 <h1><%= mine ? "My tickets" : "All tickets" %></h1>
-<p class="list-note"><small>A ticket moves from New to In Progress, and is resolved when its customer confirms the fix or the team gives a reason.</small></p>
-<% if (viewer && viewer.role === "admin") { %>
-<p class="role-note"><small><% if (viewer.readOnly) { %>Admin preview, read-only: you see every ticket with its history and internal notes, and nothing you do here changes them. On the real site an admin also restores archived tickets, deletes tickets permanently and manages assistant connections. Archiving, restoring and deleting are off on this demo for everyone.<% } else { %>As an admin you see every ticket with its history and internal notes, restore archived tickets, delete tickets permanently and <a href="/connections">manage assistant connections</a>.<% } %></small></p>
+<%# Only the read-only preview needs a word here: what it cannot do, and what a real admin can. An admin's People and Connections are in the header's person menu. %>
+<% if (viewer && viewer.readOnly) { %>
+<p class="role-note"><small>Read-only preview. On the real site an admin also restores archived tickets, deletes tickets permanently and manages assistant connections.</small></p>
 <% } %>
 <%# The filters: by status, by owner for the team, and words to find. Each is a plain link or a GET form, and each keeps the others, so the address names the view and can be shared. %>
 <div class="list-filters">

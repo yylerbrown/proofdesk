@@ -29,23 +29,22 @@ describe("the ticket list", () => {
     expect(mine.querySelector("title")?.text).toContain("My tickets");
     const all = parse((await as(app, teamActor).get("/tickets")).text);
     expect(all.querySelector("h1")?.text).toBe("All tickets");
-    expect(all.querySelector(".list-note")?.text).toBe(
-      "A ticket moves from New to In Progress, and is resolved when its customer confirms the fix or the team gives a reason.",
-    );
+    // The heading leads straight to the filters, with no explanation between them.
+    expect(all.querySelector(".list-note")).toBeNull();
     expect(all.querySelector(".role-note")).toBeNull();
   });
 
-  it("tells an admin in one line what they can see and do", async () => {
+  it("gives an admin no note: People and Connections are in the person menu", async () => {
     const { app } = buildTestApp();
     const html = parse((await admin(app).get("/tickets")).text);
     expect(html.querySelector("h1")?.text).toBe("All tickets");
-    expect(html.querySelector(".role-note")?.text).toMatch(/^As an admin you see every ticket/);
+    expect(html.querySelector(".role-note")).toBeNull();
   });
 
   it("tells the demo's admin the preview is read-only", async () => {
     const { app } = buildDemo();
     const html = parse((await asDemo(app, "demo-admin").get("/tickets")).text);
-    expect(html.querySelector(".role-note")?.text).toMatch(/^Admin preview, read-only/);
+    expect(html.querySelector(".role-note")?.text).toMatch(/^Read-only preview\./);
   });
 
   it("links each title to its ticket, as well as its key", async () => {

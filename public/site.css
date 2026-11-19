@@ -189,7 +189,6 @@ main > form,
   color: var(--pd-muted);
 }
 /* Small explanations under a title or beside a control: muted, never body-black. */
-.list-note,
 .role-note,
 .status-rule,
 .agent-help,
@@ -198,17 +197,13 @@ main > form,
   color: var(--pd-muted);
   font-size: var(--pd-text-sm);
 }
-.list-note,
 .role-note {
   max-width: var(--pd-measure);
   margin-bottom: var(--pd-space-5);
 }
-hgroup + .list-note,
-h1 + .list-note {
+hgroup + .role-note,
+h1 + .role-note {
   margin-top: calc(-1 * var(--pd-space-2));
-}
-.list-note:has(+ .role-note) {
-  margin-bottom: var(--pd-space-2);
 }
 /* "Back to all tickets", and the breadcrumb of the form pages: small and muted. */
 .back,
