@@ -11,7 +11,7 @@ import {
 import { z } from "zod";
 import type { Actor } from "./actor.js";
 import { ACTIONS, nextCursor, type ApiAction } from "./api/actions.js";
-import { MCP_INSTRUCTIONS, UNTRUSTED_TEXT } from "./api/describe.js";
+import { mcpInstructions, UNTRUSTED_TEXT } from "./api/describe.js";
 import type { ConnectionService } from "./connections/service.js";
 import { errorBody, HttpError } from "./errors.js";
 import { CAPABILITIES } from "./permissions.js";
@@ -61,7 +61,7 @@ function buildServer(
 ): McpServer {
   const server = new McpServer(
     { name: "proofdesk", version: "1.0.0" },
-    { instructions: MCP_INSTRUCTIONS },
+    { instructions: mcpInstructions(actor) },
   );
   // Only the tools this connection may use: a tool its scopes forbid is not offered at all.
   const scopes = actor.scopes ?? [];

@@ -161,6 +161,8 @@ export const NO_NARROWING: Narrowing = {
  * - everyone: every ticket that is not archived, for the team.
  * - among: the tickets among these ids that are not archived, for an assistant. The ids are
  *   applied before the page is cut, so a page holds as many of them as fit.
+ * - among_or_wanting_check: the same, and also every New ticket with no check, for an
+ *   assistant an admin allowed to suggest ways to verify them.
  * - filed_by: the tickets one person filed that are not archived, for a customer. There is no
  *   way to ask it for everyone's tickets, so a mistake in a caller cannot show a customer other
  *   people's tickets.
@@ -169,6 +171,7 @@ export const NO_NARROWING: Narrowing = {
 export type ListScope =
   | { kind: "everyone" }
   | { kind: "among"; ids: number[] }
+  | { kind: "among_or_wanting_check"; ids: number[] }
   | { kind: "filed_by"; createdBy: string }
   | { kind: "archived" };
 
@@ -176,6 +179,8 @@ export type ListScope =
 const SCOPE_SQL: Record<ListScope["kind"], string> = {
   everyone: "archived_at IS NULL",
   among: "archived_at IS NULL AND id IN (SELECT value FROM json_each(@ids))",
+  among_or_wanting_check: `archived_at IS NULL AND (id IN (SELECT value FROM json_each(@ids))
+    OR (status = 'new' AND fix_check IS NULL))`,
   filed_by: "archived_at IS NULL AND created_by = @createdBy",
   archived: "archived_at IS NOT NULL",
 };
@@ -225,7 +230,9 @@ function bound(scope: ListScope, narrow: Narrowing) {
 
 /** The values one scope's condition binds. */
 function scopeValues(scope: ListScope): Record<string, unknown> {
-  if (scope.kind === "among") return { ids: JSON.stringify(scope.ids) };
+  if (scope.kind === "among" || scope.kind === "among_or_wanting_check") {
+    return { ids: JSON.stringify(scope.ids) };
+  }
   if (scope.kind === "filed_by") return { createdBy: scope.createdBy };
   return {};
 }
@@ -696,6 +703,7 @@ export const TICKET_TABLES = [
   "ticket_specs",
   "ticket_agent_handoffs",
   "email_outbox",
+  "check_suggestions",
 ];
 
 /**
@@ -987,4 +995,70 @@ const ALL_IDS = {
 /** Every id in one of the tables demo seeding writes, to record what it wrote. */
 export function allIds(db: Db, table: keyof typeof ALL_IDS): number[] {
   return (db.prepare(ALL_IDS[table]).all() as { id: number }[]).map((row) => row.id);
+}
+
+// The ways to verify a ticket that an assistant suggests.
+
+export type SuggestionState = "offered" | "chosen" | "withdrawn";
+
+export type SuggestionRow = {
+  id: number;
+  ticket_id: number;
+  connection_id: number;
+  offered_by_name: string;
+  words: string;
+  state: SuggestionState;
+  created_at: string;
+};
+
+/** Every suggestion on a ticket, oldest first. */
+export function listSuggestions(db: Db, ticketId: number): SuggestionRow[] {
+  return db
+    .prepare("SELECT * FROM check_suggestions WHERE ticket_id = ? ORDER BY id")
+    .all(ticketId) as SuggestionRow[];
+}
+
+/** How many suggestions other connections still offer on a ticket. */
+export function countOfferedByOthers(db: Db, ticketId: number, connectionId: number): number {
+  const row = db
+    .prepare(
+      `SELECT COUNT(*) AS n FROM check_suggestions
+       WHERE ticket_id = ? AND state = 'offered' AND connection_id <> ?`,
+    )
+    .get(ticketId, connectionId) as { n: number };
+  return row.n;
+}
+
+/** Removes what one connection still offers on a ticket, before it offers others instead. */
+export function deleteOfferedBy(db: Db, ticketId: number, connectionId: number): void {
+  db.prepare(
+    "DELETE FROM check_suggestions WHERE ticket_id = ? AND connection_id = ? AND state = 'offered'",
+  ).run(ticketId, connectionId);
+}
+
+export function insertSuggestion(
+  db: Db,
+  suggestion: {
+    ticketId: number;
+    connectionId: number;
+    offeredByName: string;
+    words: string;
+    now: string;
+  },
+): void {
+  db.prepare(
+    `INSERT INTO check_suggestions
+       (ticket_id, connection_id, offered_by_name, words, state, created_at)
+     VALUES (?, ?, ?, ?, 'offered', ?)`,
+  ).run(
+    suggestion.ticketId,
+    suggestion.connectionId,
+    suggestion.offeredByName,
+    suggestion.words,
+    suggestion.now,
+  );
+}
+
+export function markChosen(db: Db, id: number): void {
+  db.prepare("UPDATE check_suggestions SET state = 'chosen' WHERE id = ?").run(id);
 }

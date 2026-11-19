@@ -5,7 +5,7 @@ export const TICKET_STATUSES = ["new", "in_progress", "resolved"] as const;
 export type TicketStatus = (typeof TICKET_STATUSES)[number];
 
 // A form sends an empty box for a field left blank; that means it was not given.
-const blankIsMissing = (value: unknown) =>
+export const blankIsMissing = (value: unknown) =>
   typeof value === "string" && value.trim() === "" ? undefined : value;
 
 // A browser sends each line break in a text box as two characters, "\r\n", while the box's
@@ -13,7 +13,7 @@ const blankIsMissing = (value: unknown) =>
 // counts once here too, and each one is stored the same way.
 const plainLineBreaks = (text: string) => text.replace(/\r\n?/g, "\n");
 
-const textBox = () => z.string().overwrite(plainLineBreaks).trim();
+export const textBox = () => z.string().overwrite(plainLineBreaks).trim();
 
 // Text stored before line breaks were stored plainly may still hold "\r\n". New words are the
 // same as stored words when they match with plain line breaks, so every comparison of new text

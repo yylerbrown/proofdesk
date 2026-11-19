@@ -25,6 +25,7 @@ import {
 import { bulkChangeSchema } from "../tickets/bulk.js";
 import { addEvidenceSchema } from "../tickets/evidence.js";
 import { decideSpecSchema, proposeSpecSchema } from "../tickets/spec.js";
+import { chooseCheckSchema, suggestChecksSchema } from "../tickets/suggested-checks.js";
 import { LIST_PAGE_SIZE, type TicketService } from "../tickets/service.js";
 import {
   bulkOutput,
@@ -34,9 +35,11 @@ import {
   evidenceOutput,
   listedEntryOutput,
   specOutput,
+  suggestedChecksOutput,
   ticketOutput,
   ticketReadOutput,
   ticketRowOutput,
+  ticketWantingCheckOutput,
 } from "./schemas.js";
 import { parse } from "../validation.js";
 
@@ -81,11 +84,11 @@ export type ApiAction = {
 export const ACTIONS: ApiAction[] = [
   {
     name: "list_tickets",
-    output: z.array(z.union([ticketOutput, ticketRowOutput])),
+    output: z.array(z.union([ticketOutput, ticketRowOutput, ticketWantingCheckOutput])),
     method: "get",
     path: "/tickets",
     summary:
-      "List tickets: open ones newest first, then resolved ones, unless sort or order says otherwise. A customer sees only their own. An assistant gets a short row per ticket handed to it; get_ticket reads one in full.",
+      "List tickets: open ones newest first, then resolved ones, unless sort or order says otherwise. A customer sees only their own. An assistant gets a short row per ticket handed to it; get_ticket reads one in full. An assistant allowed to suggest ways to verify also gets the key, title, description and filed time of each New ticket with no check.",
     needs: "read",
     query: listQuerySchema,
     paged: true,
@@ -95,16 +98,27 @@ export const ACTIONS: ApiAction[] = [
       const { status, owner, q } = checked;
       const tickets = service.listTickets(status ?? "all", actor, page, { owner, q }, sort);
       if (actor.kind !== "agent") return tickets;
-      return tickets.map((ticket) => ({
-        key: ticket.key,
-        title: ticket.title,
-        status: ticket.status,
-        waiting_on: ticket.waiting_on,
-        owner_name: ticket.owner_name,
-        customer_check: ticket.done_when.customer_check,
-        resolution_label: ticket.resolution?.label ?? null,
-        updated_at: ticket.updated_at,
-      }));
+      return tickets.map((ticket) =>
+        // A ticket not handed to this assistant is listed only because it waits for a way to
+        // verify it, and then only this much of it.
+        ticket.agent_id === null
+          ? {
+              key: ticket.key,
+              title: ticket.title,
+              description: ticket.description,
+              created_at: ticket.created_at,
+            }
+          : {
+              key: ticket.key,
+              title: ticket.title,
+              status: ticket.status,
+              waiting_on: ticket.waiting_on,
+              owner_name: ticket.owner_name,
+              customer_check: ticket.done_when.customer_check,
+              resolution_label: ticket.resolution?.label ?? null,
+              updated_at: ticket.updated_at,
+            },
+      );
     },
   },
   {
@@ -120,21 +134,29 @@ export const ACTIONS: ApiAction[] = [
   },
   {
     name: "get_ticket",
-    output: ticketReadOutput,
+    output: z.union([ticketReadOutput, ticketWantingCheckOutput]),
     method: "get",
     path: "/tickets/:key",
     summary:
       "One ticket, led by done_when: what the customer will accept as fixed. spec is its test " +
       "spec, or null when it has none yet; then you may offer one with propose_spec. pictures " +
-      "lists the description's pictures; an assistant sees the list but cannot load or add pictures.",
+      "lists the description's pictures; an assistant sees the list but cannot load or add pictures. " +
+      "check_suggestions lists the ways to verify it an assistant suggested. An assistant " +
+      "allowed to suggest them reads only the key, title, description and filed time of a New " +
+      "ticket with no check that is not handed to it.",
     needs: "read",
-    run: ({ service, actor, key }) => ({
-      ...service.getTicket(key, actor),
-      spec: service.getSpec(key, actor),
-      // The API carries no demo visitor's cookie, so a demo visitor's own pictures are listed
-      // here as hidden; their page shows them.
-      pictures: service.listPictures(key, actor, null).description,
-    }),
+    run: ({ service, actor, key }) => {
+      const wanting = service.ticketWantingCheck(key, actor);
+      if (wanting !== null) return wanting;
+      return {
+        ...service.getTicket(key, actor),
+        spec: service.getSpec(key, actor),
+        // The API carries no demo visitor's cookie, so a demo visitor's own pictures are listed
+        // here as hidden; their page shows them.
+        pictures: service.listPictures(key, actor, null).description,
+        check_suggestions: service.listCheckSuggestions(key, actor),
+      };
+    },
   },
   {
     name: "change_status",
@@ -179,6 +201,34 @@ export const ACTIONS: ApiAction[] = [
     needs: "adopt_check",
     body: versionOnlySchema,
     run: ({ service, actor, key, body }) => service.adoptCheck(key, actor, body),
+  },
+  {
+    name: "suggest_checks",
+    output: suggestedChecksOutput,
+    method: "post",
+    path: "/tickets/:key/check-suggestions",
+    summary:
+      "Suggest up to three ways the customer could check the fix themselves, for a New ticket " +
+      "with no check. Each is one thing they can do and see, in their words. The customer picks " +
+      "one or writes their own; until then they are only suggestions, marked as yours. A new " +
+      "call replaces what you offered before. It never changes the ticket's status, owner or " +
+      "version. Only an assistant whose admin allowed it, never on the demo.",
+    needs: "suggest_checks",
+    body: suggestChecksSchema,
+    status: 201,
+    run: ({ service, actor, key, body }) => service.suggestChecks(key, body, actor),
+  },
+  {
+    name: "choose_check",
+    output: ticketOutput,
+    method: "post",
+    path: "/tickets/:key/check",
+    summary:
+      "The customer who filed a ticket with no check says how they will know it is fixed: " +
+      "suggestion_id picks one of check_suggestions, or words are their own. People only.",
+    needs: "choose_check",
+    body: chooseCheckSchema,
+    run: ({ service, actor, key, body }) => service.chooseCheck(key, body, actor),
   },
   {
     name: "link_change",

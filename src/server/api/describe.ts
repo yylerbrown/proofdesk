@@ -3,6 +3,7 @@ import { createDocument, type ZodOpenApiPathsObject } from "zod-openapi";
 import type { Actor } from "../actor.js";
 import { WRITE_LIMIT_DESCRIPTION } from "../limits.js";
 import { CAPABILITIES } from "../permissions.js";
+import { maySuggestChecks } from "../tickets/access.js";
 import { LIST_PAGE_SIZE } from "../tickets/service.js";
 import { ACTIONS, documentedPath } from "./actions.js";
 import { errorOutput } from "./schemas.js";
@@ -27,6 +28,22 @@ export const MCP_INSTRUCTIONS =
   "with blocked: true whose first line says what blocks you, and stop. " +
   "Send an idempotency_key with every write so a retry acts once. " +
   UNTRUSTED_TEXT;
+
+/**
+ * Said only to a connection an admin allowed to suggest ways to verify new tickets: in the MCP
+ * instructions, in the guide at GET /api, and on /llms.txt when it is read with that key.
+ */
+export const SUGGEST_CHECKS_TEXT =
+  "Your connection may also suggest ways to verify new tickets. Look for New tickets without " +
+  "a way to verify: list_tickets gives their key, title, description and filed time. Read the " +
+  "title and description, then offer up to three ways the customer could check the fix " +
+  "themselves with suggest_checks, in the customer's words, each one thing they can do and " +
+  "see. The customer picks one or writes their own.";
+
+/** The MCP server's instructions for this connection. */
+export function mcpInstructions(actor: Actor): string {
+  return maySuggestChecks(actor) ? `${MCP_INSTRUCTIONS} ${SUGGEST_CHECKS_TEXT}` : MCP_INSTRUCTIONS;
+}
 
 /** Who is asking, and what they may do, from the capability table. */
 function you(actor: Actor | null) {
@@ -63,6 +80,7 @@ export function guide(actor: Actor | null, address: string, sourceUrl?: string) 
       "A support desk where the customer says how they will know a ticket is fixed, and only the customer can confirm it is.",
     untrusted_text: UNTRUSTED_TEXT,
     you: you(actor),
+    ...(actor !== null && maySuggestChecks(actor) ? { suggest_checks: SUGGEST_CHECKS_TEXT } : {}),
     start_here: {
       steps: [
         {

@@ -13,6 +13,7 @@ const EXPECTED: Record<string, Audience[]> = {
   edited: [],
   check_agreed: [],
   check_adopted: [],
+  check_chosen: [],
   change_linked: [],
   ready_for_customer: ["customer"],
   question_withdrawn: [],
