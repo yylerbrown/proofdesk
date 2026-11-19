@@ -81,18 +81,20 @@ test("the short path: file, take, ask the customer, and their Yes resolves it", 
   await team.goto(`/tickets/${key}`);
   await team.getByRole("button", { name: "Take ticket and start work" }).click();
   await expectTicketStatus(team, key, "In Progress");
-  // One press asks: nothing else is required, no change link and no customer check.
+  // One press marks it fixed and tells the customer: nothing else is required, no change link
+  // and no customer check. The ticket is resolved at once.
   await team
     .locator(".next-action")
-    .getByRole("button", { name: "Ask the customer to verify" })
+    .getByRole("button", { name: "Mark fixed and tell the customer" })
     .click();
-  await expect(askedLine(team)).toHaveText("Asked the customer: Did this fix it?");
+  await expect(savedMessage(team)).toHaveText("Marked fixed. The customer has been told.");
+  await expectTicketStatus(team, key, "Resolved");
 
   await customer.goto(`/tickets/${key}`);
   const question = customer
     .getByRole("article")
     .filter({ has: customer.getByRole("heading", { name: "Did this fix it?" }) });
-  await question.getByRole("button", { name: "Yes, resolve ticket" }).click();
+  await question.getByRole("button", { name: "Yes, it is fixed" }).click();
   await expect(savedMessage(customer)).toContainText("The ticket is resolved");
   await expectTicketStatus(customer, key, "Resolved");
   // Only the customer's Yes reads as "Customer confirmed".
@@ -211,9 +213,9 @@ test("the long path: a check, a change link and evidence, a No, then the custome
   await test.step("the team member asks the customer to check", async () => {
     // The details are optional, so they wait behind their own disclosure: one message.
     await team.locator("summary", { hasText: "More options" }).click();
-    await team.locator("summary", { hasText: "Ask with details" }).click();
+    await team.locator("summary", { hasText: "Ask before resolving" }).click();
     await team.getByRole("textbox", { name: "Message to the customer (optional)" }).fill(message);
-    await team.locator("#ask form").getByRole("button", { name: "Ask with these details" }).click();
+    await team.locator("#ask form").getByRole("button", { name: "Ask the customer" }).click();
     await expect(askedLine(team)).toHaveText("Asked the customer: Did this fix it?");
   });
 
@@ -249,25 +251,25 @@ test("the long path: a check, a change link and evidence, a No, then the custome
     await expectTicketStatus(team, key, "In Progress");
     // The card says the customer said no, and links to their words in the conversation.
     const saidNo = team.locator(".ticket-card .card-line");
-    await expect(saidNo).toContainText("The customer said no on");
+    await expect(saidNo).toContainText("The customer says it is not fixed, since");
     await saidNo.getByRole("link").click();
     await expect(team.locator("article.entry", { hasText: notFixedComment })).toBeVisible();
     await expect(team.locator(".ticket-facts .owner-menu summary")).toContainText("Team Member");
     await team.goto("/tickets");
     // Still owned by the same team member, and the list says why it is back with the team.
     await expect(listRow(team, key)).toContainText("Team Member");
-    await expect(listRow(team, key)).toContainText("Customer said no");
+    await expect(listRow(team, key)).toContainText("Customer says not fixed");
   });
 
   await test.step("the team member asks again and the customer answers Yes", async () => {
     await team.goto(`/tickets/${key}`);
     await team.locator("summary", { hasText: "More options" }).click();
-    await team.locator("summary", { hasText: "Ask with details" }).click();
+    await team.locator("summary", { hasText: "Ask before resolving" }).click();
     // After a No, the message says what changed, and the customer reads it as that.
     await team
       .getByRole("textbox", { name: "Message to the customer (optional)" })
       .fill("Empty exports are fixed too.");
-    await team.locator("#ask form").getByRole("button", { name: "Ask with these details" }).click();
+    await team.locator("#ask form").getByRole("button", { name: "Ask the customer" }).click();
     await expect(askedLine(team)).toHaveText("Asked the customer: Did this fix it?");
 
     await customer.goto(`/tickets/${key}`);
@@ -276,7 +278,7 @@ test("the long path: a check, a change link and evidence, a No, then the custome
       .filter({ has: customer.getByRole("heading", { name: "Did this fix it?" }) });
     await expect(question.getByText(ticket.check)).toBeVisible();
     await expect(question.getByText("What changed since you said it still fails:")).toBeVisible();
-    await question.getByRole("button", { name: "Yes, resolve ticket" }).click();
+    await question.getByRole("button", { name: "Yes, it is fixed" }).click();
     await expect(savedMessage(customer)).toContainText("The ticket is resolved");
   });
 

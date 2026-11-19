@@ -52,18 +52,22 @@ describe("who resolves", () => {
   });
 });
 
-describe("the demo's ask", () => {
+describe("the demo's Mark fixed", () => {
   it("is one press after taking the ticket, with no sample values to fill in", async () => {
     const { asDemo } = await demoInProgress();
     const page = parse((await asDemo("demo-team").get("/tickets/SUP-4")).text);
     const next = page.querySelector(".next-action form")!;
-    expect(next.getAttribute("action")).toBe("/tickets/SUP-4/ready");
-    expect(next.querySelector("button")?.text).toBe("Ask the customer to verify");
+    expect(next.getAttribute("action")).toBe("/tickets/SUP-4/resolve");
+    expect(next.querySelector("button")?.text).toBe("Mark fixed and tell the customer");
     expect(page.text).not.toContain("Demo sample value");
     expect(page.querySelector("form[action$='/sample-fix']")).toBeNull();
 
-    const asked = await asDemo("demo-team").post("/tickets/SUP-4/ready").set(FROM_THIS_SITE);
-    expect([asked.status, asked.headers.location]).toEqual([303, "/tickets/SUP-4"]);
+    const marked = await asDemo("demo-team")
+      .post("/tickets/SUP-4/resolve")
+      .set(FROM_THIS_SITE)
+      .type("form")
+      .send({ reason: "fixed_no_reply", from: "next-step" });
+    expect([marked.status, marked.headers.location]).toEqual([303, "/tickets/SUP-4"]);
     const customer = parse((await asDemo("demo-customer").get("/tickets/SUP-4")).text);
     expect(customer.querySelector("#did-this-fix-it h2")?.text).toBe("Did this fix it?");
   });
@@ -94,7 +98,7 @@ describe("the team's next step", () => {
     };
   };
 
-  it("on the real site: take, ask, then nothing while the customer answers", async () => {
+  it("on the real site: take, mark fixed, then nothing while the customer answers", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
     const page = async () => parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
@@ -105,33 +109,41 @@ describe("the team's next step", () => {
     });
 
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
-    const askStep = await page();
-    expect(step(askStep)).toEqual({
-      label: "Ask the customer to verify",
-      to: "/tickets/SUP-1/ready",
+    const fixStep = await page();
+    expect(step(fixStep)).toEqual({
+      label: "Mark fixed and tell the customer",
+      to: "/tickets/SUP-1/resolve",
       note: null,
     });
-    // The longer form, with its optional boxes, works too: never a greyed button.
-    expect(askStep.querySelector("#ask form button[type=submit]")?.hasAttribute("disabled")).toBe(
+    // Asking first, under More options, works too: never a greyed button.
+    expect(fixStep.querySelector("#ask form button[type=submit]")?.hasAttribute("disabled")).toBe(
       false,
     );
 
-    // Pressing the step sends the form as it is, with no fields.
-    expect((await as(app, teamActor).post("/tickets/SUP-1/ready")).status).toBe(303);
+    // Pressing the step sends the form as it is, with its optional box empty.
+    const pressed = await as(app, teamActor)
+      .post("/tickets/SUP-1/resolve")
+      .type("form")
+      .send({ reason: "fixed_no_reply", from: "next-step", note: "" });
+    expect(pressed.status).toBe(303);
     expect(step(await page())).toBeNull();
     // Someone who does not own it has no step to take.
     expect(step(parse((await admin(app).get("/tickets/SUP-1")).text))).toBeNull();
   });
 
-  it("asks the customer to verify even when they never said how they will know", async () => {
+  it("offers Mark fixed even when the customer never said how they will know", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne)
       .post("/api/tickets")
       .send({ title: "Printer jams", description: "x" });
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
     const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    expect(step(page)?.label).toBe("Ask the customer to verify");
-    expect((await as(app, teamActor).post("/tickets/SUP-1/ready")).status).toBe(303);
-    expect((await admin(app).get("/api/tickets/SUP-1")).body.waiting_on).toBe("customer");
+    expect(step(page)?.label).toBe("Mark fixed and tell the customer");
+    const pressed = await as(app, teamActor)
+      .post("/tickets/SUP-1/resolve")
+      .type("form")
+      .send({ reason: "fixed_no_reply", from: "next-step" });
+    expect(pressed.status).toBe(303);
+    expect((await admin(app).get("/api/tickets/SUP-1")).body.status).toBe("resolved");
   });
 });

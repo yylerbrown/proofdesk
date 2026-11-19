@@ -1471,6 +1471,16 @@ article.ticket-card {
 .ticket-card details.card-step {
   display: block;
 }
+/* Marking it fixed: the optional "Fixed in" box, one short line, above the button. The demo's
+   sample note sits beside the button, not beside the box. */
+.ticket-card .card-step:has(form.mark-fixed) {
+  align-items: flex-end;
+}
+.ticket-card form.mark-fixed input[name="note"] {
+  display: block;
+  max-width: 20rem;
+  margin: var(--pd-space-2) 0 var(--pd-space-4);
+}
 .ticket-card details.card-evidence {
   margin-bottom: var(--pd-space-3);
 }
@@ -1874,11 +1884,13 @@ details.history td:first-child {
 .step-form .form-actions {
   margin-top: var(--pd-space-4);
 }
-/* "Duplicate of" shows only for a duplicate, and the note box only for Other, which needs it. The
-   page's route drops a note sent with any other reason, so a hidden box never carries words the
-   customer would see. A browser that cannot read :has shows both, which still works. */
+/* "Duplicate of" shows only for a duplicate, the note box only for Other, which needs it, and
+   "Fixed in" only for Fixed. The page's route sends only the box for the reason chosen, so a
+   hidden box never carries words the customer would see. A browser that cannot read :has shows
+   all three, which still works. */
 form.resolve:not(:has(input[value="duplicate"]:checked)) .resolve-duplicate,
-form.resolve:not(:has(input[value="other"]:checked)) .resolve-note {
+form.resolve:not(:has(input[value="other"]:checked)) .resolve-note,
+form.resolve:not(:has(input[value="fixed_no_reply"]:checked)) .resolve-fixed-in {
   display: none;
 }
 

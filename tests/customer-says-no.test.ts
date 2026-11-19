@@ -40,21 +40,23 @@ async function saidNo(app: Express) {
 }
 
 describe("after the customer says No", () => {
-  it("tells the owner on the card, linked to the customer's words, with the ask again", async () => {
+  it("tells the owner on the card, linked to the customer's words, with Mark fixed again", async () => {
     const { app } = buildTestApp();
     await saidNo(app);
     const html = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     const card = html.querySelector(".ticket-card")!;
     const line = card.querySelector(".card-line")!;
-    expect(line.text.trim()).toMatch(/^The customer said no on \d{1,2} [A-Z][a-z]{2} \d{4}\.$/);
+    expect(line.text.trim()).toMatch(
+      /^The customer says it is not fixed, since \d{1,2} [A-Z][a-z]{2} \d{4}\.$/,
+    );
     // Their words stand once, in the conversation, and the line links to that message.
     expect(card.text).not.toContain(comment);
     const message = html.querySelector(line.querySelector("a")!.getAttribute("href")!)!;
     expect(message.classList.contains("entry")).toBe(true);
     expect(message.text).toContain(comment);
-    // The card's step is to ask again, after the line. No red block of its own.
+    // The card's step is to mark it fixed again, after the line. No red block of its own.
     expect(line.nextElementSibling?.querySelector("button")?.text).toBe(
-      "Ask the customer to verify",
+      "Mark fixed and tell the customer",
     );
     expect(html.querySelector("#customer-said-no")).toBeNull();
     const ticket = (await as(app, teamActor).get("/api/tickets/SUP-1")).body;
@@ -70,12 +72,12 @@ describe("after the customer says No", () => {
     const { app } = buildTestApp();
     await saidNo(app);
     const row = parse((await as(app, teamActor).get("/tickets")).text).querySelector("tbody tr");
-    expect(row?.querySelector(".turn-tag")?.text).toBe("Customer said no");
+    expect(row?.querySelector(".turn-tag")?.text).toBe("Customer says not fixed");
     const mine = parse((await as(app, customerOne).get("/tickets/SUP-1")).text).querySelector(
       ".ticket-card .card-line",
     );
     expect(mine?.text.trim()).toMatch(
-      /^You said no on \d{1,2} [A-Z][a-z]{2} \d{4}\. The team will ask you again\.$/,
+      /^You said it is not fixed on \d{1,2} [A-Z][a-z]{2} \d{4}\.$/,
     );
   });
 

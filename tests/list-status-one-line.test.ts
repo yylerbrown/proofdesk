@@ -34,8 +34,11 @@ describe("the list's status cell", () => {
       expect(mark.getAttribute("role")).toBe("img");
       expect(mark.getAttribute("aria-label")).toBe("Customer confirmed");
       expect(mark.getAttribute("title")).toBe("Customer confirmed");
-      // The team's resolution is the plain word: its reason stays on the ticket's page.
-      expect(cells["SUP-2"]!.text.trim()).toBe("Resolved");
+      // The team's resolution is the plain word: its reason stays on the ticket's page. The
+      // customer's own row adds the question the team's Fixed puts to them.
+      expect(cells["SUP-2"]!.text.trim()).toBe(
+        who === customerOne ? "Resolved Did this fix it?" : "Resolved",
+      );
       expect(cells["SUP-2"]!.querySelector(".confirmed-mark")).toBeNull();
     }
   });
