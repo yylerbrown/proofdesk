@@ -61,9 +61,6 @@
           <select name="reason" required <%= focusIf("resolve", "reason") %>>
             <% if (!chosenReason) { %><option value="" selected>Choose a reason</option><% } %>
             <% for (const [value, label] of Object.entries(resolveReasons)) { %>
-            <%# While the customer's No or reopening is their standing word, "Fixed" would
-                contradict them. The same rule as the service. %>
-            <% if (value === "fixed_no_reply" && notFixed) continue; %>
             <option value="<%= value %>" <% if (chosenReason === value) { %>selected<% } %>><%= label %></option>
             <% } %>
           </select>

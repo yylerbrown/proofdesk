@@ -69,7 +69,8 @@ describe("the guides' shape", () => {
 
   it.each([
     ["README.md", 175],
-    ["docs/API.md", 96],
+    // The customer's confirm of a ticket marked fixed added its row.
+    ["docs/API.md", 97],
     ["docs/AGENTS_GUIDE.md", 174],
     ["docs/TOUR.md", 57],
     // Microsoft sign-in beside GitHub added its settings and setup steps.

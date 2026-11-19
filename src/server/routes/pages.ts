@@ -7,7 +7,6 @@ import { can } from "../permissions.js";
 import {
   cardLine,
   confirmedAt,
-  customerSaysNotFixed,
   describeActor,
   describeEvent,
   firstParagraph,
@@ -523,8 +522,6 @@ export function pagesRouter(service: TicketService): Router {
       agentHelp,
       entries,
       history,
-      // The customer's standing No, which the resolve form's reasons follow.
-      notFixed: customerSaysNotFixed(ticket, events),
       evidence,
       allowed,
       resolveReasons: RESOLVE_REASON_LABELS,
@@ -1008,6 +1005,12 @@ export function pagesRouter(service: TicketService): Router {
   router.post("/tickets/:key/ready", ticketForm("ready", service.markReady));
   router.post("/tickets/:key/answer", ticketForm("answer", service.answer));
   router.post("/tickets/:key/reopen", ticketForm("reopen", service.reopen));
+  // The customer's Yes to a ticket the team marked fixed. It has no boxes to keep.
+  router.post("/tickets/:key/confirm", (req, res) => {
+    const ticket = service.confirmFix(req.params.key, req.body, signedIn(req));
+    rememberSaved(res, "fixed");
+    res.redirect(303, `/tickets/${ticket.key}`);
+  });
   // The page shows its note box only for Other, so a note typed there and left behind after
   // choosing another reason is not sent with it.
   router.post(

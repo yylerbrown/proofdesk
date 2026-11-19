@@ -218,6 +218,17 @@ export const ACTIONS: ApiAction[] = [
     run: ({ service, actor, key, body }) => service.answer(key, body, actor),
   },
   {
+    name: "confirm_fix",
+    output: ticketOutput,
+    method: "post",
+    path: "/tickets/:key/confirm",
+    summary:
+      'The customer confirms a ticket the team resolved as fixed. It then shows as "Customer confirmed". Doing nothing leaves it resolved by the team.',
+    needs: "answer",
+    body: versionOnlySchema,
+    run: ({ service, actor, key, body }) => service.confirmFix(key, body, actor),
+  },
+  {
     name: "take_ticket",
     output: ticketOutput,
     method: "post",

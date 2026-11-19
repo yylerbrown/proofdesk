@@ -289,6 +289,19 @@ const TABLE: Record<string, Row> = {
     handedAgent: whileHanded(NO),
     ...outsiders,
   },
+  // Only the customer who filed it confirms a ticket the team marked fixed. None of these
+  // states is one (the team's resolution here is Won't fix, which its own test covers); a
+  // ticket the customer already confirmed is returned as it is.
+  confirm_fix: {
+    filer: [NOT_NOW, NOT_NOW, NOT_NOW, NOT_NOW, OK, NOT_NOW, HIDDEN],
+    owner: [NO, NO, NO, NO, NO, NO, REFUSED],
+    teamNotOwner: [NO, NO, NO, NO, NO, NO, REFUSED],
+    demoTeam: [NO, NO, NO, NO, NO, NO, REFUSED],
+    admin: [NO, NO, NO, NO, NO, NO, REFUSED],
+    preview: all(NO),
+    handedAgent: whileHanded(NO),
+    ...outsiders,
+  },
   // A team member takes an unowned ticket. Taking your own again changes nothing.
   take_ticket: {
     filer: [NO, NO, NO, NO, NO, NO, HIDDEN],
@@ -677,6 +690,7 @@ function callFor(action: string, template: Template, demo: boolean): Call {
     mark_ready: post("/ready", ASK),
     withdraw_question: post("/withdraw-question"),
     answer: post("/answer", { fixed: "yes", ready_token: template.readyToken }),
+    confirm_fix: post("/confirm"),
     take_ticket: post("/take"),
     take_and_start: post("/take-and-start"),
     reopen: post("/reopen", { reason: "It still jams." }),

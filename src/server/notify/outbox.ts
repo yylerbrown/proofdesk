@@ -158,6 +158,7 @@ function writeNoticesOf(
       publicText: publicText(planned, data, reply),
       tryUrl: planned.kind === "asked_to_check" ? stringField(data, "try_url") : null,
       resolvedReason: planned.kind === "resolved_by_team" ? resolvedReason(data) : null,
+      customerCheck: planned.kind === "marked_fixed" ? ticket.fix_check : null,
     });
     const createdAt = new Date();
     const notSent =
@@ -282,7 +283,9 @@ function publicText(
   }
   if (planned.kind === "customer_said_no") return stringField(data, "comment");
   if (planned.kind === "customer_reopened") return stringField(data, "reason");
-  if (planned.kind === "resolved_by_team") return stringField(data, "note");
+  if (planned.kind === "resolved_by_team" || planned.kind === "marked_fixed") {
+    return stringField(data, "note");
+  }
   return null;
 }
 
