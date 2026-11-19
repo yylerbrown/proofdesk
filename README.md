@@ -66,23 +66,16 @@ the checks every merge passes.
 ## Sign-in and roles
 
 The production site signs people in with GitHub. Proofdesk reads your name, picture and email
-address, never your code, and keeps no GitHub token after sign-in. Everyone starts as a
-customer. An admin chooses who is on the team on the **People** page, and the change applies on
+address, never your code, and keeps no GitHub token after sign-in. An admin chooses who is on the team on the **People** page, and the change applies on
 that person's next page. People named in the server settings keep that role and show as locked
 on **People**. Each person's name in the header opens their account page, with a switch for
 email notices.
 
-- **Customer.** Files tickets. Reads, edits, replies on and archives their own, answers "Did
-  this fix it?", and reopens a resolved ticket that is still broken. Never sees internal notes.
-- **Team member.** An admin chooses it on **People**, or `TEAM_GITHUB_IDS` names them. A team
-  member sees every ticket, takes one and starts work, replies, writes internal notes, attaches
-  evidence, asks the customer to verify, archives and restores. They hand on a ticket they own,
-  resolve with a reason a ticket they own or a New ticket nobody owns, and can reopen it if the
-  team resolved it.
-- **Admin.** An admin chooses it on **People**, or `ADMIN_GITHUB_IDS` names them. An admin does
-  everything a team member can, hands on or resolves any open ticket, can reopen any ticket the
-  team resolved, chooses who is on the team, issues AI assistant connections on
-  **Connections**, and deletes a ticket permanently.
+| Role        | How someone gets it                                       | What they do                                                                                                                                                                                                                                                                                      |
+| ----------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Customer    | Everyone, at first sign-in.                               | Files tickets. Reads, edits, replies on and archives their own, answers "Did this fix it?", and reopens a resolved ticket that is still broken. Never sees internal notes.                                                                                                                        |
+| Team member | An admin chooses it on **People**, or `TEAM_GITHUB_IDS`.  | Sees every ticket, takes one and starts work, replies, writes internal notes, attaches evidence, asks the customer to verify, archives and restores. Hands on a ticket they own, resolves with a reason a ticket they own or a New ticket nobody owns, and can reopen it if the team resolved it. |
+| Admin       | An admin chooses it on **People**, or `ADMIN_GITHUB_IDS`. | Everything a team member does. Hands on or resolves any open ticket, can reopen any ticket the team resolved, chooses who is on the team, issues AI assistant connections on **Connections**, and deletes a ticket permanently.                                                                   |
 
 On the demo there is no sign-in: pick Demo Customer, Demo Team Member or Admin preview
 (read-only), and use **Switch role** in the header to try all three on the same ticket. The
@@ -101,7 +94,8 @@ confirms a fix: a test can pass while the customer is still stuck.
 To try it, press **Get a demo connection** on the demo's welcome page for a key that lasts a day
 at most, and the command to paste. On the production site an admin issues connections, and a
 ticket's owner hands the ticket to one. [`docs/AGENTS_GUIDE.md`](docs/AGENTS_GUIDE.md) has the
-setup, the tools and the limits.
+setup, the tools and the limits. An assistant can read everything it needs in one fetch:
+<https://support-desk-demo.fly.dev/llms.txt>.
 
 ## Read first
 

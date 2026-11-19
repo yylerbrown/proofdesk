@@ -1,12 +1,32 @@
 # JSON API
 
-Every route is under `/api` and speaks JSON. The routes are built from one table, `ACTIONS` in
-`src/server/api/actions.ts`, and `tests/docs/readme.test.ts` checks this list against it. `GET /api`
-is a guide for agents, and `GET /api/openapi.json` the full description, generated from the same
-table. AI assistants reach the same actions as MCP tools; [`AGENTS_GUIDE.md`](AGENTS_GUIDE.md)
-covers that side.
+This page is the JSON API reference: trying it, every route and its body, and errors. An assistant
+reads it all in one fetch at `/llms.txt`; [`AGENTS_GUIDE.md`](AGENTS_GUIDE.md) connects one.
+
+## Trying it with curl
+
+With the dev login on (`DEV_SIGN_IN=on`), try it with `curl` and a cookie, as `dev-customer-1`,
+`dev-customer-2`, `dev-team-1` or `dev-admin-1`. On a port other than 3000, change the address and
+the `Origin` header to match, or the API answers `cross_site_request`.
+
+```bash
+curl -c jar -H "Origin: http://localhost:3000" \
+  -d id=dev-customer-1 http://localhost:3000/sign-in/dev
+
+curl -b jar -H "Origin: http://localhost:3000" \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Printer jams",
+       "description": "On page two",
+       "fix_check": "Ten pages print"}' \
+  http://localhost:3000/api/tickets
+
+curl -b jar http://localhost:3000/api/tickets
+```
 
 ## Routes
+
+Built from `ACTIONS` in `src/server/api/actions.ts`, which a test checks this list against.
+`GET /api` is a guide for agents and `GET /api/openapi.json` the full description.
 
 | Route                                      | What it does                                                                                                                                                                                                                                                                                                                                                         | Body                                                                                         |
 | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
@@ -20,7 +40,7 @@ covers that side.
 | `PUT /api/tickets/:key/change-link`        | Links the code change.                                                                                                                                                                                                                                                                                                                                               | `{ "change_url": "https://..." }`                                                            |
 | `POST /api/tickets/:key/ready`             | The owner asks the customer "Did this fix it?". Needs In Progress; every field is optional, and the customer sees each one given.                                                                                                                                                                                                                                    | `{ "try_url"?, "tried"?, "result"?, "response"?, "evidence_ids"? }`                          |
 | `POST /api/tickets/:key/withdraw-question` | The owner takes back a question the customer has not answered. Asking again with the same details is a retry; with different ones, withdraw first.                                                                                                                                                                                                                   |                                                                                              |
-| `POST /api/tickets/:key/answer`            | The customer's answer. Yes resolves; No needs a comment.                                                                                                                                                                                                                                                                                                             | `{ "fixed": "yes" or "no", "ready_token": "...", "comment"? }`                               |
+| `POST /api/tickets/:key/answer`            | The customer's answer. Yes resolves; No needs a comment. `ready_token` comes from the ticket once the team has asked, so the customer answers the question they were shown.                                                                                                                                                                                          | `{ "fixed": "yes" or "no", "ready_token": "...", "comment"? }`                               |
 | `POST /api/tickets/:key/take-and-start`    | Takes an unowned New ticket and starts work on it, in one step.                                                                                                                                                                                                                                                                                                      |                                                                                              |
 | `POST /api/tickets/:key/reopen`            | The customer who filed a resolved ticket says it is still happening, or the owner or an admin reopens the team's own resolution. It goes back to its owner.                                                                                                                                                                                                          | `{ "reason": "..." }`                                                                        |
 | `POST /api/tickets/:key/resolve`           | The ticket's owner or an admin resolves a New or In Progress ticket without the customer's Yes, with a reason. A team member may resolve a ticket nobody owns and becomes its owner. It shows as resolved by the team; the customer can reopen it. Never an agent.                                                                                                   | `{ "reason": "wont_fix", "note": "..." }` (`duplicate_of` for a duplicate; `note` for other) |
@@ -43,10 +63,16 @@ covers that side.
 | `GET /api/tickets/:key/events`             | The history: who did what, and whether a person or an agent.                                                                                                                                                                                                                                                                                                         |                                                                                              |
 | `GET /api/health`                          | Server and database state.                                                                                                                                                                                                                                                                                                                                           |                                                                                              |
 
-`ready_token` comes from the ticket once the team has asked; it makes sure the customer answers
-the question they were shown. Errors look like
-`{ "error": { "code", "message", "hint", "retry" } }`: the hint says what to do next. A write
-sent with an `Idempotency-Key` header is done once, however often it is retried.
+## Errors
+
+Every error is `{ "error": { "code", "message", "hint", "retry" } }`. A write sent with an
+`Idempotency-Key` header is done once, however often it is retried.
+
+| Field    | What it is                                                         |
+| -------- | ------------------------------------------------------------------ |
+| `hint`   | What to do next.                                                   |
+| `retry`  | Whether sending the same request again can work.                   |
+| `fields` | With `validation_error` only: what is wrong with each named field. |
 
 ## Two people on one ticket
 
@@ -66,29 +92,3 @@ sending JSON null, skips the check. These routes accept it:
 
 Archive and restore take no version: their own state checks make a repeat harmless. The
 customer's answer is checked by its `ready_token` instead.
-
-## Trying it with curl
-
-With the dev login on (`DEV_SIGN_IN=on`), the API can be tried with `curl` and a cookie. The
-people are `dev-customer-1`, `dev-customer-2`, `dev-team-1` and `dev-admin-1`:
-
-```bash
-curl -c jar -H "Origin: http://localhost:3000" \
-  -d id=dev-customer-1 http://localhost:3000/sign-in/dev
-```
-
-```bash
-curl -b jar -H "Origin: http://localhost:3000" \
-  -H "Content-Type: application/json" \
-  -d '{"title": "Printer jams",
-       "description": "On page two",
-       "fix_check": "Ten pages print"}' \
-  http://localhost:3000/api/tickets
-```
-
-```bash
-curl -b jar http://localhost:3000/api/tickets
-```
-
-These use the default port. With `PORT` set to another one, change the address and the `Origin`
-header to match it, or the API answers `cross_site_request`.

@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import type { Express } from "express";
 import { parse } from "node-html-parser";
 import request from "supertest";
@@ -117,5 +118,9 @@ describe("the links to the page for assistants", () => {
     expect(other).toBeDefined();
     const after = res.text.slice(res.text.indexOf("<h2>Other assistants</h2>"));
     expect(after).toContain('href="/llms.txt"');
+  });
+
+  it.each(["README.md", "docs/AGENTS_GUIDE.md", "docs/API.md"])("are in %s", (file) => {
+    expect(fs.readFileSync(file, "utf8")).toContain("/llms.txt");
   });
 });

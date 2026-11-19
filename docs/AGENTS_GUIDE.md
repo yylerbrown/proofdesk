@@ -1,8 +1,7 @@
 # Connecting an AI assistant to Proofdesk
 
-Proofdesk makes no AI calls of its own. Your own assistant connects to it and works on tickets
-with the permissions an admin gave its connection. This guide is for the person setting that up,
-and for the assistant itself.
+This guide connects your own AI assistant to Proofdesk and says what it may do. Proofdesk makes no
+AI calls of its own; an admin gives each connection its permissions.
 
 ## Connect
 
@@ -49,9 +48,13 @@ curl -H "Authorization: Bearer <key>" \
 
 ## Ask Proofdesk itself
 
-`GET /api` is the same guide in JSON, with the exact calls, and with your key it says what your
-connection may and may not do. `GET /api/openapi.json` is the full machine-readable description.
-Over MCP, the server's instructions and each tool's description say the same.
+None needs a key. Over MCP, the server's instructions and each tool's description say the same.
+
+| Address                 | What it is                                                                          |
+| ----------------------- | ----------------------------------------------------------------------------------- |
+| `/llms.txt`             | Everything an assistant needs, in one page of plain text, built from the API.       |
+| `GET /api`              | The guide in JSON, with the exact calls. With your key, what it may and may not do. |
+| `GET /api/openapi.json` | The full machine-readable description.                                              |
 
 ## On the public demo
 
@@ -60,6 +63,18 @@ the command to connect Claude Code. When the demo holds as many connections as i
 ends the one issued first, so a key may stop working before its day is up. Your assistant sees only
 the sample tickets and what it writes itself. Start with the ticket named "Sample for your AI
 assistant".
+
+## A worked example
+
+Ask your assistant:
+
+> Which Proofdesk tickets are waiting on the team? Pick one with a clear check, read its
+> done_when, check whether it is fixed, attach what you found as evidence, and ask the owner to
+> request the customer's check. If you cannot tell, write a note saying why.
+
+Then open the ticket in the browser: the evidence sits beside the check, labelled as reported by
+your assistant, and the note to the owner is in the conversation. The customer's answer is still
+theirs to give.
 
 ## The one path
 
@@ -149,25 +164,10 @@ The ticket page now shows "Suggested test spec" with the summary and "2 scenario
 can accept it. Once the customer is asked, their box says "1 of 2 scenarios in the suggested test
 spec have evidence naming them, as reported."
 
-## Retries and pages
-
-Every tool that writes takes an optional `idempotency_key`. Send the same one when you retry,
-and the write is done only once. `list_tickets` answers `{ items, next_cursor }`; pass
-`next_cursor` back as `cursor` for the next page, until it is `null`.
-
 ## Limits
 
 About 120 writes per 10 minutes per connection, counted together across the API and the tools.
-Errors say what to do next and whether retrying can work.
-
-## A worked example
-
-Ask your assistant:
-
-> Which Proofdesk tickets are waiting on the team? Pick one with a clear check, read its
-> done_when, check whether it is fixed, attach what you found as evidence, and ask the owner to
-> request the customer's check. If you cannot tell, write a note saying why.
-
-Then open the ticket in the browser: the evidence sits beside the check, labelled as reported by
-your assistant, and the note to the owner is in the conversation. The customer's answer is still
-theirs to give.
+Every tool that writes takes an optional `idempotency_key`: send the same one when you retry, and
+the write is done only once. `list_tickets` answers `{ items, next_cursor }`; pass `next_cursor`
+back as `cursor` for the next page, until it is `null`. Errors say what to do next and whether
+retrying can work.

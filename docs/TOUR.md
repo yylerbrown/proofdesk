@@ -1,7 +1,7 @@
 # A tour of Proofdesk
 
-The README walks one ticket from New to Resolved. This page goes feature by feature, for a reader
-who wants to find each one on the demo, <https://support-desk-demo.fly.dev>.
+This page shows where to find each feature on the demo, <https://support-desk-demo.fly.dev>. The
+README's [One ticket, start to finish](../README.md#one-ticket-start-to-finish) walks one ticket.
 
 ## Try each feature in a minute
 
@@ -37,7 +37,7 @@ Each one takes under a minute on the demo, starting from its welcome page.
 - Press: **Edit ticket** in both tabs, save a change in one, then save in the other
 - You should see: The second save is refused and keeps what you typed, naming only what the other person changed, such as `They changed: Title, now "..."`. A tab left open on a ticket someone else changed says what changed when it can, such as "This ticket is now In Progress. Refresh to see it." or "This ticket has a new message. Refresh to see it.", and otherwise "This ticket changed. Refresh to see it."
 
-**SSO with roles and permissions**
+**GitHub sign-in with roles**
 
 - Start as: The production site, <https://proofdesk.fly.dev>
 - Press: **Sign in with GitHub**
@@ -49,7 +49,7 @@ Each one takes under a minute on the demo, starting from its welcome page.
 - Press: **Connect your own AI assistant**, then **Get a demo connection**, and paste the command into your own assistant, for example Claude Code
 - You should see: Your assistant, through MCP, reads the sample ticket made for assistants and its check, proposes a test spec, writes notes and attaches evidence. **See an assistant's work**, in the same section, opens with what one real run did and resolved nothing. [`AGENTS_GUIDE.md`](AGENTS_GUIDE.md) has the setup.
 
-**Creative extras**
+**The customer's check, evidence and notices**
 
 - Start as: Any ticket
 - Press: **How will we know it's fixed?** on the form; **Did this fix it?** for the customer
