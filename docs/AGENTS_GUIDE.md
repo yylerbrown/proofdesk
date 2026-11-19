@@ -48,13 +48,13 @@ curl -H "Authorization: Bearer <key>" \
 
 ## Ask Proofdesk itself
 
-None needs a key. Over MCP, the server's instructions and each tool's description say the same.
-
 | Address                 | What it is                                                                          |
 | ----------------------- | ----------------------------------------------------------------------------------- |
 | `/llms.txt`             | Everything an assistant needs, in one page of plain text, built from the API.       |
 | `GET /api`              | The guide in JSON, with the exact calls. With your key, what it may and may not do. |
 | `GET /api/openapi.json` | The full machine-readable description.                                              |
+
+None of these needs a key. Over MCP, the server's instructions and tool descriptions say the same.
 
 ## On the public demo
 

@@ -14,7 +14,7 @@ import { buildTestApp, PRODUCTION_SIGN_IN_ENV, visitor } from "../helpers.js";
 
 // The one page an assistant reads once, at /llms.txt and /llms-full.txt. It is built from the
 // action table, so these tests tie its list of actions to that table, and check that a
-// visitor who is not signed in can read it and every address it names on this site.
+// visitor who is not signed in can read it and the open addresses it names on this site.
 
 /** The page, fetched with no cookie and no key. */
 async function fetchPage(env: NodeJS.ProcessEnv | Express, path = "/llms.txt") {
@@ -83,7 +83,7 @@ describe("the page for assistants", () => {
     for (const code of Object.keys(HINTS)) expect(page).toContain(`| \`${code}\` |`);
   });
 
-  it("uses the server's own address, and every address it names answers without sign-in", async () => {
+  it("uses the server's own address, and the open addresses it names answer without sign-in", async () => {
     const { app } = buildTestApp({ NODE_ENV: "production" });
     const page = (await request(app).get("/llms.txt")).text;
     const base = PRODUCTION_SIGN_IN_ENV.BETTER_AUTH_URL;

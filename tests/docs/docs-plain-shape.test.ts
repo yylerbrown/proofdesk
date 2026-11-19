@@ -77,8 +77,15 @@ describe("the guides' shape", () => {
     expect(read(file).split("\n").length).toBeLessThanOrEqual(lines);
   });
 
-  it("speaks to the visitor, not to whoever marks the work, in the tour's headings", () => {
+  it("names features, not categories, in the tour's headings", () => {
     const headings = [...read("docs/TOUR.md").matchAll(/^\*\*([^*]+)\*\*$/gm)].map((m) => m[1]);
     expect(headings.filter((h) => /creative|extras|SSO/i.test(h!))).toEqual([]);
+  });
+
+  it("shows the agents guide's open addresses before the sentence about them", () => {
+    const part = section("docs/AGENTS_GUIDE.md", "## Ask Proofdesk itself");
+    const body = part.slice(part.indexOf("\n", 1)).trim();
+    expect(body.startsWith("| Address")).toBe(true);
+    expect(part.indexOf("| `/llms.txt`")).toBeLessThan(part.indexOf("None of these needs a key."));
   });
 });

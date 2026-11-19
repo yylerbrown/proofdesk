@@ -66,10 +66,10 @@ the checks every merge passes.
 ## Sign-in and roles
 
 The production site signs people in with GitHub. Proofdesk reads your name, picture and email
-address, never your code, and keeps no GitHub token after sign-in. An admin chooses who is on the team on the **People** page, and the change applies on
-that person's next page. People named in the server settings keep that role and show as locked
-on **People**. Each person's name in the header opens their account page, with a switch for
-email notices.
+address, never your code, and keeps no GitHub token after sign-in. An admin chooses who is on the
+team on the **People** page, and the change applies on that person's next page. People named in
+the server settings keep that role and show as locked on **People**. Each person's name in the
+header opens their account page, with a switch for email notices.
 
 | Role        | How someone gets it                                       | What they do                                                                                                                                                                                                                                                                                      |
 | ----------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
