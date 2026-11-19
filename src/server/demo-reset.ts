@@ -7,9 +7,9 @@ import { openSite, type Site } from "./start.js";
 import { allIds, findTicket } from "./tickets/repository.js";
 
 // The public demo is one database that every visitor writes to. Once its data is two hours old
-// and nobody has used it for half an hour, it goes back to its samples by itself: the database files are moved aside on the
-// same disk, and a fresh database is opened and seeded in their place. Only the demo does
-// this. The real site never builds one of these.
+// and nobody has used it for half an hour, it goes back to its samples by itself: the database
+// files are moved aside on the same disk, and a fresh database is opened and seeded in their
+// place. Only the demo does this. The real site never builds one of these.
 
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;

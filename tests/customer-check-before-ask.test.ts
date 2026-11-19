@@ -38,6 +38,17 @@ describe("the customer's check above the ask", () => {
     );
   });
 
+  it("names the team's check when the customer gave none", async () => {
+    const { app, page } = await ownedTicket({});
+    await admin(app)
+      .put("/api/tickets/SUP-1/agreed-check")
+      .send({ agreed_check: "Twenty pages print in a row" });
+    await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
+    expect((await page()).querySelector(".next-action .next-check")?.text).toBe(
+      "The customer will check the team's check: Twenty pages print in a row",
+    );
+  });
+
   it("is not shown to anyone who has no ask to make", async () => {
     const { app, page } = await ownedTicket({ fix_check: "Ten pages print" });
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");

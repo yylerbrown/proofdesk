@@ -19,7 +19,7 @@
 <div class="next-action">
   <%# Before the owner asks, the customer's own check, so they read what will be checked first. %>
   <% if (nextStep.customerCheck !== undefined) { %>
-  <p class="next-check"><% if (nextStep.customerCheck) { %>The customer will check: <span class="user-text"><%= nextStep.customerCheck %></span><% } else { %>The customer gave no check.<% } %></p>
+  <p class="next-check"><% if (nextStep.customerCheck) { %>The customer will check: <span class="user-text"><%= nextStep.customerCheck %></span><% } else if (nextStep.teamCheck) { %>The customer will check the team's check: <span class="user-text"><%= nextStep.teamCheck %></span><% } else { %>The customer gave no check.<% } %></p>
   <% } %>
   <% if (nextStep.form) { %>
   <form method="post" action="<%= nextStep.form.action %>">

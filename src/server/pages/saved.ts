@@ -4,9 +4,12 @@ import type { Request, Response } from "express";
 // what was saved. The cookie holds only one of the words below, never text from the form, so
 // nobody can make the page show a message of their own. It lives a minute and is read once.
 
+// What happens after filing, said by the receipt with or without the ticket's key.
+const FILED_NEXT = "The support team has it now; come back to this page for updates.";
+
 export const SAVED_MESSAGES = {
   // The ticket page puts the key in this line; see filedMessage below.
-  filed: "Ticket filed. The support team has it now; come back to this page for updates.",
+  filed: `Ticket filed. ${FILED_NEXT}`,
   alreadyFiled: "You already filed this form, so nothing new was filed. This is that ticket.",
   edited: "Changes saved.",
   status: "Status changed.",
@@ -44,7 +47,7 @@ export type SavedKey = keyof typeof SAVED_MESSAGES;
  * the real site may also send.
  */
 export function filedMessage(key: string): string {
-  return `Ticket ${key} filed. The support team has it now; come back to this page for updates.`;
+  return `Ticket ${key} filed. ${FILED_NEXT}`;
 }
 
 const COOKIE = "saved";
