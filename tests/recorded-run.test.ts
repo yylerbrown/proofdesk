@@ -136,9 +136,16 @@ describe("the recorded run on the demo", () => {
     expect(card.querySelector(".card-line")?.text.trim()).toBe(
       "Demo visitor's assistant asks for your review.",
     );
-    expect(card.querySelector(".assistant-card")).toBeNull();
+    // While its suggested test waits for a decision, the assistant's card sits between the
+    // check and the next step.
+    const parts = card.childNodes.filter((node) => node.nodeType === 1) as typeof card.childNodes;
+    const classes = parts.map((node) => (node as unknown as { classNames: string }).classNames);
+    expect(classes.indexOf("card-line")).toBeLessThan(classes.indexOf("assistant-card"));
+    expect(classes.indexOf("assistant-card")).toBeLessThan(
+      classes.indexOf("card-step next-action"),
+    );
     // Everything the assistant left is one card, which says whose it is, with no headings.
-    const cards = html.querySelectorAll(".ticket-summary .assistant-card");
+    const cards = html.querySelectorAll(".ticket-page .assistant-card");
     expect(cards).toHaveLength(1);
     const signal = cards[0]!;
     expect(signal.querySelector(".card-from")?.text).toBe("From the AI assistant");

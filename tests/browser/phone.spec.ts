@@ -6,8 +6,8 @@ import { expect, test, type Page } from "@playwright/test";
 
 // The demo on a phone, measured in a real browser: the small controls are 44-pixel tap targets,
 // the header keeps one row, each ticket row stacks its title under the key and
-// status, the assistant invite's links do not overlap, a select in the ticket's side panel stays inside
-// its card, nothing scrolls sideways, and the demo strip fits its lines. The demo strip, the
+// status, the assistant invite's links do not overlap, the ticket's opened menus and forms stay
+// inside its column, nothing scrolls sideways, and the demo strip fits its lines. The demo strip, the
 // invite and the role menu only exist when the server runs as the demo, so this file starts a
 // copy of the app with DEMO=on on its own port, and stops it at the end.
 
@@ -54,7 +54,7 @@ test.afterAll(() => {
 });
 
 /**
- * Signs in as the demo's team member, who sees the filters, the invite and the side panel: a
+ * Signs in as the demo's team member, who sees the filters, the invite and the Status menu: a
  * first visit opens as the customer, and the welcome card's link switches to the team.
  */
 async function signInAsTeam(page: Page) {
@@ -256,17 +256,27 @@ test("on a phone the admin's People link is a 44-pixel tap target", async ({ pag
   await expectTapTargets(page, ".site-header .person-menu a[href='/people']");
 });
 
-test("a select in the ticket's side panel stays inside its card", async ({ page }) => {
+test("the ticket's opened menus and resolve form stay inside its column", async ({ page }) => {
   await signInAsTeam(page);
   for (const width of [1280, 390]) {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto("/tickets/SUP-1");
-    await page.locator(".ticket-panel details.resolve > summary").click();
-    const select = await page.locator('.ticket-panel select[name="reason"]').boundingBox();
-    const card = await page.locator(".ticket-panel").boundingBox();
-    expect(select).not.toBeNull();
-    expect(card).not.toBeNull();
-    expect(select!.x + select!.width, `at ${width}px`).toBeLessThanOrEqual(card!.x + card!.width);
+    for (const address of ["/tickets/SUP-8", "/tickets/SUP-8?step=resolve"]) {
+      await page.goto(address);
+      await page.locator("details.owner-menu > summary").click();
+      const column = (await page.locator(".ticket-page").boundingBox())!;
+      const rightEdges = await page
+        .locator(".ticket-page :is(button, select, input, textarea, a, summary)")
+        .evaluateAll((elements) =>
+          elements
+            .filter((element) => element.getClientRects().length > 0)
+            .map((element) => element.getBoundingClientRect().right),
+        );
+      expect(rightEdges.length, address).toBeGreaterThan(0);
+      for (const right of rightEdges) {
+        expect(right, `${address} at ${width}px`).toBeLessThanOrEqual(column.x + column.width + 1);
+      }
+      expect(await sidewaysScroll(page), `${address} at ${width}px`).toBe(0);
+    }
   }
 });
 
@@ -294,16 +304,18 @@ test("the demo strip says the demo is shared, on one line wide and on a phone", 
   expect(await stripLines(page)).toBe(1);
 });
 
-/** Where the ticket's side panel and its main column start, and what lies just above the panel. */
+/** Where the title ends, and where the line of status and owner and the description start. */
 async function ticketColumns(page: Page) {
   return page.evaluate(() => {
     const top = (selector: string) =>
       Math.round(document.querySelector(selector)!.getBoundingClientRect().top + window.scrollY);
     const title = document.querySelector("main h1")!.getBoundingClientRect();
     return {
-      panel: top(".ticket-panel"),
-      main: top(".ticket-summary"),
+      facts: top(".ticket-facts"),
+      description: top(".ticket-description"),
       titleBottom: Math.round(title.bottom + window.scrollY),
+      left: Math.round(document.querySelector(".ticket-facts")!.getBoundingClientRect().left),
+      titleLeft: Math.round(title.left),
     };
   });
 }
@@ -324,35 +336,43 @@ async function filledButtons(page: Page) {
   );
 }
 
-test("the ticket's side panel starts level with its main column, and under the title on a phone", async ({
+test("status and owner sit directly under the title on every ticket, at 1280 and 390 wide", async ({
   page,
 }) => {
   await signInAsTeam(page);
   // New with no owner, In Progress after the customer's No, Resolved, and the assistant's ticket.
   const keys = ["SUP-8", "SUP-7", "SUP-6", "SUP-2"];
-  await page.setViewportSize({ width: 1280, height: 800 });
-  const tops: number[] = [];
-  for (const key of keys) {
-    await page.goto(`/tickets/${key}`);
-    const columns = await ticketColumns(page);
-    expect(columns.panel, key).toBe(columns.main);
-    tops.push(columns.panel);
-    // One black button at most in the main area: the next step.
-    expect((await filledButtons(page)).length, key).toBeLessThanOrEqual(1);
+  for (const [width, height] of [
+    [1280, 800],
+    [390, 844],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    for (const key of keys) {
+      await page.goto(`/tickets/${key}`);
+      const columns = await ticketColumns(page);
+      // Under the title, on its left edge, before the description, and on the first screen.
+      expect(columns.facts, key).toBeGreaterThanOrEqual(columns.titleBottom);
+      expect(columns.facts - columns.titleBottom, key).toBeLessThan(30);
+      expect(columns.facts, key).toBeLessThan(columns.description);
+      expect(columns.facts, key).toBeLessThan(height);
+      expect(Math.abs(columns.left - columns.titleLeft), key).toBeLessThanOrEqual(1);
+      await expect(page.locator(".ticket-facts .fact-label").first()).toHaveText("Status");
+      // One black button at most in the main area: the next step.
+      expect((await filledButtons(page)).length, key).toBeLessThanOrEqual(1);
+      expect(await sidewaysScroll(page), key).toBeLessThanOrEqual(0);
+    }
   }
-  // The status row is in the same spot on every ticket, whatever the ticket holds.
-  expect(new Set(tops).size).toBe(1);
+});
 
-  await page.setViewportSize({ width: 390, height: 844 });
-  for (const key of keys) {
-    await page.goto(`/tickets/${key}`);
-    const columns = await ticketColumns(page);
-    // Directly under the title, before the description, and on the first screen.
-    expect(columns.panel, key).toBeGreaterThanOrEqual(columns.titleBottom);
-    expect(columns.panel - columns.titleBottom, key).toBeLessThan(60);
-    expect(columns.panel, key).toBeLessThan(columns.main);
-    expect(await sidewaysScroll(page), key).toBeLessThanOrEqual(0);
-  }
+test("the column is centred under the header at 1280 wide", async ({ page }) => {
+  await signInAsTeam(page);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/tickets/SUP-8");
+  const column = (await page.locator(".ticket-page").boundingBox())!;
+  const left = column.x;
+  const right = 1280 - (column.x + column.width);
+  expect(Math.abs(left - right)).toBeLessThanOrEqual(16);
+  expect(column.width).toBeLessThan(700);
 });
 
 /** Where the focused element sits on a ticket page: which part of the page holds it. */
@@ -361,9 +381,8 @@ function focusedPart(page: Page) {
     const element = document.activeElement;
     if (element === null) return "nothing";
     if (element.closest(".back")) return "back";
-    if (element.closest(".ticket-panel .status-control")) return "status";
-    if (element.closest(".ticket-panel .panel-owner")) return "owner";
-    if (element.closest(".ticket-panel .panel-edit")) return "edit";
+    if (element.closest(".ticket-facts .status-menu")) return "status";
+    if (element.closest(".ticket-facts .owner-menu")) return "owner";
     if (element.closest(".ticket-card")) return "card";
     return "other";
   });
@@ -385,13 +404,10 @@ test("the keyboard reaches the status and the owner before the card's step, at 1
       if (part === "card") break;
       await page.keyboard.press("Tab");
     }
-    // The way back, the status row, the owner (when it has a control) and Edit ticket, then
-    // the card's step. Links in the description, such as its page, may come between.
-    const ownerControls = await page
-      .locator(".ticket-panel .panel-owner :is(button, summary, select, a)")
-      .count();
-    const expected =
-      ownerControls > 0 ? ["back", "status", "owner", "edit"] : ["back", "status", "edit"];
+    // The way back, the Status menu, the Owner menu (when it has one), then the card's step.
+    // Links in the description, such as its page, may come between.
+    const ownerControls = await page.locator(".ticket-facts .owner-menu").count();
+    const expected = ownerControls > 0 ? ["back", "status", "owner"] : ["back", "status"];
     expect(parts.filter((part) => part !== "other").slice(0, -1), key).toEqual(expected);
     expect(parts.at(-1), key).toBe("card");
     // Inside the card, the line's link to the customer's words may come first, then the step.

@@ -2,10 +2,10 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 
 // Three journeys, end to end, the way two people would walk them in two browsers. The short one
 // is the basics: a customer files a ticket, a team member takes it and asks the customer in one
-// press, and the customer answers Yes. The plain one uses the status row: In Progress, then
+// press, and the customer answers Yes. The plain one uses the Status menu: In Progress, then
 // Resolved with a reason. The long one adds what is optional: the customer's own
-// check, a reply and a note, a change link, evidence and what the owner tried; the customer
-// says No once and Yes the second time. Then a second customer tries to open the ticket.
+// check, a reply and a note, a change link, evidence and a message with the question; the
+// customer says No once and Yes the second time. Then a second customer tries to open the ticket.
 //
 // Elements are found by role, label and visible words, never by CSS paths. The ticket key
 // is read from the address after filing and used from then on.
@@ -19,8 +19,8 @@ const reply = "Thanks for the report. We found the cause and are fixing it now."
 const note = "Cause: the export handler swallows a timeout. Only staff should read this.";
 const notFixedComment = "The file downloads now, but it is empty.";
 const changeUrl = "https://git.example.test/support-desk/pull/42";
-const tryUrl = "https://desk.example.test/reports";
 const evidence = "Exported this month's report: 31 rows.";
+const message = "Exported the report as CSV, and the file downloaded with every row.";
 
 /** Opens a fresh browser context (its own cookies) and signs in as one made-up person. */
 async function signInAs(browser: Browser, person: string): Promise<Page> {
@@ -37,10 +37,20 @@ function listRow(page: Page, key: string) {
   return page.getByRole("row").filter({ has: page.getByRole("link", { name: key, exact: true }) });
 }
 
-/** The ticket's key, in the line above its title, and its status, in the side panel. */
+/**
+ * The ticket's key, in the line above its title, and its status, in the line under the title:
+ * the team's Status menu, or the customer's plain words.
+ */
 async function expectTicketStatus(page: Page, key: string, status: string) {
   await expect(page.locator("main .back")).toHaveText(new RegExp(`/ ${key}$`));
-  await expect(page.locator(".ticket-panel .status-control .badge").first()).toHaveText(status);
+  const team = page.locator(".ticket-facts .badge");
+  if ((await team.count()) > 0) await expect(team.first()).toHaveText(status);
+  else await expect(page.locator(".ticket-standing")).toHaveText(new RegExp(`^${status}`));
+}
+
+/** Opens the message box at the bottom of the ticket, which is closed until wanted. */
+async function openMessageBox(page: Page) {
+  await page.locator("details.reply-fold > summary").click();
 }
 
 /** The banner a page shows after a form saved something. */
@@ -93,7 +103,7 @@ test("the short path: file, take, ask the customer, and their Yes resolves it", 
   await team.context().close();
 });
 
-test("the plain path: the status row's In Progress, then Resolved with a reason", async ({
+test("the plain path: the Status menu's In Progress, then Resolved with a reason", async ({
   browser,
 }) => {
   const customer = await signInAs(browser, "Customer One");
@@ -106,12 +116,15 @@ test("the plain path: the status row's In Progress, then Resolved with a reason"
   const key = /\/tickets\/([A-Z]{2,6}-\d+)$/.exec(new URL(customer.url()).pathname)![1]!;
 
   await team.goto(`/tickets/${key}`);
-  const row = team.locator(".status-row");
-  await row.getByRole("button", { name: "In Progress" }).click();
+  const status = team.locator("details.status-menu");
+  await status.locator("summary").click();
+  await status.getByRole("button", { name: "In Progress (assigns it to you)" }).click();
   await expectTicketStatus(team, key, "In Progress");
-  await row.getByRole("button", { name: "Resolved", exact: true }).click();
-  await row.getByRole("combobox", { name: "Reason" }).selectOption("cannot_reproduce");
-  await row.getByRole("button", { name: "Resolve", exact: true }).click();
+  await status.locator("summary").click();
+  await status.getByRole("link", { name: "Resolved" }).click();
+  const resolve = team.locator("form#resolve-form");
+  await resolve.getByRole("radio", { name: "Cannot reproduce" }).check();
+  await resolve.getByRole("button", { name: "Resolve ticket" }).click();
   await expect(savedMessage(team)).toContainText("Resolved, with your reason");
   await expectTicketStatus(team, key, "Resolved");
   // The team's resolution is never shown as the customer's confirmation.
@@ -163,23 +176,25 @@ test("the long path: a check, a change link and evidence, a No, then the custome
   });
 
   await test.step("the team member replies, adds a note, links the change, attaches evidence", async () => {
+    await openMessageBox(team);
     await team.getByRole("radio", { name: "Reply to the customer" }).check();
     await team.getByLabel("Your message").fill(reply);
     // The one button names who will read the message.
     await team.getByRole("button", { name: "Send reply to customer" }).click();
     await expect(savedMessage(team)).toContainText("Reply sent");
 
+    await openMessageBox(team);
     await team.getByRole("radio", { name: "Internal note" }).check();
+    await expect(team.getByText("Only the team can see this.")).toBeVisible();
     await team.getByLabel("Your message").fill(note);
     await team.getByRole("button", { name: "Save internal note" }).click();
     await expect(savedMessage(team)).toContainText("Internal note added");
     await expect(team.getByText(note)).toBeVisible();
 
-    // Both are optional evidence, added from More options. A change carries its link.
+    // Both are optional evidence, added from More options. A link makes it a change.
     await team.locator("summary", { hasText: "More options" }).click();
     await team.locator("summary", { hasText: "Add evidence" }).click();
-    await team.getByRole("combobox", { name: "Kind" }).selectOption("change_link");
-    await team.getByRole("textbox", { name: "What it shows" }).fill("The code change");
+    await team.getByRole("textbox", { name: "What does it show?" }).fill("The code change");
     await team.getByRole("textbox", { name: "Link (optional)" }).fill(changeUrl);
     await team.getByRole("button", { name: "Add evidence" }).click();
     await expect(savedMessage(team)).toContainText("Evidence added");
@@ -188,23 +203,16 @@ test("the long path: a check, a change link and evidence, a No, then the custome
 
     await team.locator("summary", { hasText: "More options" }).click();
     await team.locator("summary", { hasText: "Add evidence" }).click();
-    await team.getByRole("textbox", { name: "What it shows" }).fill(evidence);
+    await team.getByRole("textbox", { name: "What does it show?" }).fill(evidence);
     await team.getByRole("button", { name: "Add evidence" }).click();
     await expect(savedMessage(team)).toContainText("Evidence added");
   });
 
   await test.step("the team member asks the customer to check", async () => {
-    // The details are optional, so they wait behind their own disclosure.
+    // The details are optional, so they wait behind their own disclosure: one message.
     await team.locator("summary", { hasText: "More options" }).click();
     await team.locator("summary", { hasText: "Ask with details" }).click();
-    await team.getByRole("textbox", { name: "Page on the live site to try" }).fill(tryUrl);
-    await team
-      .getByRole("textbox", { name: "What did you try?" })
-      .fill("Exported the report as CSV.");
-    await team
-      .getByRole("textbox", { name: "What happened?" })
-      .fill("The file downloaded with every row.");
-    await team.getByRole("checkbox", { name: evidence }).check();
+    await team.getByRole("textbox", { name: "Message to the customer (optional)" }).fill(message);
     await team.locator("#ask form").getByRole("button", { name: "Ask with these details" }).click();
     await expect(askedLine(team)).toHaveText("Asked the customer: Did this fix it?");
   });
@@ -222,8 +230,8 @@ test("the long path: a check, a change link and evidence, a No, then the custome
       .filter({ has: customer.getByRole("heading", { name: "Did this fix it?" }) });
     await expect(question).toBeVisible();
     await expect(question.getByText(ticket.check)).toBeVisible();
-    await expect(question.getByRole("link", { name: tryUrl })).toBeVisible();
-    await expect(question.getByText("Exported the report as CSV.")).toBeVisible();
+    await expect(question.getByText("Team Member wrote:")).toBeVisible();
+    await expect(question.getByText(message)).toBeVisible();
     // The evidence the team showed, the change among it, is one closed line in the question.
     await question.getByText("What the team showed (2)").click();
     await expect(question.getByText(evidence)).toBeVisible();
@@ -244,7 +252,7 @@ test("the long path: a check, a change link and evidence, a No, then the custome
     await expect(saidNo).toContainText("The customer said no on");
     await saidNo.getByRole("link").click();
     await expect(team.locator("article.entry", { hasText: notFixedComment })).toBeVisible();
-    await expect(team.locator(".ticket-panel .panel-owner")).toContainText("Team Member");
+    await expect(team.locator(".ticket-facts .owner-menu summary")).toContainText("Team Member");
     await team.goto("/tickets");
     // Still owned by the same team member, and the list says why it is back with the team.
     await expect(listRow(team, key)).toContainText("Team Member");
@@ -255,16 +263,9 @@ test("the long path: a check, a change link and evidence, a No, then the custome
     await team.goto(`/tickets/${key}`);
     await team.locator("summary", { hasText: "More options" }).click();
     await team.locator("summary", { hasText: "Ask with details" }).click();
-    // The page to try is filled in from the last question; after a No, the owner says what changed.
-    await expect(team.getByRole("textbox", { name: "Page on the live site to try" })).toHaveValue(
-      tryUrl,
-    );
+    // After a No, the message says what changed, and the customer reads it as that.
     await team
-      .getByRole("textbox", { name: "What did you try?" })
-      .fill("Exported it again, from the same page.");
-    await team.getByRole("textbox", { name: "What happened?" }).fill("The file has every row now.");
-    await team
-      .getByRole("textbox", { name: "What changed since the customer said it still fails?" })
+      .getByRole("textbox", { name: "Message to the customer (optional)" })
       .fill("Empty exports are fixed too.");
     await team.locator("#ask form").getByRole("button", { name: "Ask with these details" }).click();
     await expect(askedLine(team)).toHaveText("Asked the customer: Did this fix it?");
@@ -274,6 +275,7 @@ test("the long path: a check, a change link and evidence, a No, then the custome
       .getByRole("article")
       .filter({ has: customer.getByRole("heading", { name: "Did this fix it?" }) });
     await expect(question.getByText(ticket.check)).toBeVisible();
+    await expect(question.getByText("What changed since you said it still fails:")).toBeVisible();
     await question.getByRole("button", { name: "Yes, resolve ticket" }).click();
     await expect(savedMessage(customer)).toContainText("The ticket is resolved");
   });

@@ -7,11 +7,10 @@ import { seedDemo } from "../src/server/demo.js";
 import { SAVED_MESSAGES } from "../src/server/pages/saved.js";
 import { createTicketService } from "../src/server/tickets/service.js";
 
-// On a ticket page the status row and the button at the top read as one control: both post to
+// On a ticket page the Status menu and the button at the top read as one control: both post to
 // the same place, so the same message follows either press, and that message says the viewer
-// owns the ticket now. Resolving starts on the "Fixed." reason when that reason is offered.
-// "Edit ticket" is a quiet link on the side panel's last line, and the list's empty search
-// names only what is set.
+// owns the ticket now. Resolving starts with no reason chosen. "Edit ticket" is the first line
+// under More options, and the list's empty search names only what is set.
 
 const valid = {
   title: "Printer jams",
@@ -39,11 +38,10 @@ describe("In Progress on a ticket nobody owns", () => {
   it("posts where the button at the top does, and the message after says you own it", async () => {
     const { app } = await filed();
     const html = await page(app);
-    // No line under the row: the message after the press says it.
-    expect(html.querySelector(".status-control .status-rule")).toBeNull();
+    // The choice says it makes the viewer the owner, and the message after the press says it too.
     const rowButton = html
-      .querySelectorAll(".status-row > form button")
-      .find((button) => button.text.trim() === "In Progress")!;
+      .querySelectorAll(".status-menu form button")
+      .find((button) => button.text.trim() === "In Progress (assigns it to you)")!;
     // Both post to the same place, so both end on the same message.
     const top = html
       .querySelectorAll(".next-action form")
@@ -58,15 +56,18 @@ describe("In Progress on a ticket nobody owns", () => {
 });
 
 describe("the resolve form's first choice", () => {
-  it("is Choose a reason, so a hurried press can never claim a fix", async () => {
+  it("is none, so a hurried press can never claim a fix", async () => {
     const { app } = await filed();
-    const select = (await page(app)).querySelector('details.resolve select[name="reason"]')!;
-    expect(select.hasAttribute("required")).toBe(true);
-    const chosen = select.querySelectorAll("option").filter((o) => o.hasAttribute("selected"));
-    expect(chosen.map((o) => o.getAttribute("value"))).toEqual([""]);
-    expect(chosen[0]?.text).toBe("Choose a reason");
+    const form = (await page(app, teamActor, "/tickets/SUP-1?step=resolve")).querySelector(
+      "form.resolve",
+    )!;
+    const radios = form.querySelectorAll('input[type=radio][name="reason"]');
+    expect(radios.every((radio) => radio.hasAttribute("required"))).toBe(true);
+    expect(radios.filter((radio) => radio.hasAttribute("checked"))).toHaveLength(0);
+    expect(form.querySelector("select")).toBeNull();
+    expect(form.text).not.toContain("Choose a reason");
     // "Fixed." is still offered, one choice away.
-    expect(select.querySelector('option[value="fixed_no_reply"]')).not.toBeNull();
+    expect(form.querySelector('input[value="fixed_no_reply"]')).not.toBeNull();
   });
 
   it("keeps what was picked when a try is refused", async () => {
@@ -76,30 +77,32 @@ describe("the resolve form's first choice", () => {
       .type("form")
       .send({ reason: "other", note: "" });
     expect(refused.status).toBe(400);
-    const select = parse(refused.text).querySelector('details.resolve select[name="reason"]')!;
-    const chosen = select.querySelectorAll("option").filter((o) => o.hasAttribute("selected"));
+    const form = parse(refused.text).querySelector("form.resolve")!;
+    const chosen = form
+      .querySelectorAll("input[name=reason]")
+      .filter((o) => o.hasAttribute("checked"));
     expect(chosen.map((o) => o.getAttribute("value"))).toEqual(["other"]);
     expect((await admin(app).get("/api/tickets/SUP-1")).body.status).toBe("new");
   });
 });
 
 describe("Edit ticket", () => {
-  it("is a quiet link on the panel's last line, and More options is left out when it would be empty", async () => {
-    // SUP-5 is the demo customer's confirmed ticket; they may edit it and nothing else.
+  it("is the first line under More options, and the only one when nothing else is allowed", async () => {
+    // SUP-5 is the demo customer's confirmed ticket; they may edit it and little else.
     const html = await demoPage("demo-customer", "/tickets/SUP-5");
-    const edit = html.querySelector("aside.ticket-panel > .panel-edit:last-child a.edit-link");
-    expect(edit?.getAttribute("href")).toBe("/tickets/SUP-5/edit");
-    expect(edit?.text.trim()).toBe("Edit ticket");
+    const items = html.querySelectorAll("details.more-options .more-list > li");
+    const edit = items[0]!.querySelector("a")!;
+    expect(edit.getAttribute("href")).toBe("/tickets/SUP-5/edit");
+    expect(edit.text.trim()).toBe("Edit ticket");
     expect(html.querySelectorAll("a[href$='/edit']")).toHaveLength(1);
-    expect(html.querySelector("details.more-options")).toBeNull();
   });
 
   it("leaves the customer's archive under More options", async () => {
     const { app } = await filed();
     const html = await page(app, customerOne);
-    expect(html.querySelector("aside.ticket-panel a.edit-link")?.text.trim()).toBe("Edit ticket");
     const more = html.querySelector("details.more-options")!;
     expect(more.querySelectorAll("a, button").map((el) => el.text.trim())).toEqual([
+      "Edit ticket",
       "Archive ticket",
     ]);
   });

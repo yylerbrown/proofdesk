@@ -39,7 +39,7 @@ describe("after an internal note", () => {
     const { location, html } = await send(app, teamActor, "note");
     expect(location).toBe("/tickets/SUP-1#sent");
     expect(chosen(html)).toBe("note");
-    const line = html.querySelector('.ticket-thread p#sent[role="status"]');
+    const line = html.querySelector('.ticket-page p#sent[role="status"]');
     expect(line?.text).toBe("Internal note added. The customer does not see it.");
     // The line comes after the conversation, so the note it names is just above it.
     expect(html.querySelector("main > p.saved")).toBeNull();

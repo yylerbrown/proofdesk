@@ -110,7 +110,7 @@ describe("each fact once", () => {
     }
   });
 
-  it("puts the way back and the key above the title, and nothing under it", async () => {
+  it("puts the way back and the key above the title, and only status and owner under it", async () => {
     const { pages } = await everyState();
     for (const [state, page] of pages) {
       const title = page.querySelector("main h1")!;
@@ -121,8 +121,10 @@ describe("each fact once", () => {
         customer ? /^My tickets \/ SUP-\d+$/ : /^All tickets \/ SUP-\d+$/,
       );
       expect(above.querySelector("a")?.getAttribute("href")).toBe("/tickets");
-      // The title is followed by the ticket's two columns, with no line of facts between.
-      expect(title.nextElementSibling?.classList.contains("ticket-layout"), state).toBe(true);
+      // The title is followed by the one line of status and owner, then the description.
+      const next = title.nextElementSibling!;
+      const line = customer ? "ticket-standing" : "ticket-facts";
+      expect(next.classList.contains(line), state).toBe(true);
       expect(page.querySelector("hgroup"), state).toBeNull();
     }
   });
@@ -151,38 +153,41 @@ describe("each fact once", () => {
   });
 });
 
-describe("the side panel", () => {
-  it("holds Status, then Owner, as two rows with small labels, then Edit ticket last", async () => {
+describe("status and owner", () => {
+  it("are one line under the title: Status, then Owner, each with a small label", async () => {
     const { pages } = await everyState();
     for (const [state, page] of pages) {
-      const panel = page.querySelector("aside.ticket-panel")!;
-      const labels = panel.querySelectorAll(".panel-label").map((label) => label.text);
-      // The customer sees no Owner row until somebody owns the ticket.
-      const owned = state !== "customer, their own New ticket";
-      expect(labels, state).toEqual(owned ? ["Status", "Owner"] : ["Status"]);
-      expect(panel.querySelectorAll(".panel-label, h2")[0]?.text, state).toBe("Status");
-      const edit = panel.querySelector("a.edit-link");
-      if (edit) expect(panel.lastElementChild?.querySelector("a.edit-link"), state).toBe(edit);
+      if (state.startsWith("customer")) {
+        // The customer reads one line of plain words, with no labels and no controls.
+        const standing = page.querySelector(".ticket-standing")!;
+        expect(standing.querySelector("a, button, details, form"), state).toBeNull();
+        continue;
+      }
+      const line = page.querySelector(".ticket-facts")!;
+      const labels = line.querySelectorAll(".fact-label").map((label) => label.text);
+      expect(labels, state).toEqual(["Status", "Owner"]);
+      expect(line.querySelector("a[href$='/edit']"), state).toBeNull();
     }
   });
 
-  it("comes first in the ticket's columns, so a phone shows it directly under the title", async () => {
+  it("are no side panel: the page is one column", async () => {
     const { pages } = await everyState();
     for (const [state, page] of pages) {
-      const layout = page.querySelector(".ticket-layout")!;
-      // Nothing of the ticket sits between the title and the two columns.
-      expect(layout.previousElementSibling?.tagName, state).toBe("H1");
+      expect(page.querySelector("aside"), state).toBeNull();
+      expect(page.querySelector(".ticket-page > h1"), state).not.toBeNull();
     }
   });
 
   it("shows the status in plain words when this viewer can press none of it", async () => {
     const { pages } = await everyState();
     const resolved = pages.find(([state]) => state === "team, Resolved by the customer")![1];
-    const status = resolved.querySelector("aside.ticket-panel .status-control")!;
-    expect(status.querySelector(".status-row, button")).toBeNull();
+    const status = resolved.querySelector(".ticket-facts > .fact")!;
+    expect(status.querySelector("button, details")).toBeNull();
     expect(status.querySelector(".badge")?.text).toBe("Resolved");
-    expect(status.querySelector(".status-rule")?.text.trim()).toBe(
+    // The reason is its title and hidden words, never a paragraph.
+    expect(status.getAttribute("title")).toBe(
       "Only the customer can reopen a ticket they confirmed.",
     );
+    expect(resolved.querySelector(".ticket-facts p")).toBeNull();
   });
 });

@@ -4,9 +4,9 @@ import { seedDemo } from "../src/server/demo.js";
 import { createTicketService } from "../src/server/tickets/service.js";
 import { buildTestApp, visitor } from "./helpers.js";
 
-// While an assistant's suggested test waits for a person's decision, its card is read before the
-// step that asks the customer, so nobody is invited to ask before they have reviewed. Once a
-// person has decided, the ticket's own card leads again.
+// While an assistant's suggested test waits for a person's decision, its card sits between the
+// customer's check and the step that asks the customer, so nobody is invited to ask before they
+// have reviewed. Once a person has decided, it follows the next step.
 
 function demo() {
   const built = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
@@ -23,9 +23,9 @@ describe("a suggested test waiting for review", () => {
   it("comes before the card that asks the customer, and after it once decided", async () => {
     const { asTeam, recorded } = demo();
     const before = (await asTeam().get(`/tickets/${recorded}`)).text;
-    expect(place(before, 'class="assistant-card"')).toBeGreaterThan(-1);
+    expect(place(before, 'class="assistant-card"')).toBeGreaterThan(place(before, "<blockquote"));
     expect(place(before, 'class="assistant-card"')).toBeLessThan(
-      place(before, 'class="ticket-card"'),
+      place(before, 'class="card-step next-action"'),
     );
     expect(before.match(/class="assistant-card"/g)).toHaveLength(1);
 
@@ -36,7 +36,8 @@ describe("a suggested test waiting for review", () => {
     expect(decided.status).toBeLessThan(400);
 
     const after = (await asTeam().get(`/tickets/${recorded}`)).text;
-    expect(place(after, 'class="ticket-card"')).toBeLessThan(
+    expect(place(after, 'class="card-step next-action"')).toBeGreaterThan(-1);
+    expect(place(after, 'class="card-step next-action"')).toBeLessThan(
       place(after, 'class="assistant-card"'),
     );
     expect(after.match(/class="assistant-card"/g)).toHaveLength(1);

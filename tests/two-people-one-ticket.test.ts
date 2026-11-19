@@ -815,7 +815,8 @@ describe("the ticket page's own forms", () => {
     const { app } = buildTestApp();
     await filed(app);
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
-    const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
+    // With the resolve form shown, as the Status menu's Resolved opens it.
+    const page = parse((await as(app, teamActor).get("/tickets/SUP-1?step=resolve")).text);
     const version = String((await read(app)).version);
     const changing = ["/status", "/resolve", "/ready", "/hand-off"];
     for (const ending of changing) {
@@ -874,38 +875,6 @@ describe("the ticket page's own forms", () => {
     expect(second.refused).toBeUndefined();
   });
 
-  it.each([
-    { typed: "with text typed", text: "tried=Printed+ten.&" },
-    { typed: "with nothing typed", text: "" },
-  ])(
-    "keep the ticked evidence when Ask with these details is refused for an old version, $typed",
-    async ({ text }) => {
-      const { app, db } = buildTestApp();
-      await filed(app);
-      await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
-      await admin(app).post("/api/tickets/SUP-1/evidence").send({ kind: "note", summary: "One" });
-      await admin(app).post("/api/tickets/SUP-1/evidence").send({ kind: "note", summary: "Two" });
-      const version = await formVersion(app, teamActor, "/tickets/SUP-1");
-      const boxes = parse((await as(app, teamActor).get("/tickets/SUP-1")).text)
-        .querySelectorAll("form.ask input[name=evidence_ids]")
-        .map((box) => box.getAttribute("value")!);
-      expect(boxes.length).toBe(2);
-      changedElsewhere(db);
-      const res = await as(app, teamActor)
-        .post("/tickets/SUP-1/ready")
-        .type("form")
-        .send(`${text}evidence_ids=${boxes[1]}&expected_version=${version}`);
-      expect(res.status).toBe(409);
-      const ticked = parse(res.text)
-        .querySelectorAll("form.ask input[name=evidence_ids]")
-        .filter((box) => box.hasAttribute("checked"))
-        .map((box) => box.getAttribute("value"));
-      expect(ticked).toEqual([boxes[1]]);
-      // The message fits a form that kept only ticked boxes as well as one that kept text.
-      expect(res.text).toContain("What you entered is kept here.");
-    },
-  );
-
   it("keep what was typed when a press is refused for an old version", async () => {
     const { app, db } = buildTestApp();
     await filed(app);
@@ -913,8 +882,7 @@ describe("the ticket page's own forms", () => {
     const version = await formVersion(app, teamActor, "/tickets/SUP-1");
     changedElsewhere(db);
     const res = await as(app, teamActor).post("/tickets/SUP-1/ready").type("form").send({
-      tried: "Printed ten pages.",
-      result: "No jam.",
+      response: "Printed ten pages with no jam.",
       expected_version: version!,
     });
     expect(res.status).toBe(409);
@@ -923,8 +891,11 @@ describe("the ticket page's own forms", () => {
       "Ticket SUP-1 changed since you opened it, so nothing was saved. This is the ticket as it is now.",
     );
     const ask = page.querySelector("form.ask")!;
-    expect(ask.querySelector("textarea[name=tried]")?.text).toBe("Printed ten pages.");
-    expect(ask.querySelector("textarea[name=result]")?.text).toBe("No jam.");
+    expect(ask.querySelector("textarea[name=response]")?.text).toBe(
+      "Printed ten pages with no jam.",
+    );
+    expect(page.querySelector("details#ask")?.hasAttribute("open")).toBe(true);
+    expect(res.text).toContain("What you entered is kept here.");
     // The form now carries the current version, so pressing again goes through.
     const fresh = ask.querySelector("input[name=expected_version]")?.getAttribute("value");
     expect(fresh).toBe(String((await read(app)).version));

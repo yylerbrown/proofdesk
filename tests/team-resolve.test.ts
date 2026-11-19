@@ -135,12 +135,14 @@ describe("how a team resolution shows", () => {
       "Resolved by the team: Won't fix (Works as designed). You have not confirmed it.",
     );
     expect(card.querySelector("details#reopen summary")?.text).toBe("Still happening?");
-    // The team reads the same reason on its card, with who and when, and not again in the panel.
+    // The team reads the same reason on its card, with who and when, and not again by the status.
     const teamPage = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     expect(teamPage.querySelector(".ticket-card .card-line")?.text.trim()).toMatch(
       /^Resolved by the team: Won't fix \(Works as designed\)\. Team Member, \d{1,2} [A-Z][a-z]{2} \d{4}\. Not confirmed by the customer\.$/,
     );
-    expect(teamPage.querySelector("aside.ticket-panel")!.text).not.toContain("Won't fix");
+    expect(teamPage.querySelector(".ticket-facts")!.text).not.toContain("Won't fix");
+    // The customer's line under the title says who resolved it, in plain words.
+    expect(page.querySelector(".ticket-standing")?.text).toBe("Resolved by the team");
     // Never the tick or "Customer confirmed": the customer did not say so.
     expect(page.querySelector(".ticket-card .tick")).toBeNull();
     expect(page.querySelector("main")!.text).not.toContain("Customer confirmed");
@@ -177,7 +179,7 @@ describe("how a team resolution shows", () => {
     expect(mark?.getAttribute("aria-label")).toBe("Customer confirmed");
     expect(
       parse((await as(app, customerOne).get("/tickets/SUP-1")).text).querySelector(
-        ".ticket-card .tick",
+        ".ticket-standing .tick",
       ),
     ).not.toBeNull();
   });
@@ -216,23 +218,34 @@ describe("how a team resolution shows", () => {
 });
 
 describe("resolving with a reason on the page", () => {
-  it("is a quiet disclosure for the owner and admins, never the primary button", async () => {
+  it("is a choice in the Status menu for the owner and admins, and its form takes the next step's place", async () => {
     const { app } = await setup();
     await admin(app).post("/api/tickets/SUP-2/take");
+    const link = "a[href$='?step=resolve']";
     const owner = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    // The opener is the status itself; the button inside the form is the one that resolves.
-    expect(owner.querySelector("details.resolve summary")?.text).toBe("Resolved");
-    expect(owner.querySelector("details.resolve form button")?.text).toBe("Resolve");
+    // The opener is the status itself, and the page's usual next step does not resolve.
+    expect(owner.querySelector(`.status-menu ${link}`)?.text).toBe("Resolved");
+    expect(owner.querySelector("form.resolve")).toBeNull();
     expect(owner.querySelector(".next-action")?.text).not.toContain("Resolve");
+    // Chosen, the form shows where the next step was, with the page's one filled button.
+    const shown = parse((await as(app, teamActor).get("/tickets/SUP-1?step=resolve")).text);
+    expect(shown.querySelector(".next-action")).toBeNull();
+    const submit = shown.querySelector(".ticket-card form.resolve button[type=submit]")!;
+    expect(submit.text).toBe("Resolve ticket");
+    expect(submit.getAttribute("class")).toBeUndefined();
+    expect(parse((await admin(app).get("/tickets/SUP-2")).text).querySelector(link)).not.toBeNull();
     expect(
-      parse((await admin(app).get("/tickets/SUP-2")).text).querySelector("details.resolve"),
-    ).not.toBeNull();
+      parse((await as(app, teamActor).get("/tickets/SUP-2")).text).querySelector(link),
+    ).toBeNull();
+    // Asking for the form in the address shows nothing to someone who may not resolve.
     expect(
-      parse((await as(app, teamActor).get("/tickets/SUP-2")).text).querySelector("details.resolve"),
+      parse((await as(app, teamActor).get("/tickets/SUP-2?step=resolve")).text).querySelector(
+        "form.resolve",
+      ),
     ).toBeNull();
     expect(
-      parse((await as(app, customerOne).get("/tickets/SUP-1")).text).querySelector(
-        "details.resolve",
+      parse((await as(app, customerOne).get("/tickets/SUP-1?step=resolve")).text).querySelector(
+        "form.resolve",
       ),
     ).toBeNull();
   });
@@ -244,10 +257,9 @@ describe("resolving with a reason on the page", () => {
       .type("form")
       .send({ reason: "other", note: "" });
     expect(refused.status).toBe(400);
-    const form = parse(refused.text).querySelector("details.resolve")!;
-    expect(form.hasAttribute("open")).toBe(true);
+    const form = parse(refused.text).querySelector("form.resolve")!;
     expect(form.querySelector("#resolve-error")?.text).toBe("Say why, for Other.");
-    expect(form.querySelector("option[selected]")?.getAttribute("value")).toBe("other");
+    expect(form.querySelector("input[checked]")?.getAttribute("value")).toBe("other");
     const done = await as(app, teamActor)
       .post("/tickets/SUP-1/resolve")
       .type("form")

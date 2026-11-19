@@ -15,11 +15,11 @@ import { DEV_COOKIE } from "../src/server/actor.js";
 import { seedDemo } from "../src/server/demo.js";
 import { createTicketService } from "../src/server/tickets/service.js";
 
-// Changing a ticket's status, as a team member finds it: in the side panel, one row of the
-// three statuses, New, In Progress and Resolved. The current one is marked and is not a
-// button. Each other one is a single press when this viewer may make that move, or a disabled
-// button with one short line beside the row saying why. When this viewer can press none of
-// them, the row is the status in plain words with that line, not three greyed buttons. The
+// Changing a ticket's status, as a team member finds it: under the title, a small Status menu of
+// the three statuses, New, In Progress and Resolved. The current one is marked and is not a
+// button. Each other one is a single press when this viewer may make that move, or greyed with
+// its reason as a title and as hidden words. When this viewer can press none of them, the
+// status is plain words with that reason as its title, not a menu of greyed choices. The
 // customer's page gains nothing from this.
 
 const valid = {
@@ -29,52 +29,62 @@ const valid = {
 };
 
 type Who = typeof teamActor;
+type Html = ReturnType<typeof parse>;
 
-/** The side panel's Status section, as this person sees it. */
+/** The Status part of the line under the title, as this person sees it: a menu or plain words. */
 async function statusSection(app: Express, who: Who) {
   const html = parse((await as(app, who).get("/tickets/SUP-1")).text);
-  const sections = html.querySelectorAll("aside.ticket-panel section");
-  return sections.find((s) => s.querySelector(".panel-label")?.text === "Status") ?? null;
+  return statusIn(html);
+}
+
+function statusIn(html: Html): Html | null {
+  const parts = html.querySelectorAll(".ticket-facts > details, .ticket-facts > .fact");
+  return parts.find((part) => part.querySelector(".fact-label")?.text === "Status") ?? null;
 }
 
 type Section = NonNullable<Awaited<ReturnType<typeof statusSection>>>;
 
-/**
- * The status row, left to right, as "Label: how", where how is current (marked, not a
- * button), press (a form with one button), opens (a disclosure that asks for a reason first)
- * or disabled.
- */
-function row(section: Section): string[] {
-  const group = section.querySelector(".status-row")!;
-  return group.childNodes
-    .filter((node) => node.nodeType === 1)
-    .map((node) => {
-      const item = node as unknown as Section;
-      if (item.getAttribute("aria-current") === "true") return `${item.text.trim()}: current`;
-      const summary = item.querySelector("summary");
-      if (summary) return `${summary.text.trim()}: opens`;
-      const button = item.querySelector("button")!;
-      if (button.hasAttribute("disabled")) return `${button.text.trim()}: disabled`;
-      return `${button.text.trim()}: press`;
-    });
+/** What a choice shows on screen, without the words only a screen reader hears. */
+function shown(item: Section): string {
+  const copy = parse(item.toString());
+  for (const hidden of copy.querySelectorAll(".visually-hidden")) hidden.remove();
+  return copy.text.trim();
 }
 
-/** The status in plain words, when this viewer can press none of the row. */
+/**
+ * The Status menu, top to bottom, as "Label: how", where how is current (marked, not a
+ * button), press (a form with one button), opens (a link to the form that asks for a reason
+ * first) or disabled.
+ */
+function row(section: Section): string[] {
+  return section.querySelectorAll("ul > li").map((item) => {
+    const current = item.querySelector('[aria-current="true"]');
+    if (current) return `${current.text.trim()}: current`;
+    const link = item.querySelector("a");
+    if (link) return `${link.text.trim()}: opens`;
+    const button = item.querySelector("button")!;
+    if (button.hasAttribute("disabled")) return `${shown(button)}: disabled`;
+    return `${shown(button)}: press`;
+  });
+}
+
+/** The status in plain words, when this viewer can press none of the menu. */
 function plain(section: Section): string | null {
-  if (section.querySelector(".status-row, button") !== null) return null;
+  if (section.tagName === "DETAILS" || section.querySelector("button") !== null) return null;
   return section.querySelector(".badge")?.text.trim() ?? null;
 }
 
-/** The one line beside the row saying why a status cannot be pressed, or null. */
+/** Why a status cannot be chosen, as the title on it, or null. */
 function why(section: Section): string | null {
-  return section.querySelector("#status-why")?.text.trim() ?? null;
+  const titled = section.getAttribute("title") ? section : section.querySelector("[title]");
+  return titled?.getAttribute("title") ?? null;
 }
 
 /** The form behind one status's button. */
 function formFor(section: Section, label: string) {
   return section
-    .querySelectorAll(".status-row > form")
-    .find((form) => form.querySelector("button")?.text.trim() === label)!;
+    .querySelectorAll("ul > li > form")
+    .find((form) => shown(form.querySelector("button")!).startsWith(label))!;
 }
 
 async function filed() {
@@ -87,16 +97,25 @@ describe("the status control", () => {
   it("on a New ticket marks New, takes and starts with In Progress, and opens the reason for Resolved", async () => {
     const { app } = await filed();
     const section = (await statusSection(app, teamActor))!;
-    expect(row(section)).toEqual(["New: current", "In Progress: press", "Resolved: opens"]);
+    // Nobody owns it, so In Progress says it makes the viewer the owner too.
+    expect(row(section)).toEqual([
+      "New: current",
+      "In Progress (assigns it to you): press",
+      "Resolved: opens",
+    ]);
     expect(why(section)).toBeNull();
     expect(formFor(section, "In Progress").getAttribute("action")).toBe(
       "/tickets/SUP-1/take-and-start",
     );
-    // A details element, so it opens without scripts, holding the existing reason chooser.
-    const resolve = section.querySelector(".status-row details.resolve")!;
-    expect(resolve.querySelector("summary")?.getAttribute("role")).toBe("button");
-    expect(resolve.querySelector("form")?.getAttribute("action")).toBe("/tickets/SUP-1/resolve");
-    expect(resolve.querySelector("select[name=reason]")).not.toBeNull();
+    // A details element, so it opens without scripts. Resolved links to the same page with the
+    // reason form shown in the next step's place.
+    expect(section.tagName).toBe("DETAILS");
+    const resolve = section.querySelector("a")!;
+    expect(resolve.getAttribute("href")).toBe("/tickets/SUP-1?step=resolve");
+    const shownForm = parse((await as(app, teamActor).get("/tickets/SUP-1?step=resolve")).text);
+    const form = shownForm.querySelector(".ticket-card form#resolve-form")!;
+    expect(form.getAttribute("action")).toBe("/tickets/SUP-1/resolve");
+    expect(form.querySelectorAll("input[type=radio][name=reason]")).toHaveLength(5);
     expect((await as(app, teamActor).post("/tickets/SUP-1/take-and-start")).status).toBe(303);
     const ticket = (await admin(app).get("/api/tickets/SUP-1")).body;
     expect(ticket).toMatchObject({ status: "in_progress", owner_name: "Team Member" });
@@ -138,10 +157,14 @@ describe("the status control", () => {
     const section = (await statusSection(app, adminActor))!;
     // An admin may resolve a New ticket another person owns, but only its owner starts work.
     expect(row(section)).toEqual(["New: current", "In Progress: disabled", "Resolved: opens"]);
-    const greyed = section.querySelectorAll(".status-row button[disabled]");
+    const greyed = section.querySelectorAll("button[disabled]");
     expect(greyed).toHaveLength(1);
-    expect(greyed[0]!.getAttribute("aria-describedby")).toBe("status-why");
+    // The reason is its title, and words a screen reader hears, never a paragraph.
     expect(why(section)).toBe("Only Team Member, who owns it, can start work.");
+    expect(greyed[0]!.querySelector(".visually-hidden")?.text).toBe(
+      ". Only Team Member, who owns it, can start work.",
+    );
+    expect(section.querySelector("p")).toBeNull();
   });
 
   it("on a ticket the customer confirmed says only they can reopen it", async () => {
@@ -175,7 +198,9 @@ describe("the status control", () => {
     // The button already says where reopening takes it, so no line repeats it.
     expect(why(section)).toBeNull();
     expect(section.text).not.toContain("Reopening takes it");
-    const reopen = section.querySelector(".status-row details.reopen form")!;
+    expect(section.querySelector("a")?.getAttribute("href")).toBe("/tickets/SUP-1?step=reopen");
+    const reopenPage = parse((await as(app, teamActor).get("/tickets/SUP-1?step=reopen")).text);
+    const reopen = reopenPage.querySelector("form#reopen-form")!;
     expect(reopen.getAttribute("action")).toBe("/tickets/SUP-1/reopen");
     await as(app, teamActor)
       .post("/api/tickets/SUP-1/reopen")
@@ -192,8 +217,7 @@ describe("the status control", () => {
     const { app, db, config } = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
     seedDemo(createTicketService(db, config.ticketPrefix));
     const page = await visitor(app).set("Cookie", `${DEV_COOKIE}=demo-admin`).get("/tickets/SUP-1");
-    const sections = parse(page.text).querySelectorAll("aside.ticket-panel section");
-    const section = sections.find((s) => s.querySelector(".panel-label")?.text === "Status")!;
+    const section = statusIn(parse(page.text))!;
     expect(plain(section)).toBe("In Progress");
     expect(why(section)).toBe("The preview is read-only.");
   });
@@ -201,7 +225,7 @@ describe("the status control", () => {
   it("is the only status control: no Start work, no second Ask, no Take under More", async () => {
     const { app } = await filed();
     const fresh = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    expect(fresh.querySelector("aside.ticket-panel")!.text).not.toMatch(/Start work|Take this/);
+    expect(fresh.querySelector(".ticket-facts")!.text).not.toMatch(/Start work|Take this/);
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
     const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     const asks = page
@@ -216,13 +240,14 @@ describe("the status control", () => {
 describe("the customer's page", () => {
   it("shows the status as a word with no control, and keeps its own way to reopen", async () => {
     const { app } = await filed();
-    const section = (await statusSection(app, customerOne))!;
-    expect(section.querySelector(".badge")?.text).toBe("New");
-    expect(section.querySelector("form, button, details, .status-row")).toBeNull();
+    const before = parse((await as(app, customerOne).get("/tickets/SUP-1")).text);
+    expect(before.querySelector(".ticket-facts")).toBeNull();
+    const standing = before.querySelector(".ticket-standing")!;
+    expect(standing.text).toBe("New, not yet taken by the team");
+    expect(standing.querySelector("form, button, details, a")).toBeNull();
     await resolveTicket(app, "SUP-1", customerOne);
     const html = parse((await as(app, customerOne).get("/tickets/SUP-1")).text);
-    expect(html.querySelector("aside.ticket-panel")!.text).not.toMatch(/Start work|Reopen/);
-    expect(html.querySelector("aside.ticket-panel form")).toBeNull();
+    expect(html.querySelector(".ticket-standing")!.text).not.toMatch(/Start work|Reopen/);
     expect(html.querySelector("#reopen summary")?.text).toBe("Still happening?");
     expect(html.querySelector("summary[role=button]")).toBeNull();
   });

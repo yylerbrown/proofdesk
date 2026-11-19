@@ -176,8 +176,8 @@ describe("the ticket page's own forms after a refused submit", () => {
     const res = await as(app, teamActor)
       .post("/tickets/SUP-1/ready")
       .type("form")
-      .send({ try_url: "not a link", tried: "Printed.", result: "" });
+      .send({ response: "x".repeat(2001) });
     expect(res.status).toBe(400);
-    expect(focused(parse(res.text))).toEqual(["try_url"]);
+    expect(focused(parse(res.text))).toEqual(["response"]);
   });
 });

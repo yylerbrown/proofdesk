@@ -20,6 +20,8 @@ test("the send button follows the tab, and the box grows as text is typed", asyn
   const ticketUrl = page.url();
   await signIn(page, "Team Member");
   await page.goto(ticketUrl);
+  // The box is closed until wanted.
+  await page.locator("summary", { hasText: "Reply or add a note" }).click();
 
   const box = page.getByRole("textbox", { name: "Your message" });
   const top = () => box.evaluate((element) => element.getBoundingClientRect().top);
@@ -28,11 +30,13 @@ test("the send button follows the tab, and the box grows as text is typed", asyn
 
   await page.getByRole("radio", { name: "Internal note" }).check();
   await expect(page.getByRole("button", { name: "Save internal note" })).toBeVisible();
+  await expect(page.getByText("Only the team can see this.")).toBeVisible();
   expect(await top()).toBe(before);
 
   await page.getByRole("radio", { name: "Reply to the customer" }).check();
   await expect(page.getByRole("button", { name: "Send reply to customer" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Save internal note" })).toHaveCount(0);
+  await expect(page.getByText("Only the team can see this.")).toBeHidden();
   expect(await top()).toBe(before);
 
   const empty = await height();

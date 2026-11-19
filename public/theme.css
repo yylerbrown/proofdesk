@@ -109,7 +109,6 @@
    */
   --pd-page: 1200px;
   --pd-measure: 760px; /* longest line of reading text */
-  --pd-rail: 288px; /* ticket page panel; 320px from 1280px (site.css) */
   --pd-header-h: 56px;
   --pd-radius-sm: 4px; /* tags, code, badges */
   --pd-radius: 6px; /* buttons, inputs, menu items */
@@ -202,11 +201,6 @@
 @media (min-width: 768px) {
   :root:not([data-theme="dark"]) {
     --pd-gutter: 32px;
-  }
-}
-@media (min-width: 1280px) {
-  :root:not([data-theme="dark"]) {
-    --pd-rail: 320px;
   }
 }
 
