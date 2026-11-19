@@ -37,6 +37,8 @@ import { roleNowOf } from "./people/role-now.js";
 import { peopleRouter } from "./routes/people.js";
 import { guide, openApiDocument } from "./api/describe.js";
 import { siteAddress } from "./routes/connections.js";
+import { pictureLimitsFor } from "./pictures/limits.js";
+import { readPictures } from "./pictures/upload.js";
 // The limits live in limits.ts, where the API's guide reads them too.
 import { DEMO_CONNECTIONS_PER_HOUR, FILING_LIMIT, SIGN_IN_LIMIT, WRITE_LIMIT } from "./limits.js";
 
@@ -104,6 +106,8 @@ export function createApp(config: Config, db: Db, options: { log?: LogLine } = {
       // Origin header on this site's own forms.
       referrerPolicy: { policy: "same-origin" },
       contentSecurityPolicy: {
+        // The library's default img-src, 'self' and data:, already lets a page show the
+        // pictures on its tickets, which this server serves itself. Nothing else is added.
         directives: {
           "style-src": ["'self'"],
           // Forms post only to this server. The GitHub sign-in form is answered with a
@@ -244,6 +248,10 @@ export function createApp(config: Config, db: Db, options: { log?: LogLine } = {
   app.post("/sign-in/microsoft", signInLimit);
   app.post("/demo/connection", demoConnectionLimit);
   app.use(express.urlencoded({ extended: false, limit: BODY_LIMIT }));
+  // The two forms that take text, filing a ticket and writing a reply or a note, may also send
+  // pictures. Those come as multipart/form-data, which only these two addresses read. The
+  // checks above, of where the request comes from and how often, have already run.
+  app.post(["/tickets", "/tickets/:key/entries"], readPictures(pictureLimitsFor(config.demo)));
   app.use(assistantRunRouter(rootDir, () => tickets.recordedRunKey()));
   app.use(signInRouter(config, auth, db, () => tickets.hasDemoSeed()));
   app.use(pagesRouter(tickets));

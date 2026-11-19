@@ -615,6 +615,7 @@ export function insertMeta(db: Db, key: string, value: string): void {
  */
 export const TICKET_TABLES = [
   "ticket_events",
+  "ticket_pictures",
   "ticket_entries",
   "ticket_evidence",
   "idempotency_keys",

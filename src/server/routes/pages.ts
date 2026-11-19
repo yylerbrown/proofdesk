@@ -26,6 +26,7 @@ import {
   ticketFiledWith,
 } from "../pages/form-id.js";
 import { fingerprint } from "../pages/loaded-text.js";
+import { picturesOf, uploaderToken, viewerToken } from "../pictures/upload.js";
 import { noMatchWords, readListPageQuery, sortHeaders } from "../pages/list-query.js";
 import { sameText, type ListSort, type TicketListFilter } from "../tickets/schemas.js";
 import { rememberBulkOutcome, takeBulkOutcome } from "../pages/bulk-outcome.js";
@@ -388,8 +389,31 @@ export function pagesRouter(service: TicketService): Router {
     res.json({ ...stamp, status });
   });
 
+  // One picture on a ticket, for whoever may see what it is attached to. Every refusal is the
+  // same 404 as a picture that is not there. The answer is only ever shown as a picture: its
+  // stored type, checked from its bytes when it was added, no file name from the upload, and a
+  // policy that lets the response itself run nothing. Like /version above, it comes before the
+  // middleware below, so loading a picture never uses up the message a page shows once.
+  router.get("/tickets/:key/pictures/:id", (req, res) => {
+    const actor = signedIn(req);
+    const id = /^[1-9][0-9]{0,14}$/.test(req.params.id) ? Number(req.params.id) : 0;
+    const picture = service.readPicture(req.params.key, id, actor, viewerToken(req));
+    res.set({
+      "Content-Type": picture.type,
+      "Content-Disposition": "inline",
+      "Content-Security-Policy": "default-src 'none'; sandbox",
+      "X-Content-Type-Options": "nosniff",
+      // Kept by this browser only. The demo decides by a cookie who sees a picture.
+      "Cache-Control": "private, max-age=3600",
+      Vary: "Cookie",
+    });
+    res.send(picture.bytes);
+  });
+
   // A page opened just after a save says what was saved.
   router.use((req, res, next) => {
+    // Both forms that take pictures say how many and how large.
+    res.locals.pictureLimits = service.pictureLimits;
     if (req.method === "GET") {
       res.locals.saved = takeSaved(req, res);
       res.locals.refused = takeProblem(req, res);
@@ -410,6 +434,7 @@ export function pagesRouter(service: TicketService): Router {
     // Just after filing, the receipt names this ticket.
     if (res.locals.saved === SAVED_MESSAGES.filed) res.locals.saved = filedMessage(ticket.key);
     const entries = service.listEntries(ticket.key, actor);
+    const pictures = service.listPictures(ticket.key, actor, viewerToken(req));
     const events = service.listEvents(ticket.key, actor);
     const names = service.peopleNames(events.map((event) => event.actor));
     // A person's role beside their name, as in the conversation, since the name is theirs to set.
@@ -520,7 +545,9 @@ export function pagesRouter(service: TicketService): Router {
       recordedSampleKey: RECORDED_SAMPLE_KEY,
       handOffTo: service.handOffCandidates(ticket),
       agentHelp,
-      entries,
+      // Each message carries its own pictures; the description's are ticketPictures.
+      entries: entries.map((item) => ({ ...item, pictures: pictures.byEntry.get(item.id) ?? [] })),
+      ticketPictures: pictures.description,
       history,
       evidence,
       allowed,
@@ -794,9 +821,12 @@ export function pagesRouter(service: TicketService): Router {
       // optional link that means "not given".
       const fileTicket = () => {
         filedNow = true;
-        return service.createTicket(
+        const upload = picturesOf(res);
+        return service.createTicketWithPictures(
           { ...values, where_url: values.where_url === "" ? undefined : values.where_url },
+          upload,
           actor,
+          uploaderToken(req, res, actor, upload),
         );
       };
       // A form with an id files once. Sent again, it gets back the ticket it already filed.
@@ -858,10 +888,14 @@ export function pagesRouter(service: TicketService): Router {
       const ticket = service.getTicket(req.params.key, actor);
       // A reply published from a note carries that note's id.
       const basedOn = asText(req.body?.based_on);
-      const added = service.addEntry(
+      // Pictures sent with the message are saved with it, or the message is not saved either.
+      const upload = picturesOf(res);
+      const added = service.addEntryWithPictures(
         req.params.key,
         basedOn === "" ? entry : { ...entry, based_on: basedOn },
+        upload,
         actor,
+        uploaderToken(req, res, actor, upload),
       );
       rememberSaved(res, added.kind === "note" ? "note" : "reply");
       // The line that says it was sent is drawn by the message box, with this id.
