@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  cardLine,
-  cardLineText,
-  formatDay,
-  type CardFacts,
-  type CardLine,
-} from "../src/server/pages/format.js";
+import { cardLine, formatDay, type CardFacts, type CardLine } from "../src/server/pages/format.js";
 import type { Ticket } from "../src/server/tickets/service.js";
 
 // The one line on the ticket page's card, under the customer's check: where the ticket stands,
@@ -29,7 +23,8 @@ function ticket(fields: Partial<Ticket> = {}): Ticket {
 }
 
 /** The line's words as a page without scripts shows them, its day in UTC. */
-const words = (line: CardLine | null) => (line === null ? null : cardLineText(line));
+const words = (line: CardLine | null) =>
+  line === null ? null : `${line.text}${line.day === null ? "" : formatDay(line.day)}${line.after}`;
 
 const nothing: CardFacts = { confirmed: null, notFixed: null, reviewBy: null };
 const mine = { status: "in_progress", owner_id: "team-1", owner_name: "Team Member" } as const;
@@ -109,7 +104,7 @@ describe("the card's line", () => {
       expect(cardLine(resolved, viewer, facts)).toEqual({
         text: "Customer confirmed it is fixed. ",
         day: at,
-        after: "",
+        after: ".",
         tick: true,
         messageAt: null,
       });

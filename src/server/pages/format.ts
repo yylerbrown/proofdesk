@@ -185,12 +185,6 @@ export type CardLine = {
   messageAt: string | null;
 };
 
-/** The whole line in plain words, its day in UTC: what the page shows when scripts are off. */
-export function cardLineText(line: CardLine): string {
-  const day = line.day === null ? "" : formatDay(line.day);
-  return `${line.text}${day}${line.after}`;
-}
-
 /**
  * The line the card at the top of the ticket page shows under the customer's check: where the
  * ticket stands, for this viewer. Null when there is nothing to say, which is most of the time:
@@ -214,7 +208,7 @@ export function cardLine(ticket: Ticket, viewer: Role, facts: CardFacts): CardLi
 
   if (ticket.status === "resolved") {
     if (facts.confirmed !== null) {
-      return { ...line("Customer confirmed it is fixed. ", facts.confirmed), tick: true };
+      return { ...line("Customer confirmed it is fixed. ", facts.confirmed, "."), tick: true };
     }
     const resolution = ticket.resolution;
     if (resolution === null || resolution.by !== "team") return null;

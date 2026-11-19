@@ -1350,6 +1350,13 @@ article.ticket-card#did-this-fix-it {
 .ticket-card .card-line a {
   color: inherit;
 }
+/*
+ * Just after asking the customer, the page puts focus on this line so a screen reader reads it.
+ * The line is words, not a control, so it draws no focus ring.
+ */
+.ticket-card .card-line[tabindex="-1"]:focus {
+  outline: none;
+}
 .ticket-card .card-line .tick {
   flex: none;
   width: 20px;

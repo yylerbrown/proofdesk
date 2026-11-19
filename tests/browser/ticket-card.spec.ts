@@ -7,7 +7,8 @@ import {
 } from "@playwright/test";
 
 // The card at the top of the ticket page, in a real browser: just after "Ask the customer to
-// verify" keyboard focus is on the card's one-time line; the card's day is the visitor's own
+// verify" keyboard focus is on the card's one-time line, with no ring, and in sight even on a
+// phone; the card's day is the visitor's own
 // day, the same day the rest of the page shows; and on a phone the customer's No button has its
 // words in the middle, with a gap above "No, send it back".
 
@@ -25,18 +26,28 @@ async function signInAs(
   return page;
 }
 
-/** A ticket the customer files and the team takes and asks about. Returns its address. */
-async function askedTicket(browser: Browser, title: string): Promise<string> {
+/**
+ * A ticket the customer files and the team takes and asks about, the team in a window of the
+ * given options. Returns its address.
+ */
+async function askedTicket(
+  browser: Browser,
+  title: string,
+  { description = "A ticket for the card test.", teamOptions = {} } = {} as {
+    description?: string;
+    teamOptions?: BrowserContextOptions;
+  },
+): Promise<string> {
   const customer = await signInAs(browser, "Customer One");
   await customer.goto("/tickets/new");
   await customer.getByLabel("Title").fill(title);
-  await customer.getByLabel("Description").fill("A ticket for the card test.");
+  await customer.getByLabel("Description").fill(description);
   await customer.getByRole("button", { name: "File ticket" }).click();
   await expect(customer).toHaveURL(/\/tickets\/SUP-\d+$/);
   const url = customer.url();
   await customer.context().close();
 
-  const team = await signInAs(browser, "Team Member");
+  const team = await signInAs(browser, "Team Member", teamOptions);
   await team.goto(url);
   await team.getByRole("button", { name: "Take ticket and start work" }).click();
   await team
@@ -47,6 +58,9 @@ async function askedTicket(browser: Browser, title: string): Promise<string> {
   const asked = team.locator('.ticket-card p.card-line[role="status"]');
   await expect(asked).toHaveText("Asked the customer: Did this fix it?");
   await expect(asked).toBeFocused();
+  // The line is words, not a box to type in, so it draws no focus ring; and it is in sight.
+  await expect(asked).toHaveCSS("outline-style", "none");
+  await expect(asked).toBeInViewport();
   await team.context().close();
   return url;
 }
@@ -76,6 +90,18 @@ test("after Ask, focus is on the card's line, and its day is the visitor's own",
   const asked = team.locator("details.history tr", { hasText: "Ready for the customer to check" });
   await expect(asked.locator("time")).toContainText(shown.local);
   await team.context().close();
+});
+
+test("after Ask on a phone, the card's line under a long description is scrolled into sight", async ({
+  browser,
+}) => {
+  // The visible part of a phone browser with its bars showing. On a phone the card sits under
+  // the panel and the description, so a description of a few lines puts it below the first screen.
+  const lines = Array.from({ length: 8 }, (_, i) => `Line ${i + 1} of what happened.`);
+  await askedTicket(browser, "Asked on a phone with a long description", {
+    description: lines.join("\n"),
+    teamOptions: { viewport: { width: 390, height: 664 } },
+  });
 });
 
 test("on a phone, the customer's No has its words centred and a gap above its button", async ({

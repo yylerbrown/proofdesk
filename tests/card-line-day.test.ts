@@ -25,7 +25,7 @@ describe("the day on the card's line", () => {
     const iso = day.getAttribute("datetime")!;
     expect(iso).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     expect(day.text).toBe(formatDay(iso));
-    expect(line.text.trim()).toBe(`Customer confirmed it is fixed. ${formatDay(iso)}`);
+    expect(line.text.trim()).toBe(`Customer confirmed it is fixed. ${formatDay(iso)}.`);
   });
 
   it("is a time element inside the link to the customer's No, with the same instant", async () => {

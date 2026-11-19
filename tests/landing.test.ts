@@ -16,6 +16,7 @@ import { admin, buildTestApp } from "./helpers.js";
 function fakeElement() {
   const attributes: Record<string, string> = {};
   const focusCalls: { preventScroll: boolean }[] = [];
+  const scrollCalls: { block: string }[] = [];
   const element: Focusable = {
     setAttribute: (name, value) => {
       attributes[name] = value;
@@ -23,8 +24,11 @@ function fakeElement() {
     focus: (options) => {
       focusCalls.push(options);
     },
+    scrollIntoView: (options) => {
+      scrollCalls.push(options);
+    },
   };
-  return { element, attributes, focusCalls };
+  return { element, attributes, focusCalls, scrollCalls };
 }
 
 /** A stand-in search box holding some words, which records where its cursor was put. */
@@ -51,6 +55,16 @@ describe("the landing script", () => {
     expect(focusLanding(landing({ message: message.element }))).toBe(message.element);
     expect(message.attributes.tabindex).toBe("-1");
     expect(message.focusCalls).toEqual([{ preventScroll: true }]);
+    expect(message.scrollCalls).toEqual([]);
+  });
+
+  it("scrolls the card's line to the middle of the window when it opens off the screen", () => {
+    const message = fakeElement();
+    expect(focusLanding(landing({ message: message.element, messageOffScreen: true }))).toBe(
+      message.element,
+    );
+    expect(message.focusCalls).toEqual([{ preventScroll: true }]);
+    expect(message.scrollCalls).toEqual([{ block: "center" }]);
   });
 
   it("prefers the saved line to the search box", () => {

@@ -10,11 +10,16 @@
 // when the page has already put focus on a box with something to fix. The one part of the page
 // that still gets focus is the message line itself: after a reply or a note the address names
 // that line, #sent, which sits under the conversation by the message box.
+//
+// Just after asking the customer, the message is a line inside the ticket's card, which can sit
+// below the first screen on a phone or under a long description. The page then scrolls that
+// line to the middle of the window, so the one confirmation is in sight.
 
 /** The parts of an element this code changes. */
 export type Focusable = {
   setAttribute(name: string, value: string): void;
   focus(options: { preventScroll: boolean }): void;
+  scrollIntoView(options: { block: "center" }): void;
 };
 
 /** The search box: it takes focus, and its cursor can be moved. */
@@ -33,6 +38,8 @@ export type Landing = {
   message: Focusable | null;
   /** The message line's id, when it has one, so an address that names it still focuses it. */
   messageId?: string;
+  /** True when the message is a line the page must scroll into sight, as it is off the screen. */
+  messageOffScreen?: boolean;
   /** The list's search box when the address holds a search, otherwise null. */
   searchBox: SearchBox | null;
 };
@@ -45,6 +52,7 @@ export function focusLanding(landing: Landing): Focusable | null {
     // A paragraph takes focus only with a tabindex; -1 keeps it out of the Tab order.
     landing.message.setAttribute("tabindex", "-1");
     landing.message.focus({ preventScroll: true });
+    if (landing.messageOffScreen === true) landing.message.scrollIntoView({ block: "center" });
     return landing.message;
   }
   if (landing.searchBox !== null) {
@@ -68,6 +76,10 @@ if (typeof document !== "undefined") {
       '.ticket-card p.card-line[role="status"]',
     ].join(", "),
   );
+  // Only the card's line can open below the first screen; the others sit at the top of the
+  // content or are named by the address, which scrolls to them.
+  const box = message?.matches(".ticket-card .card-line") ? message.getBoundingClientRect() : null;
+  const messageOffScreen = box !== null && (box.top < 0 || box.bottom > window.innerHeight);
   focusLanding({
     hash: window.location.hash,
     // A box the server marked with autofocus counts even if the browser has not focused it yet.
@@ -76,6 +88,7 @@ if (typeof document !== "undefined") {
       (document.activeElement !== null && document.activeElement !== document.body),
     message,
     messageId: message?.id,
+    messageOffScreen,
     searchBox: searched
       ? document.querySelector<HTMLInputElement>('form[role="search"] input[name="q"]')
       : null,

@@ -455,14 +455,17 @@ export function pagesRouter(service: TicketService): Router {
           ? describeActor(lastProposal, names)
           : null;
     const agentEvidence = evidence.some((item) => item.reported_by.kind === "agent");
+    // A request for review is said on the ticket's card above, so only a blocked assistant
+    // counts here.
+    const blocked = signal?.label === "Assistant blocked:" ? signal.text : null;
     const showCard = staff
-      ? signal !== null || specPanel.spec !== null || agentEvidence || discardedBy !== null
+      ? blocked !== null || specPanel.spec !== null || agentEvidence || discardedBy !== null
       : specPanel.spec !== null;
     const assistantCard = showCard
       ? {
           key: ticket.key,
           from: proposedBy === null ? "From the AI assistant" : `From ${proposedBy}`,
-          blocked: signal?.label === "Assistant blocked:" ? signal.text : null,
+          blocked,
           spec: specPanel.spec,
           discardedBy,
           canDecide: specPanel.canDecide,
@@ -475,11 +478,14 @@ export function pagesRouter(service: TicketService): Router {
     // ticket stands, and the one step. The line about a No or a reopening links to the customer's
     // own message, which their answer wrote into the conversation at the same moment.
     const reviewBy = signal?.label === "Review requested by" ? signal.text : null;
+    const notFixed = notFixedCard(ticket, events);
     const line = cardLine(ticket, actor.role, {
       confirmed: confirmedAt(ticket, events),
-      notFixed: notFixedCard(ticket, events),
+      notFixed,
       reviewBy,
     });
+    // The ask is outlined only while the card's line is the request for review. The customer's
+    // No comes first on that line, and then the ask is the thing to do.
     const message =
       line?.messageAt == null
         ? undefined
@@ -502,7 +508,12 @@ export function pagesRouter(service: TicketService): Router {
       assistantCard,
       card,
       demoNext: demoNext(ticket, actor),
-      nextStep: nextStep(ticket, allowed, isWalkthroughSample(ticket, actor), reviewBy !== null),
+      nextStep: nextStep(
+        ticket,
+        allowed,
+        isWalkthroughSample(ticket, actor),
+        reviewBy !== null && notFixed === null,
+      ),
       statusRow: statusControl(ticket, allowed, actor),
       assistantSampleKey: service.assistantSampleKey(),
       recordedSampleKey: RECORDED_SAMPLE_KEY,
