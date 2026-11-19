@@ -306,3 +306,64 @@ test("the demo strip says the demo resets, on one line wide and two on a phone",
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await stripLines(page)).toBeLessThanOrEqual(2);
 });
+
+/** Where the ticket's side panel and its main column start, and what lies just above the panel. */
+async function ticketColumns(page: Page) {
+  return page.evaluate(() => {
+    const top = (selector: string) =>
+      Math.round(document.querySelector(selector)!.getBoundingClientRect().top + window.scrollY);
+    const title = document.querySelector("main h1")!.getBoundingClientRect();
+    return {
+      panel: top(".ticket-panel"),
+      main: top(".ticket-summary"),
+      titleBottom: Math.round(title.bottom + window.scrollY),
+    };
+  });
+}
+
+/** The filled buttons in the page's main area, by their computed fill: dark means filled. */
+async function filledButtons(page: Page) {
+  return page.locator("main :is(button, [role=button])").evaluateAll((buttons) =>
+    buttons
+      .filter((button) => button.getClientRects().length > 0)
+      .filter((button) => {
+        const [red, green, blue, alpha] = (
+          getComputedStyle(button).backgroundColor.match(/[\d.]+/g) ?? []
+        ).map(Number);
+        if (alpha === 0) return false;
+        return 0.2126 * red! + 0.7152 * green! + 0.0722 * blue! < 0.3 * 255;
+      })
+      .map((button) => button.textContent?.trim()),
+  );
+}
+
+test("the ticket's side panel starts level with its main column, and under the title on a phone", async ({
+  page,
+}) => {
+  await signInAsTeam(page);
+  // New with no owner, In Progress after the customer's No, Resolved, and the assistant's ticket.
+  const keys = ["SUP-8", "SUP-7", "SUP-6", "SUP-2"];
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const tops: number[] = [];
+  for (const key of keys) {
+    await page.goto(`/tickets/${key}`);
+    const columns = await ticketColumns(page);
+    expect(columns.panel, key).toBe(columns.main);
+    tops.push(columns.panel);
+    // One black button at most in the main area: the next step.
+    expect((await filledButtons(page)).length, key).toBeLessThanOrEqual(1);
+  }
+  // The status row is in the same spot on every ticket, whatever the ticket holds.
+  expect(new Set(tops).size).toBe(1);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const key of keys) {
+    await page.goto(`/tickets/${key}`);
+    const columns = await ticketColumns(page);
+    // Directly under the title, before the description, and on the first screen.
+    expect(columns.panel, key).toBeGreaterThanOrEqual(columns.titleBottom);
+    expect(columns.panel - columns.titleBottom, key).toBeLessThan(60);
+    expect(columns.panel, key).toBeLessThan(columns.main);
+    expect(await sidewaysScroll(page), key).toBeLessThanOrEqual(0);
+  }
+});

@@ -100,7 +100,8 @@ describe("who a ticket is handed to", () => {
       (await visitor(built.app).set("Cookie", `${DEV_COOKIE}=demo-team`).get(`/tickets/${sample}`))
         .text,
     );
-    expect(team.querySelector(".agent-help")?.text).toMatch(/^Handed to demo assistants/);
+    // History keeps the record. The panel holds only status and owner, so it does not repeat it.
+    expect(team.querySelector(".agent-help")).toBeNull();
     expect(team.querySelector("details.history")?.text).toContain(
       "Handed to the AI assistant demo assistants",
     );

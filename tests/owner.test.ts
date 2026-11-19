@@ -159,9 +159,11 @@ describe("the owner on the ticket page", () => {
     expect(adminPage).toContain("Hand off to…");
     expect(adminPage).not.toContain("Take this ticket");
 
-    // A customer has no team panel: the owner is in the line under the title.
+    // A customer sees the owner as a plain row in the panel, once somebody owns the ticket.
     const customer = await as(app, customerOne).get("/tickets/SUP-1");
-    expect(parse(customer.text).querySelector("hgroup .meta")?.text).toContain("Owner Team Member");
+    const owner = parse(customer.text).querySelector(".ticket-panel .panel-owner");
+    expect(owner?.querySelector(".panel-label")?.text).toBe("Owner");
+    expect(owner?.text).toContain("Team Member");
     expect(customer.text).not.toContain("/take");
   });
 

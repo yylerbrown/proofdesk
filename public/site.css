@@ -143,11 +143,6 @@ hgroup > p:not(:first-child):last-child {
   color: var(--pd-muted);
   font-size: var(--pd-text-sm);
 }
-/* In the meta line the status keeps a little air on each side of its dot. */
-.meta .badge {
-  margin-inline: 2px 1px;
-  vertical-align: -1px;
-}
 /* A quotation of someone's words: set off by a short grey rule, not a box. */
 blockquote {
   margin: 0 0 var(--pd-space-4);
@@ -168,8 +163,7 @@ main > form,
   max-width: 720px;
 }
 /* A plain notice: the words, on the subtle grey with a hairline, without a highlighter. */
-.notice,
-.recorded-run {
+.notice {
   padding: 10px 14px;
   border: var(--pd-hairline);
   border-radius: var(--pd-radius);
@@ -190,6 +184,7 @@ main > form,
   margin-bottom: var(--pd-space-2);
 }
 .card-from,
+.card-recorded,
 .card-outcome {
   color: var(--pd-muted);
 }
@@ -223,7 +218,8 @@ hgroup + .role-note,
 h1 + .role-note {
   margin-top: calc(-1 * var(--pd-space-2));
 }
-/* "Back to all tickets", and the breadcrumb of the form pages: small and muted. */
+/* The ticket page's way back with its key ("All tickets / SUP-7"), and the breadcrumb of the
+   form pages: small and muted. */
 .back,
 nav[aria-label="breadcrumb"] {
   margin-bottom: var(--pd-space-3);
@@ -1536,7 +1532,6 @@ details.more-options summary,
 details.evidence-list > summary,
 .assistant-card details.card-details > summary,
 .ticket-thread details.publish > summary,
-.ticket-thread details.spec-prompt > summary,
 .welcome details.connect > summary {
   display: inline-block;
   color: var(--pd-muted);
@@ -1552,7 +1547,6 @@ details.more-options summary:hover,
 details.evidence-list > summary:hover,
 .assistant-card details.card-details > summary:hover,
 .ticket-thread details.publish > summary:hover,
-.ticket-thread details.spec-prompt > summary:hover,
 .welcome details.connect > summary:hover {
   color: var(--pd-text);
 }
@@ -1563,7 +1557,6 @@ details.more-options summary::after,
 details.evidence-list > summary::after,
 .assistant-card details.card-details > summary::after,
 .ticket-thread details.publish > summary::after,
-.ticket-thread details.spec-prompt > summary::after,
 .welcome details.connect > summary::after {
   display: inline-block;
   float: none;
@@ -1592,12 +1585,13 @@ details.history td:first-child {
 
 /*
  * Wide: the description, then the conversation, on the left; the panel of things a person acts
- * on, on the right. Narrow: one column, the panel after the description.
+ * on, on the right, level with the top of the left column. Narrow: one column, the panel first,
+ * directly under the title.
  */
 .ticket-layout {
   display: grid;
   gap: 0 var(--pd-space-7);
-  grid-template-areas: "summary" "panel" "thread";
+  grid-template-areas: "panel" "summary" "thread";
 }
 /* Reading text keeps a comfortable line length however wide the column grows. */
 .ticket-summary > :is(p, blockquote),
@@ -1671,8 +1665,9 @@ article.entry > p {
 .ticket-panel > * > :last-child {
   margin-bottom: 0;
 }
-/* Each panel heading is a label: small, muted, over its value. */
-.ticket-panel h2 {
+/* Each panel row's label ("Status", "Owner") is small and muted, over its value. */
+.ticket-panel h2,
+.ticket-panel .panel-label {
   margin-bottom: var(--pd-space-2);
   color: var(--pd-muted);
   font-size: var(--pd-text-xs);
@@ -2278,7 +2273,6 @@ button.copy {
   details.evidence-list > summary,
   .assistant-card details.card-details > summary,
   .ticket-thread details.publish > summary,
-  .ticket-thread details.spec-prompt > summary,
   .welcome details.connect > summary {
     display: inline-flex;
     align-items: center;
@@ -2302,7 +2296,7 @@ button.copy {
     align-items: center;
     min-height: 44px;
   }
-  /* "Back to all tickets": the words stay small, the row around them is the tap area. */
+  /* The way back above a ticket's title: the words stay small, the row around them is the tap area. */
   .back a {
     display: inline-flex;
     align-items: center;
@@ -2319,12 +2313,6 @@ button.copy {
     margin-block: -14px;
     padding-block: 14px;
   }
-}
-.spec-prompt pre {
-  margin-bottom: var(--pd-space-3);
-}
-.spec-prompt > p {
-  font-size: var(--pd-text-sm);
 }
 
 /*
@@ -2346,8 +2334,11 @@ details.more-options details {
   margin-bottom: var(--pd-space-2);
   border-bottom: 0;
 }
-/* "Edit ticket" beside the title: a quiet link in the line under it. */
-.meta a.edit-link {
+/* "Edit ticket": a quiet link on the panel's last line. */
+.panel-edit {
+  font-size: var(--pd-text-sm);
+}
+.panel-edit a.edit-link {
   color: var(--pd-muted);
 }
 
@@ -2416,11 +2407,6 @@ table.tickets td.title-cell a:hover {
 }
 .next-note {
   color: var(--pd-muted);
-}
-/* The customer's check, on a line of its own above the button that asks them. */
-.next-check {
-  flex-basis: 100%;
-  margin: 0;
 }
 /* On the demo, the next role to view as: quieter than the next action, and below it. */
 .demo-next button {

@@ -92,7 +92,7 @@ test("one press opens the recorded ticket as the team, and its note opens how it
   await page.goto("/tickets");
   await page.getByRole("button", { name: LABEL }).click();
   await expect(page.locator(".site-header")).toContainText("Demo Team Member");
-  const note = page.locator(".recorded-run");
+  const note = page.locator(".assistant-card .card-recorded");
   await expect(note).toBeVisible();
   await note.getByRole("link", { name: "How this was run" }).click();
   await expect(page).toHaveURL(/\/assistant-run#how-it-was-run$/);

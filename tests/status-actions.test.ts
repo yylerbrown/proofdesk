@@ -18,7 +18,8 @@ import { createTicketService } from "../src/server/tickets/service.js";
 // Changing a ticket's status, as a team member finds it: in the side panel, one row of the
 // three statuses, New, In Progress and Resolved. The current one is marked and is not a
 // button. Each other one is a single press when this viewer may make that move, or a disabled
-// button with one short line beside the row saying why, so all three always show. The
+// button with one short line beside the row saying why. When this viewer can press none of
+// them, the row is the status in plain words with that line, not three greyed buttons. The
 // customer's page gains nothing from this.
 
 const valid = {
@@ -33,7 +34,7 @@ type Who = typeof teamActor;
 async function statusSection(app: Express, who: Who) {
   const html = parse((await as(app, who).get("/tickets/SUP-1")).text);
   const sections = html.querySelectorAll("aside.ticket-panel section");
-  return sections.find((s) => s.querySelector("h2")?.text === "Status") ?? null;
+  return sections.find((s) => s.querySelector(".panel-label")?.text === "Status") ?? null;
 }
 
 type Section = NonNullable<Awaited<ReturnType<typeof statusSection>>>;
@@ -56,6 +57,12 @@ function row(section: Section): string[] {
       if (button.hasAttribute("disabled")) return `${button.text.trim()}: disabled`;
       return `${button.text.trim()}: press`;
     });
+}
+
+/** The status in plain words, when this viewer can press none of the row. */
+function plain(section: Section): string | null {
+  if (section.querySelector(".status-row, button") !== null) return null;
+  return section.querySelector(".badge")?.text.trim() ?? null;
 }
 
 /** The one line beside the row saying why a status cannot be pressed, or null. */
@@ -116,16 +123,25 @@ describe("the status control", () => {
     }
   });
 
-  it("shows another team member every status, greyed, with one line saying who can", async () => {
+  it("shows another team member the status in plain words, with one line saying who can", async () => {
     const { app } = buildTestApp();
     await admin(app).post("/api/tickets").send(valid);
     await admin(app).post("/api/tickets/SUP-1/take-and-start");
     const section = (await statusSection(app, teamActor))!;
-    expect(row(section)).toEqual(["New: disabled", "In Progress: current", "Resolved: disabled"]);
+    expect(plain(section)).toBe("In Progress");
     expect(why(section)).toBe("Only Admin, who owns it, or an admin can change its status.");
+  });
+
+  it("gives a greyed status the line that says why, when another one can be pressed", async () => {
+    const { app } = await filed();
+    await as(app, teamActor).post("/api/tickets/SUP-1/take");
+    const section = (await statusSection(app, adminActor))!;
+    // An admin may resolve a New ticket another person owns, but only its owner starts work.
+    expect(row(section)).toEqual(["New: current", "In Progress: disabled", "Resolved: opens"]);
     const greyed = section.querySelectorAll(".status-row button[disabled]");
-    expect(greyed).toHaveLength(2);
-    for (const button of greyed) expect(button.getAttribute("aria-describedby")).toBe("status-why");
+    expect(greyed).toHaveLength(1);
+    expect(greyed[0]!.getAttribute("aria-describedby")).toBe("status-why");
+    expect(why(section)).toBe("Only Team Member, who owns it, can start work.");
   });
 
   it("on a ticket the customer confirmed says only they can reopen it", async () => {
@@ -133,7 +149,7 @@ describe("the status control", () => {
     await resolveTicket(app, "SUP-1", customerOne);
     for (const who of [teamActor, adminActor]) {
       const section = (await statusSection(app, who))!;
-      expect(row(section)).toEqual(["New: disabled", "In Progress: disabled", "Resolved: current"]);
+      expect(plain(section)).toBe("Resolved");
       expect(why(section)).toBe("Only the customer can reopen a ticket they confirmed.");
     }
   });
@@ -143,7 +159,7 @@ describe("the status control", () => {
     await admin(app).post("/api/tickets/SUP-1/take-and-start");
     await admin(app).post("/api/tickets/SUP-1/resolve").send({ reason: "wont_fix" }).expect(200);
     const section = (await statusSection(app, teamActor))!;
-    expect(row(section)).toEqual(["New: disabled", "In Progress: disabled", "Resolved: current"]);
+    expect(plain(section)).toBe("Resolved");
     expect(why(section)).toBe("Only Admin, who owns it, an admin or the customer can reopen it.");
   });
 
@@ -156,7 +172,9 @@ describe("the status control", () => {
       .expect(200);
     const section = (await statusSection(app, teamActor))!;
     expect(row(section)).toEqual(["New: disabled", "In Progress: opens", "Resolved: current"]);
-    expect(why(section)).toBe("Reopening takes it to In Progress.");
+    // The button already says where reopening takes it, so no line repeats it.
+    expect(why(section)).toBeNull();
+    expect(section.text).not.toContain("Reopening takes it");
     const reopen = section.querySelector(".status-row details.reopen form")!;
     expect(reopen.getAttribute("action")).toBe("/tickets/SUP-1/reopen");
     await as(app, teamActor)
@@ -170,13 +188,13 @@ describe("the status control", () => {
     ]);
   });
 
-  it("is greyed for the demo's read-only admin preview, with the reason", async () => {
+  it("is the status in plain words for the demo's read-only admin preview, with the reason", async () => {
     const { app, db, config } = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
     seedDemo(createTicketService(db, config.ticketPrefix));
     const page = await visitor(app).set("Cookie", `${DEV_COOKIE}=demo-admin`).get("/tickets/SUP-1");
     const sections = parse(page.text).querySelectorAll("aside.ticket-panel section");
-    const section = sections.find((s) => s.querySelector("h2")?.text === "Status")!;
-    expect(row(section)).toEqual(["New: disabled", "In Progress: current", "Resolved: disabled"]);
+    const section = sections.find((s) => s.querySelector(".panel-label")?.text === "Status")!;
+    expect(plain(section)).toBe("In Progress");
     expect(why(section)).toBe("The preview is read-only.");
   });
 

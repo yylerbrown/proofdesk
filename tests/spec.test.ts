@@ -232,12 +232,6 @@ describe("deciding on a spec", () => {
       "The suggested test was discarded by Team Member.",
     );
     expect(card.querySelectorAll("form")).toHaveLength(0);
-    // While the ticket is handed to the assistant, the team asks it directly; once its work
-    // ends, the line under More options offers to ask for a new spec.
-    const prompt = "Ask your assistant to spec this ticket";
-    expect((await as(app, teamActor).get("/tickets/SUP-1")).text).not.toContain(prompt);
-    await as(app, teamActor).post("/tickets/SUP-1/agent/end").type("form").send({});
-    expect((await as(app, teamActor).get("/tickets/SUP-1")).text).toContain(prompt);
   });
 });
 
@@ -259,24 +253,15 @@ describe("a spec a person proposed", () => {
 });
 
 describe("the spec on the ticket page", () => {
-  it("offers one quiet line to the team while there is no spec, and nothing to the customer", async () => {
+  it("offers no line asking an assistant for a spec, to anyone", async () => {
     const { app } = await setup();
-    const team = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    const line = team.querySelector(".spec-prompt")!;
-    expect(line.text).toContain("Using Proofdesk, write a test spec for SUP-1");
-    // Under More options, not in the panel that holds what a person acts on.
-    expect(team.querySelector(".ticket-thread .more-options .spec-prompt")).not.toBeNull();
-    expect(team.querySelector(".ticket-panel .spec-prompt")).toBeNull();
-    // A team member cannot connect an assistant, so the line does not offer it; an admin can.
-    expect(line.querySelectorAll("a").map((a) => a.getAttribute("href"))).toEqual([
-      "/assistant-run",
-    ]);
-    const asAdmin = parse((await admin(app).get("/tickets/SUP-1")).text);
-    expect(asAdmin.querySelector(".spec-prompt a")!.getAttribute("href")).toBe("/connections");
-    // Nothing says the site contacted anyone's assistant.
-    expect(line.text).not.toMatch(/sent|notified|pinged/i);
-    const customer = await as(app, customerOne).get("/tickets/SUP-1");
-    expect(customer.text).not.toContain("spec-prompt");
+    // The API and the assistant tools still take a spec; the page no longer advertises one.
+    for (const agent of [as(app, teamActor), admin(app), as(app, customerOne)]) {
+      const page = (await agent.get("/tickets/SUP-1")).text;
+      expect(page).not.toContain("spec-prompt");
+      expect(page).not.toContain("spec this ticket");
+      expect(page).not.toContain("write a test spec");
+    }
   });
 
   it("is one card with no headings: one sentence, the decision, and the rest under Details", async () => {
@@ -409,22 +394,16 @@ describe("test specs on the demo", () => {
     expect(page.text).toContain("Reported, not verified");
   });
 
-  it("offers the demo's team the line only on the sample a demo key can read, never the customer", async () => {
+  it("offers the demo's team no line asking an assistant for a spec, even on the sample", async () => {
     const { app, sample } = buildDemo();
     const as = (id: string, key: string) =>
       visitor(app).set("Cookie", `${DEV_COOKIE}=${id}`).get(`/tickets/${key}`);
-    expect(
-      parse((await as("demo-customer", sample)).text).querySelector(".spec-prompt"),
-    ).toBeNull();
-    // A demo key reads only the sample made for assistants, so the line is not offered elsewhere.
-    expect(parse((await as("demo-team", "SUP-3")).text).querySelector(".spec-prompt")).toBeNull();
-    const line = parse((await as("demo-team", sample)).text).querySelector(".spec-prompt")!;
-    expect(line.text).toContain(`Using Proofdesk, write a test spec for ${sample}`);
-    // It leads to the welcome page's own block for getting a key, not to the top of the page.
-    expect(line.querySelector("a")!.getAttribute("href")).toBe("/sign-in#connect");
-    const welcome = parse(
-      (await visitor(app).set("Cookie", `${DEV_COOKIE}=demo-customer`).get("/sign-in")).text,
-    );
-    expect(welcome.querySelector("#connect form[action='/demo/connection']")).not.toBeNull();
+    for (const [id, key] of [
+      ["demo-customer", sample],
+      ["demo-team", sample],
+      ["demo-team", "SUP-3"],
+    ]) {
+      expect(parse((await as(id!, key!)).text).querySelector(".spec-prompt")).toBeNull();
+    }
   });
 });

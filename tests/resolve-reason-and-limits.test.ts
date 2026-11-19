@@ -172,7 +172,7 @@ describe("a resolved ticket", () => {
 });
 
 describe("the callout after the customer reopens", () => {
-  it("shows the reopen words and time, not the older No", async () => {
+  it("shows the reopen words, not the older No", async () => {
     const { app } = await setup();
     await customerSaysNo(app, "Still jams on page two.");
     const said = (await ticketPage(app)).querySelector("#customer-said-no")!;
@@ -191,7 +191,8 @@ describe("the callout after the customer reopens", () => {
       const callout = (await ticketPage(app, who)).querySelector("#customer-said-no")!;
       expect(callout.querySelector("h2")?.text).toBe(heading);
       expect(callout.querySelector("blockquote")?.text).toBe("It jams again since Monday.");
-      expect(callout.text).toContain("Reopened ");
+      // When it happened is in History, so the callout does not repeat it.
+      expect(callout.querySelector("time")).toBeNull();
       expect(callout.text).not.toContain("Still jams on page two.");
     }
   });

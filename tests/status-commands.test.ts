@@ -165,7 +165,10 @@ describe("starting work", () => {
     await admin(app).post("/api/tickets").send(valid);
     const unowned = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     const panel = unowned.querySelector("aside.ticket-panel")!;
-    expect(panel.querySelector("h2")?.text).toBe("Owner");
+    expect(panel.querySelectorAll(".panel-label").map((label) => label.text)).toEqual([
+      "Status",
+      "Owner",
+    ]);
     expect(unowned.querySelector(".next-action button")?.text.trim()).toBe(
       "Take ticket and start work",
     );

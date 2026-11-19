@@ -35,25 +35,21 @@ const shown = (html: ReturnType<typeof parse>, text: string) =>
   html.querySelector("main")!.text.split(text).length - 1;
 
 describe("the customer's ticket page", () => {
-  it("holds their words, the owner and status, Edit beside the title, nothing of the team's", async () => {
+  it("holds their words, the status and owner, Edit on the panel's last line, nothing of the team's", async () => {
     const { app } = await inProgress();
     const html = await page(app, customerOne);
-    expect(html.querySelector("hgroup .meta")?.text).toMatch(
-      /^SUP-1 In Progress · Owner Team Member · filed /,
-    );
+    expect(html.querySelector(".back")?.text.trim()).toBe("My tickets / SUP-1");
     const panel = html.querySelector("aside.ticket-panel")!;
-    expect(panel.querySelectorAll("h2").map((h) => h.text)).toEqual([
-      "Owner",
+    expect(panel.querySelectorAll(".panel-label, h2").map((h) => h.text)).toEqual([
       "Status",
+      "Owner",
       "How will we know it's fixed?",
     ]);
-    expect(panel.querySelectorAll("p, blockquote").map((el) => el.text.trim())).toEqual([
-      "Team Member",
-      "In Progress",
-      words,
-    ]);
+    expect(
+      panel.querySelectorAll("p:not(.panel-label), blockquote").map((el) => el.text.trim()),
+    ).toEqual(["In Progress", "Team Member", words, "Edit ticket"]);
     expect(html.querySelector("main")!.text).not.toContain("Printed ten pages twice");
-    expect(html.querySelector("hgroup .meta a.edit-link")?.text).toBe("Edit ticket");
+    expect(panel.querySelector(".panel-edit a.edit-link")?.text).toBe("Edit ticket");
     expect(
       html
         .querySelector("details.more-options")
@@ -68,7 +64,7 @@ describe("the customer's ticket page", () => {
     const html = await page(app, customerOne);
     expect(html.querySelector("#did-this-fix-it")?.text).toContain(words);
     expect(shown(html, words)).toBe(1);
-    expect(html.querySelector("hgroup .meta")?.text).toContain("In Progress, waiting for you");
+    expect(html.querySelector(".ticket-panel .badge")?.text).toBe("In Progress");
   });
 });
 
@@ -84,12 +80,12 @@ describe("the team's ticket page", () => {
     expect(more.firstElementChild?.tagName).toBe("SUMMARY");
     expect(more.firstElementChild?.text).toBe("More options");
     expect(more.hasAttribute("open")).toBe(false);
-    expect(more.querySelector("details > summary")?.text).toBe(
-      "Ask your assistant to spec this ticket",
-    );
+    expect(more.querySelector("details > summary")?.text).toBe("Offer a clearer check");
     // The owner's one control is in the panel, and nothing secondary is.
     expect(panel.querySelectorAll("section form[action$='/take']")).toHaveLength(1);
-    expect(panel.querySelector("details.more-options, a[href$='/edit']")).toBeNull();
+    expect(panel.querySelector("details.more-options")).toBeNull();
+    // Its one link is the quiet Edit ticket, on its last line.
+    expect(panel.querySelectorAll("a").map((a) => a.text)).toEqual(["Edit ticket"]);
   });
 
   it("folds the evidence list and an existing change link away", async () => {

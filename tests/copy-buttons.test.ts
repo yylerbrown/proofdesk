@@ -143,18 +143,12 @@ describe("copy buttons on the pages", () => {
     expect(found[0]!.copies).toContain(`(there is one, ${service.assistantSampleKey()})`);
   });
 
-  it("sits beside the prompt that asks an assistant for a test spec", async () => {
+  it("are not on a ticket page, which no longer offers a prompt to paste", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne)
       .post("/api/tickets")
       .send({ title: "Printer jams", description: "x", fix_check: "Ten pages print" });
     const found = copies(read((await as(app, teamActor).get("/tickets/SUP-1")).text));
-    expect(found).toEqual([
-      {
-        copies: "Using Proofdesk, write a test spec for SUP-1",
-        shown: "Using Proofdesk, write a test spec for SUP-1",
-        hidden: true,
-      },
-    ]);
+    expect(found).toEqual([]);
   });
 });
