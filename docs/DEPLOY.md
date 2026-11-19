@@ -1,8 +1,8 @@
 # Running and deploying
 
-[More ways to run](#more-ways-to-run) is for your own machine or Docker, with every setting. The
-rest of the page is the hosting on Fly.io. The README's
-[Run it yourself](../README.md#run-it-yourself) has the two commands that start it.
+This page runs Proofdesk beyond `npm run dev`: [on your machine or in Docker](#more-ways-to-run),
+with every setting, then on Fly.io. The README's [Run it yourself](../README.md#run-it-yourself)
+has the two commands that start it.
 
 ## More ways to run
 

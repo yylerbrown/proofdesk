@@ -48,6 +48,7 @@
 <% const curlCommand = `curl -H "Authorization: Bearer ${key}" "${address}/api/tickets"`; %>
 <pre class="paste command" id="curl-command"><code>curl -H "Authorization: Bearer <%= key %>" "<%= address %>/api/tickets"</code></pre>
 <button type="button" class="copy secondary" data-copy="<%= curlCommand %>" aria-label="Copy the curl command" hidden>Copy</button>
+<p><small><a href="/llms.txt">One page for assistants</a> has everything an assistant needs in one read.</small></p>
 <p><small><a href="/api">The API guide</a>, which needs no key, lists every action. <a href="/assistant-run">See an assistant's work</a> shows one real run.</small></p>
 
 <% if (connection.demo) { %>
