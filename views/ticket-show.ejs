@@ -24,16 +24,18 @@
 <% if (staff) { %>
 <%# Status and owner, two small menus on one line. Each is a native details element, so it
     opens and closes with scripts off; the menus script adds Escape and closing when focus
-    leaves. Only one is open at a time. %>
+    leaves. Only one is open at a time. An open list floats over the page under its own button,
+    like the header's menu, so opening or closing it moves nothing. A fact this viewer cannot
+    change is plain words with no border: a border means it can be changed. %>
 <div class="ticket-facts">
   <% if (statusRow.pressable) { %>
-  <details class="fact-menu status-menu" name="ticket-facts">
+  <details class="dropdown fact-menu status-menu" name="ticket-facts">
     <summary><span class="fact-label">Status</span> <%- include("status-badge", { status: ticket.status }) %></summary>
     <ul>
       <% for (const choice of choices) { %>
       <li>
         <% if (choice.kind === "current") { %>
-        <span aria-current="true" class="menu-current"><%= statusLabels[choice.status] %></span>
+        <span aria-current="true" class="menu-current"><%- include("status-badge", { status: choice.status }) %></span>
         <% } else if (choice.kind === "press") { %>
         <form method="post" action="<%= choice.action %>">
           <%- versionField %>
@@ -41,15 +43,15 @@
           <input type="hidden" name="<%= name %>" value="<%= value %>" />
           <% } %>
           <%# Taking a ticket nobody owns is part of starting work on it, so the choice says so. %>
-          <button type="submit" class="link"><%= statusLabels[choice.status] %><% if (choice.action.endsWith("/take-and-start")) { %> (assigns it to you)<% } %></button>
+          <button type="submit" class="link"><%- include("status-badge", { status: choice.status }) %><% if (choice.action.endsWith("/take-and-start")) { %> (assigns it to you)<% } %></button>
         </form>
         <% } else if (choice.kind === "resolve") { %>
-        <a href="/tickets/<%= ticket.key %>?step=resolve"><%= statusLabels[choice.status] %></a>
+        <a href="/tickets/<%= ticket.key %>?step=resolve#resolve-form"><%- include("status-badge", { status: choice.status }) %></a>
         <% } else if (choice.kind === "reopen") { %>
-        <a href="/tickets/<%= ticket.key %>?step=reopen"><%= statusLabels[choice.status] %></a>
+        <a href="/tickets/<%= ticket.key %>?step=reopen#reopen-form"><%- include("status-badge", { status: choice.status }) %></a>
         <% } else { %>
         <%# Greyed, with the reason as its title and as words for a screen reader. %>
-        <button type="button" class="link" disabled <% if (statusRow.why) { %>title="<%= statusRow.why %>"<% } %>><%= statusLabels[choice.status] %><% if (statusRow.why) { %><span class="visually-hidden">. <%= statusRow.why %></span><% } %></button>
+        <button type="button" class="link" disabled <% if (statusRow.why) { %>title="<%= statusRow.why %>"<% } %>><%- include("status-badge", { status: choice.status }) %><% if (statusRow.why) { %><span class="visually-hidden">. <%= statusRow.why %></span><% } %></button>
         <% } %>
       </li>
       <% } %>
@@ -64,7 +66,7 @@
   <% const canAssignTo = allowed.handOff && handOffTo.length > 0; %>
   <% const stopAssistant = agentHelp.current && allowed.endAgentWork; %>
   <% if (allowed.take || canAssignTo || allowed.release || agentHelp.current) { %>
-  <details class="fact-menu owner-menu" name="ticket-facts" <% if (problem?.form === "handOff") { %>open<% } %>>
+  <details class="dropdown fact-menu owner-menu" name="ticket-facts" <% if (problem?.form === "handOff") { %>open<% } %>>
     <summary><span class="fact-label">Owner</span> <span class="fact-value"><%= ownerName %></span></summary>
     <ul>
       <% if (allowed.take) { %>
@@ -119,9 +121,10 @@
   <% } %>
 </div>
 <% } else { %>
-<%# For the customer: where the ticket stands and whose turn it is, in plain words. The tick is
-    only for their own Yes. %>
-<p class="ticket-standing"><% if (standing.tick) { %><img src="/assets/mark.svg" alt="" width="20" height="20" class="tick" /><% } %><%= standing.text %></p>
+<%# For the customer: where the ticket stands and whose turn it is, in plain words, in the small
+    type of the team's line: the status mark and word, then the rest in grey. The tick takes the
+    mark's place only after their own Yes. %>
+<p class="ticket-standing"><% if (standing.tick) { %><img src="/assets/mark.svg" alt="" width="20" height="20" class="tick" /><span class="standing-word"><%= statusLabels[ticket.status] %></span><% } else { %><%- include("status-badge", { status: ticket.status }) %><% } %><span class="standing-rest"><%= standing.rest %><% if (standing.day) { %><time datetime="<%= standing.day %>" data-day><%= formatDay(standing.day) %></time><% } %></span></p>
 <% } %>
 
 <h2 class="visually-hidden">Description</h2>
@@ -184,11 +187,9 @@
   </p>
   <% } %>
 
-  <% if (confirming) { %>
-  <p class="card-detail">The team says it is fixed.</p>
-  <% if (ticket.resolution?.note) { %>
+  <%# "The team says it is fixed" is said once, in the line under the title. %>
+  <% if (confirming && ticket.resolution?.note) { %>
   <p class="card-detail">Fixed in: <span class="user-text"><%= ticket.resolution.note %></span></p>
-  <% } %>
   <% } %>
 
   <% if (asking) { %>
@@ -287,9 +288,8 @@
     </label>
     <% if (problem?.form === "resolve") { %><p><small id="resolve-error" role="alert"><%= problem.message %></small></p><% } %>
     <div class="form-actions">
-      <%# Fixed also tells the customer, so a small script makes the button say so. Without it the
-          button reads "Resolve ticket", and does the same. %>
-      <button type="submit" data-label-fixed="Mark fixed and tell the customer" data-label-other="Resolve ticket">Resolve ticket</button>
+      <%# One label for every reason. The Fixed choice says itself that the customer is told. %>
+      <button type="submit">Resolve ticket</button>
       <a href="/tickets/<%= ticket.key %>">Cancel</a>
     </div>
   </form>
@@ -311,25 +311,18 @@
   <% if (locals.nextStep) { %>
   <div class="card-step next-action">
     <% if (nextStep.form) { %>
-    <form method="post" action="<%= nextStep.form.action %>" <% if (nextStep.fixedIn) { %>class="mark-fixed"<% } %>>
+    <form method="post" action="<%= nextStep.form.action %>">
       <%- versionField %>
       <% for (const [name, value] of Object.entries(nextStep.form.fields ?? {})) { %>
       <input type="hidden" name="<%= name %>" value="<%= value %>" />
       <% } %>
-      <%# Marking it fixed takes one optional line for where it is fixed; with nothing typed it is
-          one press. What is typed in the message box below is not sent with it. %>
-      <% if (nextStep.fixedIn) { %>
-      <% const markRefused = problem?.form === "markFixed"; %>
-      <label for="fixed-in" class="card-label">Fixed in (optional)</label>
-      <input type="text" id="fixed-in" name="note" placeholder="a version, or live now" maxlength="120" value="<%= markRefused ? (problem.values?.note ?? "") : "" %>" <% if (markRefused) { %>aria-invalid="true" aria-describedby="mark-fixed-error"<% } %> <%= focusIf("markFixed", "note") %> />
-      <% if (markRefused) { %><small id="mark-fixed-error" role="alert"><%= problem.message %></small><% } %>
-      <% } %>
-      <button type="submit" <% if (nextStep.outlined) { %>class="secondary"<% } %>><%= nextStep.label %></button>
+      <button type="submit" <% if (nextStep.outlined) { %>class="secondary"<% } %> <% if (problem?.form === "markFixed") { %>aria-describedby="mark-fixed-error"<% } %>><%= nextStep.label %></button>
     </form>
     <% } else { %>
     <a href="<%= nextStep.href %>" role="button" <% if (nextStep.outlined) { %>class="secondary"<% } %>><%= nextStep.label %></a>
     <% } %>
     <% if (nextStep.note) { %><small class="next-note"><%= nextStep.note %></small><% } %>
+    <% if (problem?.form === "markFixed") { %><small id="mark-fixed-error" role="alert"><%= problem.message %></small><% } %>
   </div>
   <% } %>
   <%# On the demo: the next role to view this same ticket as. %>
@@ -426,8 +419,10 @@
 <p role="status" class="saved" id="sent"><%= sent %></p>
 <% } %>
 
-<%# The last row: three quiet lines that open in place. The message box is closed until wanted,
-    and open by itself when a draft or a refused message is shown back. %>
+<%# The last row is two rows that never rearrange. The first is the message line alone, drawn as
+    a closed text box: it is closed until wanted, and open by itself when a draft or a refused
+    message is shown back. The second is History and More options; an open one shows its content
+    under that row, and its own line stays where it was. %>
 <div class="ticket-last-row">
 <% if (allowed.reply) { %>
 <details class="reply-fold" <% if (entry.body || entry.error) { %>open<% } %>>
@@ -440,22 +435,25 @@
     <label><input type="radio" name="kind" value="reply" <% if (entry.kind !== "note") { %>checked<% } %> /> Reply to the customer</label>
     <label><input type="radio" name="kind" value="note" <% if (entry.kind === "note") { %>checked<% } %> /> Internal note</label>
   </fieldset>
-  <%# Shown only while Internal note is chosen. %>
-  <p class="note-hint"><small>Only the team can see this.</small></p>
   <% } else { %>
   <input type="hidden" name="kind" value="reply" />
   <% } %>
-  <%# The tabs say what the team's box is for, so its label is for screen readers only. The
-      customer has no tabs, so they see the label. %>
-  <label for="entry-body" <% if (allowed.note) { %>class="visually-hidden"<% } %>>Your message</label>
+  <%# The line they pressed, or the tabs, already say what the box is for, so its label is for
+      screen readers only. %>
+  <label for="entry-body" class="visually-hidden">Your message</label>
   <textarea id="entry-body" name="body" rows="3" required <% if (entry.error) { %>aria-invalid="true" aria-describedby="body-error" autofocus<% } %>><%= entry.body %></textarea>
   <% if (entry.error) { %><small id="body-error"><%= entry.error %></small><% } %>
-  <%# With a choice of who sees it, a small script makes the button name that audience. %>
-  <button type="submit" class="secondary compact" <% if (allowed.note) { %>data-label-reply="Send reply to customer" data-label-note="Save internal note"<% } %>>Send</button>
+  <div class="reply-actions">
+    <%# With a choice of who sees it, a small script makes the button name that audience. %>
+    <button type="submit" class="secondary compact" <% if (allowed.note) { %>data-label-reply="Send reply to customer" data-label-note="Save internal note"<% } %>>Send</button>
+    <%# Shown only while Internal note is chosen, at the row's right end. %>
+    <% if (allowed.note) { %><small class="note-hint">Only the team can see this.</small><% } %>
+  </div>
 </form>
 </details>
 <% } %>
 
+<div class="ticket-more-row">
 <details class="history">
 <summary>History (<%= history.length %>)</summary>
 <div class="overflow-auto">
@@ -564,7 +562,7 @@
 <li><a href="/tickets/<%= ticket.key %>/notices">Email notices</a></li>
 <% } %>
 <% if (allowed.archive) { %>
-<li><a href="/tickets/<%= ticket.key %>/archive" class="danger">Archive ticket</a></li>
+<li><a href="/tickets/<%= ticket.key %>/archive">Archive ticket</a></li>
 <% } %>
 <% if (allowed.delete) { %>
 <li><a href="/tickets/<%= ticket.key %>/delete" class="danger">Delete permanently</a></li>
@@ -572,6 +570,7 @@
 </ul>
 </details>
 <% } %>
+</div>
 </div>
 </div>
 <%- include("footer") %>

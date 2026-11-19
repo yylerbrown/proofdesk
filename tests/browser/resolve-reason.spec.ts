@@ -31,13 +31,12 @@ test("the resolve form shows each box only for the reason that needs it", async 
   await expect(note).toBeHidden();
   await expect(fixedIn).toBeHidden();
 
-  // Fixed has one optional box of its own, and its button says it tells the customer.
-  await reason("Fixed. Not customer-confirmed.").check();
+  // Fixed has one optional box of its own, and says itself that it tells the customer. The
+  // button keeps one label for every reason.
+  await reason("Fixed (the customer is told)").check();
   await expect(fixedIn).toBeVisible();
   await expect(note).toBeHidden();
-  await expect(
-    resolve.getByRole("button", { name: "Mark fixed and tell the customer" }),
-  ).toBeVisible();
+  await expect(resolve.getByRole("button", { name: "Resolve ticket" })).toBeVisible();
 
   await reason("Other").check();
   await expect(fixedIn).toBeHidden();

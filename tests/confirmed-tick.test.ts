@@ -62,10 +62,11 @@ describe("the tick", () => {
     // For the customer, in the line under the title that says where it stands.
     const standing = main.querySelector(".ticket-standing")!;
     expect(standing.querySelector(".tick")).not.toBeNull();
-    expect(standing.text.trim()).toBe("Resolved, customer confirmed");
-    // The card's line keeps its words and the day it was confirmed.
-    const line = main.querySelector(".ticket-card .card-line")!;
-    expect(line.text.trim()).toMatch(/^Customer confirmed on \d{1,2} [A-Z][a-z]{2} \d{4}\.$/);
+    // That line carries the day, so the card under the check does not say it again.
+    expect(standing.text.trim()).toMatch(
+      /^Resolved, customer confirmed on \d{1,2} [A-Z][a-z]{2} \d{4}$/,
+    );
+    expect(main.querySelector(".ticket-card .card-line")).toBeNull();
     // For the team, the tick is on the card's line.
     const team = parse((await admin(app).get("/tickets/SUP-1")).text).querySelector("main")!;
     expect(ticks(team)).toHaveLength(1);

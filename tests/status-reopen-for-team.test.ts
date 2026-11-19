@@ -39,7 +39,7 @@ describe("Reopen for whoever the rules allow", () => {
   it("opens the team's reopen from In Progress in the Status menu, and it reopens the ticket", async () => {
     const { app } = await resolvedByTheTeam();
     const html = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    const link = html.querySelector(".status-menu a[href$='?step=reopen']")!;
+    const link = html.querySelector(".status-menu a[href$='?step=reopen#reopen-form']")!;
     expect(link.text).toBe("In Progress");
     const shown = parse((await as(app, teamActor).get("/tickets/SUP-1?step=reopen")).text);
     const reopen = shown.querySelector(".ticket-card form#reopen-form")!;

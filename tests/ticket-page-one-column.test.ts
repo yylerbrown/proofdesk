@@ -87,30 +87,39 @@ describe("the customer's line under the title", () => {
     ({ status: "new", owner_name: null, resolution: null, ...fields }) as Ticket;
 
   it("says where it stands and whose turn it is, in plain words", () => {
-    expect(customerStanding(ticket({}), false)).toEqual({
-      text: "New, not yet taken by the team",
-      tick: false,
-    });
-    expect(customerStanding(ticket({ owner_name: "Sam" }), false).text).toBe("New, with Sam");
-    expect(customerStanding(ticket({ status: "in_progress", owner_name: "Sam" }), false).text).toBe(
-      "In Progress, with Sam",
+    const plain = (rest: string) => ({ rest, day: null, tick: false });
+    expect(customerStanding(ticket({}), null)).toEqual(plain(", not yet taken by the team"));
+    expect(customerStanding(ticket({ owner_name: "Sam" }), null)).toEqual(plain(", with Sam"));
+    expect(customerStanding(ticket({ status: "in_progress", owner_name: "Sam" }), null)).toEqual(
+      plain(", with Sam"),
     );
-    const byTeam = { by: "team" } as Ticket["resolution"];
-    expect(customerStanding(ticket({ status: "resolved", resolution: byTeam }), false)).toEqual({
-      text: "Resolved by the team",
+    const byTeam = { by: "team", reason: "cannot_reproduce" } as Ticket["resolution"];
+    expect(customerStanding(ticket({ status: "resolved", resolution: byTeam }), null)).toEqual(
+      plain(" by the team"),
+    );
+  });
+
+  it("says once that the team says it is fixed", () => {
+    const fixed = { by: "team", reason: "fixed_no_reply" } as Ticket["resolution"];
+    expect(customerStanding(ticket({ status: "resolved", resolution: fixed }), null)).toEqual({
+      rest: ", the team says it is fixed",
+      day: null,
       tick: false,
     });
   });
 
-  it("carries the tick only for the customer's own Yes", async () => {
-    expect(customerStanding({ status: "resolved" } as Ticket, true)).toEqual({
-      text: "Resolved, customer confirmed",
+  it("carries the tick and the day only for the customer's own Yes", async () => {
+    const at = "2026-11-19T12:00:00.000Z";
+    expect(customerStanding({ status: "resolved" } as Ticket, at)).toEqual({
+      rest: ", customer confirmed on ",
+      day: at,
       tick: true,
     });
     const { app } = await filed();
     await resolveTicket(app, "SUP-1", customerOne);
     const standing = (await page(app, customerOne)).querySelector(".ticket-standing")!;
-    expect(standing.text).toBe("Resolved, customer confirmed");
+    expect(standing.text).toMatch(/^Resolved, customer confirmed on \d{1,2} \w{3} \d{4}$/);
+    expect(standing.querySelector("time")).not.toBeNull();
     expect(standing.querySelector("img.tick")?.getAttribute("alt")).toBe("");
   });
 });
@@ -165,15 +174,17 @@ describe("resolving from the Status menu", () => {
     const { app } = await filed();
     const plain = await page(app);
     const link = plain.querySelector(".status-menu a")!;
-    expect(link.getAttribute("href")).toBe("/tickets/SUP-1?step=resolve");
+    // The address ends at the form, so the browser brings it into view.
+    expect(link.getAttribute("href")).toBe("/tickets/SUP-1?step=resolve#resolve-form");
     expect(plain.querySelector("form.resolve")).toBeNull();
 
     const html = await resolvePage(app);
     const form = html.querySelector(".ticket-card form#resolve-form")!;
     expect(form.querySelector("legend")?.text).toBe("Why are you resolving this ticket?");
     const choices = form.querySelectorAll("fieldset label").map((label) => label.text.trim());
+    // Fixed says on the form that the customer is told.
     expect(choices).toEqual([
-      "Fixed. Not customer-confirmed.",
+      "Fixed (the customer is told)",
       "Duplicate of another ticket",
       "Won't fix",
       "Cannot reproduce",
@@ -204,15 +215,17 @@ describe("resolving from the Status menu", () => {
 });
 
 describe("the last row", () => {
-  it("holds the closed message box, then History and More options", async () => {
+  it("holds the closed message box alone, then History and More options on their own row", async () => {
     const { app } = await filed();
     for (const [who, words] of [
       [teamActor, "Reply or add a note"],
       [customerOne, "Write a message"],
     ] as const) {
       const row = (await page(app, who)).querySelector(".ticket-page > .ticket-last-row")!;
-      const lines = row.querySelectorAll(":scope > details > summary").map((s) => s.text.trim());
-      expect(lines).toEqual([words, "History (1)", "More options"]);
+      const message = row.querySelectorAll(":scope > details > summary").map((s) => s.text.trim());
+      expect(message).toEqual([words]);
+      const second = row.querySelectorAll(":scope > .ticket-more-row > details > summary");
+      expect(second.map((s) => s.text.trim())).toEqual(["History (1)", "More options"]);
       const box = row.querySelector("details.reply-fold")!;
       expect(box.hasAttribute("open")).toBe(false);
       expect(box.querySelector("textarea#entry-body")).not.toBeNull();
@@ -225,8 +238,11 @@ describe("the last row", () => {
     expect(html.querySelector("form.reply-box .note-hint")?.text).toBe(
       "Only the team can see this.",
     );
+    // It sits on the button's row, at its right end, and only in note mode.
+    expect(html.querySelector("form.reply-box .reply-actions .note-hint")).not.toBeNull();
+    expect(ruleFor("form.reply-box .note-hint")).toContain("margin-left: auto;");
     expect(ruleFor('form.reply-box:not(:has(input[value="note"]:checked)) .note-hint')).toContain(
-      "visibility: hidden;",
+      "display: none;",
     );
     expect((await page(app, customerOne)).querySelector(".note-hint")).toBeNull();
     const refused = await as(app, teamActor)

@@ -31,7 +31,7 @@ const page = async (app: Express, who: typeof teamActor) =>
 const rule = (html: ReturnType<typeof parse>) =>
   html.querySelector(".ticket-facts [title]")?.getAttribute("title");
 const resolveLink = (html: ReturnType<typeof parse>) =>
-  html.querySelector(".status-menu a[href$='?step=resolve']");
+  html.querySelector(".status-menu a[href$='?step=resolve#resolve-form']");
 
 async function filed() {
   const built = buildTestApp();

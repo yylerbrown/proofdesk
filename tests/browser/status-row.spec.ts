@@ -53,10 +53,10 @@ test("Resolved shows its form in the next step's place, and a reason must be cho
   // No reason is chosen at first, and the browser will not send the form without one.
   await expect(form.getByRole("radio", { checked: true })).toHaveCount(0);
   await form.getByRole("button", { name: "Resolve ticket" }).click();
-  await expect(page).toHaveURL(/\?step=resolve$/);
-  // Fixed also tells the customer, so the button says so once Fixed is chosen.
-  await form.getByRole("radio", { name: "Fixed. Not customer-confirmed." }).check();
-  await form.getByRole("button", { name: "Mark fixed and tell the customer" }).click();
+  await expect(page).toHaveURL(/\?step=resolve#resolve-form$/);
+  // Fixed also tells the customer, and its choice says so; the button stays Resolve ticket.
+  await form.getByRole("radio", { name: "Fixed (the customer is told)" }).check();
+  await form.getByRole("button", { name: "Resolve ticket" }).click();
   await expect(page.locator(".ticket-card .card-line")).toContainText(
     "Resolved by the team: Fixed. Not customer-confirmed.",
   );

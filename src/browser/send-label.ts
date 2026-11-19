@@ -35,45 +35,6 @@ export function wireSendLabel(button: SendButton, choices: KindChoice[]): void {
   update();
 }
 
-// The Status menu's Resolved form ends in one button. Its reason Fixed also tells the customer,
-// so while Fixed is chosen the button says so, "Mark fixed and tell the customer"; for any other
-// reason it reads "Resolve ticket". The page gives both, as data-label-fixed and data-label-other.
-// Without this script the button reads "Resolve ticket", and does the same.
-
-/** The parts of the resolve button this code reads and changes. */
-export type ResolveButton = {
-  dataset: { labelFixed?: string; labelOther?: string };
-  textContent: string | null;
-};
-
-/** The resolve button's words for the reason chosen, or null to leave the button as it is. */
-export function resolveLabelFor(button: ResolveButton, reason: string | undefined): string | null {
-  if (reason === "fixed_no_reply") return button.dataset.labelFixed ?? null;
-  return button.dataset.labelOther ?? null;
-}
-
-/** Labels the resolve button for the reason chosen now, and again each time it changes. */
-export function wireResolveLabel(button: ResolveButton, reasons: KindChoice[]): void {
-  const update = () => {
-    const chosen = reasons.find((reason) => reason.checked);
-    const label = resolveLabelFor(button, chosen?.value);
-    if (label !== null) button.textContent = label;
-  };
-  for (const reason of reasons) reason.addEventListener("change", update);
-  update();
-}
-
-if (typeof document !== "undefined") {
-  const resolveButton = document.querySelector<HTMLButtonElement>("button[data-label-fixed]");
-  const resolveForm = resolveButton?.form;
-  if (resolveButton && resolveForm) {
-    const reasons = [
-      ...resolveForm.querySelectorAll<HTMLInputElement>("input[type=radio][name=reason]"),
-    ];
-    wireResolveLabel(resolveButton, reasons);
-  }
-}
-
 if (typeof document !== "undefined") {
   const button = document.querySelector<HTMLButtonElement>("button[data-label-reply]");
   const form = button?.form;
@@ -81,4 +42,45 @@ if (typeof document !== "undefined") {
     const choices = [...form.querySelectorAll<HTMLInputElement>("input[type=radio][name=kind]")];
     wireSendLabel(button, choices);
   }
+}
+
+// The message box is behind one line that looks like a closed text box. Pressing it opens the message
+// box, and this script then puts the caret in the box, as pressing a text box would. Without the
+// script the box opens and a second press puts the caret in it.
+//
+// Only a press moves the caret. A box that opens by itself, because a draft or a refused message
+// is shown back, leaves focus where the page put it.
+
+/** The parts of the message line, a details element, this code reads. */
+export type Fold = {
+  open: boolean;
+  addEventListener(type: "toggle", listener: () => void): void;
+};
+
+/** The parts of the message line's summary this code listens to. */
+export type FoldButton = {
+  addEventListener(type: "click", listener: () => void): void;
+};
+
+/** The message box. */
+export type Box = { focus(): void };
+
+/** After a press opens the message line, the caret goes into its box. */
+export function focusBoxWhenOpened(fold: Fold, button: FoldButton, box: Box): void {
+  let pressed = false;
+  // The press comes before the details element opens, so it is still closed here.
+  button.addEventListener("click", () => {
+    pressed = !fold.open;
+  });
+  fold.addEventListener("toggle", () => {
+    if (fold.open && pressed) box.focus();
+    pressed = false;
+  });
+}
+
+if (typeof document !== "undefined") {
+  const fold = document.querySelector<HTMLDetailsElement>("details.reply-fold");
+  const button = fold?.querySelector("summary");
+  const box = fold?.querySelector("textarea");
+  if (fold && button && box) focusBoxWhenOpened(fold, button, box);
 }

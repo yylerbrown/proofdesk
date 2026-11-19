@@ -95,13 +95,13 @@ const FORM_FIELDS: Record<Problem["form"], string[]> = {
   reopen: ["reason"],
   handOff: ["to"],
   resolve: ["reason", "duplicate_of", "note", "fixed_in"],
-  // The next step "Mark fixed and tell the customer": its one box, where it is fixed.
-  markFixed: ["note"],
+  // The next step "Mark fixed and tell the customer" is one button with no box.
+  markFixed: [],
 };
 
 // The forms on the ticket page that carry the ticket's version and show what was typed again
 // when they are drawn after a refusal for an old version.
-const KEEPS_TEXT = new Set<Problem["form"]>(["ready", "reopen", "resolve", "markFixed"]);
+const KEEPS_TEXT = new Set<Problem["form"]>(["ready", "reopen", "resolve"]);
 
 /** The box a refused form should focus: the first one with a message, or else its first box. */
 function focusField(form: Problem["form"], fieldErrors: Record<string, string[] | undefined>) {
@@ -222,8 +222,6 @@ type NextStep = {
   note?: string;
   /** Outlined rather than filled: while an assistant asks for a review, the review comes first. */
   outlined?: boolean;
-  /** The form has the optional box "Fixed in (optional)". */
-  fixedIn?: boolean;
 };
 
 /**
@@ -248,13 +246,13 @@ function nextStep(
       form: { action: `${at}/status`, fields: { status: "in_progress" } },
     };
   }
-  // One press resolves it as fixed and tells the customer, who can say it is not. The page adds
-  // one optional box for where it is fixed. Asking first is under "More options".
+  // One press resolves it as fixed and tells the customer, who can say it is not. Where it is
+  // fixed is an optional box on the Status menu's Resolved form. Asking first is under "More
+  // options".
   if (allowed.markReady && allowed.resolveWithReason) {
     const step: NextStep = {
       label: "Mark fixed and tell the customer",
       form: { action: `${at}/resolve`, fields: { reason: "fixed_no_reply", from: "next-step" } },
-      fixedIn: true,
     };
     if (sample) step.note = "The sample skips the fix.";
     if (reviewRequested) step.outlined = true;
@@ -329,6 +327,13 @@ function editForm(key: string) {
 
 // The heading of each list, for the page title.
 const FILTER_TITLES = { ...STATUS_LABELS, all: "All", archived: "Archived" };
+
+// The reasons on the ticket page's resolve form. Fixed says on the form what it does, that the
+// customer is told; the saved outcome keeps the reason's full words.
+const RESOLVE_FORM_LABELS = {
+  ...RESOLVE_REASON_LABELS,
+  fixed_no_reply: "Fixed (the customer is told)",
+};
 
 // The reasons the list's bar offers for resolving many tickets at once: the three that need no
 // more words, so the bar never holds a text box. A duplicate or an odd case is one ticket's
@@ -530,8 +535,9 @@ export function pagesRouter(service: TicketService, countNotices: NoticeCounter)
     // own message, which their answer wrote into the conversation at the same moment.
     const reviewBy = signal?.label === "Review requested by" ? signal.text : null;
     const notFixed = notFixedCard(ticket, events);
+    const confirmed = confirmedAt(ticket, events);
     const line = cardLine(ticket, actor.role, {
-      confirmed: confirmedAt(ticket, events),
+      confirmed,
       notFixed,
       reviewBy,
     });
@@ -569,7 +575,7 @@ export function pagesRouter(service: TicketService, countNotices: NoticeCounter)
       ),
       statusRow: statusControl(ticket, allowed, actor),
       // The customer's line under the title: where it stands and whose turn it is.
-      standing: customerStanding(ticket, confirmedAt(ticket, events) !== null),
+      standing: customerStanding(ticket, confirmed),
       // That form shows in the next step's place.
       step: req.method === "GET" && step.success ? step.data : null,
       noticeCount: countNotices(ticket.key, actor),
@@ -581,7 +587,7 @@ export function pagesRouter(service: TicketService, countNotices: NoticeCounter)
       history,
       evidence,
       allowed,
-      resolveReasons: RESOLVE_REASON_LABELS,
+      resolveReasons: RESOLVE_FORM_LABELS,
       entry: shownEntry,
       problem,
       // What the page's watcher compares with the server's cheap read.

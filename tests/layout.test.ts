@@ -41,7 +41,7 @@ describe("the ticket page layout", () => {
     const lastRow = page.querySelector(".ticket-last-row")!;
     expect(page.lastElementChild).toBe(lastRow);
     const more = lastRow.querySelector("details.more-options")!;
-    expect(lastRow.lastElementChild).toBe(more);
+    expect(lastRow.querySelector(".ticket-more-row")?.lastElementChild).toBe(more);
     expect(more.hasAttribute("open")).toBe(false);
     expect(more.querySelector("summary")?.text).toBe("More options");
     expect(
@@ -59,15 +59,17 @@ describe("the ticket page layout", () => {
     expect(lastRow.querySelector("details.reply-fold form[action$='/entries']")).not.toBeNull();
   });
 
-  it("puts archive and permanent delete last under More options, in red", async () => {
+  it("puts archive and permanent delete last under More options, with only delete in red", async () => {
     const { app } = buildTestApp();
     await admin(app).post("/api/tickets").send(valid);
     const html = await ticketPage(admin(app));
     const items = html.querySelectorAll("details.more-options .more-list > li");
-    expect(items.slice(-2).map((li) => li.querySelector("a.danger")?.text)).toEqual([
+    expect(items.slice(-2).map((li) => li.querySelector("a")?.text)).toEqual([
       "Archive ticket",
       "Delete permanently",
     ]);
+    // Archiving can be undone, so it is plain.
+    expect(html.querySelectorAll("a.danger").map((a) => a.text)).toEqual(["Delete permanently"]);
     expect(html.querySelector("a[href$='/edit']")?.classList.contains("danger")).toBe(false);
   });
 
@@ -78,7 +80,8 @@ describe("the ticket page layout", () => {
     // One line of plain words under the title, with no controls.
     expect(html.querySelector(".ticket-facts")).toBeNull();
     expect(html.querySelector(".ticket-standing")?.text).toBe("New, not yet taken by the team");
-    expect(html.querySelectorAll("a.danger").map((a) => a.text)).toEqual(["Archive ticket"]);
+    expect(html.querySelector("a[href$='/archive']")?.text).toBe("Archive ticket");
+    expect(html.querySelectorAll("a.danger")).toHaveLength(0);
   });
 });
 

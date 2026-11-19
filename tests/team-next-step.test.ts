@@ -41,7 +41,7 @@ describe("who resolves", () => {
     const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     // On the ticket, Resolved is in the Status menu for those who may, and opens the reasons.
     const menu = page.querySelector(".ticket-facts details.status-menu")!;
-    expect(menu.querySelector("a[href$='?step=resolve']")?.text).toBe("Resolved");
+    expect(menu.querySelector("a[href$='?step=resolve#resolve-form']")?.text).toBe("Resolved");
     const shown = parse((await as(app, teamActor).get("/tickets/SUP-1?step=resolve")).text);
     expect(shown.querySelector("form.resolve input[name=reason]")).not.toBeNull();
     const edit = parse((await as(app, teamActor).get("/tickets/SUP-1/edit")).text);

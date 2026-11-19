@@ -132,7 +132,7 @@ describe("how a team resolution shows", () => {
     const page = parse((await as(app, customerOne).get("/tickets/SUP-1")).text);
     const card = page.querySelector(".ticket-card")!;
     expect(card.querySelector(".card-line")?.text.trim()).toBe(
-      "Resolved by the team: Won't fix (Works as designed). You have not confirmed it.",
+      "Won't fix (Works as designed). You have not confirmed it.",
     );
     expect(card.querySelector("details#reopen summary")?.text).toBe("Still happening?");
     // The team reads the same reason on its card, with who and when, and not again by the status.
@@ -221,7 +221,7 @@ describe("resolving with a reason on the page", () => {
   it("is a choice in the Status menu for the owner and admins, and its form takes the next step's place", async () => {
     const { app } = await setup();
     await admin(app).post("/api/tickets/SUP-2/take");
-    const link = "a[href$='?step=resolve']";
+    const link = "a[href$='?step=resolve#resolve-form']";
     const owner = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     // The opener is the status itself, and the page's usual next step does not resolve.
     expect(owner.querySelector(`.status-menu ${link}`)?.text).toBe("Resolved");

@@ -98,10 +98,12 @@ describe("the card's line", () => {
     );
   });
 
-  it("shows the tick with Customer confirmed and the day, to everyone, after their Yes", () => {
+  it("shows the team the tick with Customer confirmed and the day, after the customer's Yes", () => {
     const resolved = ticket({ status: "resolved" });
     const facts = { ...nothing, confirmed: at };
-    for (const viewer of ["team", "admin", "customer"] as const) {
+    // The customer reads the day in the line under the title instead.
+    expect(cardLine(resolved, "customer", facts)).toBeNull();
+    for (const viewer of ["team", "admin"] as const) {
       expect(cardLine(resolved, viewer, facts)).toEqual({
         text: "Customer confirmed on ",
         day: at,
@@ -157,7 +159,7 @@ describe("the card's line", () => {
       cardLine(byTeam("fixed_no_reply", "Fixed. Not customer-confirmed."), "customer", nothing),
     ).toBeNull();
     expect(words(cardLine(byTeam("wont_fix", "Won't fix"), "customer", nothing))).toBe(
-      "Resolved by the team: Won't fix (Works as designed). You have not confirmed it.",
+      "Won't fix (Works as designed). You have not confirmed it.",
     );
     // The team reads the reason as it was chosen, where it is fixed, who and when.
     expect(
@@ -226,7 +228,7 @@ describe("a note on the team's resolution", () => {
       "Resolved by the team: Other (Out of scope. See the policy). Demo Team Member, 19 Nov 2026. Not confirmed by the customer.",
     );
     expect(words(cardLine(resolved, "customer", nothing))).toBe(
-      "Resolved by the team: Other (Out of scope. See the policy). You have not confirmed it.",
+      "Other (Out of scope. See the policy). You have not confirmed it.",
     );
   });
 });

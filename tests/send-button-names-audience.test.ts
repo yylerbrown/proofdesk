@@ -18,7 +18,7 @@ async function sendButton(who: typeof teamActor) {
   const { app } = buildTestApp();
   await as(app, customerOne).post("/api/tickets").send(valid);
   const page = parse((await as(app, who).get("/tickets/SUP-1")).text);
-  return page.querySelector('form[action="/tickets/SUP-1/entries"] > button[type=submit]')!;
+  return page.querySelector("form.reply-box .reply-actions > button[type=submit]")!;
 }
 
 describe("the message button on the page", () => {

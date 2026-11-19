@@ -41,7 +41,7 @@ describe("who may reopen a resolved ticket, in the README and the specification"
   it("names the Resolve button the ticket page really shows", () => {
     const page = fs.readFileSync("views/ticket-show.ejs", "utf8");
     // The Status menu's Resolved opens the reasons; its form's button is Resolve ticket.
-    expect(page).toContain('?step=resolve">');
+    expect(page).toContain('?step=resolve#resolve-form">');
     expect(page).toMatch(/<button type="submit"[^>]*>Resolve ticket<\/button>/);
     expect(readme).toContain('press "Resolve with a reason…" under Status');
     expect(readme).not.toContain('open "Resolve with a reason"');
