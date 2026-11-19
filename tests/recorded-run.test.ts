@@ -41,11 +41,15 @@ function demo() {
 }
 
 describe("the recorded run on the demo", () => {
-  it("is labelled, carries the same check, and was left as the run left it", async () => {
+  it("reads like a ticket, carries the same check, and was left as the run left it", async () => {
     const { asTeam, recorded } = demo();
     const ticket = (await asTeam().get(`/api/tickets/${recorded}`)).body;
-    expect(ticket.title).toBe(
-      "Recorded example of a real assistant run on 18 Nov 2026: the total adds tax twice",
+    // The title is the problem and the description is the customer's report alone.
+    expect(ticket.title).toBe("The checkout total adds tax twice");
+    expect(ticket.description).toBe(
+      "The checkout total is too high. This is the code that computes it:\n\n" +
+        "function total(price, taxRate) {\n  return price + price * taxRate + price * taxRate;\n}\n\n" +
+        "total(100, 0.1) returns 120.",
     );
     expect(ticket.fix_check).toBe("total(100, 0.1) returns 110, and a test shows it");
     expect(ticket).toMatchObject({ status: "in_progress", owner_name: "Demo Team Member" });
@@ -119,8 +123,8 @@ describe("the recorded run on the demo", () => {
     expect(target.parentNode?.querySelector("summary")?.text).toBe("How this was run");
   });
 
-  it("keeps the assistant's review request apart from the customer's check, and says where SUP-4 comes from", async () => {
-    const { asTeam, sample, recorded } = demo();
+  it("keeps the assistant's review request apart from the customer's check", async () => {
+    const { asTeam, recorded } = demo();
     const html = parse((await asTeam().get(`/tickets/${recorded}`)).text);
     const check = html
       .querySelectorAll("section")
@@ -133,9 +137,13 @@ describe("the recorded run on the demo", () => {
     expect(signal.querySelector(".review-requested")?.text).toBe(
       "Review requested by Demo visitor's assistant",
     );
-    // The description, under its heading, says it, so the note at the top stays one short line.
-    expect(html.querySelector("h2 + p.user-text")?.text).toContain(
-      `the sample ticket for assistants in an earlier copy of this demo, on 18 Nov 2026, so its words name SUP-4. Here that sample is ${sample}.`,
+  });
+
+  it("says on the run page, not on the ticket, why the assistant's words name SUP-4", async () => {
+    const { app } = demo();
+    const run = parse((await visitor(app).get("/assistant-run")).text);
+    expect(run.getElementById("how-it-was-run")?.text).toBe(
+      "The run was recorded on 18 Nov 2026 against the sample ticket of an earlier copy of this demo, where that ticket was SUP-4, which is why the assistant's own words name SUP-4. What the ticket shows from the assistant is exactly what it sent.",
     );
   });
 });
@@ -305,13 +313,12 @@ describe("the demo's history and the assistant samples' customer", () => {
         key,
       ).toContain("Second Demo Customer");
     }
-    // The team still reads where the recorded run's words come from.
+    // Where the recorded run's words come from is told on the run page, so the ticket's
+    // description holds the customer's report alone.
     const description = parse(
       (await as("demo-team").get(`/tickets/${recorded}`)).text,
-    ).querySelector(".ticket-summary")!.text;
-    expect(description).toContain(
-      "what one real AI assistant did on SUP-4, the sample ticket for assistants in an earlier copy of this demo",
-    );
-    expect(description).toContain("which the team sees");
+    ).querySelector("h2 + p.user-text")!.text;
+    expect(description).toMatch(/^The checkout total is too high\./);
+    expect(description).not.toMatch(/recorded|earlier copy|SUP-4/i);
   });
 });
