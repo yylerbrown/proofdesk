@@ -32,6 +32,7 @@ describe("the ticket page layout", () => {
     expect(more?.hasAttribute("open")).toBe(false);
     expect(more?.querySelector("summary")?.text).toBe("More options");
     expect(more?.querySelectorAll("details > summary").map((el) => el.text.trim())).toEqual([
+      "Ask your assistant to spec this ticket",
       "Offer a clearer check",
       "Attach evidence",
       "Add the code change link",
@@ -144,17 +145,21 @@ describe("showLocalTimes", () => {
 
 // The first screen shows the basics; the rest is there to find, quietly, and opens when wanted.
 describe("the ticket page's quiet parts", () => {
-  it("gives evidence its section once some exists, and before that one disclosure", async () => {
+  it("gives evidence one closed line once some exists, with no heading", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
-    const headings = async () =>
-      (await ticketPage(admin(app))).querySelectorAll(".ticket-summary h2").map((h) => h.text);
+    const line = async () =>
+      (await ticketPage(admin(app))).querySelector(".ticket-summary details.evidence-list");
     const before = await ticketPage(admin(app));
     const more = before.querySelector("details.more-options")!;
     expect(more.querySelectorAll("summary").map((s) => s.text)).toContain("Attach evidence");
-    expect(await headings()).not.toContain("Evidence");
+    expect(await line()).toBeNull();
     await admin(app).post("/api/tickets/SUP-1/evidence").send({ kind: "note", summary: "Checked" });
-    expect(await headings()).toContain("Evidence");
+    const after = await line();
+    expect(after?.querySelector("summary")?.text).toBe("Evidence (1)");
+    expect(after?.hasAttribute("open")).toBe(false);
+    const headings = (await ticketPage(admin(app))).querySelectorAll(".ticket-summary h2");
+    expect(headings.map((h) => h.text)).toEqual(["Description"]);
   });
 
   it("folds the optional change link box for everyone, the owner too", async () => {
@@ -170,14 +175,14 @@ describe("the ticket page's quiet parts", () => {
     }
   });
 
-  it("keeps the spec prompt to one line that opens to the command", async () => {
+  it("keeps the spec prompt to one line under More options that opens to the command", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
-    const prompt = (await ticketPage(as(app, teamActor))).querySelector("details.spec-prompt")!;
+    const prompt = (await ticketPage(as(app, teamActor))).querySelector(
+      "details.more-options details.spec-prompt",
+    )!;
     expect(prompt.hasAttribute("open")).toBe(false);
-    expect(prompt.querySelector("summary")?.text).toBe(
-      "Want better results? Ask your assistant to spec this ticket.",
-    );
+    expect(prompt.querySelector("summary")?.text).toBe("Ask your assistant to spec this ticket");
     expect(prompt.text).toContain("Using Proofdesk, write a test spec for SUP-1");
   });
 

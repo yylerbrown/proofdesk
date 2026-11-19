@@ -59,7 +59,7 @@ test("focus starts from the saved line, the sent line or the search box", async 
     await page.goto("/tickets");
     const search = page.getByRole("searchbox", { name: "Search titles and descriptions" });
     await search.fill("saved line");
-    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await search.press("Enter");
     await expect(page).toHaveURL(/q=saved/);
     await expect(search).toBeFocused();
     // The cursor sits after the old words, so typing adds to them in every browser.
@@ -88,7 +88,7 @@ test("the team's ticket page: Shift+Tab, and Escape on Resolve and Reopen", asyn
     // A short window, so the page can scroll far enough to put Send under the header.
     await page.setViewportSize({ width: 1280, height: 300 });
     const send = page.getByRole("button", { name: "Send reply to customer" });
-    const nextOne = page.locator("button[data-fill]").first();
+    const nextOne = page.locator("details.history > summary");
     const header = page.locator("body > header");
     const top = (button: typeof send) =>
       button.evaluate((element) => element.getBoundingClientRect().top);

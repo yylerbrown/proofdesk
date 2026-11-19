@@ -176,17 +176,35 @@ main > form,
   background: var(--pd-subtle);
   font-size: var(--pd-text-sm);
 }
-/* What a ticket's assistant asked for, set apart under the check and labelled as its own. */
-.assistant-signal {
-  margin-bottom: var(--pd-space-3);
-  padding-left: var(--pd-space-3);
-  border-left: 2px solid var(--pd-border-strong);
+/*
+ * Everything an assistant left on a ticket: one quiet bordered card with no headings. A small
+ * line says whose it is, one sentence says what it proposes, and the rest waits under Details.
+ */
+.assistant-card {
+  margin-bottom: var(--pd-space-5);
+  padding: var(--pd-space-3) var(--pd-space-4);
+  border: var(--pd-hairline);
+  border-radius: var(--pd-radius-lg);
 }
-.assistant-signal p {
-  margin-bottom: var(--pd-space-1);
+.assistant-card > p {
+  margin-bottom: var(--pd-space-2);
 }
-.signal-from {
+.card-from,
+.card-outcome {
   color: var(--pd-muted);
+}
+.card-decision {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pd-space-2);
+  margin-bottom: var(--pd-space-2);
+}
+.card-decision :is(form, button) {
+  margin: 0;
+}
+.assistant-card details.card-details {
+  margin: 0;
+  border-bottom: 0;
 }
 /* Small explanations under a title or beside a control: muted, never body-black. */
 .role-note,
@@ -821,30 +839,26 @@ table.people .person-email {
   margin-bottom: var(--pd-space-3);
 }
 form.list-search {
+  --pico-group-box-shadow-focus-with-input: none;
   flex: 1 1 16rem;
   max-width: 24rem;
   margin: 0 0 0 auto;
 }
-form.list-search :is(input, button) {
+form.list-search input {
   margin: 0;
   font-size: var(--pd-text-sm);
 }
 /*
- * The box and its button join into one pill, so focus rings the whole pill, following its round
- * ends. The control that has focus turns its own edge blue and draws a blue line inside it, and
- * the button also turns grey, so the box and the button never look the same when focused.
+ * One round box with its search icon. Focus draws the one ring every control has, which follows
+ * the box's round ends. The group halo Pico adds around a search form, and the box's own blue
+ * edge and halo, are taken off, so nothing draws a second line or a square inside the ring.
+ * The form's first rule above takes off the group halo.
  */
-form.list-search:has(:focus-visible) {
+form.list-search input:is(:focus, :focus-visible) {
   outline: 2px solid var(--pd-focus);
   outline-offset: 2px;
-}
-form.list-search :is(input, button):focus-visible {
-  outline: none;
-  border-color: var(--pd-focus);
-  box-shadow: inset 0 0 0 1px var(--pd-focus);
-}
-form.list-search button:focus-visible {
-  background-color: var(--pd-subtle);
+  border-color: var(--pico-form-element-border-color);
+  box-shadow: none;
 }
 /* How many tickets each status filter holds: smaller and muted, inside the filter's own link. */
 .filter-count {
@@ -1191,81 +1205,74 @@ fieldset label {
   font-weight: var(--pd-weight-regular);
 }
 /*
- * Who sees it: two chips, Reply or Internal note, in one track of their own under the legend,
- * drawn like the list's filter. Each choice is still a real radio button: it covers its whole
- * chip, invisible, so a click, a tap and the keyboard all work as before. The chosen chip is white
- * with a grey edge (3.29); Internal note turns amber, as the note will (note text on amber: 6.43).
+ * The team's reply box: two plain tabs directly on top of the box, "Reply to the customer" and
+ * "Internal note". Each tab is still a real radio button, covering its whole tab, invisible, so
+ * a click, a tap and the keyboard all work as before. The chosen tab is underlined; Internal
+ * note in amber, and the box then gets the thin amber rule a note has in the conversation.
  */
-fieldset:has(input[value="note"]) legend {
-  margin: 0 0 var(--pd-space-1);
-  padding: 0;
-  color: var(--pd-muted);
-  font-size: var(--pd-text-xs);
-}
-.kind-choice {
-  display: inline-flex;
+fieldset.kind-tabs {
+  display: flex;
   flex-wrap: wrap;
-  gap: 2px;
-  padding: 2px;
-  border-radius: calc(var(--pd-radius) + 2px);
-  background: var(--pd-subtle);
+  gap: var(--pd-space-4);
+  margin: 0 0 var(--pd-space-2);
+  padding: 0;
+  border: 0;
 }
-/* On a narrow screen the chips wrap; each then fills its row of the track. */
-.kind-choice > label {
-  flex: 1 1 auto;
-}
-fieldset:has(input[value="note"]) label {
+fieldset.kind-tabs label {
   display: inline-flex;
   position: relative;
   align-items: center;
   margin: 0;
-  padding: 5px 12px;
-  border: 1px solid transparent;
-  border-radius: var(--pd-radius);
+  padding: var(--pd-space-1) 0;
+  border-bottom: 2px solid transparent;
   color: var(--pd-muted);
   font-size: var(--pd-text-sm);
   font-weight: var(--pd-weight-medium);
   cursor: pointer;
-  transition:
-    background-color var(--pd-ease),
-    border-color var(--pd-ease),
-    color var(--pd-ease);
 }
 @supports selector(:has(*)) {
-  fieldset:has(input[value="note"]) input[type="radio"] {
+  fieldset.kind-tabs input[type="radio"] {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
     margin: 0;
     border: 0;
-    border-radius: var(--pd-radius);
     opacity: 0;
     cursor: pointer;
     appearance: none;
   }
-  fieldset:has(input[value="note"]) label:hover {
+  fieldset.kind-tabs label:hover {
     color: var(--pd-text);
   }
-  fieldset:has(input[value="note"]) label:has(:checked) {
-    border-color: var(--pd-border-strong);
-    background: var(--pd-surface);
+  fieldset.kind-tabs label:has(:checked) {
+    border-bottom-color: var(--pd-text);
     color: var(--pd-text);
   }
-  fieldset:has(input[value="note"]) label:has(input[value="note"]:checked) {
-    border-color: var(--pd-note-bar);
-    background: var(--pd-note-bg);
+  fieldset.kind-tabs label:has(input[value="note"]:checked) {
+    border-bottom-color: var(--pd-note-bar);
     color: var(--pd-note-text);
   }
-  fieldset:has(input[value="note"]) label:has(:focus-visible) {
+  fieldset.kind-tabs label:has(:focus-visible) {
     outline: 2px solid var(--pd-focus);
     outline-offset: 2px;
   }
 }
-/* Writing an internal note: the box turns amber, as the note will. */
-fieldset:has(input[value="note"]:checked) ~ label textarea {
-  border-color: var(--pd-note-bar);
-  background-color: var(--pd-note-bg);
+/* Three lines tall at first; it grows as text is typed, where the browser can, or by its handle. */
+form.reply-box textarea {
+  field-sizing: content;
+  min-height: 5.5rem;
+  max-height: 24rem;
+  margin-bottom: var(--pd-space-3);
+}
+form.reply-box:has(input[value="note"]:checked) textarea {
+  border-left: 3px solid var(--pd-note-bar);
+}
+/* On a phone each tab is a 44-pixel tap target. */
+@media (max-width: 639px) {
+  fieldset.kind-tabs label {
+    min-height: 44px;
+  }
 }
 .form-actions {
   display: flex;
@@ -1342,7 +1349,7 @@ article#did-this-fix-it {
 #did-this-fix-it form {
   margin: 0;
 }
-/* Only between the box's own Yes and No forms: not between the quick answers inside it. */
+/* Between the box's own Yes and No forms. */
 #did-this-fix-it > form + form {
   margin-top: var(--pd-space-5);
   padding-top: var(--pd-space-5);
@@ -1353,12 +1360,6 @@ article#did-this-fix-it {
 }
 #did-this-fix-it > form:first-of-type {
   margin-top: var(--pd-space-2);
-}
-#did-this-fix-it .quick-label {
-  margin-top: 20px;
-}
-#did-this-fix-it .quick-answers {
-  margin-bottom: 0;
 }
 @media (max-width: 639px) {
   #did-this-fix-it button.large {
@@ -1489,12 +1490,10 @@ article.entry > p {
 article.entry > p + p {
   margin-top: var(--pd-space-2);
 }
-/* An internal note: amber, with an amber edge, and always labelled in words. */
+/* An internal note: a thin amber rule on its left, and always labelled in words. No fill. */
 article.entry.note {
-  padding: 14px var(--pd-space-4);
+  padding-left: var(--pd-space-3);
   border-left: 2px solid var(--pd-note-bar);
-  border-radius: 0 var(--pd-radius-lg) var(--pd-radius-lg) 0;
-  background: var(--pd-note-bg);
 }
 .entry .note-label {
   color: var(--pd-note-text);
@@ -1535,6 +1534,7 @@ details#reopen > summary,
 .ticket-panel details > summary,
 details.more-options summary,
 details.evidence-list > summary,
+.assistant-card details.card-details > summary,
 .ticket-thread details.publish > summary,
 .ticket-thread details.spec-prompt > summary,
 .welcome details.connect > summary {
@@ -1550,6 +1550,7 @@ details#reopen > summary:hover,
 .ticket-panel details > summary:hover,
 details.more-options summary:hover,
 details.evidence-list > summary:hover,
+.assistant-card details.card-details > summary:hover,
 .ticket-thread details.publish > summary:hover,
 .ticket-thread details.spec-prompt > summary:hover,
 .welcome details.connect > summary:hover {
@@ -1560,6 +1561,7 @@ details#reopen > summary::after,
 .ticket-panel details > summary::after,
 details.more-options summary::after,
 details.evidence-list > summary::after,
+.assistant-card details.card-details > summary::after,
 .ticket-thread details.publish > summary::after,
 .ticket-thread details.spec-prompt > summary::after,
 .welcome details.connect > summary::after {
@@ -1784,25 +1786,15 @@ article.entry > p {
  * Pico draws anything marked role="group" as a joined button bar stretched to full width. These
  * groups are plain rows (or a stack) of separate buttons, so that look is taken off them.
  */
-:is(.quick-answers, .danger-zone, .spec)[role="group"],
-.spec [role="group"] {
+.danger-zone[role="group"] {
   --pico-group-box-shadow: none;
   --pico-group-box-shadow-focus-with-button: none;
   --pico-group-box-shadow-focus-with-input: none;
   width: auto;
   box-shadow: none;
 }
-:is(.quick-answers, .danger-zone)[role="group"] > *,
-.spec [role="group"] > * {
+.danger-zone[role="group"] > * {
   flex: none;
-}
-.spec [role="group"] {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--pd-space-2);
-}
-.spec [role="group"] form {
-  margin: 0;
 }
 .danger-zone[role="group"] {
   display: block;
@@ -2092,10 +2084,7 @@ textarea:focus-visible {
   }
 }
 
-/* The test spec: collapsed by default, its scenarios numbered and plain. */
-.spec summary small {
-  font-weight: normal;
-}
+/* The test spec's scenarios, under Details in the assistant's card: numbered and plain. */
 .scenarios li p {
   margin-bottom: 0.25rem;
 }
@@ -2287,6 +2276,7 @@ button.copy {
   .ticket-panel details > summary,
   details.more-options summary,
   details.evidence-list > summary,
+  .assistant-card details.card-details > summary,
   .ticket-thread details.publish > summary,
   .ticket-thread details.spec-prompt > summary,
   .welcome details.connect > summary {
@@ -2361,7 +2351,7 @@ details.more-options details {
   color: var(--pd-muted);
 }
 
-/* Quick answers and replies: a row of small quiet buttons, each one plain words. */
+/* The status row on the ticket page: a row of small quiet buttons. */
 .quick-answers {
   display: flex;
   flex-wrap: wrap;
@@ -2370,14 +2360,6 @@ details.more-options details {
 }
 .quick-answers form {
   margin: 0;
-}
-.quick-answers button.quick {
-  margin: 0;
-  padding: 4px 10px;
-  font-size: var(--pd-text-sm);
-}
-.quick-label {
-  margin: var(--pd-space-3) 0 var(--pd-space-2);
 }
 
 /* Evidence fields, each on its own labelled line: the label small and muted, the value beside it. */
@@ -2600,9 +2582,10 @@ pre.paste.command {
 }
 
 /*
- * Changing ticked tickets from the list: a tick box before each key, and one quiet bar above the
- * table with the count and two changes, each with its own Apply. Its boxes are a size smaller
- * than a form's. With scripts on, the bar shows only while something is ticked.
+ * Changing ticked tickets from the list: a tick box before each key, and one quiet bar with the
+ * count, a status, an owner, one Apply and a Clear, on one line. Without scripts the bar sits
+ * above the table and is always shown. With scripts it floats at the bottom of the window,
+ * centred, only while something is ticked, so ticking a row moves nothing on the page.
  */
 /* The form holds the whole list, so it is as wide as the list, not a form page's column. */
 main > form.bulk {
@@ -2613,8 +2596,8 @@ main > form.bulk {
   --pico-form-element-spacing-horizontal: 0.75rem;
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--pd-space-3) var(--pd-space-5);
+  align-items: center;
+  gap: var(--pd-space-2) var(--pd-space-3);
   margin-bottom: var(--pd-space-3);
   padding: var(--pd-space-3) var(--pd-space-4);
   border: var(--pd-hairline);
@@ -2624,43 +2607,58 @@ main > form.bulk {
 .bulk-bar[hidden] {
   display: none;
 }
+/* Pico stretches each part of a group to fill the row; here each keeps its own width. */
+.bulk-bar > *,
+.bulk-bar :is(select, input:not([type="checkbox"]), button) {
+  flex: none;
+}
+.bulk-bar :is(select, input, button) {
+  width: auto;
+  max-width: 100%;
+  margin: 0;
+  font-size: var(--pd-text-sm);
+}
 .bulk-count {
-  align-self: center;
   margin: 0;
   color: var(--pd-text);
   font-size: var(--pd-text-sm);
   font-weight: var(--pd-weight-medium);
 }
-.bulk-control {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--pd-space-2);
+.bulk-clear[hidden] {
+  display: none;
 }
-.bulk-control label {
-  margin: 0;
-  color: var(--pd-muted);
-  font-size: var(--pd-text-xs);
-}
-.bulk-control label > :where(input, select) {
-  width: auto;
-  max-width: 100%;
-  margin-top: 2px;
-  font-size: var(--pd-text-sm);
-}
-.bulk-control button {
-  margin: 0;
+/* The reason for Resolved sits in the line, after the status. A longer line wraps, and since the
+   bar is held at the bottom of the window, it grows upward. */
+.bulk-reasons {
+  display: contents;
 }
 .bulk-error {
   flex-basis: 100%;
   margin: 0;
   color: var(--pd-danger);
 }
+/* With scripts on: one bar fixed to the bottom of the window, above the page's content. */
+form.bulk[data-floating] .bulk-bar {
+  position: fixed;
+  z-index: 20;
+  bottom: var(--pd-space-4);
+  left: 50%;
+  width: max-content;
+  max-width: calc(100% - 2 * var(--pd-gutter));
+  margin: 0;
+  transform: translateX(-50%);
+  box-shadow: var(--pd-shadow);
+}
+/* Room at the very end of the page, so the bar never covers the last row. It is the room the
+   tallest bar needs, Resolved with its reason, and it stays the whole time the list floats its
+   bar: room that came and went with the bar would shorten the page at the bottom of a scroll,
+   and the browser would pull the rows down. */
+body:has(form.bulk[data-floating]) {
+  padding-bottom: 10rem;
+}
 /* The reason shows only for Resolved, "Duplicate of" only for a duplicate and the note only for
    Other, as on the ticket page. A browser that cannot read :has shows them all, which still works. */
-.bulk:not(:has(select[name="status"] option[value="resolved"]:checked)) .bulk-reason,
-.bulk:not(:has(select[name="status"] option[value="resolved"]:checked)) .bulk-duplicate,
-.bulk:not(:has(select[name="status"] option[value="resolved"]:checked)) .bulk-note,
+.bulk:not(:has(select[name="status"] option[value="resolved"]:checked)) .bulk-reasons,
 .bulk:not(:has(select[name="reason"] option[value="duplicate"]:checked)) .bulk-duplicate,
 .bulk:not(:has(select[name="reason"] option[value="other"]:checked)) .bulk-note {
   display: none;
@@ -2699,5 +2697,19 @@ table.tickets .bulk-tick[hidden] {
   }
   .bulk-bar {
     padding: var(--pd-space-3);
+  }
+  /* On a phone the floating bar spans the width at the bottom and wraps to two lines at most. */
+  form.bulk[data-floating] .bulk-bar {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    max-width: none;
+    border-width: 1px 0 0;
+    border-radius: 0;
+    transform: none;
+  }
+  body:has(form.bulk[data-floating]) {
+    padding-bottom: 13rem;
   }
 }

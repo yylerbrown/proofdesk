@@ -131,10 +131,10 @@ test("on a phone the small controls are 44-pixel tap targets", async ({ page }) 
     }
   });
 
-  await test.step("Back to all tickets and the reply's Who sees it choices", async () => {
+  await test.step("Back to all tickets and the reply box's two tabs", async () => {
     await page.goto("/tickets/SUP-1");
     await expectTapTargets(page, ".back a");
-    await expectTapTargets(page, 'fieldset:has(input[value="note"]) label');
+    await expectTapTargets(page, "fieldset.kind-tabs label");
   });
 
   await test.step("small links among a form's controls: Cancel", async () => {

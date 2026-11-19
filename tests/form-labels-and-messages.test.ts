@@ -1,6 +1,6 @@
 import { parse, type HTMLElement } from "node-html-parser";
 import { describe, expect, it } from "vitest";
-import { admin, buildTestApp, teamActor, as } from "./helpers.js";
+import { admin, as, buildTestApp, customerOne, teamActor } from "./helpers.js";
 
 // Refused forms and confirmation pages: what a person, or their screen reader, is told.
 
@@ -67,17 +67,34 @@ describe("confirmation pages", () => {
 });
 
 describe("who sees a message", () => {
-  it("puts the two choices in one track of their own, apart from the legend", async () => {
+  it("is two tabs on top of a three-line box, with the labels kept for screen readers", async () => {
     const { app } = buildTestApp();
     await admin(app).post("/api/tickets").send(valid);
     const html = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    const fieldset = html.querySelector("fieldset:has(input[name=kind])")!;
-    expect(fieldset.querySelector("legend")?.text).toBe("Who sees it");
-    const track = fieldset.querySelector(".kind-choice")!;
-    expect(track.querySelectorAll("input[name=kind]").map((i) => i.getAttribute("value"))).toEqual([
-      "reply",
-      "note",
+    const form = html.querySelector("form.reply-box")!;
+    const tabs = form.querySelector("fieldset.kind-tabs")!;
+    expect(tabs.querySelector("legend")?.text).toBe("Who sees it");
+    expect(tabs.querySelector("legend")?.classList.contains("visually-hidden")).toBe(true);
+    expect(tabs.querySelectorAll("label").map((label) => label.text.trim())).toEqual([
+      "Reply to the customer",
+      "Internal note",
     ]);
-    expect(track.querySelector("legend")).toBeNull();
+    const label = form.querySelector("label[for=entry-body]")!;
+    expect(label.text).toBe("Your message");
+    expect(label.classList.contains("visually-hidden")).toBe(true);
+    expect(form.querySelector("textarea#entry-body")?.getAttribute("rows")).toBe("3");
+    // The canned replies are gone from the team's reply box.
+    expect(html.querySelectorAll("button[data-fill]")).toHaveLength(0);
+  });
+
+  it("shows the customer, who has no tabs, the box's label", async () => {
+    const { app } = buildTestApp();
+    await as(app, customerOne).post("/api/tickets").send(valid);
+    const html = parse((await as(app, customerOne).get("/tickets/SUP-1")).text);
+    const form = html.querySelector("form.reply-box")!;
+    expect(form.querySelector("fieldset.kind-tabs")).toBeNull();
+    const label = form.querySelector("label[for=entry-body]")!;
+    expect(label.text).toBe("Your message");
+    expect(label.classList.contains("visually-hidden")).toBe(false);
   });
 });

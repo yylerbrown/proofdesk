@@ -294,8 +294,8 @@ describe("an answer belongs to the question that was asked", () => {
     const { app, token } = await waiting();
     const page = parse((await as(app, customerOne).get("/tickets/SUP-1")).text);
     const forms = page.querySelectorAll("form[action$='/answer']");
-    // Yes, No, and the three quick answers.
-    expect(forms).toHaveLength(5);
+    // Yes and No: the card has no other answers.
+    expect(forms).toHaveLength(2);
     for (const form of forms) {
       expect(form.querySelector("input[name=ready_token]")?.getAttribute("value")).toBe(token);
     }

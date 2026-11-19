@@ -463,13 +463,48 @@ export function pagesRouter(service: TicketService): Router {
               actor.demo !== true && agentHelp.candidates.length > 0 ? null : connectUrl(actor),
           }
         : null;
+    // Everything an assistant left on the ticket, for one card under the description: what it
+    // last asked for, its test spec and its evidence, and how a person's decision on the spec
+    // ended. A customer sees only a spec the team accepted.
+    const staff = actor.role !== "customer";
+    const signal = service.assistantSignals([ticket], actor).get(ticket.key) ?? null;
+    const lastSpecEvent = events.filter((event) => event.type.startsWith("spec_")).at(-1);
+    const discardedBy =
+      staff && !specPanel.spec && lastSpecEvent?.type === "spec_discarded"
+        ? describeActor(lastSpecEvent, names)
+        : null;
+    // A person on the team can propose a spec too. The card then names them, and still does
+    // after someone discards it.
+    const lastProposal = events.filter((event) => event.type === "spec_proposed").at(-1);
+    const proposedBy =
+      specPanel.spec?.proposed_by.kind === "person"
+        ? specPanel.spec.proposed_by.name
+        : discardedBy !== null && lastProposal?.actor_kind === "person"
+          ? describeActor(lastProposal, names)
+          : null;
+    const agentEvidence = evidence.some((item) => item.reported_by.kind === "agent");
+    const showCard = staff
+      ? signal !== null || specPanel.spec !== null || agentEvidence || discardedBy !== null
+      : specPanel.spec !== null;
+    const assistantCard = showCard
+      ? {
+          key: ticket.key,
+          from: proposedBy === null ? "From the AI assistant" : `From ${proposedBy}`,
+          reviewBy: signal?.label === "Review requested by" ? signal.text : null,
+          blocked: signal?.label === "Assistant blocked:" ? signal.text : null,
+          spec: specPanel.spec,
+          discardedBy,
+          canDecide: specPanel.canDecide,
+          evidence: staff ? evidence : [],
+        }
+      : null;
     res.status(status).render("ticket-show", {
       ...helpers,
       title: `${ticket.key}: ${ticket.title}`,
       ticket,
       viewerRole: actor.role,
       viewerId: actor.id,
-      assistantSignal: service.assistantSignals([ticket], actor).get(ticket.key) ?? null,
+      assistantCard,
       demoNext: demoNext(ticket, actor),
       nextStep: nextStep(ticket, allowed, isWalkthroughSample(ticket, actor)),
       statusRow: statusControl(ticket, allowed, actor),
@@ -596,23 +631,30 @@ export function pagesRouter(service: TicketService): Router {
   router.post("/tickets/bulk", (req, res) => {
     const actor = signedIn(req);
     const body = (req.body ?? {}) as Record<string, unknown>;
-    // The bar has one Apply for the status and one for the owner; only the pressed one counts.
+    // The bar has one Apply. It sends whichever of the status and the owner was chosen, and
+    // both when both were: each as its own change by the same rules, the status first. With
+    // neither chosen, the status change is sent alone, and its rules ask for a choice.
     // The page shows the note box only for Other, so a note left there for another reason is
     // not sent, as on the ticket page.
-    const input = {
+    const chosen = (value: unknown) => typeof value === "string" && value.trim() !== "";
+    const statusInput = {
       keys: body.keys,
-      ...(body.apply === "owner"
-        ? { owner: body.owner }
-        : {
-            status: body.status,
-            reason: body.reason,
-            duplicate_of: body.duplicate_of,
-            ...(body.reason === "other" ? { note: body.note } : {}),
-          }),
+      status: body.status,
+      reason: body.reason,
+      duplicate_of: body.duplicate_of,
+      ...(body.reason === "other" ? { note: body.note } : {}),
     };
+    const ownerInput = { keys: body.keys, owner: body.owner };
+    const inputs = [
+      ...(chosen(body.status) || !chosen(body.owner) ? [statusInput] : []),
+      ...(chosen(body.owner) ? [ownerInput] : []),
+    ];
     try {
-      const outcome = service.changeTickets(input, actor);
-      rememberBulkOutcome(res, outcome);
+      // Both changes are checked before either is made, so a refused owner never leaves the
+      // status changed behind a page that says the form was refused.
+      for (const input of inputs) service.checkChange(input, actor);
+      const outcomes = inputs.map((input) => service.changeTickets(input, actor));
+      rememberBulkOutcome(res, outcomes);
       const view = listView(req, actor);
       res.redirect(303, listHref(view, view.page > 1 ? view.page : undefined));
     } catch (err) {

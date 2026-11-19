@@ -168,9 +168,8 @@ describe("evidence on the ticket page", () => {
     const main = parse((await as(app, teamActor).get("/tickets/SUP-1")).text).querySelector(
       "main",
     )!;
-    const section = main
-      .querySelectorAll(".ticket-summary section")
-      .find((s) => s.querySelector("h2")?.text === "Evidence");
+    // An assistant's evidence is in its one card, under Details.
+    const section = main.querySelector(".ticket-summary .assistant-card details.card-details");
     expect(section?.text).toContain("Reproduced and fixed");
     expect(section?.text).toContain("Reported by Helper (AI agent)");
     expect(section?.text).toContain("Not checked by Proofdesk.");
@@ -217,9 +216,9 @@ describe("the evidence form on the ticket page", () => {
       .send({ kind: "check_run", summary: "Printed ten pages twice", link: "" });
     expect(res.status).toBe(303);
     const html = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    const section = html
-      .querySelectorAll(".ticket-summary section")
-      .find((s) => s.querySelector("h2")?.text === "Evidence");
+    // Evidence a person attached is one closed line, "Evidence (1)", with no heading.
+    const section = html.querySelector(".ticket-summary details.evidence-list");
+    expect(section?.querySelector("summary")?.text).toBe("Evidence (1)");
     expect(section?.text).toContain("Printed ten pages twice");
     expect(section?.text).toContain("Reported by Team Member");
     expect((await admin(app).get("/api/tickets/SUP-1")).body.status).toBe("new");
