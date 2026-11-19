@@ -6,8 +6,8 @@ import type { LogLine } from "./http-basics.js";
 import { openSite, type Site } from "./start.js";
 import { allIds, findTicket } from "./tickets/repository.js";
 
-// The public demo is one database that every visitor writes to. Once a day, when nobody is
-// using it, it goes back to its samples by itself: the database files are moved aside on the
+// The public demo is one database that every visitor writes to. Once its data is two hours old
+// and nobody has used it for half an hour, it goes back to its samples by itself: the database files are moved aside on the
 // same disk, and a fresh database is opened and seeded in their place. Only the demo does
 // this. The real site never builds one of these.
 
@@ -28,8 +28,8 @@ export type ResetTimes = {
 
 export const RESET_TIMES: ResetTimes = {
   checkEveryMs: 5 * MINUTE,
-  oldAfterMs: 24 * HOUR,
-  quietForMs: 15 * MINUTE,
+  oldAfterMs: 2 * HOUR,
+  quietForMs: 30 * MINUTE,
   forcedAfterMs: 48 * HOUR,
 };
 

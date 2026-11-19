@@ -9,11 +9,11 @@ import { buildTestApp, visitor } from "./helpers.js";
 // phone. The sizes on a phone are measured in a real browser in tests/browser/phone.spec.ts.
 
 describe("the demo strip", () => {
-  it("says the demo is shared and resets itself about once a day", async () => {
+  it("says the demo is shared and resets itself when it has been quiet", async () => {
     const { app } = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
     const html = parse((await visitor(app).get("/sign-in")).text);
     expect(html.querySelector(".demo-strip")?.text).toBe(
-      "Demo: sample data, shared with everyone who visits. It resets itself about once a day.",
+      "Demo: sample data, shared with everyone who visits. It resets itself when it has been quiet for a while.",
     );
   });
 });
