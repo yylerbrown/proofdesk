@@ -169,4 +169,18 @@ describe("the ticket page's quiet parts", () => {
     );
     expect(prompt.text).toContain("Using Proofdesk, write a test spec for SUP-1");
   });
+
+  it("offers a real assistant's work beside connecting one", async () => {
+    const { app } = buildTestApp();
+    await as(app, customerOne)
+      .post("/api/tickets")
+      .send({ title: "Printer jams", description: "x", fix_check: "Ten pages print" });
+    const prompt = parse((await admin(app).get("/tickets/SUP-1")).text).querySelector(
+      ".spec-prompt",
+    )!;
+    expect(prompt.querySelectorAll("a").map((a) => [a.text, a.getAttribute("href")])).toEqual([
+      ["Connect your assistant", "/connections"],
+      ["See an assistant's work", "/assistant-run"],
+    ]);
+  });
 });

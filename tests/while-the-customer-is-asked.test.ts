@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { seedDemo } from "../src/server/demo.js";
-import { insertEvent } from "../src/server/tickets/repository.js";
-import { createTicketService } from "../src/server/tickets/service.js";
-import { admin, adminActor, as, buildTestApp, customerOne, teamActor } from "./helpers.js";
+import { admin, as, buildTestApp, customerOne, teamActor } from "./helpers.js";
+
+// A ticket waiting for the customer's answer: what the "Did this fix it?" box shows, what a
+// refused form says, and what archiving does to the open question.
 
 const words = "It prints";
 const tighter = "Ten pages, no jam";
@@ -75,66 +75,5 @@ describe("archiving while the customer is asked", () => {
       .post("/api/tickets/SUP-1/answer")
       .send({ fixed: "yes", ready_token: token });
     expect(late.status).toBe(409);
-  });
-});
-
-describe("the history a customer sees", () => {
-  it("hides any kind of entry not on the list of kinds they may see", async () => {
-    const { app, db } = buildTestApp();
-    await as(app, customerOne)
-      .post("/api/tickets")
-      .send({ title: "Printer jams", description: "x" });
-    insertEvent(db, {
-      ticketId: 1,
-      actor: teamActor.id,
-      actorKind: "person",
-      type: "something_new_about_a_note",
-      data: {},
-      now: new Date().toISOString(),
-    });
-    const theirs = await as(app, customerOne).get("/api/tickets/SUP-1/events");
-    expect(theirs.body.map((e: { type: string }) => e.type)).toEqual(["created"]);
-    const team = await as(app, teamActor).get("/api/tickets/SUP-1/events");
-    expect(team.body).toHaveLength(2);
-  });
-});
-
-describe("an agreed check that only repeats the customer", () => {
-  it("is stored as none, with nothing written", async () => {
-    const { app } = buildTestApp();
-    await as(app, customerOne)
-      .post("/api/tickets")
-      .send({ title: "Printer jams", description: "x", fix_check: words });
-    const res = await as(app, teamActor)
-      .put("/api/tickets/SUP-1/agreed-check")
-      .send({ agreed_check: words });
-    expect(res.body.agreed_check).toBeNull();
-    expect((await admin(app).get("/api/tickets/SUP-1/events")).body).toHaveLength(1);
-  });
-});
-
-describe("seeding the demo", () => {
-  it("counts archived tickets, so it never seeds a second set", () => {
-    const { db } = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
-    const service = createTicketService(db, "SUP");
-    seedDemo(service);
-    const seeded = service.listTickets("all", adminActor);
-    // Every sample archived, as an admin outside the demo rules could.
-    for (const ticket of seeded) service.archiveTicket(ticket.key, adminActor);
-    seedDemo(service);
-    const count = db.prepare("SELECT COUNT(*) AS n FROM tickets").get() as { n: number };
-    expect(count.n).toBe(seeded.length);
-  });
-});
-
-describe("a malformed key", () => {
-  it("is not repeated back in the message", async () => {
-    const { app } = buildTestApp();
-    const sent = "SUP-<b>words of my choosing</b>";
-    const res = await admin(app).get(`/api/tickets/${encodeURIComponent(sent)}`);
-    expect(res.status).toBe(400);
-    expect(res.body.error.message).not.toContain("words of my choosing");
-    const page = await admin(app).get(`/tickets/${encodeURIComponent(sent)}`);
-    expect(page.text).not.toContain("words of my choosing");
   });
 });

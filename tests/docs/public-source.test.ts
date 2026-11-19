@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
-import { buildTestApp } from "./helpers.js";
+import { buildTestApp } from "../helpers.js";
 
 // The source is read at its public copy. Nothing links to the private working repository, whose
 // pull request numbers the build log keeps, saying so.

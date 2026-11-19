@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import { describe, expect, it } from "vitest";
-import { ACTIONS } from "../src/server/api/actions.js";
+import { ACTIONS } from "../../src/server/api/actions.js";
 
 // The API reference's list of routes must be the routes there are: none missing, none invented.
 
@@ -34,7 +34,7 @@ describe("the API reference's route table", () => {
 // product does not have.
 describe("the README's feature list", () => {
   // The README is written for someone trying the product, not for whoever marks it.
-  it("is headed for a visitor, and no heading speaks of a rubric or a grader", () => {
+  it("is headed for a visitor, and no heading speaks of how the work is marked", () => {
     const readme = fs.readFileSync("README.md", "utf8");
     const headings = [...readme.matchAll(/^(#{1,6} .+|\*\*[^*]+\*\*)$/gm)].map((m) => m[1]!);
     expect(headings).toContain("## Try each feature in a minute");
@@ -43,10 +43,10 @@ describe("the README's feature list", () => {
 
   it("names only labels the demo shows", async () => {
     const { parse } = await import("node-html-parser");
-    const { DEV_COOKIE } = await import("../src/server/actor.js");
-    const { seedDemo } = await import("../src/server/demo.js");
-    const { createTicketService } = await import("../src/server/tickets/service.js");
-    const { buildTestApp, SIGN_IN_ENV, visitor } = await import("./helpers.js");
+    const { DEV_COOKIE } = await import("../../src/server/actor.js");
+    const { seedDemo } = await import("../../src/server/demo.js");
+    const { createTicketService } = await import("../../src/server/tickets/service.js");
+    const { buildTestApp, SIGN_IN_ENV, visitor } = await import("../helpers.js");
 
     const readme = fs.readFileSync("README.md", "utf8");
     const start = readme.indexOf("## Try each feature in a minute");

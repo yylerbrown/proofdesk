@@ -1,5 +1,6 @@
+import { parse } from "node-html-parser";
 import { describe, expect, it, vi } from "vitest";
-import { admin, adminActor, buildTestApp, resolveTicket } from "./helpers.js";
+import { admin, adminActor, as, buildTestApp, customerOne, resolveTicket } from "./helpers.js";
 
 const valid = { title: "Printer is broken", description: "It jams on every page." };
 
@@ -133,6 +134,12 @@ describe("new ticket form", () => {
     const res = await admin(app).post("/tickets");
     expect(res.status).toBe(400);
     expect(res.text).toContain("Must not be empty.");
+  });
+
+  it("offers a description box short enough that File ticket shows on a laptop screen", async () => {
+    const { app } = buildTestApp();
+    const form = parse((await as(app, customerOne).get("/tickets/new").redirects(1)).text);
+    expect(form.querySelector("textarea[name=description]")?.getAttribute("rows")).toBe("3");
   });
 });
 

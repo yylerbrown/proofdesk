@@ -15,9 +15,9 @@ import {
   visitor,
 } from "./helpers.js";
 
-// The minimum features, as a grader meets them: a ticket starts New, one action owns it and
-// starts work, and Resolved is never a dead end. The status is one row of the three statuses,
-// and when this viewer cannot press one, one short line says who can.
+// The minimum features, as a first-time visitor meets them: a ticket starts New, one action owns
+// it and starts work, and Resolved is never a dead end. The status is one row of the three
+// statuses, and when this viewer cannot press one, one short line says who can.
 
 const valid = {
   title: "Printer jams",

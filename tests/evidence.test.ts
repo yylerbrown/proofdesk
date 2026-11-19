@@ -4,7 +4,15 @@ import type { Express } from "express";
 import { describe, expect, it } from "vitest";
 import { readProveReport } from "../src/server/tickets/evidence.js";
 import { createTicketService, DEMO_BUDGET } from "../src/server/tickets/service.js";
-import { admin, as, buildTestApp, customerOne, handToAgent, teamActor } from "./helpers.js";
+import {
+  admin,
+  as,
+  buildTestApp,
+  customerOne,
+  handToAgent,
+  refusedBackToTicket,
+  teamActor,
+} from "./helpers.js";
 
 // Evidence beside the customer's check: stored as reported, read honestly, never a verdict.
 
@@ -194,5 +202,47 @@ describe("evidence on the ticket page", () => {
     expect(box?.text).toContain("What the team showed as proof");
     expect(box?.text).toContain("Printed ten pages twice");
     expect(box?.querySelector("a[href='https://example.com/run/1']")).not.toBeNull();
+  });
+});
+
+describe("the evidence form on the ticket page", () => {
+  it("lets the team attach it, labelled as reported by them, leaving the ticket open", async () => {
+    const { app } = buildTestApp();
+    await as(app, customerOne).post("/api/tickets").send(valid);
+    const res = await as(app, teamActor)
+      .post("/tickets/SUP-1/evidence")
+      .type("form")
+      .send({ kind: "check_run", summary: "Printed ten pages twice", link: "" });
+    expect(res.status).toBe(303);
+    const html = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
+    const section = html
+      .querySelectorAll("aside section")
+      .find((s) => s.querySelector("h2")?.text === "Evidence");
+    expect(section?.text).toContain("Printed ten pages twice");
+    expect(section?.text).toContain("Reported by Team Member");
+    expect((await admin(app).get("/api/tickets/SUP-1")).body.status).toBe("new");
+  });
+
+  it("is not offered to the customer, who is refused if they try", async () => {
+    const { app } = buildTestApp();
+    await as(app, customerOne).post("/api/tickets").send(valid);
+    const html = parse((await as(app, customerOne).get("/tickets/SUP-1")).text);
+    expect(html.querySelector("form[action$='/evidence']")).toBeNull();
+    const reason = await refusedBackToTicket(as(app, customerOne), "/tickets/SUP-1/evidence", {
+      kind: "note",
+      summary: "x",
+    });
+    expect(reason).toBe("You are not allowed to do that.");
+  });
+
+  it("keeps the form open with the message when the summary is missing", async () => {
+    const { app } = buildTestApp();
+    await as(app, customerOne).post("/api/tickets").send(valid);
+    const res = await as(app, teamActor)
+      .post("/tickets/SUP-1/evidence")
+      .type("form")
+      .send({ kind: "note", summary: "" });
+    expect(res.status).toBe(400);
+    expect(parse(res.text).querySelector("#evidence-error")?.text).toMatch(/one line/);
   });
 });
