@@ -1,6 +1,7 @@
 import { parse } from "node-html-parser";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
+import { keyOnPage } from "./key-on-page.js";
 import { DEMO_ACTORS, DEV_COOKIE } from "../src/server/actor.js";
 import { errorBody, HttpError } from "../src/server/errors.js";
 import { seedDemo } from "../src/server/demo.js";
@@ -39,7 +40,7 @@ describe("the sample made for assistants", () => {
   it("is the one ticket a new demo connection lists, so a first run just works", async () => {
     const { app, sample } = demo({ recorded: true });
     const page = parse((await visitor(app).post("/demo/connection")).text);
-    const key = page.querySelector("input.key")!.getAttribute("value")!;
+    const key = keyOnPage(page.toString());
     const list = await request(app).get("/api/tickets").set("Authorization", `Bearer ${key}`);
     expect(list.body).toEqual([
       expect.objectContaining({ key: sample, owner_name: "Demo Team Member" }),

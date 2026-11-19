@@ -6,6 +6,7 @@ import request from "supertest";
 import { WRITE_LIMIT } from "../src/server/limits.js";
 import type { Express } from "express";
 import { afterEach, describe, expect, it } from "vitest";
+import { keyOnPage } from "./key-on-page.js";
 import { AGENT_SCOPES, CAPABILITIES } from "../src/server/permissions.js";
 import { ACTIONS } from "../src/server/api/actions.js";
 import {
@@ -35,7 +36,7 @@ afterEach(async () => {
 
 async function issue(app: Express, scopes: string[], name = "Helper") {
   const res = await admin(app).post("/connections").type("form").send({ name, scopes });
-  return parse(res.text).querySelector("input.key")!.getAttribute("value")!;
+  return keyOnPage(res.text);
 }
 
 /** Starts the app on a free port and connects the SDK's client with this key. */

@@ -1,7 +1,7 @@
-import { parse } from "node-html-parser";
 import request from "supertest";
 import type { Express } from "express";
 import { describe, expect, it } from "vitest";
+import { keyOnPage } from "./key-on-page.js";
 import { ACTIONS } from "../src/server/api/actions.js";
 import { TOOL_ACTIONS } from "../src/server/mcp.js";
 import { admin, as, buildTestApp, customerOne } from "./helpers.js";
@@ -17,7 +17,7 @@ const valid = {
 
 async function issue(app: Express, scopes: string[]) {
   const res = await admin(app).post("/connections").type("form").send({ name: "Helper", scopes });
-  return parse(res.text).querySelector("input.key")!.getAttribute("value")!;
+  return keyOnPage(res.text);
 }
 
 describe("the guide at GET /api", () => {

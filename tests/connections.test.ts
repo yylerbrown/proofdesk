@@ -7,6 +7,7 @@ import { ACTIONS } from "../src/server/api/actions.js";
 import { WRITE_LIMIT } from "../src/server/limits.js";
 import { AGENT_SCOPES, CAPABILITIES } from "../src/server/permissions.js";
 import { admin, as, buildTestApp, customerOne, handToAgent, teamActor } from "./helpers.js";
+import { keyOnPage } from "./key-on-page.js";
 
 // Connections for AI agents: issuing, the key shown once, signing in with it on the API,
 // revoking, and the capability table enforced on the JSON door.
@@ -17,9 +18,8 @@ const valid = { title: "Printer jams", description: "It jams on page two.", fix_
 async function issue(app: Express, scopes: string[], name = "Sam's assistant") {
   const res = await admin(app).post("/connections").type("form").send({ name, scopes });
   expect(res.status).toBe(200);
-  const key = parse(res.text).querySelector("input.key")?.getAttribute("value");
-  expect(key).toMatch(/^pd_[0-9a-f]{8}_/);
-  // One paste connects Claude Code, in the form its documentation gives.
+  const key = keyOnPage(res.text);
+  // Folded under the message, one paste connects Claude Code, in the form its documentation gives.
   // The parser keeps a <pre> as raw text, so the command is read from the HTML.
   const command = /id="claude-code"><code>([^<]*)<\/code>/.exec(res.text)?.[1];
   expect(command).toBe(
@@ -31,7 +31,7 @@ async function issue(app: Express, scopes: string[], name = "Sam's assistant") {
   expect(parse(res.text).querySelectorAll("pre.paste").at(-1)?.text).toMatch(
     /"http[^"]+\/api\/tickets"/,
   );
-  return key!;
+  return key;
 }
 
 /** Requests to the JSON API as a program holding this key: no browser, no cookie. */

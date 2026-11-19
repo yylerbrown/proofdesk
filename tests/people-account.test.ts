@@ -1,6 +1,7 @@
 import { parse } from "node-html-parser";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
+import { keyOnPage } from "./key-on-page.js";
 import { DEMO_ACTORS, DEV_COOKIE, type Actor } from "../src/server/actor.js";
 import { collectNotices, notifySettingsOf } from "../src/server/notify/outbox.js";
 import { AGENT_SCOPES } from "../src/server/permissions.js";
@@ -115,7 +116,7 @@ describe("the account page", () => {
       .post("/connections")
       .type("form")
       .send({ name: "Helper", scopes: [...AGENT_SCOPES] });
-    const key = parse(made.text).querySelector("input.key")!.getAttribute("value")!;
+    const key = keyOnPage(made.text);
     const seen = await request(app).get("/account").set("Authorization", `Bearer ${key}`);
     expect(seen.status).toBe(303);
     expect(seen.headers.location).toBe("/sign-in?next=%2Faccount");

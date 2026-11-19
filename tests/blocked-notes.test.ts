@@ -2,6 +2,7 @@ import { parse } from "node-html-parser";
 import request from "supertest";
 import type { Express } from "express";
 import { describe, expect, it } from "vitest";
+import { keyOnPage } from "./key-on-page.js";
 import { admin, as, buildTestApp, customerOne, handToAgent, teamActor } from "./helpers.js";
 
 // An assistant that is blocked says so in a note marked blocked, and the team sees it beside
@@ -21,7 +22,7 @@ async function handed() {
     .post("/connections")
     .type("form")
     .send({ name: "Helper", scopes: ["read_tickets", "write_notes"] });
-  const key = parse(page.text).querySelector("input.key")!.getAttribute("value")!;
+  const key = keyOnPage(page.text);
   await handToAgent(app, "SUP-1", key);
   const note = (body: object) =>
     request(app).post("/api/tickets/SUP-1/notes").set("Authorization", `Bearer ${key}`).send(body);

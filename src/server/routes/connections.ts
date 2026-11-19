@@ -1,6 +1,7 @@
 import { Router, type Request } from "express";
 import { signedIn } from "../actor.js";
 import type { Config } from "../config.js";
+import { agentPaste } from "../connections/agent-paste.js";
 import { DEFAULT_SCOPES, type ConnectionService } from "../connections/service.js";
 import { demoNotReady, HttpError, ValidationError } from "../errors.js";
 import { formatTime } from "../pages/format.js";
@@ -63,12 +64,13 @@ export function connectionsRouter(
     const actor = signedIn(req);
     try {
       const { connection, key } = connections.create(req.body, actor);
+      const address = siteAddress(config, req);
       res.render("connection-created", {
         title: `Connection ${connection.name}`,
         connection,
         key,
-        address: siteAddress(config, req),
-        scopeLabels: SCOPE_LABELS,
+        address,
+        paste: agentPaste({ address, key, demo: false }),
         formatTime,
       });
     } catch (err) {
@@ -93,13 +95,15 @@ export function connectionsRouter(
     const { connection, key } = connections.issueDemo();
     // A demo visitor is not signed in, so nothing else stops a cache keeping this key.
     res.set("Cache-Control", "no-store");
+    const address = siteAddress(config, req);
+    const sampleKey = assistantSampleKey();
     res.render("connection-created", {
       title: "Your demo connection",
       connection,
       key,
-      sampleKey: assistantSampleKey(),
-      address: siteAddress(config, req),
-      scopeLabels: SCOPE_LABELS,
+      sampleKey,
+      address,
+      paste: agentPaste({ address, key, demo: true, sampleKey }),
       formatTime,
     });
   });

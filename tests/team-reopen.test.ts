@@ -2,6 +2,7 @@ import { parse } from "node-html-parser";
 import request from "supertest";
 import type { Express } from "express";
 import { describe, expect, it } from "vitest";
+import { keyOnPage } from "./key-on-page.js";
 import { TOOL_ACTIONS } from "../src/server/mcp.js";
 import { AGENT_SCOPES, CAPABILITIES, can } from "../src/server/permissions.js";
 import {
@@ -134,7 +135,7 @@ describe("the team reopening a ticket the team resolved", () => {
       .post("/connections")
       .type("form")
       .send({ name: "Helper", scopes: [...AGENT_SCOPES] });
-    const key = parse(issued.text).querySelector("input.key")!.getAttribute("value")!;
+    const key = keyOnPage(issued.text);
     // Resolving ends any hand-off, so through the API the assistant cannot even see the ticket.
     const res = await request(app)
       .post("/api/tickets/SUP-1/reopen")

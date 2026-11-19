@@ -2027,11 +2027,6 @@ main > p:is([role="status"], [role="alert"])[tabindex="-1"]:focus {
   border-radius: 0 var(--pd-radius) var(--pd-radius) 0;
   background: var(--pd-subtle);
 }
-input.key {
-  font-family: var(--pd-mono);
-  font-size: var(--pd-text-sm);
-  overflow-wrap: anywhere;
-}
 /* A command to copy: it wraps instead of widening the page. */
 pre.paste {
   padding: var(--pd-space-3);
@@ -2555,11 +2550,9 @@ article.resolved-by-team p {
 pre.paste.command {
   white-space: pre;
 }
-ol.first-steps {
-  padding-left: var(--pd-space-5);
-}
-ol.first-steps li {
-  margin-bottom: var(--pd-space-2);
+/* The key page: the manual setup sits folded under the one message to paste. */
+.connection-created details.connection-help {
+  margin-top: var(--pd-space-5);
 }
 
 /*

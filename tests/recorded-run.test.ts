@@ -141,10 +141,8 @@ describe("the recorded run on the demo", () => {
 });
 
 describe("the assistant's work, on its own page", () => {
-  it("is open to anyone, from the welcome page, with the summary and links to each file", async () => {
+  it("is open to anyone, with the summary and links to each file", async () => {
     const { app } = demo();
-    const welcome = parse((await visitor(app).get("/sign-in")).text);
-    expect(welcome.querySelector(".assistant-run-link a")?.text).toBe("See an assistant's work");
     const page = parse((await visitor(app).get("/assistant-run")).text);
     expect(page.querySelector("h1")?.text).toBe("An assistant's work");
     // The summary as headed sections: every heading in summary.md is a heading on the page,

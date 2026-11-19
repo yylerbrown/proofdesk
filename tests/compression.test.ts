@@ -1,7 +1,7 @@
-import { parse } from "node-html-parser";
 import request from "supertest";
 import type { Express } from "express";
 import { describe, expect, it } from "vitest";
+import { keyOnPage } from "./key-on-page.js";
 import { admin, buildTestApp } from "./helpers.js";
 
 // Text answers are compressed when the browser accepts it, except the MCP endpoint and any
@@ -14,7 +14,7 @@ async function issueKey(app: Express): Promise<string> {
     .post("/connections")
     .type("form")
     .send({ name: "Helper", scopes: ["read_tickets"] });
-  return parse(res.text).querySelector("input.key")!.getAttribute("value")!;
+  return keyOnPage(res.text);
 }
 
 describe("compression", () => {

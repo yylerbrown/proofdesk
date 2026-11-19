@@ -1,7 +1,7 @@
-import { parse } from "node-html-parser";
 import request from "supertest";
 import type { Express } from "express";
 import { describe, expect, it } from "vitest";
+import { keyOnPage } from "./key-on-page.js";
 import { admin, as, buildTestApp, customerOne, handToAgent, teamActor } from "./helpers.js";
 
 // An assistant's evidence reaches the customer only when the ticket's owner chose it in a
@@ -13,7 +13,7 @@ const ask = { try_url: "https://example.com/", tried: "Printed.", result: "No ja
 
 async function issue(app: Express, scopes: string[]): Promise<string> {
   const page = await admin(app).post("/connections").type("form").send({ name: "Helper", scopes });
-  return parse(page.text).querySelector("input.key")!.getAttribute("value")!;
+  return keyOnPage(page.text);
 }
 
 async function handed() {

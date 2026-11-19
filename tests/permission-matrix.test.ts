@@ -4,9 +4,9 @@ import type { AddressInfo } from "node:net";
 import os from "node:os";
 import path from "node:path";
 import type { Express } from "express";
-import { parse } from "node-html-parser";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { keyOnPage } from "./key-on-page.js";
 import { DEV_COOKIE, type Actor } from "../src/server/actor.js";
 import { ACTIONS } from "../src/server/api/actions.js";
 import { createApp } from "../src/server/app.js";
@@ -484,7 +484,7 @@ async function issueKey(app: Express, name: string, scopes: string[]) {
     await as(app, adminActor).post("/connections").type("form").send({ name, scopes }),
     "issue a key",
   );
-  return parse(res.text).querySelector("input.key")!.getAttribute("value")!;
+  return keyOnPage(res.text);
 }
 
 /** Builds the ticket in this state, owned (from "taken" on) by this person. */

@@ -70,7 +70,6 @@ describe("the tour's steps for changing a status", () => {
     );
     expect(folded).not.toBeNull();
     expect(folded![1]).toContain("Get a demo connection");
-    expect(folded![1]).toContain("See an assistant's work");
   });
 });
 

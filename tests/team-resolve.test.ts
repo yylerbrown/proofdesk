@@ -2,6 +2,7 @@ import { parse } from "node-html-parser";
 import request from "supertest";
 import type { Express } from "express";
 import { describe, expect, it } from "vitest";
+import { keyOnPage } from "./key-on-page.js";
 import { DEV_COOKIE } from "../src/server/actor.js";
 import { seedDemo } from "../src/server/demo.js";
 import { TOOL_ACTIONS } from "../src/server/mcp.js";
@@ -197,7 +198,7 @@ describe("how a team resolution shows", () => {
       .post(`/api/tickets/${sample}/resolve`)
       .send({ reason: "wont_fix", note: "A visitor's words." });
     const page = parse((await visitor(built.app).post("/demo/connection")).text);
-    const key = page.querySelector("input.key")!.getAttribute("value")!;
+    const key = keyOnPage(page.toString());
     const read = await request(built.app)
       .get(`/api/tickets/${sample}`)
       .set("Authorization", `Bearer ${key}`);
