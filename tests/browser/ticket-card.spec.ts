@@ -6,8 +6,8 @@ import {
   type Page,
 } from "@playwright/test";
 
-// The card at the top of the ticket page, in a real browser: just after "Ask the customer to
-// verify" keyboard focus is on the card's one-time line, with no ring, and in sight even on a
+// The card at the top of the ticket page, in a real browser: just after the ask (under "Ask
+// before resolving") keyboard focus is on the card's one-time line, with no ring, in sight on a
 // phone; the card's day is the visitor's own
 // day, the same day the rest of the page shows; and on a phone the customer's No button has its
 // words in the middle, with a gap above "No, send it back".
@@ -50,10 +50,10 @@ async function askedTicket(
   const team = await signInAs(browser, "Team Member", teamOptions);
   await team.goto(url);
   await team.getByRole("button", { name: "Take ticket and start work" }).click();
-  await team
-    .locator(".next-action")
-    .getByRole("button", { name: "Ask the customer to verify" })
-    .click();
+  // Asking before resolving is the quiet way, under More options.
+  await team.locator("summary", { hasText: "More options" }).click();
+  await team.locator("summary", { hasText: "Ask before resolving" }).click();
+  await team.locator("#ask form").getByRole("button", { name: "Ask the customer" }).click();
   // The one-time line on the card has focus, so a screen reader reads it.
   const asked = team.locator('.ticket-card p.card-line[role="status"]');
   await expect(asked).toHaveText("Asked the customer: Did this fix it?");

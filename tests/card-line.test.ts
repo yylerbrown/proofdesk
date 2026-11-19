@@ -66,10 +66,10 @@ describe("the card's line", () => {
     expect(cardLine(ticket({ ...mine, ready_at: at }), "customer", nothing)).toBeNull();
   });
 
-  it("tells the team the customer said no, linked to their message", () => {
+  it("tells the team the customer says it is not fixed, linked to their message", () => {
     const facts = { ...nothing, notFixed: { reopened: false, words: "Still jams.", at } };
     expect(cardLine(ticket(mine), "team", facts)).toEqual({
-      text: "The customer said no on ",
+      text: "The customer says it is not fixed, since ",
       day: at,
       after: ".",
       tick: false,
@@ -77,24 +77,25 @@ describe("the card's line", () => {
     });
   });
 
-  it("tells the customer who said no that they will be asked again, without their words", () => {
+  it("tells the customer who said no what they said, without their words", () => {
     const facts = { ...nothing, notFixed: { reopened: false, words: "Still jams.", at } };
     const line = cardLine(ticket(mine), "customer", facts);
-    expect(words(line)).toBe("You said no on 19 Nov 2026. The team will ask you again.");
+    expect(words(line)).toBe("You said it is not fixed on 19 Nov 2026.");
     expect(words(line)).not.toContain("Still jams.");
   });
 
-  it("tells the team the customer reopened it, linked to their message", () => {
+  it("says a reopening with the same words as a No, linked to their message", () => {
     const facts = { ...nothing, notFixed: { reopened: true, words: "Again.", at } };
     expect(cardLine(ticket(mine), "team", facts)).toEqual({
-      text: "The customer reopened it on ",
+      text: "The customer says it is not fixed, since ",
       day: at,
       after: ".",
       tick: false,
       messageAt: at,
     });
-    // The customer's own ticket is simply open again, which needs no line.
-    expect(cardLine(ticket(mine), "customer", facts)).toBeNull();
+    expect(words(cardLine(ticket(mine), "customer", facts))).toBe(
+      "You said it is not fixed on 19 Nov 2026.",
+    );
   });
 
   it("shows the tick with Customer confirmed and the day, to everyone, after their Yes", () => {
@@ -132,8 +133,12 @@ describe("the card's line", () => {
     expect(line).toMatchObject({ day: at, tick: false, messageAt: null });
   });
 
-  it("tells the customer what the team said, and that they have not confirmed it", () => {
-    const byTeam = (reason: "fixed_no_reply" | "wont_fix", reasonLabel: string) =>
+  it("tells the customer what the team said, and leaves Fixed to the question", () => {
+    const byTeam = (
+      reason: "fixed_no_reply" | "wont_fix",
+      reasonLabel: string,
+      note: string | null = reason === "wont_fix" ? "Works as designed." : null,
+    ) =>
       ticket({
         status: "resolved",
         resolution: {
@@ -141,27 +146,35 @@ describe("the card's line", () => {
           label: `Resolved by the team: ${reasonLabel}`,
           reason,
           reason_label: reasonLabel,
-          note: reason === "wont_fix" ? "Works as designed." : null,
+          note,
           duplicate_of: null,
           resolved_by_name: "Demo Team Member",
           at,
         },
       });
-    const fixed = cardLine(
-      byTeam("fixed_no_reply", "Fixed. Not customer-confirmed."),
-      "customer",
-      nothing,
-    );
-    expect(words(fixed)).toBe("Resolved by the team: Fixed. You have not confirmed it.");
-    expect(fixed?.tick).toBe(false);
+    // Marked fixed, the customer's page asks "Did this fix it?" in place of a line.
+    expect(
+      cardLine(byTeam("fixed_no_reply", "Fixed. Not customer-confirmed."), "customer", nothing),
+    ).toBeNull();
     expect(words(cardLine(byTeam("wont_fix", "Won't fix"), "customer", nothing))).toBe(
       "Resolved by the team: Won't fix (Works as designed). You have not confirmed it.",
     );
-    // "Fixed" is said once on the team's line too, not with its label's own caveat.
+    // The team reads the reason as it was chosen, where it is fixed, who and when.
     expect(
       words(cardLine(byTeam("fixed_no_reply", "Fixed. Not customer-confirmed."), "team", nothing)),
     ).toBe(
-      "Resolved by the team: Fixed. Demo Team Member, 19 Nov 2026. Not confirmed by the customer.",
+      "Resolved by the team: Fixed. Not customer-confirmed. Demo Team Member, 19 Nov 2026. The customer did not confirm it, and can reopen it.",
+    );
+    expect(
+      words(
+        cardLine(
+          byTeam("fixed_no_reply", "Fixed. Not customer-confirmed.", "version 4.2.1"),
+          "team",
+          nothing,
+        ),
+      ),
+    ).toBe(
+      "Resolved by the team: Fixed. Not customer-confirmed. Fixed in: version 4.2.1. Demo Team Member, 19 Nov 2026. The customer did not confirm it, and can reopen it.",
     );
   });
 

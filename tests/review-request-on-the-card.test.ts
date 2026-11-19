@@ -37,7 +37,7 @@ const teamPage = async (app: Express) =>
   parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
 
 describe("a review request on the ticket page", () => {
-  it("is the card's line with the ask outlined, and leaves no assistant card on its own", async () => {
+  it("is the card's line with Mark fixed outlined, and leaves no assistant card on its own", async () => {
     const { app } = buildTestApp();
     await askForReview(app, await handed(app));
     const page = await teamPage(app);
@@ -45,12 +45,12 @@ describe("a review request on the ticket page", () => {
       "Helper asks for your review.",
     );
     const ask = page.querySelector(".ticket-card .next-action button")!;
-    expect(ask.text).toBe("Ask the customer to verify");
+    expect(ask.text).toBe("Mark fixed and tell the customer");
     expect(ask.classList.contains("secondary")).toBe(true);
     expect(page.querySelector(".assistant-card")).toBeNull();
   });
 
-  it("does not outline the ask while the customer's No is the card's line", async () => {
+  it("does not outline Mark fixed while the customer's No is the card's line", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
@@ -67,9 +67,11 @@ describe("a review request on the ticket page", () => {
     await handToAgent(app, "SUP-1", key);
     await askForReview(app, key);
     const card = (await teamPage(app)).querySelector(".ticket-card")!;
-    expect(card.querySelector(".card-line")?.text.trim()).toMatch(/^The customer said no on /);
+    expect(card.querySelector(".card-line")?.text.trim()).toMatch(
+      /^The customer says it is not fixed, since /,
+    );
     const ask = card.querySelector(".next-action button")!;
-    expect(ask.text).toBe("Ask the customer to verify");
+    expect(ask.text).toBe("Mark fixed and tell the customer");
     expect(ask.classList.contains("secondary")).toBe(false);
   });
 });

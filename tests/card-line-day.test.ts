@@ -34,7 +34,7 @@ describe("the day on the card's line", () => {
     const link = line.querySelector("a")!;
     const day = link.querySelector("time[data-day]")!;
     expect(link.text.trim()).toBe(
-      `The customer said no on ${formatDay(day.getAttribute("datetime")!)}.`,
+      `The customer says it is not fixed, since ${formatDay(day.getAttribute("datetime")!)}.`,
     );
     // The message the line links to was written at the same instant the card names.
     const message = page.querySelector(`${link.getAttribute("href")} time[datetime]`);

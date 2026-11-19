@@ -260,7 +260,7 @@ describe("More options", () => {
     expect(lines(await page(app, adminActor))).toEqual([
       "Edit ticket",
       "Add evidence",
-      "Ask with details",
+      "Ask before resolving",
       "Hand to an AI assistant",
       "Archive ticket",
       "Delete permanently",

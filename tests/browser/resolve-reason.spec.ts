@@ -23,13 +23,24 @@ test("the resolve form shows each box only for the reason that needs it", async 
   const reason = (name: string) => resolve.getByRole("radio", { name, exact: true });
   const duplicateOf = resolve.getByRole("textbox", { name: "Duplicate of" });
   const note = resolve.getByRole("textbox", { name: "Why?" });
+  const fixedIn = resolve.getByRole("textbox", { name: "Fixed in (optional)" });
 
   // It starts with no reason chosen: only the five reasons and the buttons show.
   await expect(resolve.getByRole("radio", { checked: true })).toHaveCount(0);
   await expect(duplicateOf).toBeHidden();
   await expect(note).toBeHidden();
+  await expect(fixedIn).toBeHidden();
+
+  // Fixed has one optional box of its own, and its button says it tells the customer.
+  await reason("Fixed. Not customer-confirmed.").check();
+  await expect(fixedIn).toBeVisible();
+  await expect(note).toBeHidden();
+  await expect(
+    resolve.getByRole("button", { name: "Mark fixed and tell the customer" }),
+  ).toBeVisible();
 
   await reason("Other").check();
+  await expect(fixedIn).toBeHidden();
   await expect(note).toBeVisible();
   await expect(duplicateOf).toBeHidden();
   await note.fill("Typed under Other.");

@@ -80,23 +80,25 @@ describe("where Resolved comes from", () => {
     expect(rule(fresh)).toBeUndefined();
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
 
-    // In progress: the next action asks the customer in one press. The details are optional,
-    // behind a closed disclosure of their own, and never a greyed button.
+    // In progress: the next action marks it fixed and tells the customer in one press. Asking
+    // first is behind a closed disclosure of its own, and never a greyed button.
     const owner = await page(app, teamActor);
-    expect(owner.querySelector(".next-action button")?.text).toBe("Ask the customer to verify");
+    expect(owner.querySelector(".next-action button")?.text).toBe(
+      "Mark fixed and tell the customer",
+    );
     const details = owner.querySelector("details#ask")!;
     expect(details.hasAttribute("open")).toBe(false);
-    expect(details.querySelector("summary")?.text).toBe("Ask with details");
+    expect(details.querySelector("summary")?.text).toBe("Ask before resolving");
     expect(details.querySelector("button[type=submit]")?.hasAttribute("disabled")).toBe(false);
     expect(owner.querySelector("#ask-blocked-why")).toBeNull();
     expect(resolveLink(owner)?.text).toBe("Resolved");
 
-    // An admin may resolve it with a reason too, but only its owner asks the customer, so the
-    // admin is shown no ask at all rather than a greyed one.
+    // An admin may resolve it with a reason too, but only its owner has the next step, so the
+    // admin is shown no step at all rather than a greyed one.
     const byAdmin = await page(app, adminActor);
     expect(resolveLink(byAdmin)).not.toBeNull();
     expect(byAdmin.querySelector("#ask-blocked-why")).toBeNull();
-    expect(byAdmin.querySelector("main")!.text).not.toContain("Ask the customer to verify");
+    expect(byAdmin.querySelector("main")!.text).not.toContain("Mark fixed and tell the customer");
     // The customer reads the status, with no control to change it.
     expect((await page(app, customerOne)).querySelector(".status-menu")).toBeNull();
   });
@@ -182,7 +184,7 @@ describe("the customer's answer", () => {
     const box = (await page(app, customerOne)).querySelector("#did-this-fix-it")!;
     // The two answers, and nothing else to press.
     const buttons = box.querySelectorAll("button");
-    expect(buttons.map((b) => b.text)).toEqual(["Yes, resolve ticket", "No, send it back"]);
+    expect(buttons.map((b) => b.text)).toEqual(["Yes, it is fixed", "No, send it back"]);
     expect(buttons[0]!.classList.contains("secondary")).toBe(false);
     // No opens with a native fold-open, so it works with scripts off, closed at first.
     const no = box.querySelector("details.answer-no")!;

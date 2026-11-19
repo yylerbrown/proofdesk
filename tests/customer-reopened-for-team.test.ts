@@ -29,35 +29,37 @@ async function savedAfter(app: Express, who: Actor, path: string, fields: object
 }
 
 describe("a ticket the customer reopened", () => {
-  it("tells the team on the card, linked to their reason, and the list says the customer reopened it", async () => {
+  it("tells the team on the card, linked to their reason, and the list says it is not fixed", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
     await resolveTicket(app, "SUP-1", customerOne);
     expect(await savedAfter(app, customerOne, "/tickets/SUP-1/reopen", { reason })).toBe(
-      "Reopened. The team has your words.",
+      "Thank you. The ticket is back with the team.",
     );
 
     const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     // The card says so in one line, linked to their words, which stand once, in the conversation.
     const line = page.querySelector(".ticket-card .card-line")!;
-    expect(line.text.trim()).toMatch(/^The customer reopened it on \d{1,2} [A-Z][a-z]{2} \d{4}\.$/);
+    expect(line.text.trim()).toMatch(
+      /^The customer says it is not fixed, since \d{1,2} [A-Z][a-z]{2} \d{4}\.$/,
+    );
     expect(page.querySelector(".ticket-card")!.text).not.toContain(reason);
     const href = line.querySelector("a")!.getAttribute("href")!;
     expect(page.querySelector(href)?.text).toContain(reason);
-    expect(await listTag(app, teamActor)).toBe("Customer reopened it");
+    expect(await listTag(app, teamActor)).toBe("Customer says not fixed");
     expect(await listTag(app, customerOne)).toBeNull();
     // The history keeps their reason too.
     const history = page.querySelectorAll("details.history tbody tr").map((row) => row.text);
     expect(history.some((row) => row.includes(`Reopened by the customer: ${reason}`))).toBe(true);
   });
 
-  it("is told apart from an older No, which the reopening replaces", () => {
+  it("reads the same as a No, in one phrase", () => {
     const ticket = { waiting_on: "team", customer_answer: { fixed: false } } as Ticket;
     expect(turnTag(ticket, "team", { reopened: false, signal: undefined })).toBe(
-      "Customer said no",
+      "Customer says not fixed",
     );
     expect(turnTag(ticket, "team", { reopened: true, signal: undefined })).toBe(
-      "Customer reopened it",
+      "Customer says not fixed",
     );
     expect(turnTag(ticket, "customer", { reopened: true, signal: undefined })).toBeNull();
   });

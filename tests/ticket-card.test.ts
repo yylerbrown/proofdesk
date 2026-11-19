@@ -126,20 +126,20 @@ describe("the ticket's card", () => {
     }
   });
 
-  it("outlines Ask the customer to verify while an assistant asks for a review", async () => {
+  it("outlines Mark fixed while an assistant asks for a review", async () => {
     const states = await everyState();
     const card = states["team, the ticket an assistant worked"]!.querySelector(".ticket-card")!;
     expect(card.querySelector(".card-line")?.text.trim()).toBe(
       "Demo visitor's assistant asks for your review.",
     );
     const ask = card.querySelector(".next-action button")!;
-    expect(ask.text).toBe("Ask the customer to verify");
+    expect(ask.text).toBe("Mark fixed and tell the customer");
     expect(ask.classList.contains("secondary")).toBe(true);
     // With no request, the same step is the page's one filled button.
     const plain = states["team, In Progress after the customer's No"]!.querySelector(
       ".ticket-card .next-action button",
     )!;
-    expect(plain.text).toBe("Ask the customer to verify");
+    expect(plain.text).toBe("Mark fixed and tell the customer");
     expect(plain.classList.contains("secondary")).toBe(false);
   });
 
@@ -210,7 +210,7 @@ describe("the customer's answer", () => {
     expect(card.querySelector("h2")?.text).toBe("Did this fix it?");
     expect(card.querySelector("blockquote")?.text).toBe("Ten pages print");
     const answer = card.querySelector(".card-answer")!;
-    expect(answer.querySelector("form > button")?.text).toBe("Yes, resolve ticket");
+    expect(answer.querySelector("form > button")?.text).toBe("Yes, it is fixed");
     const no = answer.querySelector("details.answer-no")!;
     expect(no.querySelector("summary")?.text).toBe("No, it is not fixed");
     expect(no.hasAttribute("open")).toBe(false);

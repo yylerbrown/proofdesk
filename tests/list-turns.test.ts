@@ -42,7 +42,7 @@ describe("whose turn it is, in the list", () => {
       "Filed",
     ]);
     const cells = Object.fromEntries(statusByKey(team));
-    expect(cells["SUP-7"]).toBe("In Progress Customer said no");
+    expect(cells["SUP-7"]).toBe("In Progress Customer says not fixed");
     expect(cells["SUP-2"]).toBe("In Progress Assistant asks for review");
     expect(cells["SUP-3"]).toBe("In Progress");
     expect(cells["SUP-8"]).toBe("New");
@@ -63,7 +63,7 @@ describe("whose turn it is, in the list", () => {
     const tag = async (who: typeof teamActor) =>
       parse((await as(app, who).get("/tickets")).text).querySelector("table.tickets .turn-tag")
         ?.text;
-    expect(await tag(customerOne)).toBe("Your answer needed");
+    expect(await tag(customerOne)).toBe("Did this fix it?");
     expect(await tag(teamActor)).toBe("Asked the customer");
   });
 
