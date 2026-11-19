@@ -11,6 +11,7 @@
     archived: viewer && viewer.demo ? "Nothing is archived. Archiving is off on this demo for everyone." : "Nothing is archived.",
   };
 %>
+<% if (locals.welcome) { %><%- include("demo-welcome", { welcome }) %><% } %>
 <h1><%= mine ? "My tickets" : "All tickets" %></h1>
 <p class="list-note"><small>A ticket moves from New to In Progress, and is resolved when its customer confirms the fix or the team gives a reason.</small></p>
 <% if (viewer && viewer.role === "admin") { %>

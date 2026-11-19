@@ -114,7 +114,8 @@ const WALKTHROUGH_SAMPLE = {
 /**
  * On the demo, the next role to view this ticket as, so one ticket can be followed from the
  * customer's words to their Yes: the team after the customer has filed or answered No, and the
- * customer who filed it when the team has it. After the Yes, the list of resolved tickets.
+ * customer who filed it once the team has asked them to verify, so the team's own next step comes
+ * first. After the Yes, the list of resolved tickets.
  */
 function demoNext(ticket: Ticket, actor: Actor) {
   if (actor.demo !== true || ticket.archived_at !== null) return null;
@@ -124,7 +125,8 @@ function demoNext(ticket: Ticket, actor: Actor) {
   if (actor.id === ticket.created_by && ticket.ready_at === null && team !== undefined) {
     return { switchTo: team.id, label: "View this ticket as a team member" };
   }
-  if (actor.role !== "customer" && filer !== undefined && filer.id !== actor.id) {
+  const asked = ticket.ready_at !== null;
+  if (asked && actor.role !== "customer" && filer !== undefined && filer.id !== actor.id) {
     return { switchTo: filer.id, label: "View this ticket as the customer who filed it" };
   }
   return null;
@@ -152,6 +154,31 @@ function listHref(filters: ListFilters, page?: number): string {
 // browser, so it needs no account setting and no script.
 const INVITE_COOKIE = "assistant_invite";
 const INVITE_HIDDEN_FOR = 365 * 24 * 60 * 60 * 1000;
+
+// A demo visitor who pressed "Hide" on the welcome card above their ticket list, kept the same way.
+const WELCOME_COOKIE = "demo_welcome";
+
+/** The demo's welcome card: where its two quiet links lead, as the demo team member. */
+type DemoWelcome = {
+  teamId: string;
+  /** The ticket an AI assistant worked in the recorded run, or null when there is none. */
+  recordedRunHref: string | null;
+};
+
+/**
+ * The welcome card for a visitor trying the demo as its customer, until they hide it. Nobody
+ * else gets it: the team and the admin preview arrived there by choosing to.
+ */
+function demoWelcome(actor: Actor, hidden: boolean, recordedRunKey: string | null) {
+  if (actor.demo !== true || actor.role !== "customer" || hidden) return null;
+  const team = DEMO_ACTORS.find((person) => person.role === "team");
+  if (team === undefined) return null;
+  const welcome: DemoWelcome = {
+    teamId: team.id,
+    recordedRunHref: recordedRunKey === null ? null : `/tickets/${recordedRunKey}`,
+  };
+  return welcome;
+}
 
 /**
  * Where to connect an assistant, for the team only: an admin's connections page, or on the demo
@@ -592,7 +619,24 @@ export function pagesRouter(service: TicketService): Router {
       // still works there, and says why it is empty.
       showArchivedFilter: can(actor, "list_archived") && actor.demo !== true,
       invite,
+      welcome: demoWelcome(
+        actor,
+        req.cookies?.[WELCOME_COOKIE] === "hidden",
+        service.recordedRunKey(),
+      ),
     });
+  });
+
+  // "Hide" on the demo's welcome card hides it in this browser for good.
+  router.post("/welcome/hide", (req, res) => {
+    signedIn(req);
+    res.cookie(WELCOME_COOKIE, "hidden", {
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: INVITE_HIDDEN_FOR,
+      path: "/",
+    });
+    res.redirect(303, "/tickets");
   });
 
   // "Not now" on the invitation to connect an assistant hides it in this browser.

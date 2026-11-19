@@ -6,9 +6,9 @@ import { expect, test } from "@playwright/test";
 
 // The demo's "Switch role" menu in the header, at phone width. It only exists when the server
 // runs as the demo, so this file starts a second copy of the app with DEMO=on on the next port,
-// and stops it at the end. The checks: the button stays inside its row of the header, the list is
-// as wide as the button, a click outside the open menu reaches what it was aimed at, and Escape
-// closes the menu with focus back on its button.
+// and stops it at the end. The checks: the button stays inside its row of the header, the list
+// is at least as wide as the button and stays on the screen, a click outside the open menu
+// reaches what it was aimed at, and Escape closes the menu with focus back on its button.
 
 const port = Number(process.env.BROWSER_TEST_PORT ?? 3999) + 1;
 const baseURL = `http://127.0.0.1:${port}`;
@@ -55,8 +55,8 @@ test.afterAll(() => {
 test("Switch role fits its row at phone width and lets clicks outside it through", async ({
   page,
 }) => {
-  await page.goto("/sign-in");
-  await page.getByRole("button", { name: "View as Demo Team Member" }).click();
+  await page.goto("/tickets");
+  await page.getByRole("button", { name: "See the team's side" }).click();
   await page.goto("/tickets");
 
   const menu = page.locator("details.switch-role");
@@ -71,17 +71,20 @@ test("Switch role fits its row at phone width and lets clicks outside it through
     expect(button!.y + button!.height).toBeLessThanOrEqual(row!.y + row!.height);
   });
 
-  await test.step("the list is as wide as its button", async () => {
+  await test.step("the list is at least as wide as its button, and stays on the screen", async () => {
     await summary.click();
     await expect(menu).toHaveAttribute("open", "");
     const list = await menu.locator("summary + ul").boundingBox();
     const button = await summary.boundingBox();
-    expect(Math.round(list!.width)).toBe(Math.round(button!.width));
+    expect(Math.round(list!.width)).toBeGreaterThanOrEqual(Math.round(button!.width));
+    expect(list!.x).toBeGreaterThanOrEqual(0);
+    expect(list!.x + list!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
   });
 
   await test.step("a click outside the open menu reaches its target", async () => {
-    await page.getByRole("link", { name: "Resolved" }).first().click({ timeout: 5_000 });
-    await expect(page).toHaveURL(/status=resolved/);
+    // The header's New ticket, above the menu: the menu itself covers the list's filters.
+    await page.getByRole("button", { name: "New ticket" }).click({ timeout: 5_000 });
+    await expect(page).toHaveURL(/\/tickets\/new/);
     await expect(menu).not.toHaveAttribute("open");
   });
 

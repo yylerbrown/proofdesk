@@ -1,4 +1,8 @@
     </main>
+    <%# On the demo, one quiet way to everything about it: privacy, the real site, the source and the assistant setup. %>
+    <% if (demo && !locals.aboutDemo) { %>
+    <footer class="site-footer container"><small><a href="/sign-in">About this demo</a></small></footer>
+    <% } %>
     <script type="module" src="/assets/js/local-time.js"></script>
     <script type="module" src="/assets/js/copy.js"></script>
     <script type="module" src="/assets/js/quick.js"></script>

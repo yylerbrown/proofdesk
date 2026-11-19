@@ -49,15 +49,19 @@ describe("the fence around the demo", () => {
 describe("the demo entrance", () => {
   it("says it is a demo, offers the three demo people and no one else", async () => {
     const { app } = buildDemo();
-    const page = await visitor(app).get("/sign-in");
-    expect(page.text).toContain("Try the demo");
-    expect(page.text).toContain("Do not type anything private here.");
-    // The admin is named for what it is before anyone enters: a preview that changes nothing.
-    expect(page.text).toContain("View as Demo Customer");
+    const about = await visitor(app).get("/sign-in");
+    expect(about.text).toContain("About this demo");
+    expect(about.text).toContain("Do not type anything private here.");
+    // A first visit opens as the demo customer, and the role menu names the other two. The
+    // admin is named for what it is before anyone picks it: a preview that changes nothing.
+    const page = await visitor(app).get("/tickets");
+    expect(page.text).toContain("Demo Customer (you)");
     expect(page.text).toContain("View as Demo Team Member");
     expect(page.text).toContain("Admin preview (read-only)");
-    expect(page.text).not.toContain("Customer One");
-    expect(page.text).not.toContain("Sign in with GitHub");
+    for (const shown of [about, page]) {
+      expect(shown.text).not.toContain("Customer One");
+      expect(shown.text).not.toContain("Sign in with GitHub");
+    }
 
     const signedIn = await visitor(app).post("/sign-in/dev").type("form").send({ id: demoTeam.id });
     expect(signedIn.status).toBe(303);
@@ -203,7 +207,11 @@ describe("a demo server started in production", () => {
     const built = buildTestApp({ NODE_ENV: "production", DEMO: "on", ...noSignIn() });
     const res = await request(built.app).get("/sign-in");
     expect(res.status).toBe(200);
-    expect(res.text).toContain("Try the demo");
+    expect(res.text).toContain("About this demo");
+    // The first visit opens the list, with the demo's cookie sent over https only.
+    const landed = await request(built.app).get("/tickets");
+    expect(landed.status).toBe(200);
+    expect(String(landed.headers["set-cookie"])).toMatch(/dev_actor=demo-customer;.*Secure/);
   });
 });
 

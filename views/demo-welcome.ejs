@@ -1,0 +1,22 @@
+<%# The demo's welcome, above a first-time visitor's ticket list: one sentence, one button, two quiet links and Hide. Everything else about the demo is on its About page, linked from every footer. %>
+<aside class="demo-welcome" aria-labelledby="demo-welcome-text">
+  <p id="demo-welcome-text">This is a live demo of Proofdesk, a support desk where the customer says how they will know a fix worked. You are trying it as a customer.</p>
+  <p class="demo-welcome-start"><a href="/tickets/new?try=1" role="button">File a sample ticket</a></p>
+  <div class="demo-welcome-more">
+    <form method="post" action="/sign-in/dev">
+      <input type="hidden" name="id" value="<%= welcome.teamId %>" />
+      <input type="hidden" name="next" value="/tickets" />
+      <button type="submit" class="link">See the team's side</button>
+    </form>
+    <% if (welcome.recordedRunHref) { %>
+    <form method="post" action="/sign-in/dev">
+      <input type="hidden" name="id" value="<%= welcome.teamId %>" />
+      <input type="hidden" name="next" value="<%= welcome.recordedRunHref %>" />
+      <button type="submit" class="link">See a ticket an AI assistant worked</button>
+    </form>
+    <% } %>
+    <form method="post" action="/welcome/hide" class="demo-welcome-hide">
+      <button type="submit" class="link" aria-label="Hide this welcome">Hide</button>
+    </form>
+  </div>
+</aside>

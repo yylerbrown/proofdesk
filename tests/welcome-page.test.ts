@@ -7,17 +7,24 @@ import { createTicketService } from "../src/server/tickets/service.js";
 import { DEV_COOKIE } from "../src/server/actor.js";
 import { as, buildTestApp, customerOne, SIGN_IN_ENV, visitor } from "./helpers.js";
 
-// The welcome page ties each explanation to its button, names the ticket a link asked for,
-// and is titled for what it is.
+// The demo's welcome card above a first-time visitor's list, and the page about the demo that
+// took over everything else the old welcome page held: each explanation is tied to its button,
+// a link to one ticket is named, and each page is titled for what it is.
 
-function demo() {
-  const built = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
-  seedDemo(createTicketService(built.db, built.config.ticketPrefix));
-  return built;
+function demo(env: NodeJS.ProcessEnv = {}) {
+  const built = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off", ...env });
+  const service = createTicketService(built.db, built.config.ticketPrefix);
+  seedDemo(service);
+  return { ...built, recorded: service.recordedRunKey()! };
 }
 
 async function page(app: ReturnType<typeof demo>["app"], address = "/sign-in") {
   return parse((await visitor(app).get(address)).text);
+}
+
+/** A page as one of the demo people sees it. */
+async function pageAs(app: ReturnType<typeof demo>["app"], id: string, address: string) {
+  return parse((await visitor(app).get(address).set("Cookie", `${DEV_COOKIE}=${id}`)).text);
 }
 
 /** The text a screen reader gives as a button's description, from its aria-describedby. */
@@ -26,72 +33,177 @@ function description(html: ReturnType<typeof parse>, button: ReturnType<typeof p
   return ids.map((id) => html.getElementById(id)?.text.trim()).join(" ");
 }
 
-describe("the welcome page's buttons", () => {
-  it("describe 'Try the ticket workflow' with its steps, right after the button", async () => {
-    const html = await page(demo().app);
-    const button = html.querySelector("form.try-workflow button");
-    expect(description(html, button)).toContain("File a ticket as the customer");
-    expect(html.querySelector("form.try-workflow + .try-steps")).not.toBeNull();
+describe("the demo's welcome card", () => {
+  it("says what this is in one sentence, with one button and a quiet line of links", async () => {
+    const html = await page(demo().app, "/tickets");
+    const card = html.querySelector("main > .demo-welcome")!;
+    expect(card.querySelector("p")?.text).toBe(
+      "This is a live demo of Proofdesk, a support desk where the customer says how they will know a fix worked. You are trying it as a customer.",
+    );
+    const buttons = card.querySelectorAll("[role=button], button:not(.link)");
+    expect(buttons.map((button) => button.text)).toEqual(["File a sample ticket"]);
+    const links = card.querySelectorAll(".demo-welcome-more button").map((b) => b.text);
+    expect(links).toEqual(["See the team's side", "See a ticket an AI assistant worked", "Hide"]);
+    // It comes before the list's heading, so the first screen leads with it.
+    expect(card.nextElementSibling?.tagName).toBe("H1");
   });
 
-  it("describe each role button with its own line", async () => {
-    const html = await page(demo().app);
-    const rows = html.querySelectorAll(".people li");
+  it("switches to the team member's list with See the team's side", async () => {
+    const html = await page(demo().app, "/tickets");
+    const form = html.querySelectorAll(".demo-welcome-more form")[0]!;
+    expect(form.getAttribute("action")).toBe("/sign-in/dev");
+    expect(form.querySelector("input[name='id']")?.getAttribute("value")).toBe("demo-team");
+    expect(form.querySelector("input[name='next']")?.getAttribute("value")).toBe("/tickets");
+  });
+
+  it("is only on the list, and only for the demo customer", async () => {
+    const { app } = demo();
+    const ticketPage = await pageAs(app, "demo-customer", "/tickets/SUP-3");
+    expect(ticketPage.querySelector(".demo-welcome")).toBeNull();
+    for (const id of ["demo-team", "demo-admin"]) {
+      expect((await pageAs(app, id, "/tickets")).querySelector(".demo-welcome")).toBeNull();
+    }
+    const { app: real } = buildTestApp();
+    const realList = parse((await as(real, customerOne).get("/tickets")).text);
+    expect(realList.querySelector(".demo-welcome")).toBeNull();
+  });
+
+  it("goes for good once hidden, in that browser, with no script", async () => {
+    const { app } = demo();
+    const browser = visitor(app);
+    const first = parse((await browser.get("/tickets")).text);
+    expect(first.querySelector(".demo-welcome")).not.toBeNull();
+    const hidden = await browser.post("/welcome/hide");
+    expect(hidden.status).toBe(303);
+    expect(hidden.headers.location).toBe("/tickets");
+    expect(String(hidden.headers["set-cookie"])).toMatch(/demo_welcome=hidden;.*Max-Age=/);
+    const after = parse((await browser.get("/tickets")).text);
+    expect(after.querySelector(".demo-welcome")).toBeNull();
+  });
+
+  it("keeps its links small and quiet, with Hide at the end of their line", () => {
+    const css = fs.readFileSync("public/site.css", "utf8");
+    expect(css).toMatch(/\.demo-welcome-more \{[^}]*font-size: var\(--pd-text-sm\);/);
+    expect(css).toMatch(/\.demo-welcome-more \.demo-welcome-hide \{\s*margin-inline-start: auto;/);
+  });
+});
+
+describe("the welcome card's way to a ticket an AI assistant worked", () => {
+  const LABEL = "See a ticket an AI assistant worked";
+
+  it("switches to the team in the same press, opening the recorded run's ticket", async () => {
+    const { app, recorded } = demo();
+    const html = await page(app, "/tickets");
+    const buttons = html.querySelectorAll(".demo-welcome-more button");
+    const button = buttons.find((b) => b.text === LABEL)!;
+    const form = button.parentNode!;
+    expect(form.getAttribute("action")).toBe("/sign-in/dev");
+    expect(form.querySelector("input[name='id']")?.getAttribute("value")).toBe("demo-team");
+    expect(form.querySelector("input[name='next']")?.getAttribute("value")).toBe(
+      `/tickets/${recorded}`,
+    );
+    // A text button, so it reads as a link and not as a second big choice.
+    expect(button.classNames).toBe("link");
+  });
+
+  it("opens the recorded ticket in the team's view in one press", async () => {
+    const { app, recorded } = demo();
+    const browser = visitor(app);
+    const pressed = await browser
+      .post("/sign-in/dev")
+      .type("form")
+      .send({ id: "demo-team", next: `/tickets/${recorded}` });
+    expect(pressed.status).toBe(303);
+    expect(pressed.headers.location).toBe(`/tickets/${recorded}`);
+    const ticket = parse((await browser.get(`/tickets/${recorded}`)).text);
+    expect(ticket.querySelector(".recorded-run")).not.toBeNull();
+  });
+
+  it("is not offered before the demo is seeded", async () => {
+    const unseeded = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
+    const html = parse((await visitor(unseeded.app).get("/tickets")).text);
+    expect(html.querySelector(".demo-welcome")).not.toBeNull();
+    expect(html.querySelector(".demo-welcome")!.text).not.toContain(LABEL);
+  });
+});
+
+describe("the demo's Switch role menu", () => {
+  it("lists the three roles, each with its one line on what to try", async () => {
+    const html = await pageAs(demo().app, "demo-customer", "/tickets");
+    const rows = html.querySelectorAll("header .switch-role ul li");
     expect(rows.length).toBe(3);
-    for (const row of rows) {
+    expect(rows.map((row) => row.querySelector(".role-try")?.text.trim())).toEqual([
+      "File a ticket, then follow it until the team asks whether it is fixed.",
+      "Take a ticket, write an internal note, and ask the customer to check the fix.",
+      "See every ticket and its full history. The demo admin changes nothing.",
+    ]);
+    // The current role is named, not offered; each other role's button is described by its line.
+    expect(rows[0]!.querySelector("button")).toBeNull();
+    expect(rows[0]!.querySelector(".role-current")?.text).toBe("Demo Customer (you)");
+    for (const row of rows.slice(1)) {
       expect(description(html, row.querySelector("button"))).toBe(
-        row.querySelector(".try")?.text.trim(),
+        row.querySelector(".role-try")?.text.trim(),
       );
     }
   });
 });
 
-describe("the demo welcome's first screen", () => {
-  it("goes from the workflow's steps straight to the roles, with Source and setup under them", async () => {
-    const built = buildTestApp({
-      DEMO: "on",
-      DEV_SIGN_IN: "off",
+describe("the page about the demo", () => {
+  it("holds the privacy note, the real site, the source and the folded assistant setup, in that order", async () => {
+    const { app } = demo({
       SOURCE_URL: "https://code.example.com/team/desk",
+      REAL_SITE_URL: "https://desk.example.com",
     });
-    seedDemo(createTicketService(built.db, built.config.ticketPrefix));
-    const html = await page(built.app);
-    // Only one quiet line sits between the steps and the roles, so all three roles fit on a
-    // laptop's first screen. The source link waits under them, and the assistant setup stays last.
-    expect(
-      html.querySelector(
-        ".try-steps + .recorded-run-entry + h3 + ul.people + .source-link + details.connect",
-      ),
-    ).not.toBeNull();
-    expect(html.querySelectorAll(".source-link").length).toBe(1);
-    expect(html.querySelector("section")!.lastElementChild?.classNames).toBe("connect");
+    const html = await page(app);
+    const parts = html.querySelector("section.about-demo")!.children;
+    expect(parts.map((node) => node.classNames)).toEqual([
+      "",
+      "real-site",
+      "source-link",
+      "connect",
+    ]);
+    expect(parts[0]!.text).toContain("Do not type anything private here.");
   });
 
-  it("keeps each role's line on one row at laptop width, and the steps right under their button", () => {
+  it("gives a signed-out visitor one button to start again as the customer", async () => {
+    const html = await page(demo().app);
+    const main = html.querySelector("main")!;
+    expect(main.querySelectorAll("button:not(.link)").map((b) => b.text)[0]).toBe("Start again");
+    const form = main.querySelector("form.start-again")!;
+    expect(form.getAttribute("action")).toBe("/sign-in/dev");
+    expect(form.querySelector("input[name='id']")?.getAttribute("value")).toBe("demo-customer");
+    expect(form.querySelector("input[name='next']")?.getAttribute("value")).toBe("/tickets");
+  });
+
+  it("is where Sign out on the demo leads", async () => {
+    const { app } = demo();
+    const out = await visitor(app).post("/sign-out").set("Cookie", `${DEV_COOKIE}=demo-team`);
+    expect(out.headers.location).toBe("/sign-in");
+  });
+
+  it("keeps the old welcome page's width", () => {
     const css = fs.readFileSync("public/site.css", "utf8");
     expect(css).toMatch(/\.welcome \{\s*max-width: 520px;/);
-    expect(css).toMatch(/\.try-workflow button \{\s*width: 100%;\s*margin-bottom: 0;/);
   });
 });
 
-describe("the welcome page's assistant setup", () => {
-  it("is one closed line at the end, after the roles, with everything about keys inside it", async () => {
+describe("the About page's assistant setup", () => {
+  it("is one closed line at the end, with everything about keys inside it", async () => {
     const html = await page(demo().app);
-    const section = html.querySelector("section")!;
+    const section = html.querySelector("section.about-demo")!;
     const folded = section.lastElementChild!;
     expect(folded.tagName).toBe("DETAILS");
     expect(folded.hasAttribute("open")).toBe(false);
     expect(folded.querySelector("summary")?.text).toBe("Connect your own AI assistant");
-    expect(folded.previousElementSibling?.classNames).toBe("people");
     // The key button, its explanation and the recorded run are all folded away.
     expect(folded.querySelector("form[action='/demo/connection'] button")?.text).toBe(
       "Get a demo connection",
     );
     expect(folded.text).toContain("A key is shown only once");
     expect(folded.querySelector("a[href='/assistant-run']")).not.toBeNull();
-    // Outside it, only the one quiet line to the recorded run speaks of an assistant.
-    const entry = section.querySelector(".recorded-run-entry");
-    const outside = section.childNodes.filter((node) => node !== folded && node !== entry);
-    expect(outside.map((node) => node.text).join(" ")).not.toMatch(/key|assistant/i);
+    // Outside it, nothing on the page speaks of a key or an assistant.
+    const outside = html.querySelector("main")!.text.replace(folded.text, "");
+    expect(outside).not.toMatch(/key|assistant/i);
     // Its summary reads as a quiet link, like the other small disclosures, not a full-width row.
     const css = fs.readFileSync("public/site.css", "utf8");
     expect(css).toMatch(/\.welcome details\.connect > summary \{\s*display: inline-block;/);
@@ -119,110 +231,42 @@ describe("the welcome page's assistant setup", () => {
   });
 });
 
-describe("the welcome page's way to a ticket an AI assistant worked", () => {
-  const LABEL = "Or see a ticket an AI assistant worked (a recorded run)";
-
-  function seeded() {
-    const built = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
-    const service = createTicketService(built.db, built.config.ticketPrefix);
-    seedDemo(service);
-    // The seed keeps the recorded run's key, so no test names a fixed number for it.
-    return { ...built, recorded: service.recordedRunKey()! };
-  }
-
-  /** The welcome page as one of the demo people sees it. */
-  async function pageAs(app: ReturnType<typeof seeded>["app"], id: string) {
-    const response = await visitor(app).get("/sign-in").set("Cookie", `${DEV_COOKIE}=${id}`);
-    return parse(response.text);
-  }
-
-  it("is one quiet line right under the workflow's steps, that switches to the team", async () => {
-    const { app, recorded } = seeded();
-    const html = await page(app);
-    const entry = html.querySelector(".try-steps + form.recorded-run-entry")!;
-    expect(entry.getAttribute("action")).toBe("/sign-in/dev");
-    expect(entry.querySelector("input[name='id']")?.getAttribute("value")).toBe("demo-team");
-    expect(entry.querySelector("input[name='next']")?.getAttribute("value")).toBe(
-      `/tickets/${recorded}`,
-    );
-    // A text button, so it reads as a link and not as a second big choice.
-    const button = entry.querySelector("button")!;
-    expect(button.classNames).toBe("link");
-    expect(button.text).toBe(LABEL);
-  });
-
-  it("opens the recorded ticket in the team's view in one press", async () => {
-    const { app, recorded } = seeded();
-    const browser = visitor(app);
-    const pressed = await browser
-      .post("/sign-in/dev")
-      .type("form")
-      .send({ id: "demo-team", next: `/tickets/${recorded}` });
-    expect(pressed.status).toBe(303);
-    expect(pressed.headers.location).toBe(`/tickets/${recorded}`);
-    const ticket = parse((await browser.get(`/tickets/${recorded}`)).text);
-    expect(ticket.querySelector(".recorded-run")).not.toBeNull();
-  });
-
-  it("is a plain link for the team and the admin, and switches a customer", async () => {
-    const { app, recorded } = seeded();
-    for (const id of ["demo-team", "demo-admin"]) {
-      const html = await pageAs(app, id);
-      expect(html.querySelector("form.recorded-run-entry")).toBeNull();
-      const link = html.querySelector(".try-steps + p.recorded-run-entry a")!;
-      expect(link.getAttribute("href")).toBe(`/tickets/${recorded}`);
-      expect(link.text).toBe(LABEL);
-    }
-    const asCustomer = await pageAs(app, "demo-customer");
-    expect(
-      asCustomer.querySelector("form.recorded-run-entry input[name='id']")?.getAttribute("value"),
-    ).toBe("demo-team");
-  });
-
-  it("is not offered before the demo is seeded, nor on the development entrance", async () => {
-    const unseeded = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
-    expect((await page(unseeded.app)).querySelector(".recorded-run-entry")).toBeNull();
-    expect((await page(buildTestApp().app)).querySelector(".recorded-run-entry")).toBeNull();
-  });
-
-  it("is small print styled as a link, not a full-width button", () => {
-    const css = fs.readFileSync("public/site.css", "utf8");
-    expect(css).toMatch(
-      /\.welcome \.recorded-run-entry \{\s*margin: 0;\s*font-size: var\(--pd-text-sm\);/,
-    );
-    expect(css).toMatch(
-      /\.welcome \.recorded-run-entry button\.link:is\(:hover, :active\) \{\s*width: auto;[^}]*text-decoration: underline;/,
-    );
-  });
-});
-
-describe("a welcome page reached from a ticket link", () => {
-  it("names the ticket above the big button, and says the workflow files a new one", async () => {
+describe("the About page reached from a ticket link", () => {
+  it("names the ticket and offers each role, described by its line and the ticket", async () => {
     const html = await page(demo().app, "/sign-in?next=%2Ftickets%2FSUP-8");
-    expect(html.querySelector(".next-ticket + form.try-workflow")).not.toBeNull();
-    expect(html.querySelector(".next-ticket")?.text).toBe(
-      "Pick a role below to open SUP-8. Try the ticket workflow files a new ticket instead.",
-    );
-    // Each role button's description says which ticket it opens.
-    const first = html.querySelector(".people li button");
-    expect(description(html, first)).toMatch(/^Pick a role below to open SUP-8\./);
+    expect(html.querySelector(".next-ticket")?.text).toBe("Pick a role to open SUP-8.");
+    expect(html.querySelector(".next-ticket + ul.people")).not.toBeNull();
+    const rows = html.querySelectorAll(".people li");
+    expect(rows.length).toBe(3);
+    for (const row of rows) {
+      expect(row.querySelector("input[name='next']")?.getAttribute("value")).toBe("/tickets/SUP-8");
+      expect(description(html, row.querySelector("button"))).toBe(
+        `Pick a role to open SUP-8. ${row.querySelector(".try")?.text.trim()}`,
+      );
+    }
+    // The single start button is for a visitor with no ticket in mind.
+    expect(html.querySelector("form.start-again")).toBeNull();
   });
 
   it("names the ticket on the development entrance too", async () => {
     const { app } = buildTestApp();
-    const html = await page(app, "/sign-in?next=%2Ftickets%2FSUP-3");
+    const html = parse((await visitor(app).get("/sign-in?next=%2Ftickets%2FSUP-3")).text);
     expect(html.querySelector(".next-ticket")?.text).toBe("Pick a person below to open SUP-3.");
   });
 
-  it("names nothing for any other address", async () => {
+  it("names nothing for any other address, and starts there as the customer", async () => {
     const { app } = demo();
-    for (const next of ["/tickets", "/tickets/new", "/tickets/SUP-8/edit", "https://elsewhere"]) {
+    for (const next of ["/tickets/new", "/tickets/SUP-8/edit", "/notices"]) {
       const html = await page(app, `/sign-in?next=${encodeURIComponent(next)}`);
       expect(html.querySelector(".next-ticket")).toBeNull();
-      expect(html.querySelector(".people li button")?.getAttribute("aria-describedby")).toBe(
-        "try-demo-customer",
-      );
+      const start = html.querySelector("form.start-again")!;
+      expect(start.querySelector("input[name='next']")?.getAttribute("value")).toBe(next);
+      expect(start.querySelector("button")?.text).toBe("Continue as the demo customer");
     }
+    // An address on another site falls back to the list.
+    const elsewhere = await page(app, `/sign-in?next=${encodeURIComponent("https://elsewhere")}`);
+    const fallback = elsewhere.querySelector("form.start-again input[name='next']");
+    expect(fallback?.getAttribute("value")).toBe("/tickets");
   });
 });
 
@@ -237,12 +281,12 @@ describe("ticketFromNext", () => {
   });
 });
 
-describe("the welcome page's tab title", () => {
+describe("the sign-in page's tab title", () => {
   const title = async (response: Promise<{ text: string }>) =>
     parse((await response).text).querySelector("title")?.text;
 
-  it("is Welcome on the demo", async () => {
-    expect(await title(visitor(demo().app).get("/sign-in"))).toBe("Welcome - Proofdesk");
+  it("is About this demo on the demo", async () => {
+    expect(await title(visitor(demo().app).get("/sign-in"))).toBe("About this demo - Proofdesk");
   });
 
   it("is Welcome for someone signed in", async () => {

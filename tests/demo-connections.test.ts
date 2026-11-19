@@ -231,12 +231,12 @@ describe("a demo connection asking to resolve", () => {
 });
 
 describe("the page that shows a demo key", () => {
-  it("leads back to the welcome page, which a demo visitor can open, not to Connections", async () => {
+  it("leads back to the page about the demo, which a demo visitor can open, not to Connections", async () => {
     const { app } = buildDemo();
     const html = parse(
       (await visitor(app).post("/demo/connection").set("Sec-Fetch-Site", "same-origin")).text,
     );
-    expect(html.querySelector("a[href='/sign-in']")?.text).toBe("Back to the welcome page");
+    expect(html.querySelector("a[href='/sign-in']")?.text).toBe("Back to About this demo");
     expect(html.querySelector("main a[href='/connections']")).toBeNull();
   });
 
@@ -321,7 +321,7 @@ describe("the demo key page", () => {
     expect(steps[0]).toBe("Start Claude Code there and type /mcp to see proofdesk connected.");
     expect(steps[1]).toContain(`Then ask: Using Proofdesk, write a test spec for ${sample}`);
     expect(steps[2]).toBe(
-      `To see what it wrote, view as Demo Team Member from the welcome page and open ${sample}.`,
+      `To see what it wrote, view as Demo Team Member with Switch role at the top and open ${sample}.`,
     );
     const text = page.querySelector("main")!.text;
     expect(text).toContain("add --scope user to use it everywhere");

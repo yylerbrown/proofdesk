@@ -34,14 +34,21 @@
           <li class="viewer">
             <details class="dropdown switch-role">
               <summary>Signed in as <strong><%= viewer.name %></strong> <small class="role-label"><%= viewerRoleWord %></small> <span class="switch-label">Switch role</span></summary>
+              <%# All three roles, each with one line on what to try as it. The current one is named, not offered. %>
               <ul>
-                <% for (const person of demoPeople.filter((p) => p.id !== viewer.id)) { %>
+                <% for (const person of demoPeople) { %>
+                <% const roleName = person.readOnly ? "Admin preview (read-only)" : `View as ${person.name}`; %>
                 <li>
+                  <% if (person.id === viewer.id) { %>
+                  <span class="role-current" aria-current="true"><%= person.readOnly ? "Admin preview (read-only)" : person.name %> (you)</span>
+                  <% } else { %>
                   <form method="post" action="/sign-in/dev">
                     <input type="hidden" name="id" value="<%= person.id %>" />
                     <input type="hidden" name="next" value="<%= here %>" />
-                    <button type="submit" class="link"><%= person.readOnly ? "Admin preview (read-only)" : `View as ${person.name}` %></button>
+                    <button type="submit" class="link" aria-describedby="role-try-<%= person.id %>"><%= roleName %></button>
                   </form>
+                  <% } %>
+                  <small class="role-try" id="role-try-<%= person.id %>"><%- include("role-try", { person }) %></small>
                 </li>
                 <% } %>
               </ul>

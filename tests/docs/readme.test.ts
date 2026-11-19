@@ -99,15 +99,18 @@ describe("the feature list and the README's walkthrough", () => {
       tried: "Ran it.",
       result: "Ok.",
     });
+    pages.push(await as("demo-team").get(`/tickets/${key}`));
     pages.push(await as("demo-customer").get(`/tickets/${key}`));
     pages.push(await visitor(buildTestApp(SIGN_IN_ENV).app).get("/sign-in"));
 
     const shown = pages
       .map((res) => parse(res.text).querySelector("body")!.text.replace(/\s+/g, " "))
       .join(" ");
-    // The list's old order links, gone since the list sorts by its column headers. The tour
-    // still names them until the docs catch up; then this line goes.
-    for (const gone of ["Oldest first", "Recently updated"]) labels.delete(gone);
+    // The list's old order links, gone since the list sorts by its column headers, and the old
+    // welcome page's button, gone since the demo opens on the list. The tour still names them
+    // until the docs catch up; then this line goes.
+    const gone = ["Oldest first", "Recently updated", "Try the ticket workflow"];
+    for (const label of gone) labels.delete(label);
     for (const label of labels) expect(shown, label).toContain(label);
   });
 });

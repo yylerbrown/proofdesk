@@ -5,7 +5,7 @@ import { seedDemo } from "../src/server/demo.js";
 import { createTicketService } from "../src/server/tickets/service.js";
 import { buildTestApp, SIGN_IN_ENV, visitor } from "./helpers.js";
 
-// The demo's welcome page names where to read the source and where sign-in with roles runs.
+// The page about the demo names where to read the source and where sign-in with roles runs.
 
 function demo(env: NodeJS.ProcessEnv = {}) {
   const built = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off", ...env });
@@ -15,10 +15,10 @@ function demo(env: NodeJS.ProcessEnv = {}) {
 const welcome = async (app: ReturnType<typeof demo>["app"]) =>
   parse((await visitor(app).get("/sign-in")).text);
 
-describe("the demo's welcome", () => {
-  it("links Source and setup to the repository's README under the roles, when its address is set", async () => {
+describe("the page about the demo", () => {
+  it("links Source and setup to the repository's README, when its address is set", async () => {
     const html = await welcome(demo({ SOURCE_URL: "https://code.example.com/team/desk/" }).app);
-    const link = html.querySelector("ul.people + .source-link a");
+    const link = html.querySelector(".about-demo > .source-link a");
     expect(link?.text).toBe("Source and setup");
     expect(link?.getAttribute("href")).toBe("https://code.example.com/team/desk#readme");
     expect((await welcome(demo().app)).querySelector(".source-link")).toBeNull();
@@ -32,7 +32,7 @@ describe("the demo's welcome", () => {
       }).app,
     );
     expect(html.querySelector(".real-site")?.text).toBe(
-      "On the real site, people sign in with GitHub. How sign-in and roles work",
+      "On the real site, people sign in with GitHub. Here you switch between three made-up people with Switch role at the top. How sign-in and roles work",
     );
     expect(
       html.querySelectorAll(".real-site a").map((a) => [a.text, a.getAttribute("href")]),
@@ -43,7 +43,7 @@ describe("the demo's welcome", () => {
     // Without a source address there is no README to point at, so the line ends there.
     const noSource = await welcome(demo({ REAL_SITE_URL: "https://real.example.com" }).app);
     expect(noSource.querySelector(".real-site")?.text).toBe(
-      "On the real site, people sign in with GitHub.",
+      "On the real site, people sign in with GitHub. Here you switch between three made-up people with Switch role at the top.",
     );
     // The real site itself does not point at itself.
     const real = buildTestApp({ ...SIGN_IN_ENV, REAL_SITE_URL: "https://real.example.com" });

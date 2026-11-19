@@ -2,7 +2,7 @@
 <div class="column-form">
 <% if (connection.demo) { %>
 <h1>Your demo connection</h1>
-<p class="callout"><strong>Copy the key now.</strong> It is shown only on this page. It stops working <%- include("time", { iso: connection.expires_at }) %>; you can get another from the welcome page.</p>
+<p class="callout"><strong>Copy the key now.</strong> It is shown only on this page. It stops working <%- include("time", { iso: connection.expires_at }) %>; you can get another from About this demo.</p>
 <p>Your assistant sees only the sample ticket made for assistants, as it was first written, and what it writes itself. It never receives what other visitors' assistants write, and theirs never receive what yours writes. On this demo everyone shares one team view, so anyone who views as Demo Team Member can see what your assistant wrote.</p>
 <% } else { %>
 <h1>Connection issued</h1>
@@ -34,7 +34,7 @@
     <pre class="paste" id="first-ask"><code><%= firstAsk %></code></pre>
     <button type="button" class="copy secondary" data-copy="<%= firstAsk %>" aria-label="Copy the request" hidden>Copy</button>
   </li>
-  <li>To see what it wrote, view as Demo Team Member from the welcome page and open <%= sampleKey %>.</li>
+  <li>To see what it wrote, view as Demo Team Member with Switch role at the top and open <%= sampleKey %>.</li>
 </ol>
 <% } %>
 
@@ -52,7 +52,7 @@
 <p><small><a href="/api">The API guide</a>, which needs no key, lists every action. <a href="/assistant-run">See an assistant's work</a> shows one real run.</small></p>
 
 <% if (connection.demo) { %>
-<p><a href="/sign-in">Back to the welcome page</a></p>
+<p><a href="/sign-in">Back to About this demo</a></p>
 <% } else { %>
 <p><a href="/connections">Back to connections</a></p>
 <% } %>
