@@ -51,6 +51,7 @@
                     <button type="submit" class="link"><%- include("demo-name", { person }) %></button>
                   </form>
                   <% } %>
+                  <small class="role-try"><%- include("role-try", { person }) %></small>
                 </li>
                 <% } %>
                 <% } %>
@@ -66,6 +67,8 @@
                   </form>
                 </li>
                 <% } %>
+                <%# The rules every page follows, quietly, at the foot of the menu. %>
+                <li class="menu-link menu-foot"><a href="/roles">Who may do what</a></li>
               </ul>
             </details>
           </li>

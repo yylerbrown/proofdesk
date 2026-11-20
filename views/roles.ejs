@@ -1,0 +1,46 @@
+<%- include("header") %>
+<div class="column-wide roles-page">
+<h1>Who may do what</h1>
+<p>This page is computed from the same check the server runs on every request, so the page and the rules cannot disagree.</p>
+
+<%# Who may say a ticket is fixed: the product's reason for being, in role terms. %>
+<p class="roles-fixed-lead" id="roles-fixed"><strong>Who may say it is fixed</strong></p>
+<ul class="roles-fixed" aria-labelledby="roles-fixed">
+  <li>The customer says what would prove it fixed.</li>
+  <li>One named team member owns the ticket and presses Mark fixed and tell the customer.</li>
+  <li>Only the customer can answer Yes, it is fixed.</li>
+  <li>An AI assistant can add notes and evidence. It never decides.</li>
+</ul>
+
+<p class="roles-assistant-note"><small>An assistant acts only on tickets a person has handed to it.</small></p>
+
+<%# The table may scroll inside its own box at phone width, so the page never scrolls sideways. %>
+<div class="overflow-auto roles-scroll">
+  <table class="roles">
+    <thead>
+      <tr>
+        <th scope="col">Action</th>
+        <th scope="col" class="roles-customer"><%= headers.customer %></th>
+        <th scope="col" class="roles-team"><%= headers.team %></th>
+        <th scope="col" class="roles-admin"><%= headers.admin %></th>
+        <th scope="col" class="roles-assistant">AI assistant</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% for (const group of groups) { %>
+      <tr class="roles-group"><th scope="colgroup" colspan="5"><%= group.name %></th></tr>
+      <% for (const row of group.rows) { %>
+      <tr data-action="<%= row.action %>">
+        <th scope="row"><%= row.words %><br /><small><%= row.people %></small></th>
+        <td><%= row.customer %></td>
+        <td><%= row.team %></td>
+        <td><%= row.admin %></td>
+        <td><small><%= row.assistant %></small></td>
+      </tr>
+      <% } %>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+</div>
+<%- include("footer") %>
