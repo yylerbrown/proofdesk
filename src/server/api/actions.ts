@@ -554,12 +554,24 @@ export const ACTIONS: ApiAction[] = [
 ];
 
 /**
- * The cursor for the page after this one, or null when this page is the last. A full page
- * means there may be more.
+ * The cursor for the page after this one, or null when this page is the last. A page that is
+ * not full is the last. A full page is the last too when the list holds no more tickets, so a
+ * list of exactly one page never points at an empty one.
  */
-export function nextCursor(query: unknown, items: unknown[]): string | null {
+export function nextCursor(
+  query: unknown,
+  items: unknown[],
+  service: TicketService,
+  actor: Actor,
+): string | null {
   if (items.length < LIST_PAGE_SIZE) return null;
-  const { page, sort } = listPosition(parse(listQuerySchema, query));
+  const checked = parse(listQuerySchema, query);
+  const { page, sort } = listPosition(checked);
+  const total = service.countListed(checked.status ?? "all", actor, {
+    owner: checked.owner,
+    q: checked.q,
+  });
+  if (page * LIST_PAGE_SIZE >= total) return null;
   return cursorFor(page + 1, sort);
 }
 

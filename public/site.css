@@ -1231,6 +1231,22 @@ table.tickets .turn-tag {
   -webkit-mask-image: url("/assets/proof-confirmed.svg");
   mask-image: url("/assets/proof-confirmed.svg");
 }
+/* Under a long list, one quiet line: the page before, where this page sits, the page after.
+   Each link is at least 40px tall, so a thumb can press it on a phone. */
+.list-pages {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0 var(--pd-space-4);
+  margin: var(--pd-space-4) 0 0;
+  color: var(--pd-muted);
+}
+.list-pages a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+}
 /* Under the list, the two marks with their words, in the same quiet grey as the line under it. */
 .proof-legend {
   margin: var(--pd-space-4) 0 0;

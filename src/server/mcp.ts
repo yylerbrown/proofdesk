@@ -160,7 +160,7 @@ function buildServer(
           // A list comes in pages: say where the next one starts, or null on the last.
           const result =
             row.paged && Array.isArray(ran)
-              ? { items: ran, next_cursor: nextCursor(fields, ran) }
+              ? { items: ran, next_cursor: nextCursor(fields, ran, service, actor) }
               : ran;
           record("done", null);
           return { content: text({ untrusted_content_note: UNTRUSTED_TEXT, result }) };
