@@ -74,10 +74,10 @@ Ask your assistant:
 
 > Which Proofdesk tickets are waiting on the team? Pick one with a clear check, read its
 > done_when, check whether it is fixed, attach what you found as evidence, and ask the owner to
-> request the customer's check. If you cannot tell, write a note saying why.
+> review it. If you cannot tell, write a note saying why.
 
-Then open the ticket in the browser: the evidence sits beside the check, labelled as reported by
-your assistant, and the note to the owner is in the conversation. The customer's answer is still
+Then open the ticket in the browser as the team: above the next step one grey line starts "Reported
+by the assistant, not checked by Proofdesk", and the note to the owner is in the conversation. The customer's answer is still
 theirs to give.
 
 ## The one path
@@ -94,8 +94,8 @@ theirs to give.
 4. **Attach evidence**: `add_evidence` with what you ran and what it showed. An `ops/prove`
    report can be attached as it is. Evidence is shown as reported by you, never as verified.
 5. **Ask the owner to review**: `ask_owner_to_review`. It writes a note to the ticket's named
-   owner, who reviews your evidence and decides whether to ask the customer. It does not contact
-   the customer. You cannot ask the customer, answer for them, or resolve.
+   owner, who reviews your evidence and decides whether to mark it fixed, which is their own
+   agreement that the customer's check was met. It does not contact the customer. You cannot ask the customer, answer for them, or resolve.
 6. **Stop**: once the evidence is attached and the owner is asked, or once you have written a note
    with `blocked: true` whose first line says what blocks you.
 

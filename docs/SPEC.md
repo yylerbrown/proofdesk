@@ -230,3 +230,11 @@ The owner's reason for the product, in his words: "AIs do best when the prompts 
 - **Sign-in.** Microsoft sign-in for one organization sits beside GitHub once its three settings are set. This replaces "other sign-in providers" in the list of things left out, for Microsoft only.
 - **Suggested ways to prove a fix.** An admin sets each connection's Suggestions to Off, When asked or Automatic. A listening assistant answers a customer's request with up to three ways, which fill the step's box; the customer saves their own words. Never on a demo connection, and Proofdesk itself makes no AI calls.
 - **Smaller.** The header is two groups with one person menu; the page after a key is one message to paste; one-job pages sit in a centred column; emails read like emails.
+
+### 2026-11-19, night: marking fixed is the team's agreement
+
+The owner's call: "What would prove it is fixed?" is there so that the person who marks a ticket fixed certifies that the fix did what it says, not so that they reply with evidence. Fixes only; the three statuses are unchanged.
+
+- **Marking fixed agrees the proof.** Above "Mark fixed and tell the customer" one grey line quotes the customer: `By marking it fixed, you agree this is met: "<the proof>"`. The Status menu's Fixed choice shows the same line. History reads "Resolved by the team: Fixed. Agreed that what would prove it is fixed was met. Not customer-confirmed." The ticket page's "Add evidence of the fix" form is gone: a person shows anything else in the conversation. An assistant still attaches evidence through the API and the MCP tools, and it still shows on the ticket as reported. The list's bulk bar no longer offers Fixed, because each ticket's proof is agreed on its own page; the JSON API still accepts it.
+- **Resolved tickets by age.** On All, with nothing searched, a "Resolved:" filter offers Last 14 days (the default), Older with its count, and Any age, kept in the address as `resolved=older` or `resolved=any`. This replaces the line under the list in the entry above. The JSON API is unchanged. The demo has two samples resolved more than 14 days ago.
+- **The customer's list** tags a ticket marked fixed "Needs your answer" and puts it first in their default order.

@@ -70,8 +70,10 @@ describe("the feature list and the README's walkthrough", () => {
     const walkLabels = [...walk.matchAll(/\*\*([^*]+)\*\*/g)].map((m) => m[1]!);
     expect(walkLabels.length).toBeGreaterThan(6);
     for (const label of walkLabels) labels.add(label);
-    // The ticket page's own "Add evidence of the fix" form was removed; the docs follow the merge.
-    labels.delete("Add evidence of the fix");
+    // The tour quotes the line above "Mark fixed and tell the customer" that says marking it
+    // fixed agrees the customer's proof was met; the team's page after taking shows it.
+    const oath = "By marking it fixed, you agree this is met:";
+    expect(tour.replace(/\s+/g, " ")).toContain(`\`${oath} "<their words>"\``);
 
     // The pages a visitor passes through on the demo, and the real site's sign-in.
     const demo = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
@@ -116,5 +118,6 @@ describe("the feature list and the README's walkthrough", () => {
       .map((res) => parse(res.text).querySelector("body")!.text.replace(/\s+/g, " "))
       .join(" ");
     for (const label of labels) expect(shown, label).toContain(label);
+    expect(shown).toContain(oath);
   });
 });
