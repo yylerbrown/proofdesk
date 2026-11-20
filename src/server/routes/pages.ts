@@ -595,8 +595,9 @@ export function pagesRouter(
         "Content-Disposition": "inline",
         "Content-Security-Policy": "default-src 'none'; sandbox",
         "X-Content-Type-Options": "nosniff",
-        // Kept by this browser only. The demo decides by a cookie who sees a picture.
-        "Cache-Control": "private, max-age=3600",
+        // Never kept, like every other private page, so losing access to the ticket loses the
+        // picture at once. The demo decides by a cookie who sees a picture.
+        "Cache-Control": "private, no-store",
         Vary: "Cookie",
       });
       res.send(picture.bytes);

@@ -2,7 +2,13 @@ import { randomUUID } from "node:crypto";
 import type { Actor } from "../actor.js";
 import { HttpError, ValidationError } from "../errors.js";
 import { parse } from "../validation.js";
-import { requireNotArchived, requirePermission, requireVersion, saved } from "./checks.js";
+import {
+  requireNotArchived,
+  requirePermission,
+  requireRoom,
+  requireVersion,
+  saved,
+} from "./checks.js";
 import { noQuestion } from "./history.js";
 import * as repository from "./repository.js";
 import { answerSchema, markReadySchema, sameText, versionOnlySchema } from "./schemas.js";
@@ -14,7 +20,7 @@ import { THREAD_LIMIT, type Ticket } from "./types.js";
 // by either door, is the one way a ticket shows as "Customer confirmed".
 
 export function createCustomerQuestion(shared: Shared) {
-  const { db, requireRow, log, endAgent, toTicket } = shared;
+  const { db, budget, requireRow, log, endAgent, toTicket } = shared;
 
   return {
     /**
@@ -165,6 +171,14 @@ export function createCustomerQuestion(shared: Shared) {
             409,
             "question_changed",
             `The question on ticket ${key} has changed. Reload the ticket and answer again.`,
+          );
+        }
+        // A No adds the customer's words, so it fits the same budget as any other reply.
+        if (fixed === "no") {
+          requireRoom(
+            () => repository.countRows(db, "ticket_entries", before.id),
+            budget.entriesPerTicket,
+            "replies on this ticket",
           );
         }
         const now = new Date().toISOString();

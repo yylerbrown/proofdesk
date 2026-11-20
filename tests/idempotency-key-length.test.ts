@@ -38,6 +38,8 @@ describe("an idempotency key outside 1 to 100 characters", () => {
 
   it("is kept at exactly 100 characters, and the retry gets the first answer", () => {
     const { tickets } = service();
+    // The ticket must exist: a retry is answered only for a ticket the caller may still read.
+    tickets.createTicket(valid, customerOne);
     const key = "k".repeat(100);
     let ran = 0;
     const first = tickets.once(customerOne, key, "add_note", "SUP-1", { a: 1 }, () => ({

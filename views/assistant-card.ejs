@@ -22,10 +22,12 @@
   <div class="card-decision">
     <form method="post" action="/tickets/<%= card.key %>/spec/decision">
       <input type="hidden" name="decision" value="accept" />
+      <input type="hidden" name="spec_id" value="<%= spec.id %>" />
       <button type="submit" class="secondary compact">Accept test</button>
     </form>
     <form method="post" action="/tickets/<%= card.key %>/spec/decision">
       <input type="hidden" name="decision" value="discard" />
+      <input type="hidden" name="spec_id" value="<%= spec.id %>" />
       <button type="submit" class="compact secondary">Discard</button>
     </form>
   </div>
