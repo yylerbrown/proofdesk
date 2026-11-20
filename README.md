@@ -99,11 +99,11 @@ it reproduced the arithmetic problem and tested a fix, then proposed a test, att
 evidence and asked the owner to review it. It resolved nothing: a test can pass while the
 customer is still stuck, so only the customer's Yes counts as confirmed.
 
-Three real faults in Proofdesk were also filed as tickets in a local Proofdesk. A listening
-assistant offered ways to prove each fix within about five seconds, a headless assistant fixed
-each with a test, and a person checked each before pressing "Mark fixed and tell the customer".
-The first fixer run was blocked by the runner's own permission settings and was run once more
-with the same prompt. [The record](docs/dogfood-run/summary.md) has the prompts and transcripts.
+[Three real faults](docs/dogfood-run/summary.md) were filed as tickets in a local Proofdesk. A
+listening assistant offered ways to prove each fix within about five seconds, and a headless
+assistant fixed each with a test. A second AI agent, as the team member and the customer, re-ran the
+tests before pressing "Mark fixed and tell the customer". No human was in the loop. The first fixer
+run, blocked by the operator's own permission settings, was run once more with the same prompt.
 
 To try it, open **About this demo** from the demo's footer, then **Connect your own AI
 assistant** and **Get a demo connection**, for a key that lasts a day at most and a message to

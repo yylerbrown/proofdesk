@@ -99,14 +99,38 @@ describe("the dogfooding record", () => {
   it("is told in the README without claiming more than the record", () => {
     const start = readme.indexOf("## The AI assistant");
     const section = readme.slice(start, readme.indexOf("\n## ", start + 1)).replace(/\s+/g, " ");
-    expect(section).toContain("Three real faults in Proofdesk were also filed as tickets");
+    expect(section).toContain("were filed as tickets in a local Proofdesk");
     expect(section).toContain("within about five seconds");
     expect(section).toContain('before pressing "Mark fixed and tell the customer"');
-    expect(section).toContain("blocked by the runner's own permission settings");
+    expect(section).toContain("blocked by the operator's own permission settings");
     expect(section).toContain("run once more with the same prompt");
     const summary = flat(`${folder}/summary.md`);
     expect(summary).toContain("within 4 to 5 seconds");
     expect(summary).toContain("ran it once more with the same prompt");
+  });
+
+  it("says an AI agent did the operator's steps, with no human in the loop", () => {
+    const start = readme.indexOf("## The AI assistant");
+    const section = readme.slice(start, readme.indexOf("\n## ", start + 1)).replace(/\s+/g, " ");
+    expect(section).toContain("A second AI agent, as the team member and the customer");
+    expect(section).toContain("No human was in the loop.");
+    expect(section).not.toMatch(/a person checked|checked by a person/i);
+
+    const summary = flat(`${folder}/summary.md`);
+    expect(summary).toContain("was done by a separate AI agent standing in for the people");
+    expect(summary).toContain("No human was in the loop during the run");
+    expect(summary).toContain("given by an AI agent in the team member's seat");
+    expect(summary).toContain("## Operator steps");
+    expect(summary).toContain("## Operator's check");
+    expect(summary).not.toMatch(/Human steps|Person-side|the person\b|a person checked/i);
+  });
+
+  it("leaves no other doc saying a person checked the dogfooded fixes", () => {
+    const docs = ["README.md", ...fs.readdirSync("docs").filter((f) => f.endsWith(".md"))];
+    for (const name of docs) {
+      const text = flat(name === "README.md" ? name : `docs/${name}`);
+      expect(text, name).not.toMatch(/checked by a person|a person checked/i);
+    }
   });
 });
 
