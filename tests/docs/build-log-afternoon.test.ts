@@ -8,9 +8,22 @@ const log = fs.readFileSync("docs/BUILD_LOG.md", "utf8");
 
 describe("the build log", () => {
   it("has a row for each pull request merged on the afternoon of 20 November", () => {
-    for (const pr of ["#214", "#215", "#216", "#218"]) {
+    for (const pr of ["#214", "#215", "#216", "#217", "#218"]) {
       expect(log).toMatch(new RegExp(`\\| ${pr} +\\|`));
     }
+  });
+
+  it("lists the last rows in merge order, each with its own step number", () => {
+    const rows = log.split("\n").filter((line) => /^\| 20[0-9]\. /.test(line));
+    const order = rows.map((line) => [/^\| (\d+)\./.exec(line)![1], /(#\d+) +\|$/.exec(line)![1]]);
+    expect(order).toEqual([
+      ["200", "#214"],
+      ["201", "#215"],
+      ["202", "#216"],
+      ["203", "#218"],
+      ["204", "#217"],
+      ["205", "#219"],
+    ]);
   });
 
   it("keeps the pull request numbers of the rows reworded for a user or a reader", () => {
