@@ -13,8 +13,8 @@ export const MOST_HELD_CALLS = 4;
 /** How long a connection counts as listening after it last called wait_for_requests. */
 export const LISTENING_FOR_SECONDS = 40;
 
-/** Why a held call stopped sleeping. */
-export type Woken = "woken" | "deadline" | "replaced";
+/** Why a held call stopped sleeping. "gone" means its caller went away. */
+export type Woken = "woken" | "deadline" | "replaced" | "gone";
 
 type HeldCall = { replaced: boolean; wake: (why: Woken) => void };
 
@@ -41,8 +41,9 @@ export function createListening() {
      * Starts one held call for a connection. A second call from the same connection ends its
      * first, which then answers with an empty list, so a client that gave up on a call can
      * always call again. A call past the most held at once is refused, to try again shortly.
+     * When signal says the caller went away, the call ends at once and frees its place.
      */
-    begin(connectionId: number, automatic: boolean) {
+    begin(connectionId: number, automatic: boolean, signal?: AbortSignal) {
       const listener = listeners.get(connectionId);
       if (listener?.held) {
         listener.held.replaced = true;
@@ -57,9 +58,28 @@ export function createListening() {
       const call: HeldCall = { replaced: false, wake: () => {} };
       listeners.set(connectionId, { automatic, lastCallAt: Date.now(), held: call });
 
+      /** Frees the call's place. The connection still counts as listening for a while after. */
+      function freePlace(): void {
+        const now = listeners.get(connectionId);
+        if (now?.held === call) now.held = null;
+      }
+
+      // A caller that went away holds no place, and its sleeping call wakes to end.
+      function leave(): void {
+        freePlace();
+        call.wake("gone");
+      }
+      if (signal?.aborted) freePlace();
+      signal?.addEventListener("abort", leave, { once: true });
+
       return {
-        /** Sleeps until a request may have arrived, the time is up, or a newer call replaced it. */
+        /** Whether the caller is still there to be answered. */
+        live(): boolean {
+          return signal?.aborted !== true;
+        },
+        /** Sleeps until a request may have arrived, the time is up, or the call ended. */
         sleep(ms: number): Promise<Woken> {
+          if (signal?.aborted) return Promise.resolve("gone");
           if (call.replaced) return Promise.resolve("replaced");
           return new Promise((resolve) => {
             const timer = setTimeout(() => resolve("deadline"), ms);
@@ -69,10 +89,10 @@ export function createListening() {
             };
           });
         },
-        /** Ends the held call. The connection still counts as listening for a while after. */
+        /** Ends the held call, once it has answered. */
         end(): void {
-          const now = listeners.get(connectionId);
-          if (now?.held === call) now.held = null;
+          signal?.removeEventListener("abort", leave);
+          freePlace();
         },
       };
     },

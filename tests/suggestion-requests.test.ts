@@ -504,3 +504,123 @@ describe("the page route", () => {
     );
   });
 });
+
+describe("a caller that goes away", () => {
+  /** Starts a wait_for_requests call on a real port, and gives a way to walk away from it. */
+  async function abandonable(app: Express, key: string, seconds: number) {
+    const server = await listenLocally(app);
+    servers.push(server);
+    const { port } = server.address() as AddressInfo;
+    const leave = new AbortController();
+    const done = fetch(`http://127.0.0.1:${port}/api/suggestion-requests?wait_seconds=${seconds}`, {
+      headers: { Authorization: `Bearer ${key}` },
+      signal: leave.signal,
+    }).catch(() => "left");
+    return {
+      async leave() {
+        leave.abort();
+        expect(await done).toBe("left");
+        // Give the server a moment to see the closed connection.
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      },
+    };
+  }
+
+  it("hands a request to the connection's next call, not to the call it walked away from", async () => {
+    const { app } = buildTestApp();
+    await fileNoCheck(app);
+    const key = await issue(app, "when_asked");
+    const first = await abandonable(app, key, 25);
+    await untilListening(app);
+    await first.leave();
+    // The connection still counts as listening, so the customer may ask.
+    const res = await ask(app);
+    expect(res.status, res.text).toBe(201);
+    const started = Date.now();
+    const next = await agent(app, key).wait(3);
+    expect(Date.now() - started).toBeLessThan(1000);
+    expect(next.body.requests.map((r: { key: string }) => r.key)).toEqual(["SUP-1"]);
+  });
+
+  it("frees its place at once, so a fifth caller is not refused because of it", async () => {
+    const { app } = buildTestApp();
+    await fileNoCheck(app);
+    const keys = [];
+    for (let n = 0; n <= MOST_HELD_CALLS; n += 1) {
+      keys.push(await issue(app, "when_asked", `Helper ${n}`));
+    }
+    const gone = await abandonable(app, keys[0]!, 25);
+    await untilListening(app);
+    const held = keys.slice(1, MOST_HELD_CALLS).map((key) => agent(app, key).wait(3));
+    // Every place is taken once the fifth is refused, so try until it is.
+    const fifth = agent(app, keys[MOST_HELD_CALLS]!);
+    let tried = await fifth.wait(1);
+    for (let tries = 0; tries < 100 && tried.status === 200; tries += 1)
+      tried = await fifth.wait(1);
+    expect(tried.status).toBe(429);
+    await gone.leave();
+    expect((await fifth.wait(1)).status).toBe(200);
+    await Promise.all(held);
+  });
+
+  it("still counts its connection as listening for 40 seconds after the call", async () => {
+    const { app } = buildTestApp();
+    await fileNoCheck(app);
+    const first = await abandonable(app, await issue(app, "when_asked"), 25);
+    await untilListening(app);
+    await first.leave();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(Date.now() + 39 * 1000);
+    expect((await state(app)).available.listening).toBe(true);
+    vi.setSystemTime(Date.now() + 2 * 1000);
+    expect((await state(app)).available.listening).toBe(false);
+  });
+
+  it("over MCP, a call whose caller went away does not take the request from the next one", async () => {
+    const { app } = buildTestApp();
+    await fileNoCheck(app);
+    const key = await issue(app, "when_asked");
+    const server = await listenLocally(app);
+    servers.push(server);
+    const { port } = server.address() as AddressInfo;
+    const url = `http://127.0.0.1:${port}/mcp`;
+    // A caller that sends one tool call and then walks away from it.
+    const leave = new AbortController();
+    const gone = fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+        Accept: "application/json, text/event-stream",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: { name: "wait_for_requests", arguments: { wait_seconds: 25 } },
+      }),
+      signal: leave.signal,
+    }).catch(() => "left");
+    await untilListening(app);
+    leave.abort();
+    expect(await gone).toBe("left");
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect((await ask(app)).status).toBe(201);
+    const client = new Client({ name: "test-assistant", version: "1.0.0" });
+    await client.connect(
+      new StreamableHTTPClientTransport(new URL(url), {
+        requestInit: { headers: { Authorization: `Bearer ${key}` } },
+      }),
+    );
+    clients.push(client);
+    const started = Date.now();
+    const next = await client.callTool({
+      name: "wait_for_requests",
+      arguments: { wait_seconds: 3 },
+    });
+    expect(Date.now() - started).toBeLessThan(1000);
+    const content = next.content as { text: string }[];
+    const handed = JSON.parse(content[0]!.text).result.requests as { key: string }[];
+    expect(handed.map((r) => r.key)).toEqual(["SUP-1"]);
+  });
+});
