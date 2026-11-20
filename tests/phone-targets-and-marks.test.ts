@@ -120,6 +120,14 @@ describe("what the Proof column's marks mean", () => {
       "proof-mark confirmed-mark",
     ]);
     for (const mark of marks) expect(mark.getAttribute("aria-hidden")).toBe("true");
+    // Each mark and its words stay on one line together, so a phone breaks only between them.
+    const items = legend.querySelectorAll(".legend-item");
+    expect(items.map((item) => item.text.trim())).toEqual([
+      "Says what would prove it is fixed",
+      "Customer confirmed",
+    ]);
+    for (const item of items) expect(item.querySelector(".proof-mark")).not.toBeNull();
+    expect(rulesFor(".proof-legend .legend-item")[0]).toContain("white-space: nowrap;");
     // After the table, inside the list's area.
     expect(html.querySelector(".list-area > .proof-legend")).not.toBeNull();
     // The column's marks and the line's share one look.

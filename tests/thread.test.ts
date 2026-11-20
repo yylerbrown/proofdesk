@@ -80,7 +80,11 @@ describe("replies and internal notes", () => {
     const html = parse(page.text);
     expect(html.querySelector("details.reply-fold")?.hasAttribute("open")).toBe(true);
     expect(html.querySelector("#entry-body")?.text).toBe("The corrected invoice is attached.");
-    expect(html.querySelector("#body-error")?.text).toBe("You are not allowed to do that.");
+    // The box now sends a message, so the reason says who is signed in.
+    expect(html.querySelector("#body-error")?.text).toBe(
+      `Nothing was sent. You are now signed in as ${customerOne.name}, who cannot write ` +
+        "internal notes, so sending this again would send it as a message.",
+    );
     expect((await admin(app).get("/api/tickets/SUP-1/entries")).body).toHaveLength(3);
   });
 

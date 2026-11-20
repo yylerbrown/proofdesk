@@ -44,6 +44,16 @@ export function wireSendLabel(button: SendButton, choices: KindChoice[]): () => 
   };
 }
 
+/**
+ * A pageshow listener that runs reset only for a page the browser brought back from its cache,
+ * by Back or Forward. A page loaded fresh keeps any choice made while it was still loading.
+ */
+export function whenBroughtBack(reset: () => void): (event: { persisted: boolean }) => void {
+  return (event) => {
+    if (event.persisted) reset();
+  };
+}
+
 if (typeof document !== "undefined") {
   const button = document.querySelector<HTMLButtonElement>("button[data-label-reply]");
   const form = button?.form;
@@ -53,7 +63,8 @@ if (typeof document !== "undefined") {
     // A page brought back by Back or Forward keeps the choice made on it, even after an internal
     // note was saved, so the next message could reach no customer. The box starts again on the
     // page's own choice: "Reply to the customer", unless the page means otherwise.
-    window.addEventListener("pageshow", backToPage);
+    // A reload needs none of this: the choices ask the browser not to fill them in.
+    window.addEventListener("pageshow", whenBroughtBack(backToPage));
   }
 }
 

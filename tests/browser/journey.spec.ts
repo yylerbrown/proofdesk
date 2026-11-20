@@ -145,7 +145,7 @@ test("the plain path: the Status menu's In Progress, then Resolved with a reason
   await team.context().close();
 });
 
-test("the long path: a check, a change link and evidence, a No, then the customer's Yes", async ({
+test("the long path: a check, the fix told in a reply, a No, then the customer's Yes", async ({
   browser,
 }) => {
   const customer = await signInAs(browser, "Customer One");

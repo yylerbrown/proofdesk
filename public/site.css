@@ -1146,8 +1146,12 @@ table.tickets .turn-tag {
   margin: var(--pd-space-4) 0 0;
   color: var(--pd-muted);
 }
-.proof-legend .confirmed-mark {
-  margin-inline-start: var(--pd-space-4);
+.proof-legend .legend-item {
+  white-space: nowrap;
+}
+/* The gap goes after the first, so the second starts flush when a phone puts it on its own line. */
+.proof-legend .legend-item:first-child {
+  margin-inline-end: var(--pd-space-4);
 }
 /* In forced colours the browser would drop the fill, hiding the mark. */
 @media (forced-colors: active) {

@@ -618,10 +618,16 @@ export function pagesRouter(
     // A person's role beside their name, as in the conversation, since the name is theirs to set.
     const roles = service.peopleRoles(events.map((event) => event.actor));
     // Marking it fixed agreed that what would prove it is fixed was met, when the ticket says
-    // that now and the customer did not write it only afterwards.
+    // that now and nobody wrote or changed it afterwards: chose a check, adopted one, or edited
+    // it in Edit ticket.
+    const setsProof = (event: (typeof events)[number]) => {
+      if (event.type === "check_chosen" || event.type === "check_adopted") return true;
+      if (event.type !== "edited") return false;
+      const changes = (event.data as { changes?: Record<string, unknown> }).changes ?? {};
+      return changes.fix_check !== undefined;
+    };
     const agreedProof = (index: number) =>
-      ticket.fix_check !== null &&
-      !events.slice(index + 1).some((later) => later.type === "check_chosen");
+      ticket.fix_check !== null && !events.slice(index + 1).some(setsProof);
     // The recorded assistant's rows on the demo happened in a run of their own, on an earlier day.
     const historyWhat = (event: (typeof events)[number], index: number) => {
       const what = describeEvent(event, { agreedProof: agreedProof(index) });
@@ -1056,7 +1062,7 @@ export function pagesRouter(
       // Who owns a ticket is the team's question; a customer's list is their own tickets.
       ownerFilters: actor.role !== "customer",
       narrowed: owner !== undefined || q !== undefined,
-      noMatch: noMatchWords(current, owner, q),
+      noMatch: noMatchWords(current, owner, q, age),
       counts,
       // On "All" with nothing searched: which resolved tickets it shows by age. It shows once
       // there is an older resolved ticket, or a choice other than the default is in the address.
@@ -1240,6 +1246,13 @@ export function pagesRouter(
       } else if (err instanceof HttpError && err.status === 403 && entry.body.trim() !== "") {
         status = 403;
         message = err.message;
+        // An internal note from someone who cannot write notes now, as after the browser's person
+        // changed in another tab. The box shown next sends a message, so say who is signed in.
+        if (entry.kind === "note" && !can(actor, "note")) {
+          message =
+            `Nothing was sent. You are now signed in as ${actor.name}, who cannot write ` +
+            "internal notes, so sending this again would send it as a message.";
+        }
       } else {
         throw err;
       }

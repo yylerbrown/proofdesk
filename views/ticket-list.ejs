@@ -158,7 +158,8 @@
 <% } %>
 <%# What the Proof column's two marks mean, once a row shows one: the marks drawn as in the column, with their words. A phone's list has no header row, so this is where it says so. %>
 <% if (tickets.some((t) => (t.resolution && t.resolution.by === "customer") || t.fix_check)) { %>
-<p class="proof-legend"><small><span class="proof-mark proof-said" aria-hidden="true"></span> Says what would prove it is fixed <span class="proof-mark confirmed-mark" aria-hidden="true"></span> Customer confirmed</small></p>
+<%# Each mark stays on one line with its words, so a narrow screen breaks only between the two. %>
+<p class="proof-legend"><small><span class="legend-item"><span class="proof-mark proof-said" aria-hidden="true"></span> Says what would prove it is fixed</span> <span class="legend-item"><span class="proof-mark confirmed-mark" aria-hidden="true"></span> Customer confirmed</span></small></p>
 <% } %>
 <% } %>
 </div>

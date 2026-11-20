@@ -206,6 +206,19 @@ describe("All on the ticket list", () => {
     );
   });
 
+  it("says the age when only older tickets are shown and the owner filter leaves none", async () => {
+    const { app } = await setup();
+    // SUP-3 is open and nobody owns it, so the sentence must not say there is no such ticket.
+    expect(await keys(app, teamActor, "/tickets?owner=none")).toEqual(["SUP-3"]);
+    const html = parse((await as(app, teamActor).get("/tickets?owner=none&resolved=older")).text);
+    const empty = html.querySelector("p.empty");
+    expect(empty?.text.replace(/\s+/g, " ")).toContain(
+      "No tickets that nobody owns were resolved more than 14 days ago.",
+    );
+    // Its link clears the owner filter and keeps the age.
+    expect(empty?.querySelector("a")?.getAttribute("href")).toBe("/tickets?resolved=older");
+  });
+
   it("leaves the counts beside the filters unchanged", async () => {
     const { app } = await setup();
     // New, In Progress, Resolved: every resolved ticket, old and new.

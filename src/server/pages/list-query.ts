@@ -101,19 +101,25 @@ const TAB_WORDS: Record<TicketListFilter, string> = {
 
 /**
  * What the list says when the owner filter or the search leaves nothing on this tab, built from
- * what is actually set, and the words of the link that clears it.
+ * what is actually set, and the words of the link that clears it. With "All" showing only older
+ * resolved tickets, the sentence says so, since open tickets may still match.
  */
 export function noMatchWords(
   current: TicketListFilter,
   owner: "me" | "none" | undefined,
   q: string | undefined,
+  age: ResolvedAge = "recent",
 ): { sentence: string; clear: string } {
   const whose = owner === "me" ? " that you own" : owner === "none" ? " that nobody owns" : "";
   const found = q === undefined ? "" : ` match "${q}"`;
   // With both set: No new tickets that you own and match "export".
   const joined = whose !== "" && found !== "" ? `${whose} and${found}` : `${whose}${found}`;
   const tickets = TAB_WORDS[current];
-  const sentence = `No ${tickets}${joined}.`;
+  // Only older resolved tickets: No tickets that nobody owns were resolved more than 14 days ago.
+  const sentence =
+    age === "older"
+      ? `No ${tickets}${joined} were resolved more than ${RECENT_RESOLVED_DAYS} days ago.`
+      : `No ${tickets}${joined}.`;
   const clear =
     owner && q !== undefined
       ? "Clear the owner filter and the search"

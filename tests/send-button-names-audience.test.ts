@@ -2,6 +2,7 @@ import { parse } from "node-html-parser";
 import { describe, expect, it } from "vitest";
 import {
   labelFor,
+  whenBroughtBack,
   wireSendLabel,
   type KindChoice,
   type SendButton,
@@ -90,6 +91,17 @@ describe("the script", () => {
     expect(reply.choice.checked).toBe(true);
     expect(note.choice.checked).toBe(false);
     expect(button.textContent).toBe("Send reply to customer");
+  });
+});
+
+describe("the reset when a page is shown", () => {
+  it("runs only for a page brought back from the browser's cache, not on a fresh load", () => {
+    let resets = 0;
+    const listener = whenBroughtBack(() => (resets += 1));
+    listener({ persisted: false });
+    expect(resets).toBe(0);
+    listener({ persisted: true });
+    expect(resets).toBe(1);
   });
 });
 

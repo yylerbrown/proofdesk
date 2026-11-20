@@ -33,15 +33,48 @@ describe("the demo's older samples", () => {
     });
     // Marked fixed by the team, then confirmed by its customer.
     expect(twoFactor.resolution.by).toBe("customer");
-    // The ticket's own times move back. Its History keeps the times seeding wrote, since a
-    // history entry never changes.
+    // Filed two days before it was resolved, then confirmed the same day it was resolved.
     expect(daysAgo(twoFactor.updated_at)).toBe(20);
-    expect(daysAgo(twoFactor.created_at)).toBe(20);
+    expect(daysAgo(twoFactor.created_at)).toBe(22);
     const accents = (await asDemo("demo-team").get("/api/tickets/SUP-10")).body;
     expect(accents).toMatchObject({ title: "Export to CSV drops accents", status: "resolved" });
     expect(accents.resolution).toMatchObject({ by: "team", reason: "wont_fix" });
     expect(daysAgo(accents.resolution.at)).toBe(35);
     expect(daysAgo(accents.updated_at)).toBe(35);
+  });
+
+  it("keep every History entry at its own past time, so no line says it happened today", async () => {
+    const { asDemo } = demo();
+    for (const [key, filed, resolved] of [
+      ["SUP-9", 22, 20],
+      ["SUP-10", 37, 35],
+    ] as const) {
+      const events = (await asDemo("demo-team").get(`/api/tickets/${key}/events`)).body as {
+        type: string;
+        created_at: string;
+      }[];
+      const days = events.map((event) => [event.type, daysAgo(event.created_at)]);
+      expect(days[0]).toEqual(["created", filed]);
+      expect(days).toContainEqual(["resolved_by_team", resolved]);
+      for (const [, ago] of days) expect(ago).toBeGreaterThanOrEqual(resolved);
+    }
+  });
+
+  it("say on the customer's own page the day the customer confirmed, weeks ago", async () => {
+    const { asDemo } = demo();
+    const page = parse((await asDemo("demo-customer").get("/tickets/SUP-9")).text);
+    // The page writes a day as "31 Oct 2026", in UTC.
+    const dayOf = (time: number) =>
+      new Date(time).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        timeZone: "UTC",
+      });
+    const text = page.text.replace(/\s+/g, " ");
+    expect(text).toContain(`customer confirmed on ${dayOf(Date.now() - 20 * DAY)}`);
+    const today = dayOf(Date.now());
+    expect(text).not.toContain(today);
   });
 
   it("are under Older on the list, not on its first look", async () => {

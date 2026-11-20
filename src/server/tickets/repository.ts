@@ -445,29 +445,6 @@ export function updateTicketStatus(db: Db, id: number, status: TicketStatus, now
   ).run({ status, now, id });
 }
 
-/**
- * Moves one ticket this many days into the past: when it was filed, changed and resolved, and
- * when its messages were written. Only the demo's seed uses it, for samples resolved weeks ago.
- * History entries never change, so they keep their own times.
- */
-export function moveTicketBack(db: Db, id: number, days: number): void {
-  const back = `-${days} days`;
-  db.transaction(() => {
-    db.prepare(
-      `UPDATE tickets SET
-         created_at = strftime('%Y-%m-%dT%H:%M:%fZ', created_at, @back),
-         updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', updated_at, @back),
-         last_resolved_at = strftime('%Y-%m-%dT%H:%M:%fZ', last_resolved_at, @back),
-         resolved_at = strftime('%Y-%m-%dT%H:%M:%fZ', resolved_at, @back)
-       WHERE id = @id`,
-    ).run({ id, back });
-    db.prepare(
-      `UPDATE ticket_entries SET created_at = strftime('%Y-%m-%dT%H:%M:%fZ', created_at, @back)
-       WHERE ticket_id = @id`,
-    ).run({ id, back });
-  })();
-}
-
 export type TeamResolution = {
   reason: ResolveReason;
   note: string | null;

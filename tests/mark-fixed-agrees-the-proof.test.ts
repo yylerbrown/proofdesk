@@ -125,6 +125,23 @@ describe("History after marking it fixed", () => {
     expect(after.join(" ")).not.toContain("Agreed that");
   });
 
+  it("does not say the proof was agreed when it was written later through an edit", async () => {
+    const app = await inProgress(withoutProof);
+    await as(app, teamActor)
+      .post("/api/tickets/SUP-1/resolve")
+      .send({ reason: "fixed_no_reply" })
+      .expect(200);
+    // The customer then edits the ticket and adds what would prove it.
+    const read = await as(app, customerOne).get("/api/tickets/SUP-1").expect(200);
+    await as(app, customerOne)
+      .put("/api/tickets/SUP-1")
+      .send({ ...withProof, expected_version: read.body.version })
+      .expect(200);
+    const rows = historyWhat(await page(app));
+    expect(rows).toContain("Resolved by the team: Fixed. Not customer-confirmed.");
+    expect(rows.join(" ")).not.toContain("Agreed that");
+  });
+
   it("leaves the team's other reasons as they read today", async () => {
     const app = await inProgress(withProof);
     await as(app, teamActor)

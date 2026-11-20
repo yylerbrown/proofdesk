@@ -8,6 +8,7 @@ import * as repository from "./tickets/repository.js";
 import type { TicketService } from "./tickets/service.js";
 import type { Budget } from "./tickets/types.js";
 import { seedOlderSamples } from "./demo-older-samples.js";
+import { writePastSample, type PastSample } from "./demo-past-sample.js";
 
 /**
  * Made-up customers who filed some of the samples. They cannot sign in. They make the team's
@@ -323,15 +324,8 @@ export function createDemoRecord(
   logEvent: (event: repository.NewEvent) => void,
 ) {
   return {
-    /**
-     * Moves one sample ticket this many days into the past, since the ticket service takes its
-     * times from the clock. Its History keeps the times seeding wrote: a history entry never
-     * changes. Called only while seeding, before recordDemoSeed.
-     */
-    moveDemoSampleBack(key: string, days: number): void {
-      const id = parseKey(prefix, key);
-      if (id !== null) repository.moveTicketBack(db, id, days);
-    },
+    /** Writes one sample resolved weeks ago, with its History at its own past times. */
+    seedPastSample: (sample: PastSample) => writePastSample(db, prefix, logEvent, sample),
 
     /**
      * Records what seeding wrote, so a demo connection can be shown only that. Called once,
