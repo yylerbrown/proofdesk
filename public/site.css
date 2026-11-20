@@ -982,7 +982,7 @@ form.list-search input:is(:focus, :focus-visible) {
   border-color: var(--pico-form-element-border-color);
   box-shadow: none;
 }
-/* The owner toggles, and the filter by age on "All", each follow the filters before them after a
+/* The owner toggles, and the filter by age under "Resolved", each follow the filters before them after a
    thin divider. On a phone each takes a row of its own, which needs no divider. */
 :is(nav[aria-label="Filter by owner"], nav[aria-label="Resolved tickets by age"]) ul {
   padding-left: var(--pd-space-4);
@@ -993,13 +993,6 @@ form.list-search input:is(:focus, :focus-visible) {
     padding-left: 0;
     border-left: 0;
   }
-}
-/* The filter by age starts with its grey name, "Resolved:", which is words, not a choice. */
-nav[aria-label="Resolved tickets by age"] .filter-label {
-  align-self: center;
-  margin-inline-end: var(--pd-space-1);
-  color: var(--pd-muted);
-  font-size: var(--pd-text-sm);
 }
 /* How many tickets each status filter holds: smaller and muted, inside the filter's own link. */
 .filter-count {
@@ -2491,7 +2484,8 @@ details.history td:first-child {
 /*
  * Edit, and the filer's Archive, at the end of the line under the title: quiet links in the
  * manner of the card's "Change", in grey small type. When the line is full they wrap under it.
- * On a phone each keeps a tap area at least 40 pixels tall without making the line taller.
+ * On a phone each keeps a tap area at least 40 pixels tall and wide without making the line
+ * taller.
  */
 .ticket-page a.ticket-line-link {
   margin-inline-start: var(--pd-space-2);
@@ -2505,6 +2499,7 @@ details.history td:first-child {
 @media (max-width: 639px) {
   .ticket-page a.ticket-line-link {
     display: inline-block;
+    min-inline-size: 40px;
     margin-block: -12px;
     padding-block: 12px;
   }

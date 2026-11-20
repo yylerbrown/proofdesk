@@ -5,8 +5,8 @@ import { RECORDED_SAMPLE_KEY, seedDemo } from "../src/server/demo.js";
 import { createTicketService } from "../src/server/tickets/service.js";
 import { buildTestApp, visitor } from "./helpers.js";
 
-// The demo seeds two samples resolved weeks ago, so the list's "Resolved:" filter has older
-// tickets to show, and files the recorded assistant run fourth, so it has the key its own words
+// The demo seeds two samples resolved weeks ago, so the filter by age under "Resolved" has
+// older tickets to show, and files the recorded assistant run fourth, so it has the key its own words
 // name. No other sample's key changes.
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -77,22 +77,29 @@ describe("the demo's older samples", () => {
     expect(text).not.toContain(today);
   });
 
-  it("are under Older on the list, not on its first look", async () => {
+  it("are under Resolved's Older on the list, and last on All", async () => {
     const { asDemo } = demo();
     const keys = async (id: string, address: string) =>
       parse((await asDemo(id).get(address)).text)
         .querySelectorAll("table.tickets tbody .ticket-key")
         .map((key) => key.text);
-    expect(await keys("demo-team", "/tickets")).not.toContain("SUP-9");
-    expect(await keys("demo-team", "/tickets")).not.toContain("SUP-10");
-    expect(await keys("demo-team", "/tickets?resolved=older")).toEqual(["SUP-10", "SUP-9"]);
+    // "All" shows every ticket, so the older resolved ones sit among the resolved ones at its end.
+    const all = await keys("demo-team", "/tickets");
+    expect(all).toContain("SUP-9");
+    expect(all).toContain("SUP-10");
+    expect(await keys("demo-team", "/tickets?status=resolved&resolved=older")).toEqual([
+      "SUP-10",
+      "SUP-9",
+    ]);
     // The demo customer sees only their own.
-    expect(await keys("demo-customer", "/tickets?resolved=older")).toEqual(["SUP-9"]);
-    const nav = parse((await asDemo("demo-customer").get("/tickets")).text).querySelector(
-      "nav[aria-label='Resolved tickets by age']",
-    );
+    expect(await keys("demo-customer", "/tickets?status=resolved&resolved=older")).toEqual([
+      "SUP-9",
+    ]);
+    const nav = parse(
+      (await asDemo("demo-customer").get("/tickets?status=resolved")).text,
+    ).querySelector("nav[aria-label='Resolved tickets by age']");
     expect(nav?.querySelectorAll("a").map((link) => link.text.replace(/\s+/g, " ").trim())).toEqual(
-      ["Last 14 days", "Older 1", "Any age"],
+      ["Any age", "Last 14 days", "Older 1"],
     );
   });
 

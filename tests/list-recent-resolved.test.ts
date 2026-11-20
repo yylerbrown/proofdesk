@@ -4,9 +4,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Actor } from "../src/server/actor.js";
 import { as, buildTestApp, customerOne, customerTwo, teamActor } from "./helpers.js";
 
-// "All" on the ticket list shows the open tickets and the ones resolved in the last 14 days,
-// counted from when each last became Resolved. "Resolved" and a search still find every resolved
-// ticket. "All" has a filter by age, "Resolved:", that shows the older ones or every one.
+// "All" on the ticket list shows every ticket, and "Open" every ticket that is not resolved.
+// "Resolved" has a small filter by age: any age (the default), the last 14 days, counted from
+// when each ticket last became Resolved, or older. No other status link has it, nor a search.
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -56,6 +56,14 @@ function choices(nav: NonNullable<Awaited<ReturnType<typeof ageFilter>>>) {
   }));
 }
 
+/** The words of each status filter, with its count. */
+async function statusLinks(app: Express, who: Actor, address = "/tickets") {
+  const html = parse((await as(app, who).get(address)).text);
+  return html
+    .querySelectorAll("nav[aria-label='Filter by status'] a")
+    .map((link) => link.text.replace(/\s+/g, " ").trim());
+}
+
 /** The count beside each status filter. */
 async function counts(app: Express, who: Actor, address = "/tickets") {
   const html = parse((await as(app, who).get(address)).text);
@@ -91,142 +99,234 @@ async function setup() {
 }
 
 describe("All on the ticket list", () => {
-  it("leaves out tickets resolved more than 14 days ago, and keeps the recent ones", async () => {
+  it("shows every ticket, open ones first, with no filter by age", async () => {
     const { app } = await setup();
-    expect(await keys(app, teamActor, "/tickets")).toEqual(["SUP-3", "SUP-2"]);
-    expect(await keys(app, customerOne, "/tickets")).toEqual(["SUP-3", "SUP-2"]);
-    // With every sort and with the owner toggles too.
-    expect(await keys(app, teamActor, "/tickets?sort=key&direction=asc")).toEqual([
-      "SUP-2",
+    expect(await keys(app, teamActor, "/tickets")).toEqual([
       "SUP-3",
+      "SUP-5",
+      "SUP-4",
+      "SUP-2",
+      "SUP-1",
     ]);
-    expect(await keys(app, teamActor, "/tickets?owner=me")).toEqual(["SUP-2"]);
+    expect(await keys(app, customerOne, "/tickets")).toEqual(["SUP-3", "SUP-2", "SUP-1"]);
+    expect(await ageFilter(app, teamActor)).toBeNull();
+    // An old address that asked "All" for an age shows every ticket too.
+    expect(await keys(app, teamActor, "/tickets?resolved=older")).toHaveLength(5);
+    expect(await ageFilter(app, teamActor, "/tickets?resolved=older")).toBeNull();
+    const html = parse((await as(app, teamActor).get("/tickets")).text);
+    expect(html.querySelector("main")!.text).not.toContain("14 days");
+  });
+});
+
+describe("Open on the ticket list", () => {
+  it("sits between All and New with its count, for the customer and the team", async () => {
+    const { app } = await setup();
+    expect(await statusLinks(app, teamActor)).toEqual([
+      "All",
+      "Open 1",
+      "New 1",
+      "In Progress 0",
+      "Resolved 4",
+      "Archived",
+    ]);
+    expect(await statusLinks(app, customerOne)).toEqual([
+      "All",
+      "Open 1",
+      "New 1",
+      "In Progress 0",
+      "Resolved 2",
+    ]);
   });
 
-  it("keeps every resolved ticket under Resolved, and in a search for its title", async () => {
+  it("shows New and In Progress together, and is undone by pressing it again", async () => {
     const { app } = await setup();
+    await as(app, teamActor).post("/api/tickets/SUP-3/take-and-start");
+    await as(app, customerOne)
+      .post("/api/tickets")
+      .send({ title: "Fax is slow", description: "x" });
+    expect(await keys(app, teamActor, "/tickets?status=open")).toEqual(["SUP-6", "SUP-3"]);
+    expect(await keys(app, customerOne, "/tickets?status=open")).toEqual(["SUP-6", "SUP-3"]);
+    const html = parse((await as(app, teamActor).get("/tickets?status=open")).text);
+    expect(html.querySelector("main h1")?.text).toBe("All tickets");
+    expect(html.querySelector("title")?.text).toContain("Open tickets");
+    const open = html
+      .querySelectorAll("nav[aria-label='Filter by status'] a")
+      .find((link) => link.text.startsWith("Open"))!;
+    expect(open.getAttribute("aria-current")).toBe("page");
+    expect(open.getAttribute("href")).toBe("/tickets");
+    expect(await ageFilter(app, teamActor, "/tickets?status=open")).toBeNull();
+  });
+
+  it("works with the owner filter, the search, the sort and the bulk bar", async () => {
+    const { app } = await setup();
+    await as(app, customerOne)
+      .post("/api/tickets")
+      .send({ title: "Fax is slow", description: "x" });
+    await as(app, teamActor).post("/api/tickets/SUP-6/take");
+    expect(await keys(app, teamActor, "/tickets?status=open&owner=me")).toEqual(["SUP-6"]);
+    expect(await keys(app, teamActor, "/tickets?status=open&owner=none")).toEqual(["SUP-3"]);
+    expect(await keys(app, teamActor, "/tickets?status=open&q=login")).toEqual(["SUP-3"]);
+    expect(await keys(app, teamActor, "/tickets?status=open&sort=key&direction=asc")).toEqual([
+      "SUP-3",
+      "SUP-6",
+    ]);
+    const html = parse((await as(app, teamActor).get("/tickets?status=open")).text);
+    expect(html.querySelector("form.list-search input[name=status]")?.getAttribute("value")).toBe(
+      "open",
+    );
+    expect(html.querySelector("form#bulk-form")?.getAttribute("action")).toBe(
+      "/tickets/bulk?status=open",
+    );
+    // Nothing matches: the sentence names the link.
+    const none = parse((await as(app, teamActor).get("/tickets?status=open&q=printer")).text);
+    expect(none.querySelector("p.empty")?.text).toContain('No open tickets match "printer".');
+  });
+
+  it("says there are no open tickets when every ticket is resolved", async () => {
+    const { app } = buildTestApp();
+    await as(app, customerOne)
+      .post("/api/tickets")
+      .send({ title: "Printer jams", description: "x" });
+    await resolve(app, "SUP-1");
+    const html = parse((await as(app, customerOne).get("/tickets?status=open")).text);
+    expect(html.querySelector("p.empty")?.text).toContain("No open tickets.");
+  });
+});
+
+describe("Resolved on the ticket list", () => {
+  it("offers any age first, lit, then the last 14 days and the older ones with their count", async () => {
+    const { app } = await setup();
+    const nav = (await ageFilter(app, teamActor, "/tickets?status=resolved"))!;
+    // No "Resolved:" label: the group follows the lit Resolved link.
+    expect(nav.querySelector(".filter-label")).toBeNull();
+    expect(nav.text).not.toContain("Resolved:");
+    expect(choices(nav)).toEqual([
+      { words: "Any age", href: "/tickets?status=resolved", lit: true },
+      { words: "Last 14 days", href: "/tickets?status=resolved&resolved=recent", lit: false },
+      { words: "Older 3", href: "/tickets?status=resolved&resolved=older", lit: false },
+    ]);
     expect(await keys(app, teamActor, "/tickets?status=resolved")).toEqual([
       "SUP-5",
       "SUP-4",
       "SUP-2",
       "SUP-1",
     ]);
-    expect(await keys(app, teamActor, "/tickets?q=printer")).toEqual(["SUP-1"]);
-    expect(await keys(app, customerOne, "/tickets?q=printer")).toEqual(["SUP-1"]);
-    // A search finds every age, so there is no filter by age while one is typed.
-    expect(await ageFilter(app, teamActor, "/tickets?q=printer")).toBeNull();
+    // The old address for any age answers as the default.
+    const any = (await ageFilter(app, teamActor, "/tickets?status=resolved&resolved=any"))!;
+    expect(choices(any).map((choice) => choice.lit)).toEqual([true, false, false]);
   });
 
-  it("counts a ticket reopened and resolved again from the last time", async () => {
+  it("shows only the recent ones or only the older ones, and keeps the other filters", async () => {
+    const { app } = await setup();
+    expect(await keys(app, teamActor, "/tickets?status=resolved&resolved=recent")).toEqual([
+      "SUP-2",
+    ]);
+    expect(await keys(app, teamActor, "/tickets?status=resolved&resolved=older")).toEqual([
+      "SUP-5",
+      "SUP-4",
+      "SUP-1",
+    ]);
+    const older = (await ageFilter(app, teamActor, "/tickets?status=resolved&resolved=older"))!;
+    expect(choices(older).map((choice) => choice.lit)).toEqual([false, false, true]);
+    // Each choice keeps the owner toggle and the sort, and the owner toggles keep it.
+    const kept = (await ageFilter(
+      app,
+      teamActor,
+      "/tickets?status=resolved&owner=me&sort=title&direction=asc",
+    ))!;
+    expect(choices(kept)[2]).toEqual({
+      words: "Older 3",
+      href: "/tickets?status=resolved&owner=me&resolved=older&sort=title&direction=asc",
+      lit: false,
+    });
+    const html = parse(
+      (await as(app, teamActor).get("/tickets?status=resolved&resolved=older")).text,
+    );
+    expect(html.querySelector("nav[aria-label='Filter by owner'] a")?.getAttribute("href")).toBe(
+      "/tickets?status=resolved&owner=me&resolved=older",
+    );
+    // Leaving Resolved leaves its age behind.
+    const all = html
+      .querySelectorAll("nav[aria-label='Filter by status'] a")
+      .find((link) => link.text.startsWith("Resolved"))!;
+    expect(all.getAttribute("href")).toBe("/tickets");
+  });
+
+  it("has no filter by age on the other links or in a search, which show every age", async () => {
+    const { app } = await setup();
+    for (const address of ["/tickets?status=new", "/tickets?status=in_progress"]) {
+      expect(await ageFilter(app, teamActor, address), address).toBeNull();
+    }
+    expect(await ageFilter(app, teamActor, "/tickets?status=resolved&q=printer")).toBeNull();
+    expect(await keys(app, teamActor, "/tickets?status=resolved&q=printer")).toEqual(["SUP-1"]);
+    expect(await keys(app, teamActor, "/tickets?status=new&resolved=older")).toEqual(["SUP-3"]);
+  });
+
+  it("counts from the last time a reopened ticket was resolved", async () => {
     const { app } = await setup();
     const reopened = await as(app, teamActor)
       .post("/api/tickets/SUP-1/reopen")
       .send({ reason: "It came back." });
     expect(reopened.status, reopened.text).toBe(200);
     await resolve(app, "SUP-1");
-    expect(await keys(app, teamActor, "/tickets")).toEqual(["SUP-3", "SUP-2", "SUP-1"]);
-  });
-
-  it("offers the last 14 days, the older ones with their count, and any age", async () => {
-    const { app } = await setup();
-    const nav = (await ageFilter(app, teamActor))!;
-    expect(nav.querySelector(".filter-label")?.text).toBe("Resolved:");
-    expect(choices(nav)).toEqual([
-      { words: "Last 14 days", href: "/tickets", lit: true },
-      { words: "Older 3", href: "/tickets?resolved=older", lit: false },
-      { words: "Any age", href: "/tickets?resolved=any", lit: false },
-    ]);
-    // The line under the list it replaces is gone.
-    const html = parse((await as(app, teamActor).get("/tickets")).text);
-    expect(html.querySelector(".older-resolved")).toBeNull();
-    expect(html.querySelector("main")!.text).not.toContain("older resolved");
-  });
-
-  it("shows only the older ones, or every ticket, and keeps the other filters", async () => {
-    const { app } = await setup();
-    expect(await keys(app, teamActor, "/tickets?resolved=older")).toEqual([
-      "SUP-5",
-      "SUP-4",
-      "SUP-1",
-    ]);
-    expect(await keys(app, teamActor, "/tickets?resolved=any")).toEqual([
-      "SUP-3",
-      "SUP-5",
-      "SUP-4",
+    expect(await keys(app, teamActor, "/tickets?status=resolved&resolved=recent")).toEqual([
       "SUP-2",
       "SUP-1",
     ]);
-    const older = (await ageFilter(app, teamActor, "/tickets?resolved=older"))!;
-    expect(choices(older).map((choice) => choice.lit)).toEqual([false, true, false]);
-    // Each choice keeps the owner toggle and the sort, and the owner toggles keep it.
-    const kept = (await ageFilter(app, teamActor, "/tickets?owner=me&sort=title&direction=asc"))!;
-    expect(choices(kept)[1]).toEqual({
-      words: "Older 3",
-      href: "/tickets?owner=me&resolved=older&sort=title&direction=asc",
-      lit: false,
-    });
-    const html = parse((await as(app, teamActor).get("/tickets?resolved=older")).text);
-    expect(html.querySelector("nav[aria-label='Filter by owner'] a")?.getAttribute("href")).toBe(
-      "/tickets?owner=me&resolved=older",
-    );
-    // Not on the other filters, nor in a search, which already show every age.
-    expect(await ageFilter(app, teamActor, "/tickets?status=resolved")).toBeNull();
-    expect(await ageFilter(app, teamActor, "/tickets?status=new")).toBeNull();
-    expect(await keys(app, teamActor, "/tickets?status=new&resolved=older")).toEqual(["SUP-3"]);
   });
 
-  it("counts only a customer's own tickets, and says when none is older", async () => {
+  it("counts only a customer's own tickets", async () => {
     const { app } = await setup();
-    expect(choices((await ageFilter(app, customerOne))!)[1]?.words).toBe("Older 1");
-    expect(choices((await ageFilter(app, customerTwo))!)[1]?.words).toBe("Older 2");
-    expect(await keys(app, customerOne, "/tickets?resolved=older")).toEqual(["SUP-1"]);
-    // Customer two has nothing open or recent, and is not told they never filed a ticket.
-    const html = parse((await as(app, customerTwo).get("/tickets")).text);
-    expect(html.querySelector("p.empty")?.text).toContain("No open tickets.");
+    const older = async (who: Actor) =>
+      choices((await ageFilter(app, who, "/tickets?status=resolved"))!)[2]?.words;
+    expect(await older(customerOne)).toBe("Older 1");
+    expect(await older(customerTwo)).toBe("Older 2");
+    expect(await keys(app, customerOne, "/tickets?status=resolved&resolved=older")).toEqual([
+      "SUP-1",
+    ]);
   });
 
-  it("shows no filter by age when no resolved ticket is older", async () => {
+  it("shows the filter by age whenever there is a resolved ticket, and none without one", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne)
       .post("/api/tickets")
       .send({ title: "Printer jams", description: "x" });
+    expect(await ageFilter(app, teamActor, "/tickets?status=resolved")).toBeNull();
     await resolve(app, "SUP-1");
-    expect(await keys(app, teamActor, "/tickets")).toEqual(["SUP-1"]);
-    expect(await ageFilter(app, teamActor)).toBeNull();
-    // Asked for in the address, it shows, so its lit choice can be undone.
-    const asked = (await ageFilter(app, teamActor, "/tickets?resolved=older"))!;
-    expect(choices(asked)[1]).toEqual({
-      words: "Older 0",
-      href: "/tickets?resolved=older",
-      lit: true,
-    });
-    const html = parse((await as(app, teamActor).get("/tickets?resolved=older")).text);
+    const nav = (await ageFilter(app, teamActor, "/tickets?status=resolved"))!;
+    expect(choices(nav)[2]?.words).toBe("Older 0");
+    const html = parse(
+      (await as(app, teamActor).get("/tickets?status=resolved&resolved=older")).text,
+    );
     expect(html.querySelector("p.empty")?.text).toContain(
       "No tickets were resolved more than 14 days ago.",
     );
   });
 
-  it("says the age when only older tickets are shown and the owner filter leaves none", async () => {
+  it("says the age when one is chosen and the owner filter leaves none", async () => {
     const { app } = await setup();
-    // SUP-3 is open and nobody owns it, so the sentence must not say there is no such ticket.
-    expect(await keys(app, teamActor, "/tickets?owner=none")).toEqual(["SUP-3"]);
-    const html = parse((await as(app, teamActor).get("/tickets?owner=none&resolved=older")).text);
+    const address = "/tickets?status=resolved&owner=none&resolved=recent";
+    const html = parse((await as(app, teamActor).get(address)).text);
     const empty = html.querySelector("p.empty");
     expect(empty?.text.replace(/\s+/g, " ")).toContain(
-      "No tickets that nobody owns were resolved more than 14 days ago.",
+      "No tickets that nobody owns were resolved in the last 14 days.",
     );
     // Its link clears the owner filter and keeps the age.
-    expect(empty?.querySelector("a")?.getAttribute("href")).toBe("/tickets?resolved=older");
+    expect(empty?.querySelector("a")?.getAttribute("href")).toBe(
+      "/tickets?status=resolved&resolved=recent",
+    );
   });
 
   it("leaves the counts beside the filters unchanged", async () => {
     const { app } = await setup();
-    // New, In Progress, Resolved: every resolved ticket, old and new.
-    expect(await counts(app, teamActor)).toEqual([1, 0, 4]);
-    expect(await counts(app, customerOne)).toEqual([1, 0, 2]);
+    // Open, New, In Progress, Resolved: every resolved ticket, old and new.
+    expect(await counts(app, teamActor)).toEqual([1, 1, 0, 4]);
+    expect(await counts(app, customerOne)).toEqual([1, 1, 0, 2]);
   });
+});
 
-  it("leaves the JSON API's list as it was: every ticket by default", async () => {
+describe("the JSON API's list", () => {
+  it("is as it was: every ticket by default, and no open filter", async () => {
     const { app } = await setup();
     const listed = await as(app, teamActor).get("/api/tickets");
     expect(listed.status).toBe(200);
@@ -238,5 +338,6 @@ describe("All on the ticket list", () => {
       "SUP-4",
       "SUP-5",
     ]);
+    expect((await as(app, teamActor).get("/api/tickets?status=open")).status).toBe(400);
   });
 });
