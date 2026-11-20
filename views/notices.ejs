@@ -1,6 +1,7 @@
 <%- include("header") %>
 <div class="column notices">
-<p class="back"><a href="/tickets/<%= ticket.key %>">Back to <%= ticket.key %></a></p>
+<%# The ticket pages' way back, one step further: the list, the ticket, then this page. %>
+<p class="back"><a href="/tickets"><%= forTeam ? "All tickets" : "My tickets" %></a> / <a href="/tickets/<%= ticket.key %>"><%= ticket.key %></a> / Emails</p>
 <h1>Emails sent about this ticket</h1>
 <p><strong class="user-text"><%= ticket.title %></strong></p>
 <p class="notices-lead"><%= forTeam ? "What this ticket emailed its customer and owner, newest first." : "What this ticket emailed you, newest first." %></p>

@@ -129,7 +129,7 @@ describe("the customer's line under the title", () => {
     const standing = (await page(app, customerOne)).querySelector(".ticket-standing")!;
     expect(standing.text).toMatch(/^Resolved, customer confirmed on \d{1,2} \w{3} \d{4}$/);
     expect(standing.querySelector("time")).not.toBeNull();
-    expect(standing.querySelector("img.tick")?.getAttribute("alt")).toBe("");
+    expect(standing.querySelector("span.tick")?.getAttribute("aria-hidden")).toBe("true");
   });
 });
 

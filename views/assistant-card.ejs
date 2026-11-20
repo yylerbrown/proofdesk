@@ -39,9 +39,9 @@
       <% for (const scenario of spec.scenarios) { %>
       <li>
         <p><strong class="user-text"><%= scenario.title %></strong></p>
-        <p class="user-text">Given <%= scenario.given %></p>
-        <p class="user-text">When <%= scenario.when %></p>
-        <p class="user-text">Then <%= scenario.then %></p>
+        <p class="user-text">Given <%= afterLeadWord(scenario.given) %></p>
+        <p class="user-text">When <%= afterLeadWord(scenario.when) %></p>
+        <p class="user-text">Then <%= afterLeadWord(scenario.then) %></p>
         <% if (scenario.test_name) { %><p><small>Test: <code class="user-text"><%= scenario.test_name %></code></small></p><% } %>
         <p><small><%= scenario.has_evidence ? "Evidence names this scenario." : "No evidence names this scenario yet." %></small></p>
       </li>

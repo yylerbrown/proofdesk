@@ -43,7 +43,10 @@ describe("the ticket page's spacing", () => {
     // With no messages yet, the message box sits straight under the hairline's 24.
     expect(ruleFor("#conversation + .ticket-last-row")).toContain("margin-top: 0;");
     expect(ruleFor(".ticket-more-row")).toContain("margin-top: var(--pd-space-3);");
-    expect(ruleFor(".ticket-more-row")).toContain("gap: var(--pd-space-3) var(--pd-space-5);");
+    // History and More options stack, 12 apart, at every width.
+    expect(ruleFor(".ticket-more-row > details + details")).toContain(
+      "margin-top: var(--pd-space-3);",
+    );
   });
 });
 

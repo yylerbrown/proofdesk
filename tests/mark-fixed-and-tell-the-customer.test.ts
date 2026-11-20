@@ -138,7 +138,7 @@ describe("the customer's answer to a ticket marked fixed", () => {
     expect(page.querySelector(".ticket-standing")?.text.trim()).toMatch(
       /^Resolved, customer confirmed on /,
     );
-    expect(page.querySelector(".ticket-standing img.tick")).not.toBeNull();
+    expect(page.querySelector(".ticket-standing span.tick")).not.toBeNull();
     expect(page.querySelector("#did-this-fix-it")).toBeNull();
   });
 

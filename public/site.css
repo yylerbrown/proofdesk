@@ -1,7 +1,7 @@
 /*
  * The site's own rules. Colours, sizes and fonts come from theme.css; this file only uses their
  * names. Hierarchy comes from weight and grey, structure from spacing. Colour is spent only on
- * meaning: a status dot, an amber internal note, red for destructive actions, and the lime tick
+ * meaning: a status dot, an amber internal note, red for destructive actions, and the green tick
  * when the customer says yes.
  */
 
@@ -190,9 +190,15 @@ main > form,
  */
 .assistant-card {
   margin-bottom: var(--pd-space-5);
-  padding: var(--pd-space-3) var(--pd-space-4);
+  padding: var(--pd-space-4) var(--pd-space-5);
   border: var(--pd-hairline);
   border-radius: var(--pd-radius-lg);
+}
+/* The same inner padding as the step's card beside it, on a phone too. */
+@media (max-width: 639px) {
+  .assistant-card {
+    padding: var(--pd-space-4);
+  }
 }
 .assistant-card > p {
   margin-bottom: var(--pd-space-2);
@@ -941,11 +947,13 @@ ul.role-lines li {
   gap: var(--pd-space-2) var(--pd-space-5);
   margin-bottom: var(--pd-space-3);
 }
+/* The search box follows the filters on their row when it fits, and otherwise starts a row of its
+   own at the left, never alone at the right. */
 form.list-search {
   --pico-group-box-shadow-focus-with-input: none;
   flex: 1 1 16rem;
   max-width: 24rem;
-  margin: 0 0 0 auto;
+  margin: 0;
 }
 /*
  * The box is round at both ends in every view. A filtered or sorted list puts hidden fields ahead
@@ -1043,7 +1051,6 @@ table.tickets thead .sort-label {
 @media (max-width: 639px) {
   form.list-search {
     max-width: none;
-    margin-left: 0;
   }
   .list-sort {
     display: block;
@@ -1118,6 +1125,17 @@ table.tickets .turn-tag {
   color: var(--pd-muted);
   font-size: var(--pd-text-sm);
   white-space: nowrap;
+}
+/*
+ * Below 1250 pixels the tag sits on its own line under the status word, so a long one never
+ * widens the Status column and squeezes the titles onto two lines. A phone stacks the row its
+ * own way, below.
+ */
+@media (min-width: 640px) and (max-width: 1249px) {
+  table.tickets .turn-tag {
+    display: block;
+    margin-left: 0;
+  }
 }
 /*
  * The Proof column: one mark the size of a status icon, or nothing. "Says what would prove it"
@@ -1245,6 +1263,13 @@ table.tickets td.title-cell a::after {
   table.tickets td:is(:nth-child(3), :nth-child(5)) {
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+}
+/* Up to 1250 pixels the status tag sits under the status word, so the column needs only the
+   width of the longest of the two, and the titles keep the rest. */
+@media (min-width: 1100px) and (max-width: 1249px) {
+  table.tickets th:nth-child(3) {
+    width: 12rem;
   }
 }
 /*
@@ -1383,6 +1408,10 @@ small.similar-ticket[hidden] {
   small.similar-ticket > a {
     overflow: visible;
     overflow-wrap: anywhere;
+  }
+  /* The status wraps as one piece, with the title's last word. */
+  small.similar-ticket > span:last-child {
+    white-space: nowrap;
   }
 }
 /*
@@ -1731,15 +1760,26 @@ article.ticket-card {
  * so it reads as the reason for the step. The tick sits before it only for the customer's Yes.
  */
 .ticket-card .card-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--pd-space-1) var(--pd-space-2);
   margin: var(--pd-space-5) 0 0;
   color: var(--pd-text);
 }
-.ticket-card .card-line a {
+/*
+ * A card that holds only this sentence starts it at the card's own padding, so the space above
+ * equals the space below.
+ */
+.ticket-card > .card-line:first-child {
+  margin-top: 0;
+}
+/*
+ * The line is running text: a link after the sentence, such as "Open SUP-5", stays on the
+ * sentence's last line when it fits, one space after it, and wraps like a word when it does not.
+ */
+.ticket-card .card-line > a {
   color: inherit;
+}
+.ticket-card .card-line .tick {
+  margin-right: var(--pd-space-2);
+  vertical-align: -1px;
 }
 /* The link to the customer's own message: small and grey after the line, never the line itself. */
 .ticket-card .card-line a.card-line-link {
@@ -1752,11 +1792,6 @@ article.ticket-card {
  */
 .ticket-card .card-line[tabindex="-1"]:focus {
   outline: none;
-}
-.ticket-card .card-line .tick {
-  flex: none;
-  width: 20px;
-  height: 20px;
 }
 .ticket-card .card-try a {
   color: var(--pd-text);
@@ -1872,12 +1907,12 @@ ul.evidence li:last-child {
 ul.evidence p {
   margin-bottom: var(--pd-space-1);
 }
+/* Body text in the evidence is one size, the size of its fields' values. */
 ul.evidence p:first-child {
-  font-weight: var(--pd-weight-medium);
+  font-size: var(--pd-text-sm);
 }
 ul.evidence p:first-child strong {
   color: var(--pd-muted);
-  font-size: var(--pd-text-sm);
   font-weight: var(--pd-weight-medium);
 }
 ul.evidence a {
@@ -1955,6 +1990,10 @@ article.entry.note {
   color: var(--pd-note-text);
   font-weight: var(--pd-weight-medium);
 }
+/* The day and the dot before it wrap as one, so the dot never ends a line alone. */
+.entry .byline-when {
+  white-space: nowrap;
+}
 /* Written by an AI agent: a small tag after the name, on a hairline chip. */
 .tag {
   display: inline-block;
@@ -1981,6 +2020,7 @@ details.history[open] > summary {
   margin-bottom: var(--pd-space-3);
 }
 details.history > summary,
+details.run-details > summary,
 details#reopen > summary,
 details.reply-fold > summary,
 details.more-options summary,
@@ -1998,6 +2038,7 @@ article.entry details.note-rest > summary,
   transition: color var(--pd-ease);
 }
 details.history > summary:hover,
+details.run-details > summary:hover,
 details#reopen > summary:hover,
 details.reply-fold > summary:hover,
 details.more-options summary:hover,
@@ -2010,6 +2051,7 @@ article.entry details.note-rest > summary:hover,
   color: var(--pd-text);
 }
 details.history > summary::after,
+details.run-details > summary::after,
 details#reopen > summary::after,
 details.reply-fold > summary::after,
 details.more-options summary::after,
@@ -2109,6 +2151,15 @@ details.history td:first-child {
 .ticket-description {
   margin-bottom: 0;
 }
+/* One paragraph gap between paragraphs, and a picture or the line standing in for one sits the
+   same gap under the words. */
+.ticket-description > p {
+  margin: 0;
+}
+.ticket-description > p + p,
+.ticket-page .ticket-description + :is(.pictures, p.picture-hidden) {
+  margin-top: var(--pd-space-4);
+}
 /*
  * Pictures under the words they came with: 80px squares, 8px apart and 8px under the words, so
  * four fit on one line at phone width. Each opens the full picture in a new tab.
@@ -2158,10 +2209,6 @@ details.history td:first-child {
    problem, and a text button that closes this one as its duplicate. The gap sits only between
    the two on one line, so on a narrow screen the button wraps to the line's left edge. */
 .possible-duplicate p {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  column-gap: var(--pd-space-2);
   margin: var(--pd-space-2) 0 0;
   color: var(--pd-muted);
   font-size: var(--pd-text-sm);
@@ -2169,13 +2216,17 @@ details.history td:first-child {
 .possible-duplicate a {
   color: var(--pd-muted);
 }
+/* The press that closes it as a duplicate is a second thing: a line of its own, at the same left
+   edge as the line above it. */
 .possible-duplicate button.link {
+  display: block;
   width: auto;
-  margin: 0;
+  margin: var(--pd-space-1) 0 0;
   padding: 0;
+  border: 0;
   font-size: inherit;
   line-height: inherit;
-  vertical-align: baseline;
+  text-align: start;
   text-decoration: underline;
 }
 
@@ -2220,16 +2271,13 @@ details.history td:first-child {
   line-height: 18px;
 }
 /*
- * Plain words are not a control, so they have no button padding: they start on the column's
- * edge, also when they wrap to a line of their own, and the line keeps a wider space between
- * its two facts.
+ * A fact this viewer cannot change keeps a menu's padding and an invisible edge, so its label and
+ * value sit where they would in the menu, on the same line, in every state. A long name wraps
+ * inside the column, and the fact wraps under Status when the line is too narrow for both.
  */
 .ticket-facts .fact {
-  padding-inline: 0;
-  border-inline-width: 0;
-}
-.ticket-facts:has(> .fact) {
-  column-gap: var(--pd-space-5);
+  flex-wrap: wrap;
+  max-width: 100%;
 }
 .ticket-facts .badge {
   line-height: 18px;
@@ -2409,10 +2457,25 @@ details.history td:first-child {
 .ticket-standing .tick {
   vertical-align: middle;
 }
-.ticket-standing .tick {
-  width: 20px;
-  height: 20px;
+/*
+ * The one tick on a ticket page: the list's "Customer confirmed" mark, the solid green circle
+ * with its check, at the size of the status marks beside it and 6px from its word, as theirs are.
+ */
+.ticket-page .tick {
+  display: inline-block;
+  flex: none;
+  width: var(--pd-badge-dot);
+  height: var(--pd-badge-dot);
   margin-right: 6px;
+  background-color: var(--pd-status-resolved);
+  -webkit-mask: url("/assets/proof-confirmed.svg") center / contain no-repeat;
+  mask: url("/assets/proof-confirmed.svg") center / contain no-repeat;
+}
+@media (forced-colors: active) {
+  .ticket-page .tick {
+    background-color: CanvasText;
+    forced-color-adjust: none;
+  }
 }
 .ticket-standing .standing-word {
   color: var(--pd-text);
@@ -2451,7 +2514,17 @@ details.history td:first-child {
 .step-form fieldset label input[type="radio"] {
   margin: 0;
 }
-/* The boxes a reason reveals: a short key box, and a wider one for where it is fixed. */
+/*
+ * The boxes a reason reveals share one layout: the label on its own line, its box under it. The
+ * key box is short and the box for where it is fixed a little wider; the notes take the width.
+ */
+.step-form label:is(.resolve-duplicate, .resolve-fixed-in, .resolve-note) {
+  display: block;
+}
+.step-form label:is(.resolve-duplicate, .resolve-fixed-in, .resolve-note) > :is(input, textarea) {
+  display: block;
+  margin-top: 6px;
+}
 .step-form .resolve-duplicate input {
   max-width: 16rem;
 }
@@ -2577,6 +2650,12 @@ form.resolve:not(:has(input[value="fixed_no_reply"]:checked)) .resolve-fixed-in 
   border-top: var(--pd-hairline);
   border-radius: 0;
 }
+/* First in the card, it starts at the card's own padding, with no line above it. */
+.ticket-card > .assistant-card:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
 
 /*
  * The hairline where the conversation begins, above its messages or, when there are none yet,
@@ -2644,56 +2723,32 @@ form.reply-box:not(:has(input[value="note"]:checked)) .note-hint {
   display: none;
 }
 /*
- * The second row: History, then More options, at the left, 24px apart. An open one steps out of
- * the row (its details element gives up its own box), so its content takes a full line under the
- * row while its own line stays where it was. Newer browsers wrap the content in ::details-content;
- * older ones place the content itself.
+ * The second row: History, then More options under it, at the left, 12px apart, at every width.
+ * Each opens its content directly under its own line, so a long History never stands between
+ * More options and its entries.
  */
 .ticket-more-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--pd-space-3) var(--pd-space-5);
   margin-top: var(--pd-space-3);
 }
 .ticket-more-row > details {
   margin: 0;
   border-bottom: 0;
 }
-.ticket-more-row > details[open] {
-  display: contents;
+.ticket-more-row > details + details {
+  margin-top: var(--pd-space-3);
 }
 /* Each line is its own box, so no line of the page's larger type adds space above it. */
 .ticket-more-row > details > summary {
   display: block;
 }
 .ticket-more-row > details[open] > summary {
-  margin-bottom: 0;
-}
-.ticket-more-row > details[open]::details-content,
-.ticket-more-row > details[open] > :not(summary) {
-  flex-basis: 100%;
-  order: 1;
-}
-/*
- * On a phone the two lines stack, and each opens its content directly under its own line, so a
- * long History never stands between More options and its entries.
- */
-@media (max-width: 639px) {
-  .ticket-more-row {
-    display: block;
-  }
-  .ticket-more-row > details[open] {
-    display: block;
-  }
-  .ticket-more-row > details + details {
-    margin-top: var(--pd-space-3);
-  }
+  margin-bottom: var(--pd-space-3);
 }
 
 /*
- * More options: every row one look, small and text-coloured with no underline. Rows that unfold
- * keep the right-pointing mark; rows that leave the page have none. Only Delete is red.
+ * More options: every row one look, small and text-coloured and underlined like the page's other
+ * quiet links, so each reads as something to press. Rows that unfold keep the right-pointing
+ * mark; rows that leave the page have none. Only Delete is red.
  */
 ul.more-list {
   margin: 0;
@@ -2715,11 +2770,12 @@ ul.more-list details > summary {
   color: var(--pd-text);
   font-size: var(--pd-text-sm);
   font-weight: var(--pd-weight-medium);
-  text-decoration: none;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }
 ul.more-list > li > a:hover,
 ul.more-list button.link:hover {
-  text-decoration: underline;
+  text-decoration-thickness: 2px;
 }
 ul.more-list details > summary:hover {
   color: var(--pd-text);
@@ -3032,7 +3088,7 @@ article.email .email-state {
   margin-right: var(--pd-space-2);
   padding: 0 6px;
   border: var(--pd-hairline);
-  border-radius: var(--pd-radius-sm);
+  border-radius: var(--pd-radius);
   font-size: var(--pd-text-xs);
   font-weight: var(--pd-weight-medium);
 }
@@ -3245,19 +3301,23 @@ textarea:focus-visible {
   color: var(--pd-muted);
 }
 /*
- * On a phone the two links and Hide are one tidy stack, each at the card's left edge and the same
- * distance apart. Each keeps a 44-pixel tap area without making its line taller.
+ * On a phone the two links and Hide are one tidy stack, each at the card's left edge: each is a
+ * 40-pixel row with its words in the middle, so they are evenly spaced and each keeps a 40-pixel
+ * tap area.
  */
 @media (max-width: 639px) {
   .demo-welcome-more {
     flex-direction: column;
     align-items: flex-start;
-    gap: 24px;
+    gap: 0;
   }
   .demo-welcome-more button.link {
-    display: inline-block;
-    margin-block: -12px;
-    padding-block: 12px;
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+    margin-block: 0;
+    padding-block: 0;
+    text-align: start;
   }
   .demo-welcome-more .demo-welcome-hide {
     margin-inline-start: 0;
@@ -3268,21 +3328,34 @@ textarea:focus-visible {
 .start-again {
   margin-bottom: var(--pd-space-5);
 }
-.about-demo > p {
+.about-demo > p,
+.about-demo .sample-batch > p {
   font-size: var(--pd-text-sm);
 }
-/* Its quiet form for a batch of made-up tickets: the line, then the two choices and the button
-   on one row where they fit, wrapping on a phone. */
+/* A link's name never breaks inside a hyphenated word such as "sign-in". */
+.welcome a.keep-together {
+  white-space: nowrap;
+}
+/* Its quiet form for a batch of made-up tickets: the line in the page's paragraph style, then
+   each label beside its box and the button, all one height, on one row where they fit,
+   wrapping on a phone. */
 .about-demo .sample-batch {
   display: flex;
   flex-wrap: wrap;
-  align-items: end;
-  gap: var(--pd-space-3);
+  align-items: center;
+  gap: var(--pd-space-3) var(--pd-space-4);
   margin-top: var(--pd-space-5);
   font-size: var(--pd-text-sm);
 }
 .about-demo .sample-batch > p {
   flex-basis: 100%;
+  margin: 0;
+  color: var(--pd-muted);
+}
+.about-demo .sample-batch label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pd-space-2);
   margin: 0;
 }
 .about-demo .sample-batch label,
@@ -3291,7 +3364,11 @@ textarea:focus-visible {
   width: auto;
   margin-bottom: 0;
 }
-.about-demo .sample-batch select {
+.about-demo .sample-batch :is(select, button) {
+  box-sizing: border-box;
+  height: 34px;
+  margin: 0;
+  padding-block: 0;
   font-size: inherit;
 }
 
@@ -3386,18 +3463,21 @@ button.copy {
 }
 
 /* Evidence fields, each on its own labelled line: the label small and muted, the value beside it. */
+/*
+ * The label column has one width in every list, so the values of two lists one above the other
+ * start at the same place. A label longer than it widens only its own list.
+ */
 dl.evidence-fields {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
+  grid-template-columns: minmax(7.5rem, max-content) minmax(0, 1fr);
   gap: 2px var(--pd-space-2);
   margin: 0 0 var(--pd-space-2);
   font-size: var(--pd-text-sm);
 }
+/* Every label in the evidence has one look: the small muted words of "Test:" above them. */
 dl.evidence-fields dt {
   color: var(--pd-muted);
-  font-size: var(--pd-text-xs);
-  font-weight: var(--pd-weight-semibold);
-  line-height: 1.6;
+  font-weight: var(--pd-weight-medium);
 }
 dl.evidence-fields dd {
   margin: 0;
@@ -3616,6 +3696,12 @@ main > form.bulk {
   margin: 0;
   font-size: var(--pd-text-sm);
 }
+/* The selects and Apply are one height, so the bar's controls read as one row. */
+.bulk-bar :is(select, button) {
+  box-sizing: border-box;
+  height: 34px;
+  padding-block: 0;
+}
 /* Pico squares the inner corners of a group's controls; these stand apart, so each keeps the
    round corners of the page's other small controls. */
 .bulk-bar[role="group"] > :is(select, input, button) {
@@ -3650,10 +3736,18 @@ main > form.bulk {
 }
 .bulk-dock .bulk-bar {
   box-sizing: border-box;
-  min-height: var(--bulk-row-height, 0px);
   align-content: center;
   margin: 0;
-  padding-block: 2px;
+}
+/*
+ * On a wide screen the filters are one short row, and the bar is at least its height, so it
+ * covers it exactly. On a phone the filters take several rows, so the bar takes only the height
+ * its controls need, in the same layout as the bar that came back with a message.
+ */
+@media (min-width: 640px) {
+  .bulk-dock .bulk-bar {
+    min-height: var(--bulk-row-height, 0px);
+  }
 }
 /*
  * While the bar shows, it sticks over the top of the list, so whatever the keyboard reaches next
@@ -3707,5 +3801,8 @@ table.tickets .bulk-tick[hidden] {
   }
   .bulk-bar {
     padding: var(--pd-space-3);
+  }
+  .bulk-bar :is(select, button) {
+    height: 40px;
   }
 }

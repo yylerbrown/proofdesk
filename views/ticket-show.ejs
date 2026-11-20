@@ -128,11 +128,13 @@
 <%# For the customer: where the ticket stands and whose turn it is, in plain words, in the small
     type of the team's line: the status mark and word, then the rest in grey. The tick takes the
     mark's place only after their own Yes. %>
-<p class="ticket-standing"><% if (standing.tick) { %><img src="/assets/mark.svg" alt="" width="20" height="20" class="tick" /><span class="standing-word"><%= statusLabels[ticket.status] %></span><% } else { %><%- include("status-badge", { status: ticket.status }) %><% } %><span class="standing-rest"><%= standing.rest %><% if (standing.day) { %><time datetime="<%= standing.day %>" data-day><%= formatDay(standing.day) %></time><% } %></span></p>
+<p class="ticket-standing"><% if (standing.tick) { %><span class="tick" aria-hidden="true"></span><span class="standing-word"><%= statusLabels[ticket.status] %></span><% } else { %><%- include("status-badge", { status: ticket.status }) %><% } %><span class="standing-rest"><%= standing.rest %><% if (standing.day) { %><time datetime="<%= standing.day %>" data-day><%= formatDay(standing.day) %></time><% } %></span></p>
 <% } %>
 
 <h2 class="visually-hidden">Description</h2>
-<p class="user-text ticket-description"><%= ticket.description %></p>
+<%# Each paragraph of the description is a paragraph of the page, so a blank line between two
+    makes one paragraph gap. %>
+<div class="ticket-description"><% for (const paragraph of paragraphs(ticket.description)) { %><p class="user-text"><%= paragraph %></p><% } %></div>
 <%- include("pictures", { pictures: ticketPictures, author: filerName }) %>
 
 <% if (ticket.where_url) { %>
@@ -212,7 +214,7 @@
   <p class="card-line">
     <%# The only tick inside the product, always with the words "Customer confirmed". The
         customer has it once already, in the line under the title. %>
-    <% if (card.line.tick && staff) { %><img src="/assets/mark.svg" alt="" width="20" height="20" class="tick" /><% } %>
+    <% if (card.line.tick && staff) { %><span class="tick" aria-hidden="true"></span><% } %>
     <%# The day is a <time>, so the visitor's browser writes it in their own time zone. The span
         keeps the words and the day one sentence inside the line's row. %>
     <span><%= card.line.text %><% if (card.line.day) { %><time datetime="<%= card.line.day %>" data-day><%= formatDay(card.line.day) %></time><% } %><%= card.line.after %><% if (card.line.quote) { %> "<span class="user-text"><%= card.line.quote %></span>"<% } %></span>
@@ -328,7 +330,7 @@
     <% if (ticket.fix_check) { %><p class="resolve-fixed-in resolve-oath">By marking it fixed, you agree this is met: "<span class="user-text"><%= ticket.fix_check %></span>"</p><% } %>
     <label class="resolve-fixed-in">
       Fixed in (optional)
-      <input type="text" name="fixed_in" autocomplete="off" placeholder="a version, or live now" maxlength="120" value="<%= resolving.fixed_in ?? "" %>" <%= focusIf("resolve", "fixed_in") %> />
+      <input type="text" name="fixed_in" autocomplete="off" placeholder="A version, or live now" maxlength="120" value="<%= resolving.fixed_in ?? "" %>" <%= focusIf("resolve", "fixed_in") %> />
     </label>
     <% if (problem?.form === "resolve") { %><p><small id="resolve-error" role="alert"><%= problem.message %></small></p><% } %>
     <div class="form-actions">
@@ -428,7 +430,11 @@
 <article class="entry<% if (item.kind === "note") { %> note<% } %>" id="entry-<%= item.id %>">
   <header>
     <strong><%= item.author_name %></strong><% if (item.author_kind === "agent") { %> <span class="tag">AI assistant</span><% } %>
-    <small><% if (item.author_kind !== "agent") { %><%= item.author_role %> · <% } %><% if (item.kind === "note") { %><span class="note-label">internal note, the customer does not see this</span> · <% } %><%- include("time", { iso: item.created_at }) %></small>
+    <%# The role word only when the name does not already end with it, and the day keeps its dot,
+        so a wrapped byline never ends in a stray "·". %>
+    <% const role = item.author_kind === "agent" ? null : roleAfterName(item.author_name, item.author_role, demo); %>
+    <% const dotBeforeDay = item.author_kind !== "agent" || item.kind === "note"; %>
+    <small><% if (role) { %><%= role %> <% } %><% if (item.kind === "note") { %><% if (role) { %>· <% } %><span class="note-label">internal note, the customer does not see this</span> <% } %><span class="byline-when"><% if (dotBeforeDay) { %>· <% } %><%- include("time", { iso: item.created_at }) %></span></small>
   </header>
   <%# An assistant's long note shows its first paragraph, and the rest behind one line. A
       person's message is always whole. %>

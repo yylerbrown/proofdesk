@@ -429,6 +429,19 @@ export function describeEvent(event: TicketEvent, facts: EventFacts = {}): strin
 }
 
 /**
+ * Text split into its paragraphs at blank lines, so each one is drawn as a paragraph of its own
+ * and several blank lines in a row make one paragraph gap. Single line breaks stay inside their
+ * paragraph. Text with no words is one empty paragraph.
+ */
+export function paragraphs(text: string): string[] {
+  const parts = text
+    .trim()
+    .split(/\r?\n(?:[ \t]*\r?\n)+/)
+    .filter((part) => part.trim() !== "");
+  return parts.length > 0 ? parts : [""];
+}
+
+/**
  * A note split at its first blank line: the first paragraph, and the rest, or null when the
  * note is one paragraph. Windows line endings count as line endings.
  */
@@ -437,6 +450,30 @@ export function firstParagraph(text: string): { first: string; rest: string | nu
   const first = paragraphs[0] ?? "";
   const rest = paragraphs.slice(1).join("\n\n").trim();
   return { first, rest: rest === "" ? null : rest };
+}
+
+/**
+ * A person's role word to print after their name. On the demo, whose made-up people cannot
+ * choose their names, it is left out when the name already ends with it, as "Demo Customer"
+ * does, so a byline never reads "Demo Customer customer". Elsewhere it is always printed, so a
+ * name a person chose, such as "Bo Team", can never stand in for the role.
+ */
+export function roleAfterName(name: string, role: string | null, onDemo: boolean): string | null {
+  if (role === null || !onDemo) return role;
+  const lastWord = name.trim().split(/\s+/).pop() ?? "";
+  return lastWord.toLowerCase() === role.toLowerCase() ? null : role;
+}
+
+/**
+ * The words after "Given", "When" or "Then" in a suggested test, for display only: a first word
+ * written with a capital, as in "A price of 100", starts in lower case so the line reads as one
+ * sentence. "I" and words in capitals, such as "API", keep their capitals. The stored words do
+ * not change.
+ */
+export function afterLeadWord(words: string): string {
+  if (/^I\b/.test(words)) return words;
+  if (/^[A-Z](?:[a-z]|\s|$)/.test(words)) return words.charAt(0).toLowerCase() + words.slice(1);
+  return words;
 }
 
 /**

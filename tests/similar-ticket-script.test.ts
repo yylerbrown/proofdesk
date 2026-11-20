@@ -231,7 +231,7 @@ describe("the line", () => {
     showSimilar(api, SIGN_IN, make);
     expect(line.hidden).toBe(false);
     expect(lineText(line.nodes)).toBe(
-      "Similar ticket: SUP-3 Cannot sign in on my phone (opens in a new tab) (In Progress)",
+      "Similar ticket: SUP-3 Cannot sign in on my phone (opens in a new tab)\u00a0(In Progress)",
     );
     const link = line.nodes[1] as Fake;
     expect(link.tag).toBe("a");
@@ -241,7 +241,8 @@ describe("the line", () => {
     // screen only the title shortens and the status always shows whole.
     const [before, , status] = line.nodes as Fake[];
     expect([before!.tag, before!.textContent]).toEqual(["span", "Similar ticket: "]);
-    expect([status!.tag, status!.textContent]).toEqual(["span", " (In Progress)"]);
+    // A space that does not break keeps the status with the title's last word.
+    expect([status!.tag, status!.textContent]).toEqual(["span", "\u00a0(In Progress)"]);
   });
 
   it("puts a title in as text, never as markup", () => {
