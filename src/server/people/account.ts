@@ -14,7 +14,8 @@ import { roleWordOf, wayWordOf } from "./words.js";
 const ROLE_ALLOWS: Record<Role, string> = {
   customer: "You file tickets, follow your own and say whether a fix worked.",
   team: "You see every ticket and work on it with the team.",
-  admin: "You see every ticket, restore and delete tickets, and choose who is on the team.",
+  admin:
+    "You do everything a team member does, and also delete tickets and choose who is on the team.",
 };
 
 /** What the demo's read-only admin may do. */

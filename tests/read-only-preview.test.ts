@@ -45,7 +45,7 @@ describe("the ticket list for the read-only admin preview", () => {
       ".role-note",
     )!.text;
     expect(note).toBe(
-      "Read-only preview. On the real site an admin also restores archived tickets, deletes tickets permanently and manages assistant connections.",
+      "Read-only preview. On the real site an admin also deletes tickets permanently and manages assistant connections.",
     );
   });
 

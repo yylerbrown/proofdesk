@@ -200,7 +200,7 @@ describe("the ticket page", () => {
       ?.querySelectorAll("tbody td:last-child")
       .map((td) => td.text);
     // Each name with its role beside it.
-    expect(who).toEqual(["Customer One customer", "Team Member team"]);
+    expect(who).toEqual(["Customer One Customer", "Team Member Team member"]);
   });
 
   it("has the key and the title in the page title", async () => {

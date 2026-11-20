@@ -17,7 +17,7 @@
 <h1><%= mine ? "My tickets" : "All tickets" %></h1>
 <%# Only the read-only preview needs a word here: what it cannot do, and what a real admin can. An admin's People and Connections are in the header's person menu. %>
 <% if (viewer && viewer.readOnly) { %>
-<p class="role-note"><small>Read-only preview. On the real site an admin also restores archived tickets, deletes tickets permanently and manages assistant connections.</small></p>
+<p class="role-note"><small>Read-only preview. On the real site an admin also deletes tickets permanently and manages assistant connections.</small></p>
 <% } %>
 <%# The list, from its filters to its last row. With scripts on, the bar for ticked tickets is moved into the dock at its top, so it lies over the filter row without moving anything and stays in view while the list scrolls. %>
 <div class="list-area">
