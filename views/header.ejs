@@ -78,7 +78,8 @@
     </header>
     <main id="main" class="container">
       <% if (locals.refused) { %>
-      <p role="alert" class="refused"><%= locals.refused %></p>
+      <% const refusal = refusalForPage(locals.refused); %>
+      <p role="alert" class="refused"><%= refusal.text %><% if (refusal.seeWhoMay) { %> See <a href="/roles">who may do what</a>.<% } %></p>
       <% } %>
       <% if (locals.saved) { %>
       <p role="status" class="saved"><%= locals.saved %></p>

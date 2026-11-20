@@ -101,12 +101,12 @@ describe("the account page", () => {
         "Email notices",
       ]);
       expect(main.querySelector(".account-role")?.text, role).toBe(role);
-      // The role row is the role word alone: no sentence under it, and People stays in the menu.
+      // The role row is the role word and its one line of what it allows; People stays in the menu.
       expect(main.querySelector("a[href='/people']"), role).toBeNull();
       const words = main.text.replace(/\s+/g, " ");
       expect(words, role).not.toContain("From your GitHub account");
       expect(words, role).not.toContain("Ask an admin to add you");
-      expect(words, role).not.toContain("You see every ticket");
+      expect(main.querySelectorAll(".role-allows"), role).toHaveLength(1);
     }
   });
 

@@ -242,11 +242,11 @@ describe("the recorded run's page", () => {
 describe("bylines", () => {
   it("leave out, on the demo only, a role word the name already ends with", () => {
     expect(roleAfterName("Demo Customer", "customer", true)).toBeNull();
-    expect(roleAfterName("Demo Team Member", "team", true)).toBe("team");
-    expect(roleAfterName("Sam", "customer", true)).toBe("customer");
+    expect(roleAfterName("Demo Team Member", "team", true)).toBeNull();
+    expect(roleAfterName("Sam", "customer", true)).toBe("Customer");
     expect(roleAfterName("Sam", null, true)).toBeNull();
     // A name a person chose never hides their role.
-    expect(roleAfterName("Bo Team", "team", false)).toBe("team");
+    expect(roleAfterName("Bo Team", "team", false)).toBe("Team member");
   });
 
   it("read 'Demo Customer · day' in messages and in History's Who", async () => {

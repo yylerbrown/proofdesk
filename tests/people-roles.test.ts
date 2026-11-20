@@ -85,7 +85,7 @@ describe("a role chosen on the People page", () => {
 
     await setRole(boss, sam.id, "team");
     expect((await samBrowser.post("/api/tickets/SUP-1/take")).status).toBe(200);
-    expect(await samLabels()).toEqual(["team"]);
+    expect(await samLabels()).toEqual(["Team member"]);
 
     const handed = await samBrowser
       .post("/tickets/SUP-1/hand-off")
@@ -95,7 +95,7 @@ describe("a role chosen on the People page", () => {
     await setRole(boss, sam.id, "customer");
     const labels = await samLabels();
     expect(labels.length).toBeGreaterThan(0);
-    expect(labels.every((label) => label === "customer")).toBe(true);
+    expect(labels.every((label) => label === "Customer")).toBe(true);
   });
 
   it("makes someone an admin who can then open the People page", async () => {

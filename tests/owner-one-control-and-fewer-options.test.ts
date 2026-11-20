@@ -82,9 +82,12 @@ describe("the Owner menu", () => {
 
     // The old separate controls are gone, from the top and from More options.
     const text = owned.querySelector("main")!.text;
-    for (const gone of ["Hand off to", "Release it", "Team member"]) {
+    for (const gone of ["Hand off to", "Release it"]) {
       expect(text, gone).not.toContain(gone);
     }
+    // "Team member" is now only the role word in bylines and History, never a control's label.
+    const labels = owned.querySelectorAll("main label, main legend, main summary");
+    expect(labels.map((label) => label.text.trim())).not.toContain("Team member");
     expect(owned.querySelectorAll("form[action='/tickets/SUP-1/release']")).toHaveLength(1);
 
     // The customer sees the owner as plain words, with nothing to press.

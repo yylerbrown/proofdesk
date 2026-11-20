@@ -25,7 +25,7 @@ export const ROLES = ["customer", "team", "admin"] as const satisfies readonly R
 export const ROLE_LINES: Record<Role, string> = {
   customer: "Customer: files tickets and sees only their own.",
   team: "Team member: works on every ticket and writes internal notes.",
-  admin: "Admin: also restores and deletes tickets and chooses who is on the team.",
+  admin: "Admin: also deletes tickets and chooses who is on the team.",
 };
 
 /** Each role as it reads inside a sentence. */
@@ -146,7 +146,8 @@ export function createPeopleService(db: Db, config: Config) {
   /** The page is for admins only, and never for an assistant's connection. */
   function mayLook(actor: Actor): void {
     if (!can(actor, "list_people")) {
-      throw new HttpError(403, "forbidden", "Only an admin chooses who is on the team.");
+      const youAre = actor.kind === "person" ? ` You are ${ROLE_IN_A_SENTENCE[actor.role]}.` : "";
+      throw new HttpError(403, "forbidden", `Only an admin chooses who is on the team.${youAre}`);
     }
   }
 

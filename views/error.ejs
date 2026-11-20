@@ -1,9 +1,11 @@
 <%- include("header") %>
 <div class="column">
 <h1><%= title %></h1>
-<p><%= message %></p>
+<%# A refusal that says who may ends with the way to the table of every rule, as a link here. %>
+<% const refusal = refusalForPage(message); %>
+<p><%= refusal.text %><% if (refusal.seeWhoMay) { %> See <a href="/roles">who may do what</a>.<% } %></p>
 <%# A refusal from the ticket rules already says this; any other refusal gets it added. %>
-<% if (locals.status === 403 && locals.viewer && viewer.readOnly && !message.startsWith("The admin preview is read-only.")) { %>
+<% if (locals.status === 403 && locals.viewer && viewer.readOnly && !refusal.text.startsWith("The admin preview is read-only.")) { %>
 <p class="read-only-note">The admin preview is read-only. Use the menu at the top right to act as the customer or the team.</p>
 <% } %>
 <p><a href="/tickets">Go to the ticket list</a></p>
