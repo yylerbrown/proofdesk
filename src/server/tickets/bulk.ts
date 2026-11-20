@@ -4,7 +4,7 @@ import { HttpError, ValidationError } from "../errors.js";
 import { parse } from "../validation.js";
 import { requirePermission } from "./checks.js";
 import { readResolveInput } from "./resolve-and-reopen.js";
-import { RESOLVE_REASONS, TICKET_STATUSES, type TicketStatus } from "./schemas.js";
+import { blankIsMissing, RESOLVE_REASONS, TICKET_STATUSES, type TicketStatus } from "./schemas.js";
 import { LIST_PAGE_SIZE, type Ticket } from "./types.js";
 
 // One change made to many tickets at once, from the ticket list: a new status, or a new owner.
@@ -15,9 +15,6 @@ import { LIST_PAGE_SIZE, type Ticket } from "./types.js";
 
 // A form sends one ticked box as a text, and several as a list.
 const oneOrMany = (value: unknown) => (typeof value === "string" ? [value] : value);
-// A form sends an empty box for a choice left blank; that means it was not given.
-const blankIsMissing = (value: unknown) =>
-  typeof value === "string" && value.trim() === "" ? undefined : value;
 
 export const bulkChangeSchema = z.object({
   keys: z
