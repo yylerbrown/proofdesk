@@ -1,5 +1,23 @@
 # How the code is laid out
 
+Three kinds of caller reach one app through three doors, and every door calls the same ticket
+service, which asks the one permission table before it reads or writes SQLite:
+
+```mermaid
+flowchart LR
+  browser["A browser"] --> pages["Pages"]
+  program["A program using the JSON API"] --> api["JSON API, /api"]
+  assistant["An AI assistant over MCP"] --> mcp["MCP endpoint, /mcp"]
+  subgraph app["The one app"]
+    pages --> service["The ticket service"]
+    api --> service
+    mcp --> service
+    service --> table["The permission table, can()"]
+    service --> repos["Repositories"]
+  end
+  repos --> db[("SQLite")]
+```
+
 An Express server in TypeScript (strict) with a SQLite database through `better-sqlite3`, pages
 rendered on the server with EJS and the Pico CSS stylesheet, and GitHub sign-in through Better
 Auth. Inputs are checked with zod.
@@ -76,8 +94,7 @@ Shortcuts in the code that were kept for now, each with the plan for it.
   instead of reading it back, in about a dozen places. They match the SQL today and one that did
   not was fixed, but the pattern can drift.
 - **Two dispatch wrappers.** The JSON API and the MCP endpoint each wrap the same action table in
-  about 30 lines of their own. Two actions, `add_note` and `ask_owner_to_review`, parse their
-  input in that table rather than in the service.
+  about 30 lines of their own.
 - **A few queries outside the repositories.** The startup checks and the sign-in lookup run their
   own SQL. The error module imports a page helper, so the error types depend on page code.
 - **Loose ends in the schema.** `tickets.agent_id` is kept but never written. The later link
@@ -88,13 +105,28 @@ Shortcuts in the code that were kept for now, each with the plan for it.
   kept, and a demo seed recorded before the sample for assistants was named. They stay until the
   live databases are checked, then go or get a test.
 - **Test setup is copied between files.** Several files build their own ask-the-customer setup,
-  agent keys are issued by reading the admin page, and the people side of the permission rules
-  is picked by hand rather than generated from the table.
+  and agent keys are issued by reading the admin page. The people side of the permission matrix
+  test is written by hand on purpose, as an answer key independent of the table it checks.
 - **One file holds every page route.** `src/server/routes/pages.ts` is the largest file in the
   code, and `showTicket` builds the whole ticket page's model inline. The plan is one router per
   page and a ticket-page model that can be tested without a request.
 - **Demo rules branch inside the core.** `can()` and the ticket service check for the demo in
   place. The plan is a `src/server/demo/` folder and a visibility policy that is passed in.
+- **The staff list runs about two queries per row.** Each row looks up the customer's latest
+  answer, and a staff row also looks up the active handoff, so a full page of 100 tickets runs
+  over 200 statements.
+- **Display limits are also membership checks.** Asking the customer accepts only evidence among
+  the ticket's latest 200, and a reply based on a note finds the note only among the latest 200
+  entries, so an older valid one is refused.
+- **Hidden events can crowd the customer's history.** The history reads the latest 200 events and
+  then hides the team's own, so many internal notes can push older public events out of view.
+- **"Review requested" can go stale.** If the customer answers No after the owner asked them, an
+  assistant's earlier review request can show as current again on the list.
+- **A confirmed proof can still be edited.** The customer can change the proof after confirming
+  it, and the ticket still reads "Customer confirmed" beside the new words.
+- **No restore drill on the host.** A backup and restore were tried locally only.
+- **Nothing watches the two sites.** The host checks health every 30 seconds, but no one is told
+  when a site is down.
 - **One repository file for most tables.** `src/server/tickets/repository.ts` holds the SQL for
   about a dozen tables. The plan is one file per table behind a barrel file, so its importers do
   not change.

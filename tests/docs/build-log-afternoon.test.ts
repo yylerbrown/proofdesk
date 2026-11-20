@@ -8,7 +8,7 @@ const log = fs.readFileSync("docs/BUILD_LOG.md", "utf8");
 
 describe("the build log", () => {
   it("has a row for each pull request merged on the afternoon of 20 November", () => {
-    for (const pr of ["#214", "#215", "#216", "#217", "#218"]) {
+    for (const pr of ["#214", "#215", "#216", "#217", "#218", "#220", "#221", "#222", "#224"]) {
       expect(log).toMatch(new RegExp(`\\| ${pr} +\\|`));
     }
   });
@@ -23,6 +23,10 @@ describe("the build log", () => {
       ["203", "#218"],
       ["204", "#217"],
       ["205", "#219"],
+      ["206", "#220"],
+      ["207", "#221"],
+      ["208", "#224"],
+      ["209", "#222"],
     ]);
   });
 

@@ -18,7 +18,8 @@ named).
 - Rate limits: 20 new tickets per ten minutes per person, 10 sign-in starts a minute per
   address, and 120 writes per ten minutes across pages, API and tools, per person or connection
   (per address on the demo). The demo also has a hard row budget.
-- Answers to signed-in people are never cached. A request body over 100 KB is refused, except
+- Answers to signed-in people are never cached, except a ticket's pictures, which the browser may
+  keep privately for an hour. A request body over 100 KB is refused, except
   the two picture forms (2 MB each, at most 4).
 - The permission rules are tested on the real routes (`tests/roles.test.ts`,
   `tests/capabilities.test.ts`, `tests/connections.test.ts`).
@@ -31,8 +32,13 @@ What sign-in asks GitHub for, and how roles are given, is in the README under
 An admin opens a ticket, follows "Delete permanently" and types its key. In one transaction the
 ticket and every row that belongs to it are removed; only its number, the time and who deleted it
 are kept, and the number is never given to a new ticket. The deleted text is also wiped from the
-database files, and a test searches the raw files for it. Every table whose rows belong to a
+database files, and a test searches the raw files for it; a delete sent with an idempotency key
+leaves that wipe to the next checkpoint, and its answer says so. Every table whose rows belong to a
 ticket carries a `ticket_id` column, and a test fails if one is missing from the deletion.
+
+Saved retry answers go with the ticket they name. A change to many tickets at once sent with an
+idempotency key names no single ticket, so its saved answer, which can hold a resolution note,
+stays until a later keyed write clears saved answers over a day old.
 
 Permanent deletion does not reach backups, the host's snapshots of the disk until they expire, or
 anything already sent elsewhere.

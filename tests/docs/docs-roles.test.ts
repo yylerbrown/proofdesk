@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 
-// The docs describe roles as the product has them: one table in the code, a page computed from
-// the same check, a check before a role change, and a log of changes that cannot be edited.
+// The docs describe roles as the product has them: one table in the code, a page that uses the
+// server's check and adds ownership, a check before a role change, and a log of changes that cannot be edited.
 // Each claim is tied to the code that makes it true.
 
 const flat = (file: string) => fs.readFileSync(file, "utf8").replace(/\s+/g, " ");
@@ -17,16 +17,27 @@ function section(text: string, heading: string): string {
 describe("roles, in the README", () => {
   const roles = section(flat("README.md"), "## Sign-in and roles");
 
-  it("say who may do what is one table, and the page is computed from the server's check", () => {
+  it("say who may do what is one table, and the page uses the server's check plus ownership", () => {
     expect(roles).toContain("Who may do what is one table in the code");
     expect(roles).toContain("(src/server/permissions.ts)");
     expect(fs.readFileSync("src/server/permissions.ts", "utf8")).toContain("export function can(");
     expect(roles).toContain("**Who may do what** (`/roles`), open to anyone");
-    expect(roles).toContain("computed from the same check the server runs on every request");
-    expect(fs.readFileSync("src/server/routes/roles.ts", "utf8")).toContain('router.get("/roles"');
-    expect(flat("views/roles.ejs")).toContain(
-      "This page is computed from the same check the server runs on every request, so the page and the rules cannot disagree.",
+    expect(roles).toContain(
+      "uses the server's own permission check and adds who must own the ticket.",
     );
+    expect(fs.readFileSync("src/server/routes/roles.ts", "utf8")).toContain('router.get("/roles"');
+  });
+
+  // The page adds the ownership rules the ticket service keeps through a small overlay, so no
+  // doc may say the page and the rules cannot disagree.
+  it("never claim the page and the rules cannot disagree", () => {
+    const sentence =
+      "This page uses the server's own permission check and adds who must own the ticket.";
+    for (const file of ["README.md", "docs/TOUR.md", "docs/SPEC.md"]) {
+      expect(flat(file), file).not.toContain("so the page and the rules cannot disagree");
+    }
+    expect(flat("docs/TOUR.md")).toContain(`You should see: "${sentence}"`);
+    expect(fs.readFileSync("src/server/roles-table.ts", "utf8")).toMatch(/overlay/i);
   });
 
   it("say Check this change shows a role change before it is made, and changes are logged", () => {

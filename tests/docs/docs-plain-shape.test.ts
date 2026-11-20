@@ -68,7 +68,8 @@ describe("the guides' shape", () => {
   });
 
   it.each([
-    ["README.md", 175],
+    // The stack table, What it is built with, added its 17 lines and replaced a prose line.
+    ["README.md", 192],
     // The customer's confirm of a ticket marked fixed added its row, and suggested ways to
     // verify added two: the assistant's suggestion and the customer's pick. Listening for
     // requests and answering one added two more.
