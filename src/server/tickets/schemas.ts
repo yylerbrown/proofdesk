@@ -189,7 +189,8 @@ export const TICKET_LIST_FILTERS = [...TICKET_STATUSES, "all", "archived"] as co
 export type TicketListFilter = (typeof TICKET_LIST_FILTERS)[number];
 
 /**
- * The orders a list can be read in: open tickets first and newest first (the default), oldest
+ * The orders a list can be read in: open tickets first and newest first, with New tickets that
+ * say how to verify the fix ahead of the other open ones (the default), oldest
  * first, or the most recently changed first. The API keeps these words; each is also a sort.
  */
 export const LIST_ORDERS = ["open_first", "oldest", "updated"] as const;
@@ -260,7 +261,7 @@ export const listQuerySchema = z.object({
     .meta({ description: "Words to find in the title or description, in any case." }),
   order: z.enum(LIST_ORDERS).optional().meta({
     description:
-      "open_first (the default): open tickets newest first, then resolved ones. oldest: oldest first. updated: the most recently changed first. Pages are counted by position, so a ticket that changes while you page through may move onto a page you already read; oldest is the order that never moves. Pass order or sort, not both.",
+      "open_first (the default): New tickets that say how to verify the fix first, then the other open tickets, then resolved ones, each newest first. oldest: oldest first. updated: the most recently changed first. Pages are counted by position, so a ticket that changes while you page through may move onto a page you already read; oldest is the order that never moves. Pass order or sort, not both.",
   }),
   sort: z.enum(LIST_SORTS).optional().meta({
     description:
