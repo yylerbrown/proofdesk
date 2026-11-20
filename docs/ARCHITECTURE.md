@@ -78,6 +78,9 @@ once work has started.
   history; the outbox they are written to; and sending with nodemailer once a mail server is set.
 - `views/` holds the page templates; `public/theme.css` every colour and font.
 - `migrations/` holds numbered SQL files; `tests/` the tests; `ops/prove/` the patch checker.
+  `npm run test:coverage` measures over 2,600 tests at 92% of statements, 91% of branches, 94% of
+  functions and 92% of lines in `src`. The browser scripts are exercised by the Playwright tests,
+  which this measure does not count.
 
 ## Design debt
 

@@ -20,18 +20,18 @@ Resolved. The team marks a ticket fixed, and the customer can confirm it against
 
 ## What it is built with
 
-| Layer                          | Choice                                                        | Why                                                       |
-| ------------------------------ | ------------------------------------------------------------- | --------------------------------------------------------- |
-| Language and runtime           | TypeScript, strict, on Node 22.14 or newer                    | The compiler catches a wrong field before a test runs     |
-| Web framework                  | Express 5                                                     | Small and well known; it catches errors from async routes |
-| Pages                          | EJS rendered on the server, Pico CSS, small browser scripts   | Plain pages that need little to load                      |
-| Database                       | SQLite through better-sqlite3, 40 numbered SQL migrations     | One process and real transactions, a short local setup    |
-| Sign-in                        | Better Auth with GitHub; Microsoft is built and off until set | A maintained library rather than home-made sign-in        |
-| Validation and API description | zod for every input; zod-openapi writes `/api/openapi.json`   | One schema checks the input and describes it              |
-| AI assistants                  | An MCP endpoint at `/mcp`, built with the official MCP SDK    | Any MCP assistant uses the same actions as the JSON API   |
-| Tests                          | Vitest and Supertest on a real SQLite file; Playwright        | The tests run the real app and its SQL, not mocks         |
-| Hosting                        | A Docker image on Fly.io, one machine and one disk per site   | One small machine is enough for one SQLite file           |
-| CI                             | GitHub Actions on every push and pull request                 | Each push runs the checks a local run does, plus Docker   |
+| Layer                          | Choice                                                                        | Why                                                       |
+| ------------------------------ | ----------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Language and runtime           | TypeScript, strict, on Node 22.14 or newer                                    | The compiler catches a wrong field before a test runs     |
+| Web framework                  | Express 5                                                                     | Small and well known; it catches errors from async routes |
+| Pages                          | EJS rendered on the server, Pico CSS, small browser scripts                   | Plain pages that need little to load                      |
+| Database                       | SQLite through better-sqlite3, 40 numbered SQL migrations                     | One process and real transactions, a short local setup    |
+| Sign-in                        | Better Auth with GitHub; Microsoft is built and off until set                 | A maintained library rather than home-made sign-in        |
+| Validation and API description | zod for every input; zod-openapi writes `/api/openapi.json`                   | One schema checks the input and describes it              |
+| AI assistants                  | An MCP endpoint at `/mcp`, built with the official MCP SDK                    | Any MCP assistant uses the same actions as the JSON API   |
+| Tests                          | Vitest and Supertest on a real SQLite file; Playwright in Chromium and WebKit | The tests run the real app and its SQL, not mocks         |
+| Hosting                        | A Docker image on Fly.io, one machine and one disk per site                   | One small machine is enough for one SQLite file           |
+| CI                             | GitHub Actions on every push and pull request                                 | Each push runs the checks a local run does, plus Docker   |
 
 How a request moves through it: [the diagram in `docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
@@ -82,9 +82,11 @@ pictures, possible duplicates, changing many tickets at once, email notices and 
 
 ## Tests
 
-`npm test` runs over 2,000 unit and route tests with vitest, against a real SQLite file and the
-real app. `npm run test:coverage` measures COVERAGE_SENTENCE. Then `npm run test:browser`
-(after `npx playwright install chromium webkit`), `npm run typecheck`, `npm run lint` and
+`npm test` runs over 2,600 unit and route tests with vitest, against a real SQLite file and the
+real app. `npm run test:coverage` measures them at 92% of statements, 91% of branches, 94% of
+functions and 92% of lines in `src`; the browser scripts are exercised by the Playwright tests,
+which this measure does not count. Then `npm run test:browser` (after
+`npx playwright install chromium webkit`), `npm run typecheck`, `npm run lint` and
 `npm run format:check` finish the checks every merge passes.
 
 ## Sign-in and roles

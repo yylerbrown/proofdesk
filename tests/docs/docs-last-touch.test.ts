@@ -163,3 +163,26 @@ describe("the design debt list", () => {
     );
   });
 });
+
+describe("the measured test numbers", () => {
+  const tests = flat("README.md").slice(flat("README.md").indexOf("## Tests"));
+  const notes = flat("docs/ARCHITECTURE.md");
+
+  it("name the command, the four totals as whole percentages, and what the measure leaves out", () => {
+    for (const text of [tests, notes]) {
+      expect(text).toContain("`npm run test:coverage`");
+      expect(text).toMatch(
+        /\d{2}% of statements, \d{2}% of branches, \d{2}% of functions and \d{2}% of lines in `src`/,
+      );
+      expect(text).toContain("the Playwright tests, which this measure does not count");
+      expect(text).toMatch(/over \d,\d00 /);
+    }
+    expect(read("package.json")).toContain('"test:coverage": "vitest run --coverage"');
+  });
+
+  it("never claim the code is fully tested", () => {
+    for (const file of ["README.md", "docs/ARCHITECTURE.md"]) {
+      expect(flat(file), file).not.toMatch(/fully tested|100 percent|100%/i);
+    }
+  });
+});
