@@ -17,7 +17,20 @@ export function ticketsRouter(service: TicketService, connections: ConnectionSer
     router[action.method](action.path, async (req, res) => {
       const actor = signedIn(req);
       const key = typeof req.params.key === "string" ? req.params.key : "";
-      const call = () => action.run({ service, actor, key, query: req.query, body: req.body });
+      // A caller that goes away before its answer is sent ends a held call at once.
+      const caller = new AbortController();
+      res.on("close", () => {
+        if (!res.writableFinished) caller.abort();
+      });
+      const call = () =>
+        action.run({
+          service,
+          actor,
+          key,
+          query: req.query,
+          body: req.body,
+          signal: caller.signal,
+        });
       const idempotencyKey = req.get("Idempotency-Key");
       // What an agent asks for is recorded, done or refused, for its connection's activity.
       const record = (outcome: "done" | "refused" | "failed", code: string | null) =>

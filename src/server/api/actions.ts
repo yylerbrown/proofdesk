@@ -59,6 +59,8 @@ type Call = {
   key: string;
   query: unknown;
   body: unknown;
+  /** Aborted when the caller goes away before the answer is sent. */
+  signal?: AbortSignal;
 };
 
 export type ApiAction = {
@@ -248,7 +250,7 @@ export const ACTIONS: ApiAction[] = [
       "set its suggestions to When asked or Automatic, never on the demo.",
     needs: "wait_for_requests",
     query: waitForRequestsQuery,
-    run: ({ service, actor, query }) => service.waitForRequests(actor, query),
+    run: ({ service, actor, query, signal }) => service.waitForRequests(actor, query, signal),
   },
   {
     name: "answer_request",
