@@ -69,7 +69,7 @@ describe("the default order puts New tickets that say how to verify first", () =
     expect(await apiKeys(built)).toEqual(["SUP-2", "SUP-1", "SUP-3"]);
   });
 
-  it("leaves In Progress and Resolved tickets where they were", async () => {
+  it("keeps In Progress and Resolved in their own order, and lifts New tickets with a check above In Progress ones", async () => {
     const built = buildTestApp();
     insert(built.db, "new", "It works"); // SUP-1
     insert(built.db, "in_progress", "It works"); // SUP-2: a check does not lift it
@@ -78,7 +78,8 @@ describe("the default order puts New tickets that say how to verify first", () =
     insert(built.db, "new", "It works"); // SUP-5
     insert(built.db, "in_progress", null); // SUP-6
     // New with a check, newest first; then the other open ones newest first, as before; then
-    // the resolved ones.
+    // the resolved ones. So SUP-6, the newest ticket, now sits below the older New tickets
+    // that have a check: one indexed order cannot also hold In Progress rows in fixed places.
     expect(await apiKeys(built)).toEqual(["SUP-5", "SUP-1", "SUP-6", "SUP-3", "SUP-2", "SUP-4"]);
   });
 
