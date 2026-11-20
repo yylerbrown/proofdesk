@@ -164,9 +164,11 @@ describe("a visitor's picture on the demo", () => {
     const { app, service } = buildDemo();
     const two = { files: [PNG, PNG], refused: null };
     // Twenty messages of two pictures each, on two of the team's samples, from other browsers.
+    // Not the customer's own sample, which gets the one picture too many below.
+    const own = customersTicket(service);
     const keys = service
       .listTickets("all", demoTeam, 1)
-      .filter((ticket) => !ticket.title.includes("dark mode"))
+      .filter((ticket) => !ticket.title.includes("dark mode") && ticket.key !== own)
       .slice(0, 2)
       .map((ticket) => ticket.key);
     for (const key of keys) {
