@@ -14,11 +14,7 @@ describe("the demo's sample batch, in the tour", () => {
   it("quotes the form's line, labels and button as the view draws them", () => {
     const view = read("views/sign-in.ejs");
     const line = "Want a fuller list to filter, sort and search? Add sample tickets.";
-    // The tour quotes the line's earlier wording until its next docs pass.
-    const tourLine = "Want a fuller list to filter, sort and search? Add made-up tickets.";
-    expect(view).toContain(line);
-    expect(tour).toContain(tourLine);
-    for (const words of ["How many", "Filed over", "Add sample tickets"]) {
+    for (const words of [line, "How many", "Filed over", "Add sample tickets"]) {
       expect(view).toContain(words);
       expect(tour).toContain(words);
     }
@@ -62,9 +58,9 @@ describe("prose in the agent guide and the architecture notes", () => {
 });
 
 describe("the build log", () => {
-  it("has rows for #206 and #205, in the order they merged", () => {
+  it("has rows for #206, #205, #207 and #208, in the order they merged", () => {
     const log = read("docs/BUILD_LOG.md");
-    const at = [204, 206, 205].map((pr) => {
+    const at = [204, 206, 205, 207, 208].map((pr) => {
       const match = new RegExp(`\\| #${pr} +\\|`).exec(log);
       expect(match, `#${pr}`).not.toBeNull();
       return match!.index;
