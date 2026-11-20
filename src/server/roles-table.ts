@@ -1,11 +1,10 @@
 import type { Actor, Role } from "./actor.js";
 import { AGENT_SCOPES, CAPABILITIES, can, type Action, type TicketFacts } from "./permissions.js";
 
-// The table on the page "Who may do what", at /roles. Every person cell is computed from can(),
-// the same check the server runs on every request, so the page and the rules cannot disagree.
-// can() knows nothing of who owns a ticket: the ticket service adds that. So a small overlay,
-// OWNER_ACTIONS, says what the owner rule does to a cell, and a test ties it to the table's own
-// words.
+// The table on the page "Who may do what", at /roles. Every person cell starts from can(), the
+// server's own permission check. can() knows nothing of who owns a ticket: the ticket service
+// adds that. So a small overlay, OWNER_ACTIONS, typed by hand, says what the owner rule does to a
+// cell, and tests tie it to the rules' own words and to the ticket service.
 
 /** Each action in the words the pages and buttons use. */
 export const ACTION_WORDS: Record<Action, string> = {
@@ -112,9 +111,9 @@ export const OWNER_ACTIONS: Partial<Record<Action, { team: string; admin: string
   change_status: { team: "If they own it", admin: "If they own it, or back to New" },
   release: { team: "If they own it", admin: "If they own it" },
   mark_ready: { team: "If they own it", admin: "If they own it" },
-  hand_to_agent: { team: "If they own it", admin: "If they own it" },
+  hand_to_agent: { team: "If they own it", admin: "If they own it; any admin may end it" },
   hand_off: { team: "If they own it", admin: "Owner or admin" },
-  reopen: { team: "If they own it", admin: "Owner or admin" },
+  reopen: { team: "If they own it or filed it", admin: "Owner or admin" },
   resolve_with_reason: { team: "If they own it, or nobody does", admin: "Owner or admin" },
 };
 

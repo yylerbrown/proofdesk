@@ -1,10 +1,11 @@
 <%- include("header") %>
 <div class="column-wide roles-page">
 <h1>Who may do what</h1>
-<p>This page is computed from the same check the server runs on every request, so the page and the rules cannot disagree.</p>
+<p>This page uses the server's own permission check and adds who must own the ticket.</p>
 
-<%# Who may say a ticket is fixed: the product's reason for being, in role terms. %>
-<p class="roles-fixed-lead" id="roles-fixed"><strong>Who may say it is fixed</strong></p>
+<%# Who may say a ticket is fixed: the product's reason for being, in role terms. A heading for
+    screen readers, drawn as a small grey label so the page keeps one visible heading. %>
+<h2 class="roles-fixed-lead" id="roles-fixed">Who may say it is fixed</h2>
 <ul class="roles-fixed" aria-labelledby="roles-fixed">
   <li>The customer says what would prove it fixed.</li>
   <li>One named team member owns the ticket and presses Mark fixed and tell the customer.</li>
