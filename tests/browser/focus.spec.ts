@@ -29,8 +29,8 @@ test("focus starts from the saved line, the sent line or the search box", async 
   await page.getByLabel("Title").fill("Focus lands on the saved line");
   await page.getByLabel("Description").fill("A ticket for the focus test to file and answer.");
   await page.getByRole("button", { name: "File ticket" }).click();
-  await expect(page).toHaveURL(/\/tickets\/SUP-\d+$/);
-  const ticketUrl = page.url();
+  await expect(page).toHaveURL(/\/tickets\/SUP-\d+\?step=verify$/);
+  const ticketUrl = new URL(page.url()).pathname;
 
   await test.step("after filing, the saved line has focus and Tab goes on below it", async () => {
     const saved = page.locator('main > p[role="status"]');

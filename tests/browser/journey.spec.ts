@@ -77,6 +77,9 @@ test("the short path: file, take, ask the customer, and their Yes resolves it", 
   await customer.getByRole("button", { name: "File ticket" }).click();
   await expect(savedMessage(customer)).toContainText(/Ticket [A-Z]{2,6}-\d+ filed\./);
   const key = /\/tickets\/([A-Z]{2,6}-\d+)$/.exec(new URL(customer.url()).pathname)![1]!;
+  // Saying what would prove it is fixed is optional: Skip leaves one quiet link to add it later.
+  await customer.getByRole("link", { name: "Skip for now" }).click();
+  await expect(customer.getByRole("link", { name: "Add what would prove it" })).toBeVisible();
 
   await team.goto(`/tickets/${key}`);
   await team.getByRole("button", { name: "Take ticket and start work" }).click();
@@ -151,13 +154,19 @@ test("the long path: a check, a change link and evidence, a No, then the custome
     await customer.getByRole("button", { name: "New ticket" }).click();
     await customer.getByLabel("Title").fill(ticket.title);
     await customer.getByLabel("Description").fill(ticket.description);
-    await customer.getByLabel("What would prove it is fixed?").fill(ticket.check);
     await customer.getByRole("button", { name: "File ticket" }).click();
 
     await expect(savedMessage(customer)).toContainText(/Ticket [A-Z]{2,6}-\d+ filed\./);
     const match = /\/tickets\/([A-Z]{2,6}-\d+)$/.exec(new URL(customer.url()).pathname);
     expect(match, "the ticket page address ends in its key").not.toBeNull();
     key = match![1]!;
+    // Filing opens the second part: what would prove it is fixed, saved with one press.
+    await expect(customer).toHaveURL(/\?step=verify$/);
+    await customer.getByLabel("What would prove it is fixed?").fill(ticket.check);
+    await customer.getByRole("button", { name: "Save" }).click();
+    await expect(customer.locator(".ticket-card .card-saved")).toHaveText(
+      "Saved. The team will check the fix against it.",
+    );
     await expect(customer.getByRole("heading", { level: 1 })).toHaveText(ticket.title);
     await expectTicketStatus(customer, key, "New");
 

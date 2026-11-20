@@ -13,8 +13,8 @@ test("Resolved shows its form in the next step's place, and a reason must be cho
   await page.getByLabel("Title").fill("The status menu resolves with a reason");
   await page.getByLabel("Description").fill("A ticket for the team to resolve from the menu.");
   await page.getByRole("button", { name: "File ticket" }).click();
-  await expect(page).toHaveURL(/\/tickets\/SUP-\d+$/);
-  const ticketUrl = page.url();
+  await expect(page).toHaveURL(/\/tickets\/SUP-\d+\?step=verify$/);
+  const ticketUrl = new URL(page.url()).pathname;
 
   await page.goto("/sign-in");
   await page.getByRole("button", { name: "View as Team Member" }).click();

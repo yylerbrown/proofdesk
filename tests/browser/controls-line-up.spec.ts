@@ -56,10 +56,10 @@ test.beforeAll(async ({ browser }) => {
   await customer.goto("/tickets/new");
   await customer.getByLabel("Title").fill(TITLE);
   await customer.getByLabel("Description").fill("Every page comes out twice.");
-  await customer
-    .getByLabel("What would prove it is fixed? (optional)")
-    .fill("One page prints once.");
   await customer.getByRole("button", { name: "File ticket" }).click();
+  // The step after filing: what would prove it is fixed.
+  await customer.getByLabel("What would prove it is fixed?").fill("One page prints once.");
+  await customer.getByRole("button", { name: "Save" }).click();
   await expect(customer).toHaveURL(/\/tickets\/SUP-\d+$/);
   url = customer.url();
   await customer.context().close();

@@ -536,8 +536,8 @@ describe("the page routes", () => {
     const { app } = await suggested();
     const browser = page(app, customerOne.id);
     const res = await browser.post("/tickets/SUP-1/check").type("form").send({ words: "" });
-    expect(res.status).toBe(303);
-    expect((await browser.get("/tickets/SUP-1")).text).toContain(
+    expect(res.status).toBe(400);
+    expect(res.text).toContain(
       "Pick one of the suggestions, or write how you will know it is fixed.",
     );
   });

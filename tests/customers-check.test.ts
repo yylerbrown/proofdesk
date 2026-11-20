@@ -25,11 +25,15 @@ describe("the team and the customer's words", () => {
       title: "Printer jams on page two",
       fix_check: "Ten pages print",
     });
+    // Neither edit form has a box for it: the customer changes it in its own step.
     const form = parse((await as(app, teamActor).get("/tickets/SUP-1/edit")).text);
     expect(form.querySelector("textarea[name=fix_check]")).toBeNull();
-    expect(form.querySelector("#fix_check-locked")?.text).toMatch(/Only they can change them/);
-    const own = parse((await as(app, customerOne).get("/tickets/SUP-1/edit")).text);
-    expect(own.querySelector("textarea[name=fix_check]")?.text).toBe("Ten pages print");
+    const own = parse((await as(app, customerOne).get("/tickets/SUP-1?step=verify")).text);
+    expect(own.querySelector("form#verify-form textarea[name=words]")?.text).toBe(
+      "Ten pages print",
+    );
+    const team = parse((await as(app, teamActor).get("/tickets/SUP-1?step=verify")).text);
+    expect(team.querySelector("form#verify-form")).toBeNull();
   });
 
   it("labels the team's wording as the team's check, never as agreed", async () => {

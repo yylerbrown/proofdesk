@@ -227,8 +227,9 @@ describe("two people editing one ticket", () => {
     );
     const fresh = form.querySelector("input[name=expected_version]")?.getAttribute("value");
     expect(fresh).toBe(String((await read(app)).version));
-    // The team member's locked box still shows the customer's own check.
-    expect(form.querySelector("textarea[readonly]")?.text).toBe("Ten pages print");
+    // The form has no box for the customer's own check, and the check is as it was.
+    expect(form.querySelector("[name=fix_check]")).toBeNull();
+    expect((await read(app)).fix_check).toBe("Ten pages print");
 
     // Saving again, deliberately, from that form goes through.
     const again = await as(app, teamActor).post("/tickets/SUP-1/edit").type("form").send({

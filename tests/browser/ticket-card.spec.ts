@@ -43,8 +43,8 @@ async function askedTicket(
   await customer.getByLabel("Title").fill(title);
   await customer.getByLabel("Description").fill(description);
   await customer.getByRole("button", { name: "File ticket" }).click();
-  await expect(customer).toHaveURL(/\/tickets\/SUP-\d+$/);
-  const url = customer.url();
+  await expect(customer).toHaveURL(/\/tickets\/SUP-\d+\?step=verify$/);
+  const url = new URL(customer.url()).pathname;
   await customer.context().close();
 
   const team = await signInAs(browser, "Team Member", teamOptions);

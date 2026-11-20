@@ -111,3 +111,35 @@ test("Hide takes the welcome away for good, and the About link stays in the foot
   await page.getByRole("link", { name: "About this demo" }).click();
   await expect(page.locator("h1")).toHaveText("About this demo");
 });
+
+test("the guided path is eight presses, from the welcome card to the customer's Yes", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/tickets");
+  const presses = [
+    "File a sample ticket",
+    "File ticket",
+    "Save",
+    "View this ticket as a team member",
+    "Take ticket and start work",
+    "Mark fixed and tell the customer",
+    "View this ticket as the customer who filed it",
+    "Yes, it is fixed",
+  ];
+  for (const words of presses) {
+    await page.locator("main").getByRole("button", { name: words, exact: true }).click();
+    // The sample lands on the step with its three sample choices, the first in the box.
+    if (words === "File ticket") {
+      const step = page.locator("form#verify-form");
+      await expect(step.getByRole("radio")).toHaveCount(3);
+      await expect(step.getByRole("radio").first()).toBeChecked();
+      await expect(
+        step.getByText(
+          "Sample suggestions. On a real site the team's own AI assistant writes these.",
+        ),
+      ).toBeVisible();
+    }
+  }
+  await expect(page.locator(".ticket-standing")).toContainText("customer confirmed");
+});

@@ -80,11 +80,11 @@ describe("the Add pictures control", () => {
     expect(html).toMatch(
       /<span class="add-pictures-words">Add pictures<\/span><input type="file" name="pictures" accept="image\/png,image\/jpeg,image\/gif,image\/webp" multiple data-pictures-limit="4"/,
     );
-    // Directly under the Description box, before the check.
+    // Directly under the Description box, before the button that files it.
     const description = html.indexOf('name="description"');
     const control = html.indexOf('name="pictures"');
     expect(control).toBeGreaterThan(description);
-    expect(control).toBeLessThan(html.indexOf('name="fix_check"'));
+    expect(control).toBeLessThan(html.indexOf("File ticket</button>"));
     // No standing words about the limit or the file types.
     expect(html).not.toContain("PNG, JPEG");
   });

@@ -151,7 +151,7 @@ describe("a long text with line breaks", () => {
     // The description counts against the limit instead, so a long paste is never cut off.
     const description = form.querySelector('[name="description"]')!;
     expect(Number(description.getAttribute("data-count-limit"))).toBe(shape.description.maxLength);
-    expect(limit("fix_check")).toBe(shape.fix_check.unwrap().maxLength);
+    // What would prove it is fixed is the step after filing; its box's limit is tested there.
     expect(Number(form.querySelector('[name="title"]')!.getAttribute("minlength"))).toBe(
       shape.title.minLength,
     );

@@ -12,8 +12,8 @@ test("More options and Edit ticket work with a mouse in WebKit", async ({ page }
   await page.getByLabel("Title").fill("More options work with a mouse in WebKit");
   await page.getByLabel("Description").fill("A ticket for the team to open and edit.");
   await page.getByRole("button", { name: "File ticket" }).click();
-  await expect(page).toHaveURL(/\/tickets\/SUP-\d+$/);
-  const ticketUrl = page.url();
+  await expect(page).toHaveURL(/\/tickets\/SUP-\d+\?step=verify$/);
+  const ticketUrl = new URL(page.url()).pathname;
 
   await page.goto("/sign-in");
   await page.getByRole("button", { name: "View as Team Member" }).click();

@@ -22,8 +22,8 @@ async function file(page: Page, title: string): Promise<string> {
   await page.getByLabel("Title").fill(title);
   await page.getByLabel("Description").fill("It happens every morning.");
   await page.getByRole("button", { name: "File ticket" }).click();
-  await expect(page).toHaveURL(/\/tickets\/SUP-\d+$/);
-  return page.url().split("/").pop()!;
+  await expect(page).toHaveURL(/\/tickets\/SUP-\d+\?step=verify$/);
+  return new URL(page.url()).pathname.split("/").pop()!;
 }
 
 const line = (page: Page) => page.locator("#title-similar");

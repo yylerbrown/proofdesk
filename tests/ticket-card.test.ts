@@ -183,11 +183,15 @@ describe("a ticket with no check", () => {
     expect(card.text).not.toContain("What would prove it");
   });
 
-  it("shows no card at all when it would be empty", async () => {
+  it("shows its filer only the quiet link to add what would prove it", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(noCheck);
     const page = parse((await as(app, customerOne).get("/tickets/SUP-1")).text);
-    expect(page.querySelector(".ticket-card")).toBeNull();
+    const card = page.querySelector(".ticket-card")!;
+    expect(card.querySelectorAll("a, button").map((control) => control.text)).toEqual([
+      "Add what would prove it",
+    ]);
+    expect(card.text.trim()).toBe("Add what would prove it");
   });
 });
 

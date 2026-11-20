@@ -15,8 +15,8 @@ async function ticketInProgress(page: Page): Promise<string> {
   await page.getByLabel("Title").fill("Opening a menu moves nothing on the page");
   await page.getByLabel("Description").fill("A ticket with a status, an owner and a history.");
   await page.getByRole("button", { name: "File ticket" }).click();
-  await expect(page).toHaveURL(/\/tickets\/SUP-\d+$/);
-  const url = page.url();
+  await expect(page).toHaveURL(/\/tickets\/SUP-\d+\?step=verify$/);
+  const url = new URL(page.url()).pathname;
   await page.goto("/sign-in");
   await page.getByRole("button", { name: "View as Team Member" }).click();
   await page.goto(url);

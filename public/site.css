@@ -2250,6 +2250,85 @@ details.history td:first-child {
 .step-form .form-actions {
   margin-top: var(--pd-space-4);
 }
+/*
+ * The customer's step after filing, in the check's place: the label, with the assistant's quiet
+ * button beside it when one listens, one grey line, the choices and the box. While an assistant
+ * is asked, the script keeps in the choices' place the room three two-line choices take, so the
+ * box does not move when they arrive.
+ */
+.proof-step .proof-label-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--pd-space-1) var(--pd-space-4);
+}
+.proof-step .proof-label {
+  margin: 0;
+  font-size: 1.0667rem; /* 16px */
+  font-weight: var(--pd-weight-medium);
+}
+/* A text button no taller than the label's line, so it adds no height when it appears. */
+.proof-step button.proof-ask {
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: var(--pd-text-sm);
+  line-height: inherit;
+}
+.proof-step p.hint,
+.proof-step legend.hint {
+  margin: 2px 0 var(--pd-space-3);
+  color: var(--pd-muted);
+  font-size: var(--pd-text-sm);
+  font-weight: var(--pd-weight-regular);
+}
+/* Its own block, so the margins inside it count in the room it keeps. */
+.proof-step .proof-choices:not([hidden]) {
+  display: flow-root;
+}
+/* A choice the script drew shows at most two lines; the box gets its full words. */
+.proof-step .proof-choices .two-lines {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.proof-step .proof-choices fieldset {
+  margin-bottom: var(--pd-space-3);
+}
+.proof-step .proof-choices fieldset label {
+  align-items: flex-start;
+  padding: 4px 0;
+}
+.proof-step .proof-choices fieldset label input[type="radio"] {
+  flex: none;
+  margin-top: 0.2em;
+}
+.proof-step textarea {
+  margin-bottom: 0;
+}
+/* The filer's quiet links by their check: Change beside its label, or Add on a ticket without. */
+.ticket-card .card-label a.card-label-link {
+  margin-inline-start: var(--pd-space-2);
+  color: var(--pd-muted);
+}
+.ticket-card .card-proof-add a {
+  color: var(--pd-muted);
+  font-size: var(--pd-text-sm);
+}
+.ticket-card .card-saved {
+  margin: var(--pd-space-3) 0 0;
+  color: var(--pd-muted);
+  font-size: var(--pd-text-sm);
+}
+/* The proof step is a form in the card: Status menu links and the filed page land on it with
+   room for the sticky header above. */
+.ticket-card form.proof-step {
+  scroll-margin-top: 96px;
+}
 /* "Duplicate of" shows only for a duplicate, the note box only for Other, which needs it, and
    "Fixed in" only for Fixed. The page's route sends only the box for the reason chosen, so a
    hidden box never carries words the customer would see. A browser that cannot read :has shows
