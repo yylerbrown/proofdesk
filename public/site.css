@@ -819,6 +819,46 @@ form.role-check-make button {
   width: auto;
 }
 
+/* Who may do what, at /roles, and the quiet links to it. The table scrolls inside its own box
+   at phone width, so the page never scrolls sideways. */
+.roles-page ul.roles-fixed {
+  padding-left: var(--pd-space-4);
+}
+.roles-page .roles-scroll {
+  max-width: 100%;
+}
+.roles-page table.roles th[scope="row"] {
+  min-width: 14rem;
+  vertical-align: top;
+  font-weight: var(--pd-weight-regular);
+}
+.roles-page table.roles th[scope="row"] small,
+.roles-page table.roles td small {
+  color: var(--pd-muted);
+}
+.roles-page table.roles td {
+  min-width: 7rem;
+  vertical-align: top;
+}
+.roles-page table.roles tr.roles-group th {
+  padding-top: var(--pd-space-4);
+  color: var(--pd-muted);
+  font-size: var(--pd-text-sm);
+  font-weight: var(--pd-weight-medium);
+}
+.site-header .person-menu li.role small.role-try {
+  display: block;
+  padding: 0 10px 6px;
+  color: var(--pd-muted);
+  font-size: var(--pd-text-xs);
+  white-space: normal;
+}
+.site-header details.dropdown.person-menu > summary + ul li.menu-foot {
+  margin-top: var(--pd-space-1);
+  padding-top: var(--pd-space-1);
+  border-top: var(--pd-hairline);
+}
+
 /* ---------- 5. Status badge ---------- */
 
 /* A dot, then the word. Shape, colour and word each carry the meaning, so it reads in grey. */

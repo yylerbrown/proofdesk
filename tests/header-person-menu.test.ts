@@ -41,9 +41,13 @@ describe("the header", () => {
     expect(nav.text).not.toContain("Signed in as");
   });
 
-  it("gives a team member Account and Sign out in the menu, and nothing else", async () => {
-    expect(menuRows(await headerOf(teamActor))).toEqual(["Account", "Sign out"]);
-    expect(menuRows(await headerOf(customerOne))).toEqual(["Account", "Sign out"]);
+  it("gives a team member Account and Sign out in the menu, then Who may do what", async () => {
+    expect(menuRows(await headerOf(teamActor))).toEqual(["Account", "Sign out", "Who may do what"]);
+    expect(menuRows(await headerOf(customerOne))).toEqual([
+      "Account",
+      "Sign out",
+      "Who may do what",
+    ]);
   });
 
   it("gives an admin People and Connections in the menu too", async () => {
@@ -52,10 +56,11 @@ describe("the header", () => {
       "People",
       "Connections",
       "Sign out",
+      "Who may do what",
     ]);
   });
 
-  it("names the demo's three people under Switch role, then Account, and nothing else", async () => {
+  it("names the demo's three people under Switch role, then Account and Who may do what", async () => {
     const nav = await headerOf(demoTeam, DEMO);
     expect(menuRows(nav)).toEqual([
       "Switch role",
@@ -63,9 +68,14 @@ describe("the header", () => {
       "Demo Team Member (you)",
       "Demo Admin (read-only)",
       "Account",
+      "Who may do what",
     ]);
-    // No line under each name: the name is the whole choice.
-    expect(nav.querySelector(".person-menu small")).toBeNull();
+    // Under each name, in small text, that role's one line of what to try.
+    expect(nav.querySelectorAll(".person-menu li.role small.role-try").map((s) => s.text)).toEqual([
+      "File a ticket, then follow it until the team marks it fixed.",
+      "Take a ticket, write an internal note, and mark it fixed.",
+      "See every ticket and its full history, and change nothing.",
+    ]);
     // About this demo is in the footer of every page instead.
     expect(nav.text).not.toContain("About this demo");
   });
@@ -73,7 +83,12 @@ describe("the header", () => {
   it("gives the read-only admin preview no New ticket and no Connections", async () => {
     const nav = await headerOf(demoAdmin, DEMO);
     expect(nav.querySelector("a[href='/tickets/new']")).toBeNull();
-    expect(menuRows(nav).slice(-3)).toEqual(["Demo Admin (read-only) (you)", "Account", "People"]);
+    expect(menuRows(nav).slice(-4)).toEqual([
+      "Demo Admin (read-only) (you)",
+      "Account",
+      "People",
+      "Who may do what",
+    ]);
   });
 
   it("names a demo person without a role word, and a real person with one", async () => {

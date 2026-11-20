@@ -36,6 +36,7 @@ import { peopleRoles, teamMembers } from "./team/service.js";
 import { createPeopleService } from "./people/service.js";
 import { roleNowOf } from "./people/role-now.js";
 import { peopleRouter } from "./routes/people.js";
+import { rolesRouter } from "./routes/roles.js";
 import { guide, openApiDocument } from "./api/describe.js";
 import { siteAddress } from "./routes/connections.js";
 import { pictureLimitsFor } from "./pictures/limits.js";
@@ -290,6 +291,7 @@ export function createApp(config: Config, db: Db, options: { log?: LogLine } = {
     ),
   );
   app.use(peopleRouter(createPeopleService(db, config)));
+  app.use(rolesRouter());
   app.use(noticesRouter(tickets, db, config.ticketPrefix));
   app.use(
     connectionsRouter(
