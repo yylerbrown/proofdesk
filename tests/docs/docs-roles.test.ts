@@ -51,6 +51,11 @@ describe("roles, in the tour and the specification", () => {
     const tour = flat("docs/TOUR.md");
     const roles = section(tour, "**Who may do what**");
     expect(roles).toContain("Team member (you)");
+    // The tour quotes the page's first line as the page has it.
+    const line =
+      "This page uses the server's own permission check and adds who must own the ticket.";
+    expect(roles).toContain(line);
+    expect(flat("views/roles.ejs")).toContain(line);
     expect(roles).toContain('src="img/who-may-do-what.png"');
     expect(fs.existsSync("docs/img/who-may-do-what.png")).toBe(true);
     const check = section(tour, "**Check a role change first**");
