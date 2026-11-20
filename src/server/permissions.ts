@@ -143,6 +143,12 @@ export type TicketFacts = {
   archived_at: string | null;
 };
 
+/**
+ * What nobody on the demo does to a ticket, so one visitor cannot empty the sample data for
+ * the next.
+ */
+export const DEMO_NEVER: Action[] = ["archive", "restore", "delete"];
+
 // What a read-only person, the demo admin, may still do: look.
 const READ_ONLY_ACTIONS: Action[] = [
   "list_all",
@@ -175,14 +181,7 @@ export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean
     const needs = CAPABILITIES[action].agent;
     if (needs === "people_only" || !(actor.scopes ?? []).includes(needs)) return false;
   }
-  // On the demo, tickets are never archived, restored or deleted, so one visitor cannot empty
-  // the sample data for the next.
-  if (
-    actor.demo === true &&
-    (action === "archive" || action === "restore" || action === "delete")
-  ) {
-    return false;
-  }
+  if (actor.demo === true && DEMO_NEVER.includes(action)) return false;
   const isStaff = actor.role === "team" || actor.role === "admin";
 
   if (action === "create") return true;
