@@ -126,13 +126,13 @@
   <% } else { %>
   <span class="fact"><span class="fact-label">Owner</span> <span class="fact-value"><%= ownerName %></span></span>
   <% } %>
-  <% if (allowed.edit) { %><a href="/tickets/<%= ticket.key %>/edit" class="ticket-line-link">Edit</a><% } %>
+  <% if (allowed.edit) { %><a href="/tickets/<%= ticket.key %>/edit" class="ticket-line-link" aria-label="Edit title or description" title="Edit title or description">Edit</a><% } %>
 </div>
 <% } else { %>
 <%# For the customer: where the ticket stands and whose turn it is, in plain words, in the small
     type of the team's line: the status mark and word, then the rest in grey. The tick takes the
     mark's place only after their own Yes. %>
-<p class="ticket-standing"><% if (standing.tick) { %><span class="tick" aria-hidden="true"></span><span class="standing-word"><%= statusLabels[ticket.status] %></span><% } else { %><%- include("status-badge", { status: ticket.status }) %><% } %><span class="standing-rest"><%= standing.rest %><% if (standing.day) { %><time datetime="<%= standing.day %>" data-day><%= formatDay(standing.day) %></time><% } %></span><% if (allowed.edit) { %> <a href="/tickets/<%= ticket.key %>/edit" class="ticket-line-link">Edit</a><% } %><% if (archiveOnLine) { %> <a href="/tickets/<%= ticket.key %>/archive" class="ticket-line-link">Archive</a><% } %></p>
+<p class="ticket-standing"><% if (standing.tick) { %><span class="tick" aria-hidden="true"></span><span class="standing-word"><%= statusLabels[ticket.status] %></span><% } else { %><%- include("status-badge", { status: ticket.status }) %><% } %><span class="standing-rest"><%= standing.rest %><% if (standing.day) { %><time datetime="<%= standing.day %>" data-day><%= formatDay(standing.day) %></time><% } %></span><% if (allowed.edit) { %> <a href="/tickets/<%= ticket.key %>/edit" class="ticket-line-link" aria-label="Edit title or description" title="Edit title or description">Edit</a><% } %><% if (archiveOnLine) { %> <a href="/tickets/<%= ticket.key %>/archive" class="ticket-line-link">Archive</a><% } %></p>
 <% } %>
 
 <h2 class="visually-hidden">Description</h2>
@@ -195,7 +195,7 @@
   <%- include("proof-step", { proof, versionField }) %>
   <% } else if (ticket.fix_check && !proofMoved) { %>
   <%# Its filer may change it in the same step, from one quiet link beside its label. %>
-  <p class="card-label">What would prove it is fixed?<% if (proof.canChange) { %> <a href="/tickets/<%= ticket.key %>?step=verify#verify-form" class="card-label-link" aria-label="Change what would prove it is fixed">Change</a><% } %></p>
+  <p class="card-label">What would prove it is fixed?<% if (proof.canChange) { %> <a href="/tickets/<%= ticket.key %>?step=verify#verify-form" class="card-label-link" aria-label="Change what would prove it is fixed" title="Change what would prove it is fixed">Change</a><% } %></p>
   <% } %>
   <% if (ticket.fix_check && !proofStep && !proofMoved) { %>
   <blockquote class="user-text"><%= ticket.fix_check %></blockquote>
@@ -362,6 +362,8 @@
   <div class="card-step next-action">
     <%# The press is the team's word that what would prove it is fixed was met: one grey sentence says so. %>
     <% if (oath) { %><p class="next-oath">By marking it fixed, you agree this is met: "<span class="user-text"><%= oath %></span>"</p><% } %>
+    <%# A grey note about the press sits on its own line above the button, so the button stands alone. %>
+    <% if (nextStep.note) { %><p class="next-note"><%= nextStep.note %></p><% } %>
     <% if (nextStep.form) { %>
     <form method="post" action="<%= nextStep.form.action %>">
       <%- versionField %>
@@ -373,7 +375,6 @@
     <% } else { %>
     <a href="<%= nextStep.href %>" role="button" <% if (nextStep.outlined) { %>class="secondary"<% } %>><%= nextStep.label %></a>
     <% } %>
-    <% if (nextStep.note) { %><small class="next-note"><%= nextStep.note %></small><% } %>
     <% if (problem?.form === "markFixed") { %><small id="mark-fixed-error" role="alert"><%= problem.message %></small><% } %>
   </div>
   <% } %>

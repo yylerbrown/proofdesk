@@ -9,7 +9,7 @@
 
 <% if (viewer) { %>
 <%# Who the visitor is and how to change it, said once, with how the real site differs. %>
-<p class="signed-in">You are <strong><%- include("demo-name", { person: viewer }) %></strong>, one of three made-up people. Switch with the menu at the top right.<% if (locals.realSiteUrl) { %> On <a href="<%= realSiteUrl %>">the real site</a>, people sign in with GitHub.<% if (locals.sourceUrl) { %> <a href="<%= sourceUrl %>#sign-in-and-roles" class="keep-together">How sign-in and roles work</a><% } %><% } %></p>
+<p class="signed-in">You are <strong><%- include("demo-name", { person: viewer }) %></strong>, one of three made-up people. Switch with the menu at the top right.<% if (locals.realSiteUrl) { %> On <a href="<%= realSiteUrl %>">the real site</a>, people sign in with GitHub and start as customers.<% if (locals.sourceUrl) { %> <a href="<%= sourceUrl %>#sign-in-and-roles" class="keep-together">How sign-in and roles work</a><% } %><% } %></p>
 <p class="roles-link">Every request is checked against one table of who may do what, and you can read it: <a href="/roles">Who may do what</a>. Switch person and the column marked (you) moves.</p>
 <% } else if (nextTicket) { %>
 <%# A link to one ticket: whose view opens it is the visitor's choice, since a customer sees only their own. %>
@@ -40,7 +40,7 @@
   <% if (!viewer) { %>
   <%# Signed out, the paragraph above has not said how roles work, so this one does. %>
   <% if (locals.realSiteUrl) { %>
-  <p class="real-site">On <a href="<%= realSiteUrl %>">the real site</a>, people sign in with GitHub. Here you switch between three made-up people with the menu at the top right.<% if (locals.sourceUrl) { %> <a href="<%= sourceUrl %>#sign-in-and-roles" class="keep-together">How sign-in and roles work</a><% } %></p>
+  <p class="real-site">On <a href="<%= realSiteUrl %>">the real site</a>, people sign in with GitHub and start as customers. Here you switch between three made-up people with the menu at the top right.<% if (locals.sourceUrl) { %> <a href="<%= sourceUrl %>#sign-in-and-roles" class="keep-together">How sign-in and roles work</a><% } %></p>
   <% } else { %>
   <p class="roles-note">Here you switch between three made-up people with the menu at the top right.</p>
   <% } %>
@@ -48,6 +48,8 @@
   <% if (viewer || locals.sourceUrl) { %>
   <p class="source-link"><% if (viewer) { %><a href="/tickets">Back to the tickets</a><% } %><% if (viewer && locals.sourceUrl) { %> · <% } %><% if (locals.sourceUrl) { %><a href="<%= sourceUrl %>#readme">Source and setup</a><% } %></p>
   <% } %>
+  <%# One recorded run of an AI assistant on a sample ticket, open to anyone. %>
+  <p class="assistant-run-link"><a href="/assistant-run">See a ticket an AI assistant worked, and how that run was done</a>.</p>
   <%# The assistant setup is extra, so it starts folded to one quiet line. Links to /sign-in#connect
       open it without a script: a browser opens a closed details element when the address's
       #part names something inside it. %>

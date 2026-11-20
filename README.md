@@ -10,10 +10,10 @@ Say what would prove it is fixed, and your ticket is listed first and checked ag
 - **The demo, no account needed: <https://support-desk-demo.fly.dev>.** Sample data, shared with
   everyone who visits, so do not type anything private. It returns to its samples by itself when
   it has been quiet for a while.
-- **The production site, with GitHub sign-in: <https://proofdesk.fly.dev>.**
+- **The production site: <https://proofdesk.fly.dev>.** People sign in with GitHub and start as customers.
 - **The source: <https://github.com/yylerbrown/proofdesk>.**
 
-<img src="docs/img/ticket-list.png" width="720" alt="The team member's ticket list on the demo, which has no welcome card: status filters All, Open, New, In Progress and Resolved with a count beside each but All, the Mine and Unassigned toggles, a search box reading &quot;Search, then press Enter&quot;, and every sample ticket, open ones first, with its key, title, status, owner and when it was filed, under column headers that sort the list. In the Proof column a pale check marks a ticket that says what would prove it fixed, a solid green check marks one its customer confirmed, and one New ticket has neither; a line under the list names the two marks">
+<img src="docs/img/ticket-list.png" width="720" alt="The team member's ticket list on the demo, which has no welcome card: status filters All, Open, New, In Progress and Resolved with a count beside each but All, the Mine and Unassigned toggles, a search box reading &quot;Search words or a key, then press Enter&quot;, and every sample ticket, open ones first, with its key, title, status, owner and when it was filed, under column headers that sort the list. In the Proof column a pale check marks a ticket that says what would prove it fixed, a solid green check marks one its customer confirmed, and one New ticket has neither; a line under the list names the two marks">
 
 ## Run it yourself
 
@@ -38,8 +38,8 @@ On the demo, in about two minutes, with eight presses:
 
 1. The demo opens on your ticket list as the Demo Customer. On the welcome card above the list,
    press **File a sample ticket**, then **File ticket**. The form holds a sample you can change.
-2. The filed ticket asks "What would prove it is fixed?", with three sample "+" suggestions and
-   the first in the box. Press **Save**: the ticket is **New**, with your words under that label.
+2. The filed ticket asks "What would prove it is fixed?", with three sample suggestions as "+"
+   buttons, the first already added to the box. Press **Save**: the ticket is **New**, with your words under that label.
 
 <img src="docs/img/what-would-prove-it.png" width="560" alt="The step after filing, under the title's line &quot;New, not yet taken by the team&quot; and its quiet &quot;Edit&quot; link, in a bordered card: under &quot;What would prove it is fixed?&quot; two grey lines, a hint and a note that these are sample suggestions, then three sample suggestions as buttons, the first with a check because it is already in the box and the other two with a plus, a box holding the first one, and the buttons &quot;Save&quot; and &quot;Skip for now&quot;">
 

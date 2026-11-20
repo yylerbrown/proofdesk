@@ -15,7 +15,9 @@ describe("the labels the finishing pass renamed", () => {
     const show = read("views/ticket-show.ejs");
     expect(show).toContain('"Send to the team"');
     expect(show).toContain(">Emails sent about this ticket</a>");
-    expect(read("views/ticket-list.ejs")).toContain('placeholder="Search, then press Enter"');
+    expect(read("views/ticket-list.ejs")).toContain(
+      'placeholder="Search words or a key, then press Enter"',
+    );
     expect(read("views/header.ejs")).toContain('class="outline new-ticket">New<span');
 
     expect(tour).toContain("the customer's button reads **Send to the team**");
@@ -32,9 +34,11 @@ describe("the labels the finishing pass renamed", () => {
     ])
       expect(read(file), file).not.toContain("Add evidence of the fix");
     expect(tour).toContain("linked as **Emails sent about this ticket** under More options");
-    expect(tour).toContain('in the box that reads "Search, then press Enter"');
+    expect(tour).toContain('in the box that reads "Search words or a key, then press Enter"');
     expect(tour).toContain("on a phone the header's button reads **New**");
-    expect(readme).toContain("a search box reading &quot;Search, then press Enter&quot;");
+    expect(readme).toContain(
+      "a search box reading &quot;Search words or a key, then press Enter&quot;",
+    );
   });
 });
 
@@ -48,7 +52,7 @@ describe("the proof step's grey lines", () => {
     expect(readme).toContain("&quot;What would prove it is fixed?&quot; two grey lines");
     expect(tour).toContain("two grey lines");
     expect(tour).toContain(
-      '"Sample suggestions. Press one or more to add them to the box. On a real site the team\'s own AI assistant writes these."',
+      '"Sample suggestions. Press one or more to add them to the box. On a real site the team\'s own AI assistant writes these. Edit or remove added text in the box."',
     );
     for (const text of [readme, tour]) expect(text).not.toContain("one grey line,");
   });

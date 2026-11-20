@@ -158,6 +158,17 @@ export function revokeIssuedBy(db: Db, personId: string, now: string, reason: st
   return result.changes;
 }
 
+/** How many live connections one person issued, which a lower role would revoke. Demo ones aside. */
+export function countLiveIssuedBy(db: Db, personId: string): number {
+  const row = db
+    .prepare(
+      `SELECT COUNT(*) AS n FROM agent_connections
+       WHERE issued_by = ? AND demo = 0 AND revoked_at IS NULL`,
+    )
+    .get(personId) as { n: number };
+  return row.n;
+}
+
 /** The people who issued at least one connection that has not been revoked. Demo ones aside. */
 export function issuersOfLiveConnections(db: Db): string[] {
   const rows = db

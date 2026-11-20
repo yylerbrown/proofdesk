@@ -149,7 +149,7 @@ describe("the roles in the demo's person menu", () => {
 });
 
 describe("the page about the demo", () => {
-  it("holds the privacy note, the real site, the source and the folded assistant setup, in that order", async () => {
+  it("holds the privacy note, the real site, the source, the recorded run and the folded assistant setup, in that order", async () => {
     const { app } = demo({
       SOURCE_URL: "https://code.example.com/team/desk",
       REAL_SITE_URL: "https://desk.example.com",
@@ -160,6 +160,7 @@ describe("the page about the demo", () => {
       "",
       "real-site",
       "source-link",
+      "assistant-run-link",
       "connect",
     ]);
     expect(parts[0]!.text).toContain("Do not type anything private here.");
@@ -174,7 +175,7 @@ describe("the page about the demo", () => {
     const main = html.querySelector("main")!;
     expect(main.querySelector(".signed-in")?.text).toBe(
       "You are Demo Team Member, one of three made-up people. Switch with the menu at the top right. " +
-        "On the real site, people sign in with GitHub. How sign-in and roles work",
+        "On the real site, people sign in with GitHub and start as customers. How sign-in and roles work",
     );
     expect(main.querySelector(".real-site")).toBeNull();
     expect(main.text.match(/three made-up people/g)).toHaveLength(1);
@@ -184,8 +185,9 @@ describe("the page about the demo", () => {
       "/tickets",
       "https://code.example.com/team/desk#readme",
     ]);
-    // Then the closed line for the assistant setup.
-    expect(links.nextElementSibling?.tagName).toBe("DETAILS");
+    // Then the link to the recorded run, and the closed line for the assistant setup.
+    expect(links.nextElementSibling?.classNames).toBe("assistant-run-link");
+    expect(links.nextElementSibling?.nextElementSibling?.tagName).toBe("DETAILS");
   });
 
   it("gives a signed-out visitor one button to start again as the customer", async () => {
@@ -227,8 +229,13 @@ describe("the About page's assistant setup", () => {
     expect(inside.querySelector("form[action='/demo/connection'] button")?.text).toBe(
       "Get a demo connection",
     );
-    // Outside it, nothing on the page speaks of a key or an assistant.
-    const outside = html.querySelector("main")!.text.replace(folded.text, "");
+    // Outside it, nothing on the page speaks of a key or an assistant but the one link to the
+    // recorded run.
+    const runLink = section.querySelector(".assistant-run-link")!;
+    const outside = html
+      .querySelector("main")!
+      .text.replace(folded.text, "")
+      .replace(runLink.text, "");
     expect(outside).not.toMatch(/key|assistant/i);
     // Its summary reads as a quiet link, like the other small disclosures, not a full-width row.
     const css = fs.readFileSync("public/site.css", "utf8");

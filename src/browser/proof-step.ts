@@ -37,7 +37,7 @@ export const ASKING_WORDS = "Asking the team's AI assistant...";
 export const NONE_WORDS = "No suggestion this time.";
 export const BUTTON_WORDS = "Suggest ways to prove it";
 export const CHOICES_WORDS =
-  "Suggested by the team's AI assistant. Press one or more to add them to the box, then edit as you like.";
+  "Suggested by the team's AI assistant. Press one or more to add them to the box. Edit or remove added text in the box.";
 
 /** The read's answer in the parts this code uses, or null when it is not in the expected shape. */
 export function readProof(body: unknown): ProofRead | null {
@@ -164,6 +164,17 @@ export function wireAdds(form: HTMLFormElement, box: HTMLTextAreaElement): void 
   });
   box.addEventListener("input", mark);
   mark();
+}
+
+/**
+ * Sets the box's height to fit its words, for a browser whose stylesheet cannot. The stylesheet's
+ * smallest and largest heights still hold, so the box stays between three and about ten lines.
+ */
+export function fitBox(box: HTMLTextAreaElement): void {
+  const style = getComputedStyle(box);
+  const borders = parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
+  box.style.height = "auto";
+  box.style.height = `${box.scrollHeight + borders}px`;
 }
 
 /**
@@ -328,6 +339,10 @@ if (typeof document !== "undefined") {
   const box = form?.querySelector<HTMLTextAreaElement>("textarea[name=words]");
   if (form && box) {
     wireAdds(form, box);
+    if (!CSS.supports("field-sizing", "content")) {
+      box.addEventListener("input", () => fitBox(box));
+      fitBox(box);
+    }
     const readUrl = form.dataset.proofRead;
     const askUrl = form.dataset.proofAsk;
     if (readUrl && askUrl) wireAsking(form, box, readUrl, askUrl);

@@ -33,7 +33,7 @@ test("Edit and Archive work from the keyboard, and text fields show a real focus
 
   await test.step("Edit and Archive on the line under the title, from the keyboard", async () => {
     const line = page.locator(".ticket-standing");
-    const edit = line.getByRole("link", { name: "Edit", exact: true });
+    const edit = line.getByRole("link", { name: "Edit title or description" });
     const archive = line.getByRole("link", { name: "Archive", exact: true });
     // Nothing is left for the customer's More options, so it is not on the page.
     await expect(page.locator("details.more-options")).toHaveCount(0);

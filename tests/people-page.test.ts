@@ -376,7 +376,7 @@ describe("on the demo", () => {
     return { app, browser: visitor(app).set("Cookie", `${DEV_COOKIE}=${id}`) };
   }
 
-  it("shows the admin preview the three made-up people, each role in words", async () => {
+  it("shows the admin preview the made-up people, each with a change to check", async () => {
     const { browser } = demoAs("demo-admin");
     const res = await browser.get("/people");
     expect(res.status).toBe(200);
@@ -391,15 +391,26 @@ describe("on the demo", () => {
       "Demo Customer",
       "Demo Team Member",
       "Demo Admin (read-only)",
+      "Second Demo Customer",
+      "Third Demo Customer",
     ]);
-    // Nothing to press: each role as words, with no disabled selectors or Save buttons.
-    expect(rows.map((row) => row.says)).toEqual(["Customer", "Team member", "You, Admin"]);
-    expect(parse(res.text).querySelector("table.people select")).toBeNull();
+    // Each other person has a role choice that only opens its check. Nothing here saves.
+    expect(rows.map((row) => row.role)).toEqual(["customer", "team", null, "customer", "customer"]);
+    expect(rows.map((row) => row.says)).toEqual([null, null, "You, Admin", null, null]);
+    const forms = parse(res.text).querySelectorAll("table.people form");
+    expect(forms.map((form) => form.getAttribute("method"))).toEqual(["get", "get", "get", "get"]);
+    expect(forms.map((form) => form.getAttribute("action"))).toEqual(
+      Array(4).fill("/people/check"),
+    );
+    expect(
+      parse(res.text)
+        .querySelectorAll("table.people button")
+        .map((button) => button.text),
+    ).toEqual(Array(4).fill("Check this change"));
     // A made-up person has no address and never signed in, so nothing stands under the name.
-    expect(rows.map((row) => row.email)).toEqual([null, null, null]);
+    expect(rows.map((row) => row.email)).toEqual([null, null, null, null, null]);
     expect(res.text).not.toContain("Made up for the demo");
     expect(parse(res.text).querySelector("table.people .person-since")).toBeNull();
-    expect(parse(res.text).querySelector("table.people button")).toBeNull();
   });
 
   it("changes nothing for the demo admin", async () => {
@@ -426,7 +437,7 @@ describe("on the development entrance", () => {
     return visitor(app).set("Cookie", `${DEV_COOKIE}=${id}`);
   }
 
-  it("shows the made-up admin the made-up people, each role in words", async () => {
+  it("shows the made-up admin the made-up people, each with a change to check", async () => {
     const res = await devAs("dev-admin-1").get("/people");
     expect(res.status).toBe(200);
     expect(res.text).toContain(
@@ -442,13 +453,9 @@ describe("on the development entrance", () => {
       "Admin",
     ]);
     expect(rows[0]!.email).toBeNull();
-    expect(rows.map((row) => row.says)).toEqual([
-      "Customer",
-      "Customer",
-      "Team member",
-      "You, Admin",
-    ]);
-    expect(parse(res.text).querySelector("table.people button")).toBeNull();
+    expect(rows.map((row) => row.role)).toEqual(["customer", "customer", "team", null]);
+    expect(rows.map((row) => row.says)).toEqual([null, null, null, "You, Admin"]);
+    expect(parse(res.text).querySelector("table.people form")?.getAttribute("method")).toBe("get");
   });
 
   it("changes nothing, and says so", async () => {
