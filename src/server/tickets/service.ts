@@ -14,6 +14,7 @@ import * as repository from "./repository.js";
 import { createResolveAndReopen } from "./resolve-and-reopen.js";
 import { createShared } from "./shared.js";
 import { createSuggestedChecks } from "./suggested-checks.js";
+import { createSuggestionRequests } from "../suggestions/requests.js";
 import type { Budget, ServiceOptions } from "./types.js";
 import { createWorkflow } from "./workflow.js";
 
@@ -111,6 +112,9 @@ export function createTicketService(
     ...createEvidenceAndSpecs(shared),
     // suggested-checks.ts: suggestChecks, chooseCheck, listCheckSuggestions, ticketWantingCheck
     ...createSuggestedChecks(shared),
+    // ../suggestions/requests.ts: requestSuggestions, suggestionRequestState, waitForRequests,
+    // answerRequest
+    ...createSuggestionRequests(shared),
     // assistants.ts: giveToAgent, endAgentWork, connectedAssistants, agentHelp, assistantSignals
     ...createAssistants(shared),
     // once.ts: once, the retry-safe wrapper around a write

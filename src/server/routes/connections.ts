@@ -2,7 +2,13 @@ import { Router, type Request } from "express";
 import { signedIn } from "../actor.js";
 import type { Config } from "../config.js";
 import { agentPaste } from "../connections/agent-paste.js";
-import { DEFAULT_SCOPES, type ConnectionService } from "../connections/service.js";
+import {
+  DEFAULT_SCOPES,
+  SUGGESTION_CHOICES,
+  SUGGESTION_SCOPES,
+  suggestionChoiceOf,
+  type ConnectionService,
+} from "../connections/service.js";
 import { demoNotReady, HttpError, ValidationError } from "../errors.js";
 import { formatTime } from "../pages/format.js";
 import { AGENT_SCOPES, can, CAPABILITIES } from "../permissions.js";
@@ -17,7 +23,24 @@ export const SCOPE_LABELS: Record<(typeof AGENT_SCOPES)[number], string> = {
   attach_evidence: "Attach evidence that the check was met",
   propose_specs: "Propose a test spec, which a person accepts or discards",
   link_changes: "Link a code change to a ticket",
-  suggest_checks: "Suggest ways to verify new tickets",
+  suggest_when_asked: "Suggest ways to verify a ticket when a person asks",
+  suggest_automatic: "Suggest ways to verify new tickets without being asked",
+};
+
+/** The suggestion setting's three choices in the words the page uses, with what each means. */
+export const SUGGESTION_CHOICE_LABELS: Record<
+  (typeof SUGGESTION_CHOICES)[number],
+  { label: string; hint: string }
+> = {
+  off: { label: "Off", hint: "It is never asked for ways to verify a ticket." },
+  when_asked: {
+    label: "When asked",
+    hint: "It answers only when a customer presses for suggestions on their new ticket.",
+  },
+  automatic: {
+    label: "Automatic",
+    hint: "It also answers the requests a customer's page sends by itself, and suggests on new tickets unasked.",
+  },
 };
 
 /**
@@ -45,15 +68,23 @@ export function connectionsRouter(
     .filter(([, capability]) => capability.agent === "people_only")
     .map(([action]) => action);
   const shared = { scopeLabels: SCOPE_LABELS, scopes: AGENT_SCOPES, peopleOnly, formatTime };
+  // The issue form ticks the other scopes one by one, and the suggestion setting is one choice.
+  const tickedScopes = AGENT_SCOPES.filter((scope) => !SUGGESTION_SCOPES.includes(scope));
+  const suggestionChoices = SUGGESTION_CHOICES.map((value) => ({
+    value,
+    ...SUGGESTION_CHOICE_LABELS[value],
+  }));
 
   function showList(req: Request, res: import("express").Response, status = 200, form = {}) {
     const actor = signedIn(req);
     res.status(status).render("connections", {
       ...shared,
+      tickedScopes,
+      suggestionChoices,
       title: "Assistant connections",
       connections: connections.list(actor),
       canManage: can(actor, "manage_connections"),
-      form: { name: "", scopes: DEFAULT_SCOPES, errors: {}, ...form },
+      form: { name: "", scopes: DEFAULT_SCOPES, suggestions: "off", errors: {}, ...form },
     });
   }
 
@@ -77,7 +108,14 @@ export function connectionsRouter(
     } catch (err) {
       if (!(err instanceof ValidationError)) throw err;
       const scopes = [req.body?.scopes ?? []].flat();
-      showList(req, res, 400, { name: req.body?.name ?? "", scopes, errors: err.fieldErrors });
+      const sent: unknown = req.body?.suggestions;
+      const suggestions = SUGGESTION_CHOICES.find((choice) => choice === sent);
+      showList(req, res, 400, {
+        name: req.body?.name ?? "",
+        scopes,
+        suggestions: suggestions ?? suggestionChoiceOf(scopes),
+        errors: err.fieldErrors,
+      });
     }
   });
 

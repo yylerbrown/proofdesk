@@ -70,10 +70,11 @@ describe("the guides' shape", () => {
   it.each([
     ["README.md", 175],
     // The customer's confirm of a ticket marked fixed added its row, and suggested ways to
-    // verify added two: the assistant's suggestion and the customer's pick.
-    ["docs/API.md", 99],
-    // Suggesting ways to verify added its tool's row.
-    ["docs/AGENTS_GUIDE.md", 175],
+    // verify added two: the assistant's suggestion and the customer's pick. Listening for
+    // requests and answering one added two more.
+    ["docs/API.md", 101],
+    // Suggesting ways to verify added its tool's row, and listening and answering two more.
+    ["docs/AGENTS_GUIDE.md", 177],
     ["docs/TOUR.md", 57],
     // Microsoft sign-in beside GitHub added its settings and setup steps.
     ["docs/DEPLOY.md", 349],

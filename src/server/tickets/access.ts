@@ -25,16 +25,30 @@ export function isHandedAgent(actor: Actor): boolean {
   return actor.kind === "agent" && actor.demo !== true && actor.connection !== undefined;
 }
 
+/** How much an assistant is asked for ways to verify a ticket, as an admin set it. */
+export type SuggestionSetting = "off" | "when_asked" | "automatic";
+
 /**
- * An assistant an admin allowed to suggest ways to verify new tickets. Never a demo one, so the
- * demo takes no text from strangers into a customer's page.
+ * A connection's suggestion setting, from its scopes. Off for a person, for a demo connection,
+ * so the demo takes no text from strangers into a customer's page, and for a connection that
+ * may not read the tickets, since it suggests from what it reads.
+ */
+export function suggestionSetting(actor: Actor): SuggestionSetting {
+  const scopes = actor.scopes ?? [];
+  if (!isHandedAgent(actor) || !scopes.includes("read_tickets")) return "off";
+  if (scopes.includes("suggest_automatic") && scopes.includes("suggest_when_asked")) {
+    return "automatic";
+  }
+  if (scopes.includes("suggest_when_asked")) return "when_asked";
+  return "off";
+}
+
+/**
+ * An assistant set to Automatic: it may read the New tickets that have no check and suggest
+ * ways to verify them unasked.
  */
 export function maySuggestChecks(actor: Actor): boolean {
-  const scopes = actor.scopes ?? [];
-  // It suggests from what it reads, so it must also hold the scope to read tickets.
-  return (
-    isHandedAgent(actor) && scopes.includes("suggest_checks") && scopes.includes("read_tickets")
-  );
+  return suggestionSetting(actor) === "automatic";
 }
 
 /** A ticket waiting for a way to verify it: New, not archived, and no check from the customer. */
