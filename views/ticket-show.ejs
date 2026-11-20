@@ -285,6 +285,9 @@
 
   <% if (reviewFirst) { %>
   <%- include("assistant-card", { card: assistantCard, changeUrl }) %>
+  <% } else if (assistantCard) { %>
+  <%# What the assistant reported, read before the step that resolves. %>
+  <%- include("assistant-reported", { key: ticket.key, reported: assistantCard.reported }) %>
   <% } %>
 
   <% if (resolveForm) { %>
@@ -394,6 +397,8 @@
 <%# Everything an assistant left on the ticket is one card. Evidence a person attached, with no
     assistant's work beside it, is one closed line. The customer sees the proof when asked. %>
 <% if (assistantCard && !reviewFirst) { %>
+<%# With no card above to hold it, the reported line comes first here. %>
+<% if (!showCard) { %><%- include("assistant-reported", { key: ticket.key, reported: assistantCard.reported }) %><% } %>
 <%- include("assistant-card", { card: assistantCard, changeUrl }) %>
 <% } else if (!assistantCard && staff && (evidence.length > 0 || changeUrl)) { %>
 <details class="evidence-list">

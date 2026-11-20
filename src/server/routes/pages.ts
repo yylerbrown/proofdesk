@@ -636,6 +636,14 @@ export function pagesRouter(
     const showCard = staff
       ? blocked !== null || specPanel.spec !== null || agentEvidence || discardedBy !== null
       : specPanel.spec !== null;
+    // What the assistant last reported, as one grey line above the next step, so the team
+    // reads it before resolving: the latest piece's result, or its summary when it has none.
+    // Only for the team, and only until the ticket is resolved.
+    const latestFromAssistant = evidence.filter((item) => item.reported_by.kind === "agent").at(-1);
+    const reported =
+      staff && ticket.status !== "resolved" && latestFromAssistant !== undefined
+        ? (latestFromAssistant.result ?? latestFromAssistant.summary).split("\n")[0]!.trim()
+        : null;
     const assistantCard = showCard
       ? {
           key: ticket.key,
@@ -644,6 +652,9 @@ export function pagesRouter(
           spec: specPanel.spec,
           discardedBy,
           canDecide: specPanel.canDecide,
+          reported,
+          // The reported line links here, and the evidence then shows unfolded.
+          evidenceOpen: req.query.evidence === "open",
           evidence: staff ? evidence : [],
           // On the demo's recorded run, the key the sample had when the run was recorded.
           recordedAs: staff && service.recordedRunKey() === ticket.key ? RECORDED_SAMPLE_KEY : null,
