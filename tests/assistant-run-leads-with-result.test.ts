@@ -31,25 +31,28 @@ describe("the assistant run page, first look", () => {
       const page = await pageFor(app, who);
       const order = page.children.map((child) => child.classList.value[0] ?? child.tagName);
       expect(order, who).toEqual(["H1", "run-lead", "run-result", "run-try", "run-details"]);
-      // Two sentences, and the button shows what it left, so no list repeats it.
+      // Three short sentences, and the button shows what it left, so no list repeats it.
       const lead = page.querySelector("p.run-lead")!.text;
-      expect(lead.split(". ").length, who).toBe(2);
-      expect(lead, who).toContain("it resolved nothing");
+      expect(lead, who).toBe(
+        "A visitor's AI assistant worked this demo's sample ticket from its text alone. It tested a fix, attached the run as evidence and asked the owner to review. It resolved nothing.",
+      );
       expect(page.text, who).not.toContain("What it left on the ticket");
     }
   });
 
-  it("says the run's scope in its first sentence, and claims only what the run shows", async () => {
+  it("says inside How this was run everything true that the short opening leaves out", async () => {
     const { app } = demo();
-    const lead = (await pageFor(app, "signed out")).querySelector("p.run-lead")!.text;
-    const first = lead.slice(0, lead.indexOf(". ") + 1);
-    expect(first).toContain("in a scratch file, from the ticket's text");
-    expect(first).toContain("because it had no access to the product's code");
+    const page = await pageFor(app, "signed out");
+    const how = page.querySelector("details.run-details #how-it-was-run")!.text;
+    expect(how).toContain("recorded on 18 Nov 2026");
+    expect(how).toContain(
+      "in a scratch file, from the ticket's text, because it had no access to the product's code",
+    );
     // What it did there, as the run's summary records it.
-    expect(lead).toContain("reproduced the problem, tested a fix that passed three tests");
-    expect(lead).toContain("asked the owner to review");
+    expect(how).toContain("reproduced the problem, tested a fix that passed three tests");
+    expect(how).toContain("proposed a test");
     // Never the wider claim that it reproduced the customer's problem itself.
-    expect(lead).not.toContain("reproduced the customer's problem");
+    expect(page.text).not.toContain("reproduced the customer's problem");
   });
 
   it("keeps every detail of how it was run inside one closed section, with nothing removed", async () => {

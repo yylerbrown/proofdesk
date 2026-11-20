@@ -129,14 +129,17 @@ test("the guided path is eight presses, from the welcome card to the customer's 
   ];
   for (const words of presses) {
     await page.locator("main").getByRole("button", { name: words, exact: true }).click();
-    // The sample lands on the step with its three sample choices, the first in the box.
+    // The sample lands on the step with its three sample + buttons, the first in the box.
     if (words === "File ticket") {
       const step = page.locator("form#verify-form");
-      await expect(step.getByRole("radio")).toHaveCount(3);
-      await expect(step.getByRole("radio").first()).toBeChecked();
+      await expect(step.locator("button.proof-add")).toHaveCount(3);
+      await expect(step.locator("button.proof-add").first()).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
       await expect(
         step.getByText(
-          "Sample suggestions. On a real site the team's own AI assistant writes these.",
+          "Sample suggestions. Press one or more to add them to the box. On a real site the team's own AI assistant writes these.",
         ),
       ).toBeVisible();
     }

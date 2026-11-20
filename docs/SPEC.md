@@ -228,7 +228,7 @@ The owner's reason for the product, in his words: "AIs do best when the prompts 
 - **Pictures** on a ticket and its messages, shown only to who may see what they are attached to; on the shared demo, only to the browser that added them.
 - **Similar and duplicate tickets.** The form names one similar ticket while the title is typed, and the team's page names an older possible duplicate, with one press to close the ticket as its duplicate.
 - **Sign-in.** Microsoft sign-in for one organization sits beside GitHub once its three settings are set. This replaces "other sign-in providers" in the list of things left out, for Microsoft only.
-- **Suggested ways to prove a fix.** An admin sets each connection's Suggestions to Off, When asked or Automatic. A listening assistant answers a customer's request with up to three ways, which fill the step's box; the customer saves their own words. Never on a demo connection, and Proofdesk itself makes no AI calls.
+- **Suggested ways to prove a fix.** An admin sets each connection's Suggestions to Off, When asked or Automatic. A listening assistant answers a customer's request with up to three ways, each a "+" that adds its words to the step's box (see 2026-11-20, later); the customer saves their own words. Never on a demo connection, and Proofdesk itself makes no AI calls.
 - **Smaller.** The header is two groups with one person menu; the page after a key is one message to paste; one-job pages sit in a centred column; emails read like emails.
 
 ### 2026-11-19, night: marking fixed is the team's agreement
@@ -245,3 +245,9 @@ Fixes only; the rules, the JSON API and the three statuses are unchanged.
 
 - **Edit beside the title.** Whoever may edit a ticket finds a quiet **Edit** link at the end of the line under the title, no longer under More options. The customer who filed a ticket that is not resolved finds **Archive** beside it, and the archive page says it is for a ticket filed by mistake or twice. The team's Archive ticket stays under More options, and More options is left out when nothing is in it.
 - **Open on the list.** The status row reads All, Open, New, In Progress and Resolved, each with its count. Open is every ticket that is not resolved, kept in the address as `status=open`. All shows every ticket, with no 14-day rule. The filter by age shows only under Resolved, as above; an old address with `resolved=any` shows any age.
+
+### 2026-11-20, later: suggested proofs add to the box
+
+The owner's change to the proof step; the rules, the JSON API, the assistant tools and `/llms.txt` are unchanged.
+
+- **Suggested proofs are "+" buttons.** Each suggestion, from an assistant or from the demo's samples, is one button: a small "+" and its sentence. Pressing it adds the sentence to the box, alone in an empty box or on a new line after what is there; a sentence already in the box is not added again, and its button shows a check until the sentence is deleted. With scripts off each "+" posts the form and the step comes back with the sentence added and nothing saved. The box is still the one thing saved, and the save records as chosen the first suggestion shown whose sentence is still in the box, or none.

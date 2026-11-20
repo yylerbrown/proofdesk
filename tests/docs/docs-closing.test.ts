@@ -82,7 +82,7 @@ describe("the records", () => {
       .slice(start, roadmap.indexOf("## Already built"))
       .split("\n")
       .filter((line) => line.startsWith("- "));
-    expect(ideas).toHaveLength(14);
+    expect(ideas).toHaveLength(15);
     expect(new Set(ideas).size).toBe(ideas.length);
   });
 });

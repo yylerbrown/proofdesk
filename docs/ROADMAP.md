@@ -73,6 +73,8 @@ Each is one line, raised while the demo was walked before sending, to weigh afte
 - A live replay of the recorded assistant run, with its real times.
 - A customer withdrawing their own ticket with a reason (a mistake, a duplicate, no longer needed),
   shown as Resolved and labelled as withdrawn by the customer.
+- The suggested proofs offered on the new ticket form itself, once a title and a description are
+  typed, without ever holding up filing.
 
 ## Already built
 

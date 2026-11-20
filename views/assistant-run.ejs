@@ -3,9 +3,9 @@
 <h1>An assistant's work</h1>
 <%# What happened first, in plain words, with one press to the result. How the run was set up
     stays one quiet click away, in the closed section below. %>
-<%# The first sentence says the scope, so no claim reaches further than the run's evidence in
-    docs/assistant-run/summary.md. %>
-<p class="run-lead">On 18 Nov 2026 a visitor's own AI assistant worked the demo's sample ticket for assistants in a scratch file, from the ticket's text, because it had no access to the product's code. It reproduced the problem, tested a fix that passed three tests, proposed a test, attached the run as evidence and asked the owner to review, and it resolved nothing.</p>
+<%# Three short sentences, each true to the run's evidence in docs/assistant-run/summary.md. The
+    date, the scratch file and the tests are said inside "How this was run". %>
+<p class="run-lead">A visitor's AI assistant worked this demo's sample ticket from its text alone. It tested a fix, attached the run as evidence and asked the owner to review. It resolved nothing.</p>
 <% if (recordedKey && viewer && viewer.role !== "customer") { %>
 <p class="run-result"><a href="/tickets/<%= recordedKey %>" role="button">See what it left on <%= recordedKey %></a></p>
 <% } else if (recordedKey) { %>
@@ -31,7 +31,7 @@
 <summary>How this was run</summary>
 <%# Links to /assistant-run#how-it-was-run open this section without a script: a browser opens a
     closed details element when the address's #part names something inside it. %>
-<p id="how-it-was-run">The run was recorded on 18 Nov 2026 against the sample ticket of an earlier copy of this demo. What the ticket shows from the assistant is exactly what it sent.</p>
+<p id="how-it-was-run">The run was recorded on 18 Nov 2026 against the sample ticket of an earlier copy of this demo. It worked in a scratch file, from the ticket's text, because it had no access to the product's code: it reproduced the problem, tested a fix that passed three tests and proposed a test. What the ticket shows from the assistant is exactly what it sent.</p>
 <ul>
   <li><a href="/assistant-run/files/transcript.public.jsonl">The transcript</a>, every step of the run, with local file paths replaced</li>
   <li><a href="/assistant-run/files/sup4/total.js">total.js</a>, the code it wrote: the ticket's function and its fix</li>

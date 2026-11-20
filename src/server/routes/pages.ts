@@ -46,7 +46,13 @@ import {
 } from "../pages/list-query.js";
 import { sameText, type ListSort } from "../tickets/schemas.js";
 import { rememberBulkOutcome, takeBulkOutcome } from "../pages/bulk-outcome.js";
-import { proofChoices, SAMPLE_PROOFS, sampleWords, waitingLine } from "../pages/proof-step.js";
+import {
+  addToBox,
+  firstInBox,
+  proofChoices,
+  SAMPLE_PROOFS,
+  waitingLine,
+} from "../pages/proof-step.js";
 import { customerStanding } from "../pages/standing.js";
 import { statusControl } from "../pages/status-control.js";
 import { DESCRIPTION_LIMIT, withHowFarOver } from "../pages/text-limit.js";
@@ -618,6 +624,9 @@ export function pagesRouter(
     status: number,
     entry: EntryForm,
     problem: Problem | null = null,
+    // The proof step's box after a "+" was pressed with scripts off: the step shows again with
+    // these words, and nothing is saved.
+    proofWords?: string,
   ): void {
     const actor = signedIn(req);
     const ticket = service.getTicket(req.params.key as string, actor);
@@ -784,28 +793,23 @@ export function pagesRouter(
     const proofStep =
       canProve &&
       (problem?.form === "verify" ||
+        proofWords !== undefined ||
         (req.method === "GET" && step.success && step.data === "verify"));
     const sample = isWalkthroughSample(ticket, actor);
     const offered = service
       .listCheckSuggestions(ticket.key, actor)
       .filter((suggestion) => suggestion.state === "offered");
     const boxWords =
-      problem?.form === "verify"
+      proofWords ??
+      (problem?.form === "verify"
         ? (problem.values?.words ?? "")
-        : (ticket.fix_check ?? (sample ? SAMPLE_PROOFS[0] : ""));
+        : (ticket.fix_check ?? (sample ? SAMPLE_PROOFS[0] : "")));
     const proof = {
       step: proofStep,
       words: boxWords,
-      // The choices are for a ticket that does not say yet what would prove it.
-      choices:
-        proofStep && ticket.fix_check === null
-          ? proofChoices(
-              sample,
-              offered,
-              boxWords,
-              problem?.form === "verify" ? problem.values : {},
-            )
-          : [],
+      // The suggestions, each a "+" that adds its words to the box. "Change" beside a saved
+      // check opens the same box with them, when there are some.
+      choices: proofStep ? proofChoices(sample, offered, boxWords) : [],
       sample,
       // A page may ask a listening assistant only on a New ticket with no check, off the demo.
       canAsk:
@@ -1459,32 +1463,30 @@ export function pagesRouter(
     rememberSaved(res, "adopted");
     res.redirect(303, `/tickets/${ticket.key}`);
   });
-  // The customer says how they will know it is fixed: a suggested way they picked, or their
-  // own words. A refusal goes back to the ticket with the reason, as every other refusal does.
+  // The customer says how they will know it is fixed: the words in the box, which may hold
+  // suggested ways added with their "+" buttons. A refusal goes back to the ticket with the reason, as every other refusal does.
   router.post("/tickets/:key/check", (req, res) => {
     const actor = signedIn(req);
     const words = asText(req.body?.words);
     try {
-      // On the demo's sample a choice is a sample, not a stored suggestion. With scripts off
-      // and the box left empty, the choice picked gives the words.
-      const sent = { ...req.body };
-      delete sent.sample_choice;
-      const sampleChoice = sampleWords(req.body?.sample_choice);
-      if (words.trim() === "" && sampleChoice !== undefined) {
-        const before = service.getTicket(req.params.key, actor);
-        if (isWalkthroughSample(before, actor)) sent.words = sampleChoice;
+      // A "+" pressed with scripts off adds its words to the box and shows the step again.
+      // Nothing is saved until Save.
+      const add = asText(req.body?.add);
+      if (add.trim() !== "") {
+        showTicket(req, res, 200, emptyEntry, null, addToBox(words, add));
+        return;
       }
+      // The box is what is saved. The suggestion it started from is the first one shown whose
+      // words are still in the box, and none when no suggestion's words are there.
+      const offered = service.listCheckSuggestions(req.params.key, actor);
+      const sent = { ...req.body, suggestion_id: firstInBox(offered, words)?.id };
       const ticket = service.chooseCheck(req.params.key, sent, actor);
       rememberSaved(res, "checkChosen");
       res.redirect(303, `/tickets/${ticket.key}`);
     } catch (err) {
-      // What was sent, so the step can show it again: the words and the choice picked.
-      const kept = {
-        words,
-        suggestion_id: asText(req.body?.suggestion_id),
-        sample_choice: asText(req.body?.sample_choice),
-      };
-      const sentSomething = Object.values(kept).some((value) => value.trim() !== "");
+      // What was sent, so the step can show it again.
+      const kept = { words };
+      const sentSomething = words.trim() !== "";
       // The ticket changed while the box was being filled, for example when the team took it:
       // the step shows again on the ticket as it is now, with what was sent kept.
       if (err instanceof HttpError && err.code === "ticket_changed" && sentSomething) {

@@ -117,7 +117,21 @@ const WAYS = [
   { id: 903, words: "The total row matches the report." },
 ];
 
-test("When asked: one quiet button, then the choices fill the box, and nothing moves", async ({
+/** The room between the last "+" button and the box, and the room the stylesheet sets there. */
+async function gapUnderButtons(page: Page) {
+  return page.locator("form#verify-form").evaluate((form) => {
+    const buttons = form.querySelectorAll("button.proof-add");
+    const last = buttons[buttons.length - 1]!.getBoundingClientRect();
+    const box = form.querySelector("textarea")!.getBoundingClientRect();
+    const group = form.querySelector(".proof-adds")!;
+    return {
+      gap: Math.round(box.top - last.bottom),
+      set: Math.round(parseFloat(getComputedStyle(group).marginBottom)),
+    };
+  });
+}
+
+test("When asked: one quiet button, then + buttons add to the box, and the box never moves down", async ({
   browser,
 }) => {
   const customer = await signInAs(browser, "Customer One");
@@ -141,31 +155,56 @@ test("When asked: one quiet button, then the choices fill the box, and nothing m
   await ask.focus();
   await customer.keyboard.press("Enter");
   await expect(step.getByText("Asking the team's AI assistant...")).toBeVisible();
+  // The waiting line is announced politely, once, and its dots step under the stylesheet.
+  await expect(step.locator(".proof-choices")).toHaveAttribute("aria-live", "polite");
+  expect(
+    await step
+      .locator(".proof-asking-dot")
+      .first()
+      .evaluate((dot) => getComputedStyle(dot).animationName),
+  ).toBe("pd-asking-dot");
   const boxTop = (await box.boundingBox())!.y;
-  await expect(step.getByRole("radio")).toHaveCount(3);
-  expect((await box.boundingBox())!.y).toBe(boxTop);
+  await expect(step.locator("button.proof-add")).toHaveCount(3);
+  // The room kept while asking is let go: the box sits as close under the buttons as on a page
+  // drawn with them, and never lower than while asking.
+  expect((await box.boundingBox())!.y).toBeLessThanOrEqual(boxTop);
+  const { gap, set } = await gapUnderButtons(customer);
+  expect(Math.abs(gap - set)).toBeLessThanOrEqual(1);
   expect(sent).toEqual(["pressed=true"]);
   await expect(
     step.getByText(
-      "Suggested by the team's AI assistant. Pick one to fill the box, then edit it if you like.",
+      "Suggested by the team's AI assistant. Press one or more to add them to the box, then edit as you like.",
     ),
   ).toBeVisible();
   // Focus stayed on the button, and the words typed were kept until a press.
   await expect(ask).toBeFocused();
   await expect(box).toHaveValue("My own words");
 
-  // Picking fills the box; editing it unpicks the choice; picking again fills it again.
-  await step.getByRole("radio", { name: WAYS[1]!.words }).check();
-  await expect(box).toHaveValue(WAYS[1]!.words);
-  await box.press("End");
-  await box.pressSequentially(" Quickly.");
-  await expect(step.getByRole("radio", { name: WAYS[1]!.words })).not.toBeChecked();
-  await step.getByRole("radio", { name: WAYS[0]!.words }).check();
-  await expect(box).toHaveValue(WAYS[0]!.words);
+  // A press adds the words on a new line after what was typed, and marks the button added; a
+  // second press of it adds nothing; deleting its words puts its "+" back.
+  const second = step.getByRole("button", { name: `Add: ${WAYS[1]!.words}` });
+  await expect(second).toHaveAttribute("aria-pressed", "false");
+  await second.click();
+  await expect(box).toHaveValue(`My own words\n${WAYS[1]!.words}`);
+  await expect(second).toHaveAttribute("aria-pressed", "true");
+  await second.click();
+  await expect(box).toHaveValue(`My own words\n${WAYS[1]!.words}`);
+  await box.fill("My own words");
+  await expect(second).toHaveAttribute("aria-pressed", "false");
+  // By keyboard: Tab reaches each button in order, then the box; Space presses.
+  await second.focus();
+  await customer.keyboard.press("Tab");
+  await expect(step.getByRole("button", { name: `Add: ${WAYS[2]!.words}` })).toBeFocused();
+  await customer.keyboard.press("Space");
+  await customer.keyboard.press("Tab");
+  await expect(box).toBeFocused();
+  await expect(box).toHaveValue(`My own words\n${WAYS[2]!.words}`);
 
   await step.getByRole("button", { name: "Save" }).click();
   await expect(customer).toHaveURL(/\/tickets\/SUP-\d+$/);
-  await expect(customer.locator(".ticket-card blockquote")).toHaveText(WAYS[0]!.words);
+  await expect(customer.locator(".ticket-card blockquote")).toHaveText(
+    `My own words\n${WAYS[2]!.words}`,
+  );
   await customer.context().close();
 });
 
@@ -203,9 +242,20 @@ test("Automatic: the page asks once by itself, then says when nothing came", asy
     read === 1 ? { listening: true, automatic: true } : { request: "expired" },
   );
   const sent = await standInRequest(customer);
+  // With reduced motion the dots of "Asking..." stay still.
+  await customer.emulateMedia({ reducedMotion: "reduce" });
   await customer.goto(`${quietTicket}?step=verify`);
   const step = customer.locator("form#verify-form");
+  await expect(step.getByText("Asking the team's AI assistant...")).toBeVisible();
+  expect(
+    await step
+      .locator(".proof-asking-dot")
+      .first()
+      .evaluate((dot) => getComputedStyle(dot).animationName),
+  ).toBe("none");
+  // When nothing comes, the line ends plainly instead of looping on.
   await expect(step.getByText("No suggestion this time.")).toBeVisible();
+  await expect(step.locator(".proof-asking-dot")).toHaveCount(0);
   expect(sent).toEqual(["pressed=false"]);
   await expect(step.getByRole("button", { name: "Suggest ways to prove it" })).toHaveCount(0);
   // After a few seconds the line goes, and the box is as it was.
@@ -234,7 +284,7 @@ const LONG_WAYS = [
 
 for (const width of [390, 1280]) {
   for (const automatic of [true, false]) {
-    test(`${automatic ? "Automatic" : "When asked"} at ${width} wide: long choices arrive and the box stays still`, async ({
+    test(`${automatic ? "Automatic" : "When asked"} at ${width} wide: long choices arrive and the box never moves down`, async ({
       browser,
     }) => {
       const customer = await signInAs(browser, "Customer One", width);
@@ -261,17 +311,25 @@ for (const width of [390, 1280]) {
       if (!automatic) await step.getByRole("button", { name: "Suggest ways to prove it" }).click();
       await expect(step.getByText("Asking the team's AI assistant...")).toBeVisible();
       const boxTop = (await box.boundingBox())!.y;
-      await expect(step.getByRole("radio")).toHaveCount(3);
-      expect((await box.boundingBox())!.y).toBe(boxTop);
-      // Each choice shows at most two lines; picking one puts all its words in the box.
-      for (const label of await step.locator(".proof-choices label").all()) {
-        const lines = await label.locator(".user-text").evaluate((words) => {
+      await expect(step.locator("button.proof-add")).toHaveCount(3);
+      expect((await box.boundingBox())!.y).toBeLessThanOrEqual(boxTop);
+      const { gap, set } = await gapUnderButtons(customer);
+      expect(Math.abs(gap - set)).toBeLessThanOrEqual(1);
+      // Each button shows at most two lines, at least 40 pixels to press, with no sideways
+      // scroll; pressing one puts all its words in the box.
+      for (const button of await step.locator("button.proof-add").all()) {
+        const lines = await button.locator(".user-text").evaluate((words) => {
           const style = getComputedStyle(words);
           return Math.round(words.clientHeight / parseFloat(style.lineHeight));
         });
         expect(lines).toBeLessThanOrEqual(2);
+        expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(40);
       }
-      await step.getByRole("radio", { name: LONG_WAYS[2]!.words }).check();
+      const wide = await customer.evaluate(
+        () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      );
+      expect(wide).toBe(false);
+      await step.getByRole("button", { name: `Add: ${LONG_WAYS[2]!.words}` }).click();
       await expect(box).toHaveValue(LONG_WAYS[2]!.words);
       await customer.context().close();
     });

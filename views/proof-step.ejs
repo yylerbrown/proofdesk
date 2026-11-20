@@ -1,9 +1,9 @@
 <%# The customer's step after filing, in the place their check takes once saved: one box for what
-    would prove it is fixed, Save and a quiet Skip. Suggested ways, when there are some, are
-    pick-one choices above the box: picking one fills the box, and the box is what is saved.
-    With scripts off the choice picked is posted with the form and fills an empty box. The
-    proof-step script also asks a listening assistant, and adds its button, only when the
-    form says a page may ask. %>
+    would prove it is fixed, Save and a quiet Skip. Suggested ways, when there are some, are "+"
+    buttons above the box: each adds its words to the box, and the box is what is saved. With
+    scripts off each "+" posts the form, which comes back with the words added and nothing
+    saved. The proof-step script also asks a listening assistant, and adds its button, only when
+    the form says a page may ask. %>
 <% const refused = locals.problem?.form === "verify"; %>
 <form method="post" action="/tickets/<%= ticket.key %>/check" id="verify-form" class="step-form proof-step"<% if (proof.canAsk) { %> data-proof-read="/tickets/<%= ticket.key %>/check-suggestions" data-proof-ask="/tickets/<%= ticket.key %>/check-suggestions/request"<% } %>>
   <%- versionField %>
@@ -13,16 +13,16 @@
   <%# The second sentence is true by the list's default order: New tickets that say what would
       prove it is fixed come first. %>
   <p id="proof-hint" class="hint">One thing you can check yourself when the team says it is fixed. Tickets that say what would prove it is fixed are listed first for the team.</p>
-  <%# The choices' place. While an assistant is asked it holds "Asking..." and keeps the room the
-      choices take, so nothing under it moves when they arrive. %>
+  <%# The suggestions' place. While an assistant is asked it holds "Asking..." and keeps the room
+      the suggestions may take, so nothing under it moves down when they arrive. %>
   <div class="proof-choices" aria-live="polite"<% if (proof.choices.length === 0) { %> hidden<% } %>>
     <% if (proof.choices.length > 0) { %>
-    <fieldset>
-      <legend class="hint"><%= proof.sample ? "Sample suggestions. On a real site the team's own AI assistant writes these." : "Suggested by the team's AI assistant. Pick one to fill the box, then edit it if you like." %></legend>
+    <p class="hint" id="proof-adds-line"><%= proof.sample ? "Sample suggestions. Press one or more to add them to the box. On a real site the team's own AI assistant writes these." : "Suggested by the team's AI assistant. Press one or more to add them to the box, then edit as you like." %></p>
+    <div class="proof-adds">
       <% for (const choice of proof.choices) { %>
-      <label><input type="radio" name="<%= choice.name %>" value="<%= choice.value %>" data-words="<%= choice.words %>" <% if (choice.checked) { %>checked<% } %> /> <span class="user-text"><%= choice.words %></span></label>
+      <button type="submit" name="add" value="<%= choice.words %>" class="proof-add secondary outline" formnovalidate aria-pressed="<%= choice.added %>" aria-label="Add: <%= choice.words %>"><span class="proof-add-mark" aria-hidden="true"></span><span class="user-text"><%= choice.words %></span></button>
       <% } %>
-    </fieldset>
+    </div>
     <% } %>
   </div>
   <textarea id="proof-words" name="words" rows="3" maxlength="500" aria-describedby="proof-hint<% if (refused) { %> proof-error<% } %>" <% if (refused) { %>aria-invalid="true" autofocus<% } %>><%= proof.words %></textarea>

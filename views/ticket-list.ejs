@@ -24,6 +24,8 @@
 <% if (bulk && tickets.length > 0) { %><div class="bulk-dock" data-bulk-dock></div><% } %>
 <%# The filters: by status, by owner for the team, and words to find. Each is a plain link or a GET form, and each keeps the others, so the address names the view and can be shared. %>
 <div class="list-filters" data-list-filters>
+<%# The filters together at the left, so the search box either shares their one row, at its right end, or takes a row of its own under them. %>
+<div class="list-filter-groups">
 <%# A lit status filter is a toggle like the owner filters: pressing it again goes back to All. %>
 <nav aria-label="Filter by status">
   <ul>
@@ -66,6 +68,7 @@
   </ul>
 </nav>
 <% } %>
+</div>
 <form method="get" action="/tickets" role="search" class="list-search">
   <% if (current !== "all") { %><input type="hidden" name="status" value="<%= current %>" /><% } %>
   <% if (filters.owner) { %><input type="hidden" name="owner" value="<%= filters.owner %>" /><% } %>

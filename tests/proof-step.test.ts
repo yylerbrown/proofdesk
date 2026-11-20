@@ -309,88 +309,138 @@ describe("Save, Skip, Change and Add", () => {
 });
 
 describe("suggested ways", () => {
-  it("fill the step with up to three pick-one choices under one grey line", async () => {
+  it("fill the step with up to three + buttons under one grey line", async () => {
     const { app } = buildTestApp();
     await fileOnPage(app);
     const offered = await offer(app, ["Every row is there", "The file opens", "It has a total"]);
     const html = await page(app, customerOne, "/tickets/SUP-1?step=verify");
     const choices = html.querySelector("form#verify-form .proof-choices")!;
     expect(choices.getAttribute("hidden")).toBeUndefined();
-    expect(choices.querySelector("legend")?.text).toBe(
-      "Suggested by the team's AI assistant. Pick one to fill the box, then edit it if you like.",
+    expect(choices.querySelector("#proof-adds-line")?.text).toBe(
+      "Suggested by the team's AI assistant. Press one or more to add them to the box, then edit as you like.",
     );
-    const radios = choices.querySelectorAll("input[type=radio]");
-    expect(radios.map((radio) => radio.getAttribute("name"))).toEqual([
-      "suggestion_id",
-      "suggestion_id",
-      "suggestion_id",
+    const adds = choices.querySelectorAll("button.proof-add");
+    // Each is a submit button of the step's form, named by its words, never a black button.
+    expect(adds.map((button) => button.getAttribute("type"))).toEqual([
+      "submit",
+      "submit",
+      "submit",
     ]);
-    expect(radios.map((radio) => radio.getAttribute("value"))).toEqual(
-      offered.map((suggestion) => String(suggestion.id)),
-    );
-    expect(radios.map((radio) => radio.getAttribute("data-words"))).toEqual(
+    expect(adds.map((button) => button.getAttribute("name"))).toEqual(["add", "add", "add"]);
+    expect(adds.map((button) => button.getAttribute("value"))).toEqual(
       offered.map((suggestion) => suggestion.words),
     );
-    // Nothing is picked and the box is empty until the customer picks.
-    expect(radios.some((radio) => radio.hasAttribute("checked"))).toBe(false);
+    expect(adds.map((button) => button.getAttribute("aria-label"))).toEqual(
+      offered.map((suggestion) => `Add: ${suggestion.words}`),
+    );
+    expect(adds.map((button) => button.querySelector(".user-text")?.text)).toEqual(
+      offered.map((suggestion) => suggestion.words),
+    );
+    // Nothing is added and the box is empty until the customer presses one.
+    expect(adds.map((button) => button.getAttribute("aria-pressed"))).toEqual([
+      "false",
+      "false",
+      "false",
+    ]);
     expect(html.querySelector("form#verify-form textarea")?.text).toBe("");
-    expect(choices.text).not.toContain("Something else");
-    // The choices come before the box, then Save and Skip.
-    expect(stepControls(html)).toEqual([
-      "suggestion_id",
-      "suggestion_id",
-      "suggestion_id",
-      "words",
-      "Save",
-      "Skip for now",
+    expect(filledButtons(html)).toEqual(["Save"]);
+    // The buttons come before the box, then Save and Skip.
+    expect(stepControls(html)).toEqual(["add", "add", "add", "words", "Save", "Skip for now"]);
+  });
+
+  it("with scripts off, a + comes back with its words added and nothing saved", async () => {
+    const { app } = buildTestApp();
+    const { browser } = await fileOnPage(app);
+    const offered = await offer(app, ["Every row is there", "The file opens"]);
+    const first = await browser
+      .post("/tickets/SUP-1/check")
+      .type("form")
+      .send({ add: offered[1]!.words, words: "", expected_version: "1" });
+    expect(first.status).toBe(200);
+    let step = parse(first.text).querySelector("form#verify-form")!;
+    expect(step.querySelector("textarea")?.text).toBe("The file opens");
+    expect(step.querySelector("#proof-error")).toBeNull();
+    expect(step.querySelector("textarea")?.hasAttribute("aria-invalid")).toBe(false);
+    expect(
+      step
+        .querySelectorAll("button.proof-add")
+        .map((button) => button.getAttribute("aria-pressed")),
+    ).toEqual(["false", "true"]);
+    // A second + goes on a new line; the same one again adds nothing.
+    const second = await browser
+      .post("/tickets/SUP-1/check")
+      .type("form")
+      .send({ add: offered[0]!.words, words: "The file opens", expected_version: "1" });
+    step = parse(second.text).querySelector("form#verify-form")!;
+    expect(step.querySelector("textarea")?.text).toBe("The file opens\nEvery row is there");
+    const again = await browser
+      .post("/tickets/SUP-1/check")
+      .type("form")
+      .send({ add: offered[0]!.words, words: "The file opens\nEvery row is there" });
+    expect(parse(again.text).querySelector("form#verify-form textarea")?.text).toBe(
+      "The file opens\nEvery row is there",
+    );
+    const ticket = (await browser.get("/api/tickets/SUP-1")).body;
+    expect(ticket.fix_check).toBeNull();
+    expect(ticket.check_suggestions.map((s: { state: string }) => s.state)).toEqual([
+      "offered",
+      "offered",
     ]);
   });
 
-  it("post by id: with scripts off an empty box takes the picked choice's words", async () => {
+  it("save the box, and record the first suggestion shown that is still in it", async () => {
     const { app } = buildTestApp();
     const { browser } = await fileOnPage(app);
     const offered = await offer(app, ["Every row is there", "The file opens"]);
     const saved = await browser
       .post("/tickets/SUP-1/check")
       .type("form")
-      .send({ suggestion_id: String(offered[1]!.id), words: "", expected_version: "1" });
+      .send({ words: "The file opens\nEvery row is there, in date order", expected_version: "1" });
     expect(saved.status).toBe(303);
     const ticket = (await browser.get("/api/tickets/SUP-1")).body;
-    expect(ticket.fix_check).toBe("The file opens");
-    expect(ticket.check_suggestions[1].state).toBe("chosen");
+    expect(ticket.fix_check).toBe("The file opens\nEvery row is there, in date order");
+    expect(ticket.check_suggestions.map((s: { id: number; state: string }) => s.state)).toEqual([
+      "chosen",
+      "withdrawn",
+    ]);
+    expect(offered[0]!.id).toBe(ticket.check_suggestions[0].id);
   });
 
-  it("keep the choice picked with scripts off when the ticket changed meanwhile", async () => {
-    const { app } = buildTestApp();
-    const { browser } = await fileOnPage(app);
-    const offered = await offer(app, ["Every row is there", "The file opens"]);
-    await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
-    const refused = await browser
-      .post("/tickets/SUP-1/check")
-      .type("form")
-      .send({ suggestion_id: String(offered[1]!.id), words: "", expected_version: "1" });
-    expect(refused.status).toBe(409);
-    const step = parse(refused.text).querySelector("form#verify-form")!;
-    const radios = step.querySelectorAll("input[type=radio]");
-    expect(radios.map((radio) => radio.hasAttribute("checked"))).toEqual([false, true]);
-    expect(step.querySelector("#proof-error")?.text).toContain("What you wrote is kept here.");
-  });
-
-  it("post by id with the box's own words, which are what is saved", async () => {
+  it("record no suggestion when none of their words is left in the box", async () => {
     const { app } = buildTestApp();
     const { browser } = await fileOnPage(app);
     const offered = await offer(app, ["Every row is there"]);
+    // Even when a hand-made form names one.
     await browser
       .post("/tickets/SUP-1/check")
       .type("form")
       .send({
         suggestion_id: String(offered[0]!.id),
-        words: "Every row is there, in date order",
+        words: "My own words",
         expected_version: "1",
       });
-    expect((await browser.get("/api/tickets/SUP-1")).body.fix_check).toBe(
-      "Every row is there, in date order",
-    );
+    const ticket = (await browser.get("/api/tickets/SUP-1")).body;
+    expect(ticket.fix_check).toBe("My own words");
+    expect(ticket.check_suggestions[0].state).toBe("withdrawn");
+  });
+
+  it("show the + of words in the kept box as added when the ticket changed meanwhile", async () => {
+    const { app } = buildTestApp();
+    const { browser } = await fileOnPage(app);
+    await offer(app, ["Every row is there", "The file opens"]);
+    await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
+    const refused = await browser
+      .post("/tickets/SUP-1/check")
+      .type("form")
+      .send({ words: "The file opens", expected_version: "1" });
+    expect(refused.status).toBe(409);
+    const step = parse(refused.text).querySelector("form#verify-form")!;
+    expect(
+      step
+        .querySelectorAll("button.proof-add")
+        .map((button) => button.getAttribute("aria-pressed")),
+    ).toEqual(["false", "true"]);
+    expect(step.querySelector("#proof-error")?.text).toContain("What you wrote is kept here.");
   });
 
   it("show the team only one grey line saying they wait, never the words", async () => {
@@ -402,7 +452,7 @@ describe("suggested ways", () => {
       "The assistant suggested 3 ways to prove it. The customer has not picked one.",
     );
     const main = html.querySelector("main")!;
-    expect(main.querySelector("input[type=radio][name=suggestion_id]")).toBeNull();
+    expect(main.querySelector("button.proof-add")).toBeNull();
     expect(main.text).not.toContain("Every row is there");
     expect(main.text).not.toContain("What would prove it is fixed?");
   });
@@ -459,23 +509,22 @@ describe("the demo's sample", () => {
     return filed.headers.location as string;
   }
 
-  it("lands on the step with three sample choices, the first already in the box", async () => {
+  it("lands on the step with three sample + buttons, the first already in the box", async () => {
     const { browser } = demo();
     const landed = await fileSample(browser);
     expect(landed).toMatch(/^\/tickets\/SUP-\d+\?step=verify$/);
     const html = parse((await browser.get(landed)).text);
     const step = html.querySelector("form#verify-form")!;
-    expect(step.querySelector("legend")?.text).toBe(
-      "Sample suggestions. On a real site the team's own AI assistant writes these.",
+    expect(step.querySelector("#proof-adds-line")?.text).toBe(
+      "Sample suggestions. Press one or more to add them to the box. On a real site the team's own AI assistant writes these.",
     );
-    const radios = step.querySelectorAll("input[type=radio]");
-    expect(radios.map((radio) => radio.getAttribute("data-words"))).toEqual([...SAMPLE_PROOFS]);
-    expect(radios.map((radio) => radio.getAttribute("name"))).toEqual([
-      "sample_choice",
-      "sample_choice",
-      "sample_choice",
+    const adds = step.querySelectorAll("button.proof-add");
+    expect(adds.map((button) => button.getAttribute("value"))).toEqual([...SAMPLE_PROOFS]);
+    expect(adds.map((button) => button.getAttribute("aria-pressed"))).toEqual([
+      "true",
+      "false",
+      "false",
     ]);
-    expect(radios.map((radio) => radio.hasAttribute("checked"))).toEqual([true, false, false]);
     expect(step.querySelector("textarea")?.text).toBe(SAMPLE_PROOFS[0]);
     // The page never asks an assistant on the demo, and nothing else shows the choices.
     expect(step.getAttribute("data-proof-ask")).toBeUndefined();
@@ -484,36 +533,41 @@ describe("the demo's sample", () => {
     expect(filledButtons(html)).toEqual(["Save"]);
   });
 
-  it("with scripts off and the box emptied, saves the sample choice picked", async () => {
+  it("with scripts off, a sample's + adds it to the box, and Save saves the box", async () => {
+    const { browser } = demo();
+    const landed = await fileSample(browser);
+    const key = /SUP-\d+/.exec(landed)![0];
+    const added = await browser
+      .post(`/tickets/${key}/check`)
+      .type("form")
+      .send({ add: SAMPLE_PROOFS[2], words: SAMPLE_PROOFS[0], expected_version: "1" });
+    expect(added.status).toBe(200);
+    const box = parse(added.text).querySelector("form#verify-form textarea")!.text;
+    expect(box).toBe(`${SAMPLE_PROOFS[0]}\n${SAMPLE_PROOFS[2]}`);
+    expect((await browser.get(`/api/tickets/${key}`)).body.fix_check).toBeNull();
+    await browser
+      .post(`/tickets/${key}/check`)
+      .type("form")
+      .send({ words: box, expected_version: "1" });
+    expect((await browser.get(`/api/tickets/${key}`)).body.fix_check).toBe(box);
+  });
+
+  it("opens Change on the same box with the sample + buttons", async () => {
     const { browser } = demo();
     const landed = await fileSample(browser);
     const key = /SUP-\d+/.exec(landed)![0];
     await browser
       .post(`/tickets/${key}/check`)
       .type("form")
-      .send({ sample_choice: "2", words: "", expected_version: "1" });
-    expect((await browser.get(`/api/tickets/${key}`)).body.fix_check).toBe(SAMPLE_PROOFS[2]);
-  });
-
-  it("keeps the sample choice picked when the ticket changed meanwhile", async () => {
-    const { app, browser } = demo();
-    const landed = await fileSample(browser);
-    const key = /SUP-\d+/.exec(landed)![0];
-    const html = parse((await browser.get(landed)).text);
-    const version = html.querySelector("input[name=expected_version]")!.getAttribute("value");
-    // The team takes the ticket while the visitor picks.
-    const taken = await visitor(app)
-      .set("Cookie", `${DEV_COOKIE}=demo-team`)
-      .post(`/api/tickets/${key}/take-and-start`);
-    expect(taken.status, taken.text).toBe(200);
-    const refused = await browser
-      .post(`/tickets/${key}/check`)
-      .type("form")
-      .send({ sample_choice: "2", words: "", expected_version: version });
-    expect(refused.status).toBe(409);
-    const step = parse(refused.text).querySelector("form#verify-form")!;
-    const radios = step.querySelectorAll("input[type=radio]");
-    expect(radios.map((radio) => radio.hasAttribute("checked"))).toEqual([false, false, true]);
+      .send({ words: SAMPLE_PROOFS[1], expected_version: "1" });
+    const html = parse((await browser.get(`/tickets/${key}?step=verify`)).text);
+    const step = html.querySelector("form#verify-form")!;
+    expect(step.querySelector("textarea")?.text).toBe(SAMPLE_PROOFS[1]);
+    expect(
+      step
+        .querySelectorAll("button.proof-add")
+        .map((button) => button.getAttribute("aria-pressed")),
+    ).toEqual(["false", "true", "false"]);
   });
 
   it("offers no sample choices on a ticket that is not the sample", async () => {
@@ -524,7 +578,7 @@ describe("the demo's sample", () => {
       .send({ title: "Printer jams", description: "It jams on page two." });
     const html = parse((await browser.get(filed.headers.location as string)).text);
     expect(html.querySelector("form#verify-form")).not.toBeNull();
-    expect(html.querySelector("form#verify-form input[type=radio]")).toBeNull();
+    expect(html.querySelector("form#verify-form button.proof-add")).toBeNull();
     expect(html.querySelector("main")!.text).not.toMatch(/assistant/i);
   });
 });

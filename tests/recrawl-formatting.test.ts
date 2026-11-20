@@ -234,7 +234,8 @@ describe("the recorded run's page", () => {
     const page = await demoPage("demo-customer", "/assistant-run");
     expect(page.querySelector(".assistant-run")!.classList.contains("column")).toBe(true);
     expect(page.querySelector("h3")!.text).toBe("Setup steps before the run");
-    expect(plainCss).toContain("details.run-details > summary::after,");
+    // One rule draws every fold-open line's chevron right after its words.
+    expect(plainCss).toContain("details:not(.dropdown) > summary:where(:not([role]))::after {");
   });
 });
 

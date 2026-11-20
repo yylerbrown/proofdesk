@@ -40,3 +40,51 @@ test("the search box is round at both ends in every view of the list", async ({ 
     );
   }
 });
+
+/** Where the search box sits against the filters' row and the list's width. */
+async function searchPlace(page: Page) {
+  return page.evaluate(() => {
+    const row = document.querySelector(".list-filters")!.getBoundingClientRect();
+    const filters = document.querySelector(".list-filter-groups")!.getBoundingClientRect();
+    const box = document
+      .querySelector("form.list-search input[type=search]")!
+      .getBoundingClientRect();
+    return {
+      besideFilters: Math.abs(box.top - filters.top) < filters.height,
+      leftGap: Math.round(box.left - row.left),
+      rightGap: Math.round(row.right - box.right),
+      width: Math.round(box.width),
+      remPx: parseFloat(getComputedStyle(document.documentElement).fontSize),
+      sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    };
+  });
+}
+
+test("the search box sits at the right of the filters' row, or fills a row of its own", async ({
+  page,
+}) => {
+  await signIn(page, "Team Member");
+  for (const width of [1440, 1250, 1180, 1100, 768, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const view of ["/tickets", "/tickets?status=open", "/tickets?status=resolved"]) {
+      await page.goto(view);
+      const place = await searchPlace(page);
+      const where = `${width} ${view}`;
+      // Its right edge is always the row's right edge, and nothing scrolls sideways.
+      expect(place.rightGap, where).toBe(0);
+      expect(place.sideways, where).toBe(false);
+      if (place.besideFilters) {
+        // Beside the filters it is a box of at most 24rem at the right end.
+        expect(place.width, where).toBeLessThanOrEqual(24 * place.remPx);
+        expect(place.leftGap, where).toBeGreaterThan(0);
+      } else {
+        // On a row of its own it is as wide as the row, never a short box alone at the right.
+        expect(place.leftGap, where).toBe(0);
+      }
+    }
+  }
+  // On a wide screen the filters and the search box share one row.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/tickets");
+  expect((await searchPlace(page)).besideFilters).toBe(true);
+});

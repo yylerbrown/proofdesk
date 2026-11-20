@@ -1,16 +1,16 @@
 // The customer's step after filing: one box for what would prove the ticket is fixed, and, when
-// the team's AI assistant suggested some, up to three choices above it.
+// the team's AI assistant suggested some, up to three "+" buttons above it.
 //
-// Picking a choice puts its words in the box. The choice stays picked only while the box still
-// holds its words, so an edited box is sent as the customer's own words. Words already typed are
-// only ever replaced by a press.
+// Pressing a "+" adds its words to the box: alone in an empty box, otherwise on a new line after
+// what is there. A button whose words are in the box shows a check and is marked pressed; it goes
+// back to "+" when its words are deleted. Words already typed are never replaced.
 //
 // When an assistant is listening, the page may ask it for suggestions: by itself once, when its
 // setting is Automatic, or by a quiet button beside the label, when it is When asked. While it
 // waits, "Asking the team's AI assistant..." holds the choices' place, and the page reads the
 // suggestions once a second, for up to 20 seconds. Focus never moves. With nothing listening the
-// page says nothing about an assistant. With scripts off the choices are plain radio buttons
-// posted with the form, and nobody is asked.
+// page says nothing about an assistant. With scripts off each "+" posts the form, which comes
+// back with the words added and nothing saved, and nobody is asked.
 
 /** One suggested way, as the page's read gives it. */
 export type Suggestion = { id: number; words: string };
@@ -37,7 +37,7 @@ export const ASKING_WORDS = "Asking the team's AI assistant...";
 export const NONE_WORDS = "No suggestion this time.";
 export const BUTTON_WORDS = "Suggest ways to prove it";
 export const CHOICES_WORDS =
-  "Suggested by the team's AI assistant. Pick one to fill the box, then edit it if you like.";
+  "Suggested by the team's AI assistant. Press one or more to add them to the box, then edit as you like.";
 
 /** The read's answer in the parts this code uses, or null when it is not in the expected shape. */
 export function readProof(body: unknown): ProofRead | null {
@@ -82,10 +82,24 @@ export function afterRead(read: ProofRead | null, waitedMs: number): "show" | "n
   return "wait";
 }
 
-/** True when the box still holds a choice's words, compared as the server compares them. */
-export function stillMatches(box: string, words: string): boolean {
-  const plain = (text: string) => text.trim().replace(/\r\n/g, "\n");
-  return plain(box) !== "" && plain(box) === plain(words);
+/** Text with plain line breaks and no space at either end, as the server compares the box. */
+function plain(text: string): string {
+  return text.replace(/\r\n?/g, "\n").trim();
+}
+
+/** True when the box holds these words, alone or among other words, as the server decides it. */
+export function inBox(box: string, words: string): boolean {
+  return plain(words) !== "" && plain(box).includes(plain(words));
+}
+
+/**
+ * The box after a "+" is pressed: the words alone in an empty box, otherwise on a new line after
+ * what is there. Words already in the box are not added again. The server does the same.
+ */
+export function addToBox(box: string, words: string): string {
+  if (plain(words) === "" || inBox(box, words)) return box;
+  const before = box.replace(/\s+$/, "");
+  return before === "" ? plain(words) : `${before}\n${plain(words)}`;
 }
 
 /** The clock this code waits on. Tests pass their own. */
@@ -126,52 +140,67 @@ export function waitForSuggestions(
   );
 }
 
-/** Keeps a picked choice in step with the box: picking fills it, editing unpicks it. */
-export function wireChoices(form: HTMLFormElement, box: HTMLTextAreaElement): void {
-  const choices = () => [
-    ...form.querySelectorAll<HTMLInputElement>(".proof-choices input[type=radio]"),
-  ];
-  form.addEventListener("change", (event) => {
-    const choice = event.target;
-    if (!(choice instanceof HTMLInputElement) || choice.type !== "radio") return;
-    if (!choice.checked) return;
-    box.value = choice.dataset.words ?? "";
-  });
-  box.addEventListener("input", () => {
-    for (const choice of choices()) {
-      if (choice.checked && !stillMatches(box.value, choice.dataset.words ?? "")) {
-        choice.checked = false;
-      }
-    }
-  });
+/** Marks each "+" button pressed when its words are in the box now, and not pressed otherwise. */
+export function markAdded(form: HTMLFormElement, box: HTMLTextAreaElement): void {
+  for (const button of form.querySelectorAll<HTMLButtonElement>("button.proof-add")) {
+    button.setAttribute("aria-pressed", String(inBox(box.value, button.value)));
+  }
 }
 
 /**
- * The choices as the script draws them. Each choice's words are cut to two lines on screen, so
- * three choices always fit the room kept for them while asking. The full words go in the box
- * when one is picked, and stay in the label for screen readers and as its tooltip.
+ * Wires the "+" buttons to the box: a press adds its words there and nothing is sent, and each
+ * button shows whether its words are in the box now.
  */
-function buildChoices(suggestions: Suggestion[]): HTMLFieldSetElement {
-  const fieldset = document.createElement("fieldset");
-  const legend = document.createElement("legend");
-  legend.className = "hint";
-  legend.textContent = CHOICES_WORDS;
-  fieldset.append(legend);
+export function wireAdds(form: HTMLFormElement, box: HTMLTextAreaElement): void {
+  const mark = () => markAdded(form, box);
+  form.addEventListener("click", (event) => {
+    const target = event.target;
+    const button = target instanceof Element ? target.closest("button.proof-add") : null;
+    if (!(button instanceof HTMLButtonElement)) return;
+    event.preventDefault();
+    box.value = addToBox(box.value, button.value);
+    // As if typed, so whatever listens to the box hears of it.
+    box.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  box.addEventListener("input", mark);
+  mark();
+}
+
+/**
+ * The suggestions as the script draws them, the same as the page draws them: one grey line,
+ * then one "+" button for each. Each one's words are cut to two lines on screen, so three always
+ * fit the room kept for them while asking. The full words go in the box when one is pressed,
+ * and stay in its name for screen readers and as its tooltip.
+ */
+function buildChoices(suggestions: Suggestion[]): HTMLElement {
+  const group = document.createElement("div");
+  const line = document.createElement("p");
+  line.className = "hint";
+  line.id = "proof-adds-line";
+  line.textContent = CHOICES_WORDS;
+  const buttons = document.createElement("div");
+  buttons.className = "proof-adds";
   for (const suggestion of suggestions) {
-    const label = document.createElement("label");
-    label.title = suggestion.words;
-    const radio = document.createElement("input");
-    radio.type = "radio";
-    radio.name = "suggestion_id";
-    radio.value = String(suggestion.id);
-    radio.dataset.words = suggestion.words;
+    const button = document.createElement("button");
+    button.type = "submit";
+    button.name = "add";
+    button.value = suggestion.words;
+    button.className = "proof-add secondary outline";
+    button.formNoValidate = true;
+    button.title = suggestion.words;
+    button.setAttribute("aria-label", `Add: ${suggestion.words}`);
+    button.setAttribute("aria-pressed", "false");
+    const mark = document.createElement("span");
+    mark.className = "proof-add-mark";
+    mark.setAttribute("aria-hidden", "true");
     const words = document.createElement("span");
     words.className = "user-text two-lines";
     words.textContent = suggestion.words;
-    label.append(radio, " ", words);
-    fieldset.append(label);
+    button.append(mark, words);
+    buttons.append(button);
   }
-  return fieldset;
+  group.append(line, buttons);
+  return group;
 }
 
 /** Words long enough to fill two lines at any width, for measuring the room choices take. */
@@ -191,9 +220,31 @@ function keepRoomForChoices(place: HTMLElement): void {
   place.style.minHeight = `${place.getBoundingClientRect().height}px`;
 }
 
-/** Draws the arrived suggestions in the choices' place, in the room kept for them. */
+/**
+ * Draws the arrived suggestions in the choices' place and lets go of the room kept for them, so
+ * the box sits as close under them as on a page drawn with them.
+ */
 function drawChoices(place: HTMLElement, suggestions: Suggestion[]): void {
   place.replaceChildren(buildChoices(suggestions));
+  place.style.minHeight = "";
+  place.hidden = false;
+}
+
+/**
+ * "Asking..." with its three dots each in a span, so the stylesheet can step them in a gentle
+ * loop. The words read the same with the loop or without it.
+ */
+function drawAsking(place: HTMLElement): void {
+  const line = document.createElement("p");
+  line.className = "hint proof-asking";
+  line.append(ASKING_WORDS.replace(/\.+$/, ""));
+  for (let dot = 0; dot < 3; dot += 1) {
+    const span = document.createElement("span");
+    span.className = "proof-asking-dot";
+    span.textContent = ".";
+    line.append(span);
+  }
+  place.replaceChildren(line);
   place.hidden = false;
 }
 
@@ -206,7 +257,12 @@ function drawLine(place: HTMLElement, words: string): void {
   place.hidden = false;
 }
 
-function wireAsking(form: HTMLFormElement, readUrl: string, askUrl: string): void {
+function wireAsking(
+  form: HTMLFormElement,
+  box: HTMLTextAreaElement,
+  readUrl: string,
+  askUrl: string,
+): void {
   const place = form.querySelector<HTMLElement>(".proof-choices");
   const labelRow = form.querySelector<HTMLElement>(".proof-label-row");
   if (place === null || labelRow === null) return;
@@ -230,10 +286,11 @@ function wireAsking(form: HTMLFormElement, readUrl: string, askUrl: string): voi
     if (asking) return;
     asking = true;
     keepRoomForChoices(place);
-    drawLine(place, ASKING_WORDS);
+    drawAsking(place);
     waitForSuggestions(send(pressed), read, clock, {
       show: (suggestions) => {
         drawChoices(place, suggestions);
+        markAdded(form, box);
         asking = false;
       },
       none: () => {
@@ -250,7 +307,7 @@ function wireAsking(form: HTMLFormElement, readUrl: string, askUrl: string): voi
   read().then(
     (answer) => {
       if (answer === null) return;
-      const hasChoices = place.querySelector("input[type=radio]") !== null;
+      const hasChoices = place.querySelector("button.proof-add") !== null;
       const mode = askMode(answer, hasChoices);
       if (mode === "automatic") ask(false);
       if (mode === "button") {
@@ -270,9 +327,9 @@ if (typeof document !== "undefined") {
   const form = document.querySelector<HTMLFormElement>("form.proof-step");
   const box = form?.querySelector<HTMLTextAreaElement>("textarea[name=words]");
   if (form && box) {
-    wireChoices(form, box);
+    wireAdds(form, box);
     const readUrl = form.dataset.proofRead;
     const askUrl = form.dataset.proofAsk;
-    if (readUrl && askUrl) wireAsking(form, readUrl, askUrl);
+    if (readUrl && askUrl) wireAsking(form, box, readUrl, askUrl);
   }
 }

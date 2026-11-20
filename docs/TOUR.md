@@ -17,7 +17,7 @@ Each one takes under a minute on the demo, which opens on the ticket list as the
 
 - Start as: The ticket you just filed, on its second step
 - Press: **Save**, or **Skip for now**; later, **Change** beside the label
-- You should see: "What would prove it is fixed?", two grey lines, one box, **Save** and **Skip for now**. The first line says it is one thing you can check yourself; on the demo the second reads "Sample suggestions. On a real site the team's own AI assistant writes these.", over three sample suggestions with the first already in the box. Saved words are quoted under the label, with "Saved. The team will check the fix against it." once. A ticket with none shows its filer "Add what would prove it". The team cannot write it; it is the customer's own words. A form or API call that already carries it files the ticket without the step.
+- You should see: "What would prove it is fixed?", two grey lines, one box, **Save** and **Skip for now**. The first line says it is one thing you can check yourself; on the demo the second reads "Sample suggestions. Press one or more to add them to the box. On a real site the team's own AI assistant writes these.", over three sample suggestions, each a "+" button that adds its sentence to the box, with the first already in the box. Saved words are quoted under the label, with "Saved. The team will check the fix against it." once. A ticket with none shows its filer "Add what would prove it". The team cannot write it; it is the customer's own words. A form or API call that already carries it files the ticket without the step.
 
 **Ticket list with filters**
 
@@ -83,7 +83,7 @@ Each one takes under a minute on the demo, which opens on the ticket list as the
 
 - Start as: An admin on Connections, on the real site or the development entrance
 - Press: The connection's Suggestions choice: Off, When asked or Automatic
-- You should see: Off is the default and a demo connection never has it. With When asked, the customer's step shows a quiet "Suggest ways to prove it"; with Automatic, the step asks by itself. A listening assistant answers within seconds with up to three choices, under "Suggested by the team's AI assistant. Pick one to fill the box, then edit it if you like." Picking one fills the box; the customer saves their own words. Proofdesk makes no AI calls itself, and with nothing listening the step says nothing about an assistant.
+- You should see: Off is the default and a demo connection never has it. With When asked, the customer's step shows a quiet "Suggest ways to prove it"; with Automatic, the step asks by itself. A listening assistant answers within seconds with up to three suggestions, under "Suggested by the team's AI assistant. Press one or more to add them to the box, then edit as you like." Each is a "+" button that adds its sentence to the box, on a new line after what is there, and shows a check once it is in the box; the customer saves the box as their own words. Proofdesk makes no AI calls itself, and with nothing listening the step says nothing about an assistant.
 
 **Evidence, history and email notices**
 

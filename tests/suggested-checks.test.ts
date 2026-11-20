@@ -517,13 +517,13 @@ describe("the page routes", () => {
   const page = (app: Express, id: string) =>
     request.agent(app).set(FROM_THIS_SITE).set("Cookie", `${DEV_COOKIE}=${id}`);
 
-  it("save the customer's pick from a form and say so once", async () => {
+  it("save the box holding a suggestion from a form and say so once", async () => {
     const { app, offered } = await suggested();
     const browser = page(app, customerOne.id);
     const res = await browser
       .post("/tickets/SUP-1/check")
       .type("form")
-      .send({ suggestion_id: String(offered[0]!.id), words: "", expected_version: "1" });
+      .send({ words: offered[0]!.words, expected_version: "1" });
     expect(res.status).toBe(303);
     expect(res.headers.location).toBe("/tickets/SUP-1");
     const shown = await browser.get("/tickets/SUP-1");

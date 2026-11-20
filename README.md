@@ -38,10 +38,10 @@ On the demo, in about two minutes, with eight presses:
 
 1. The demo opens on your ticket list as the Demo Customer. On the welcome card above the list,
    press **File a sample ticket**, then **File ticket**. The form holds a sample you can change.
-2. The filed ticket asks "What would prove it is fixed?", with three sample suggestions and the
-   first in the box. Press **Save**: the ticket is **New**, with your words under that label.
+2. The filed ticket asks "What would prove it is fixed?", with three sample "+" suggestions and
+   the first in the box. Press **Save**: the ticket is **New**, with your words under that label.
 
-<img src="docs/img/what-would-prove-it.png" width="560" alt="The step after filing, under the title's line &quot;New, not yet taken by the team&quot; and its quiet &quot;Edit&quot; link, in a bordered card: under &quot;What would prove it is fixed?&quot; two grey lines, a hint and a note that these are sample suggestions, then three sample suggestions to pick from, a box holding the first one, and the buttons &quot;Save&quot; and &quot;Skip for now&quot;">
+<img src="docs/img/what-would-prove-it.png" width="560" alt="The step after filing, under the title's line &quot;New, not yet taken by the team&quot; and its quiet &quot;Edit&quot; link, in a bordered card: under &quot;What would prove it is fixed?&quot; two grey lines, a hint and a note that these are sample suggestions, then three sample suggestions as buttons, the first with a check because it is already in the box and the other two with a plus, a box holding the first one, and the buttons &quot;Save&quot; and &quot;Skip for now&quot;">
 
 3. Press **View this ticket as a team member**, then **Take ticket and start work**. The ticket
    is **In Progress**, and you own it.
