@@ -54,6 +54,24 @@ Each is one idea to weigh after sending, in no order.
 | "Agent tooling" as the umbrella             | It would make the product harder to recognise without giving the team or its customers anything new to do. "What would help an agent do this ticket well?" chooses improvements instead.                                        |
 | A central AI with token limits per customer | Proofdesk makes no model calls of its own, so there is nothing to meter. The cost stays with whoever runs the assistant, and so does the choice of model provider: the desk itself never sends a customer's ticket text to one. |
 
+## Smaller ideas from walking the demo
+
+Each is one line, raised while the demo was walked before sending, to weigh after sending.
+
+- An SLA clock beside a ticket's due time.
+- Each ticket's real age on the list, beside the age of its last reply.
+- Saved views, such as "needs my reply".
+- Canned replies.
+- Tags, and merging a duplicate into the ticket it repeats.
+- A note to many tickets at once, and a note for the customer with a bulk Won't fix.
+- Undo after a bulk change.
+- Keyboard shortcuts: j and k to move through the list, a key for the search, Ctrl+Enter to send.
+- The message box open by default.
+- One fixed place for one-time lines, so a notice never moves the buttons under it.
+- Shorter role names in the demo's menu, so the header does not shift when switching.
+- Web addresses in a description shown as links, and a box on the form for the page it happened on.
+- A live replay of the recorded assistant run, with its real times.
+
 ## Already built
 
 - **A named human owner** on every ticket in progress, with take, release and hand-off.
@@ -75,7 +93,8 @@ Each is one idea to weigh after sending, in no order.
 - **Two people on one ticket:** a save or a press from an old copy is refused, and the typed text
   is kept.
 - **Pictures** on tickets and messages, shown only to who may see what they are attached to.
-- **The proof step:** "What would prove it is fixed?" after filing, the Proof column, and New
-  tickets with a proof listed first.
-- **Marking fixed resolves**, and the customer's "Did this fix it?" Yes is optional.
+- **The proof step:** "What would prove it is fixed?" after filing, the Proof column, New
+  tickets with a proof listed first, and resolved tickets filtered by age.
+- **Marking fixed resolves**, as the team member's agreement that the customer's proof was met,
+  and the customer's "Did this fix it?" Yes is optional.
 - **Changing many tickets at once** from the list, and **possible duplicates** closed in one press.

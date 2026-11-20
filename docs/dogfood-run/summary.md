@@ -92,7 +92,7 @@ For each fix, at `3b6293a`: ran the named tests (pass), checked out main's versi
 
 ## What the pages showed afterwards
 
-- Team view, each ticket: Resolved, "Customer confirmed on Nov 19, 2026.", the evidence under "From the AI assistant" (Revision, Command, Result, "Reported by Dogfood assistant (AI assistant)", "Not checked by Proofdesk"), the first run's blocked note (8:09 PM) and the review request (8:19 PM) as internal notes, and the history: filed, customer chose the proof "suggested by Dogfood assistant", assigned, In Progress, handed to the assistant, note, evidence, review requested, assistant stopped (team resolved), "Resolved by the team: Fixed", "Customer confirmed". The final screenshots have every fold opened.
+- Team view, each ticket: Resolved, "Customer confirmed on Nov 19, 2026.", in the pages' local time, seven hours behind UTC, so this evening of 19 Nov is the 20 Nov UTC date above; the evidence under "From the AI assistant" (Revision, Command, Result, "Reported by Dogfood assistant (AI assistant)", "Not checked by Proofdesk"), the first run's blocked note (8:09 PM) and the review request (8:19 PM) as internal notes, and the history: filed, customer chose the proof "suggested by Dogfood assistant", assigned, In Progress, handed to the assistant, note, evidence, review requested, assistant stopped (team resolved), "Resolved by the team: Fixed", "Customer confirmed". The final screenshots have every fold opened.
 - Customer view: "Resolved, customer confirmed", the proof and the evidence; no notes.
 - List (team, All): three Resolved tickets, each with the solid green check in the Proof column.
 
@@ -123,6 +123,8 @@ Listener 49.6 s, US$0.18. Fixer run 1 51.7 s, US$0.34. Fixer run 2 9 min 28 s, U
 - `/llms.txt` says "Who may: Nobody: an assistant listens..." for `wait_for_requests` and "Nobody: an assistant answers..." for `answer_request`, which reads as if no one may call them.
 - An assistant's earlier "Blocked" note stays in the conversation after the same assistant later succeeds, with nothing marking it as superseded.
 - A cancel is matched by connection and JSON-RPC id, so two clients sharing one key and the same id could cancel each other's call.
+
+Fixed afterwards, in pull request #203: the first four. The development entrance now says the team member marks a ticket fixed, the team sees the assistant's latest result above "Mark fixed and tell the customer", `/llms.txt` names who may listen, and an assistant's "Blocked" mark ends once the same assistant attaches evidence (the note itself stays in the conversation). The last one, a cancel shared by two clients on one key, is not fixed.
 
 ## Files
 
