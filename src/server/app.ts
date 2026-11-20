@@ -15,6 +15,7 @@ import {
   notFoundHandler,
   pageErrorHandler,
   pageNotFoundHandler,
+  refusalForPage,
 } from "./errors.js";
 import { compressAnswers, requestId, requestLog, type LogLine } from "./http-basics.js";
 import { healthRouter } from "./routes/health.js";
@@ -90,6 +91,8 @@ export function createApp(config: Config, db: Db, options: { log?: LogLine } = {
   app.locals.demoPeople = config.demo ? DEMO_ACTORS : [];
   // The demo's footer links to the source beside About this demo, when one is set.
   app.locals.sourceUrl = config.sourceUrl;
+  // A refusal on any page shows its way to Who may do what as a link.
+  app.locals.refusalForPage = refusalForPage;
 
   // One ticket service, shared by the JSON API and the pages, so the rules exist once.
   // The demo has a hard budget of rows, so rate limits are not the only thing that stops it

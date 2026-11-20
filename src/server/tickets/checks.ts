@@ -9,7 +9,7 @@ import * as repository from "./repository.js";
 /** Throws 403 unless the actor may do this action, on this ticket if one is given. */
 export function requirePermission(actor: Actor, action: Action, row?: repository.TicketRow): void {
   if (!can(actor, action, row)) {
-    throw forbidden(actor);
+    throw forbidden(actor, action);
   }
 }
 

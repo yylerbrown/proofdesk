@@ -241,6 +241,9 @@ describe("a refusal the read-only admin preview meets", () => {
     const res = await as(app, customerOne)
       .post("/api/tickets/SUP-1/entries")
       .send({ kind: "note", body: "Hello" });
-    expect([res.status, res.body.error.message]).toEqual([403, "You are not allowed to do that."]);
+    expect([res.status, res.body.error.message]).toEqual([
+      403,
+      "You are not allowed to do that. Who may: The team. See who may do what at /roles.",
+    ]);
   });
 });
