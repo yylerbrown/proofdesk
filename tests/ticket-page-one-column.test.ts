@@ -60,17 +60,26 @@ describe("the column", () => {
     expect(ruleFor(".ticket-page")).toContain("font-size: 1.0667rem;");
   });
 
-  it("has no side panel left in the stylesheet, and the check sits on the page's background", () => {
+  it("has no side panel left in the stylesheet, and the step is one quiet bordered card", () => {
     expect(css).not.toMatch(/\.ticket-panel|\.ticket-layout|\.ticket-summary|--pd-rail/);
     expect(theme).not.toContain("--pd-rail");
+    // A thin border in the page's border colour, the other cards' radius, no fill, no shadow.
     const card = ruleFor("article.ticket-card");
-    expect(card).toContain("border: 0;");
+    expect(card).toContain("border: var(--pd-hairline);");
+    expect(card).toContain("border-radius: var(--pd-radius-lg);");
     expect(card).toContain("background: none;");
+    expect(card).toContain("box-shadow: none;");
   });
 
-  it("draws its one hairline where the conversation begins, only when there is one", async () => {
+  it("draws one hairline where the conversation begins, above the message box when it is empty", async () => {
     const { app } = await filed();
-    expect((await page(app)).querySelector("hr")).toBeNull();
+    const empty = (await page(app)).querySelectorAll(".ticket-page hr");
+    expect(empty).toHaveLength(1);
+    expect(empty[0]!.classList.contains("thread-start")).toBe(true);
+    expect(empty[0]!.nextElementSibling?.id).toBe("conversation");
+    expect(
+      empty[0]!.nextElementSibling?.nextElementSibling?.classList.contains("ticket-last-row"),
+    ).toBe(true);
     await as(app, customerOne)
       .post("/api/tickets/SUP-1/entries")
       .send({ kind: "reply", body: "Hi" });

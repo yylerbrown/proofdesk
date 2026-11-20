@@ -25,10 +25,10 @@ describe("the ticket page's spacing", () => {
     expect(title).toContain("margin-bottom: var(--pd-space-3);");
   });
 
-  it("is 24 inside the ticket's block, with where it stands 12 over the step", () => {
-    expect(ruleFor("article.ticket-card")).toContain(
-      "margin: var(--pd-space-5) 0 var(--pd-space-6);",
-    );
+  it("is 24 inside the step's card, with where it stands 12 over the step", () => {
+    // 32 around the card, more than any space inside it, so the ticket, the step and the
+    // conversation read as three groups.
+    expect(ruleFor("article.ticket-card")).toContain("margin: var(--pd-space-6) 0;");
     expect(ruleFor(".ticket-card blockquote")).toContain("margin: 0;");
     expect(ruleFor(".ticket-card .card-line")).toContain("margin: var(--pd-space-5) 0 0;");
     expect(ruleFor(".ticket-card .card-step")).toContain("margin: var(--pd-space-5) 0 0;");
@@ -40,6 +40,8 @@ describe("the ticket page's spacing", () => {
   it("is 32 around the conversation, 24 under its hairline, and 12 between the last two rows", () => {
     expect(ruleFor("hr.thread-start")).toContain("margin: var(--pd-space-6) 0 var(--pd-space-5);");
     expect(ruleFor(".ticket-last-row")).toContain("margin-top: var(--pd-space-6);");
+    // With no messages yet, the message box sits straight under the hairline's 24.
+    expect(ruleFor("#conversation + .ticket-last-row")).toContain("margin-top: 0;");
     expect(ruleFor(".ticket-more-row")).toContain("margin-top: var(--pd-space-3);");
     expect(ruleFor(".ticket-more-row")).toContain("gap: var(--pd-space-3) var(--pd-space-5);");
   });

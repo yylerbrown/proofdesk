@@ -411,8 +411,9 @@
 </details>
 <% } %>
 
-<%# The page's one hairline, where the conversation begins, only when there is one. %>
-<% if (entries.length > 0) { %><hr class="thread-start" /><% } %>
+<%# The hairline where the conversation begins: above its messages, or above the message box
+    when there are none yet. %>
+<hr class="thread-start" />
 <h2 id="conversation" class="visually-hidden">Conversation</h2>
 <% for (const item of entries) { %>
 <article class="entry<% if (item.kind === "note") { %> note<% } %>" id="entry-<%= item.id %>">
