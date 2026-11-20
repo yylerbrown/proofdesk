@@ -3271,6 +3271,29 @@ textarea:focus-visible {
 .about-demo > p {
   font-size: var(--pd-text-sm);
 }
+/* Its quiet form for a batch of made-up tickets: the line, then the two choices and the button
+   on one row where they fit, wrapping on a phone. */
+.about-demo .sample-batch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--pd-space-3);
+  margin-top: var(--pd-space-5);
+  font-size: var(--pd-text-sm);
+}
+.about-demo .sample-batch > p {
+  flex-basis: 100%;
+  margin: 0;
+}
+.about-demo .sample-batch label,
+.about-demo .sample-batch select,
+.about-demo .sample-batch button {
+  width: auto;
+  margin-bottom: 0;
+}
+.about-demo .sample-batch select {
+  font-size: inherit;
+}
 
 /* On the demo, every page ends with one quiet link to the About page. */
 .site-footer {

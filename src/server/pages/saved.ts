@@ -7,6 +7,9 @@ import type { Request, Response } from "express";
 // What happens after filing, said by the receipt with or without the ticket's key.
 const FILED_NEXT = "The support team has it now; come back to this page for updates.";
 
+// What the demo's sample tickets come to when it resets, said after a batch is added.
+const SAMPLES_RESET = "The demo returns to its samples when it resets.";
+
 export const SAVED_MESSAGES = {
   // The ticket page puts the key in this line; see filedMessage below.
   filed: `Ticket filed. ${FILED_NEXT}`,
@@ -41,6 +44,11 @@ export const SAVED_MESSAGES = {
   specDiscarded: "Suggested test discarded.",
   // After a switch of person on the demo. The page names the person; see switchedMessage below.
   switched: "You are now someone else on this demo.",
+  // After "Add sample tickets" on the demo's About page, one for each size the form offers.
+  samplesAdded10: `Added 10 sample tickets. ${SAMPLES_RESET}`,
+  samplesAdded25: `Added 25 sample tickets. ${SAMPLES_RESET}`,
+  samplesAdded50: `Added 50 sample tickets. ${SAMPLES_RESET}`,
+  samplesFull: "The demo is full of samples. It returns to its own when it resets.",
 } as const;
 
 export type SavedKey = keyof typeof SAVED_MESSAGES;
