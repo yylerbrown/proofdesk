@@ -60,7 +60,9 @@ test("focus starts from the saved line, the sent line or the search box", async 
 
   await test.step("after a search, focus is back in the search box", async () => {
     await page.goto("/tickets");
-    const search = page.getByRole("searchbox", { name: "Search titles and descriptions" });
+    const search = page.getByRole("searchbox", {
+      name: "Search titles, descriptions and ticket keys",
+    });
     await search.fill("saved line");
     await search.press("Enter");
     await expect(page).toHaveURL(/q=saved/);
