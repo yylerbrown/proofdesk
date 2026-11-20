@@ -22,8 +22,12 @@ async function ticketMain(app: Express, address = "/tickets/SUP-1") {
   return parse(res.text).querySelector("main")!;
 }
 
-const ticks = (main: ReturnType<typeof parse>) =>
-  main.querySelectorAll("img[src='/assets/mark.svg']");
+// The list's "Customer confirmed" mark, the green circle with its check, at a status mark's size.
+// The page never shows the lime logo tile for it.
+const ticks = (main: ReturnType<typeof parse>) => {
+  expect(main.querySelectorAll("img[src='/assets/mark.svg']")).toHaveLength(0);
+  return main.querySelectorAll("span.tick");
+};
 
 /** Files a ticket and takes it as far as asking the customer, without an answer. */
 async function markReady(app: Express) {

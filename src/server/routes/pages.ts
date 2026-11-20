@@ -7,6 +7,7 @@ import { RECORDED_ASSISTANT, RECORDED_SAMPLE_KEY } from "../demo.js";
 import { errorBody, forbidden, HttpError, onTicketPage, ValidationError } from "../errors.js";
 import { can } from "../permissions.js";
 import {
+  afterLeadWord,
   cardLine,
   confirmedAt,
   CUSTOMER_ANSWER_TAG,
@@ -14,11 +15,13 @@ import {
   describeEvent,
   firstParagraph,
   formatDay,
+  paragraphs,
   formatTime,
   notFixedCard,
   STATUS_LABELS,
   timeAgo,
   reportFields,
+  roleAfterName,
   turnTag,
   markedFixed,
 } from "../pages/format.js";
@@ -72,6 +75,9 @@ const helpers = {
   timeAgo,
   reportFields,
   firstParagraph,
+  afterLeadWord,
+  roleAfterName,
+  paragraphs,
 };
 
 // What the reply form holds: the kind chosen, the text typed, and a message if it was refused.
@@ -649,7 +655,14 @@ export function pagesRouter(
       when: event.created_at,
       what: historyWhat(event, index),
       who: describeActor(event, names),
-      role: event.actor_kind === "agent" ? null : (roles.get(event.actor) ?? null),
+      role:
+        event.actor_kind === "agent"
+          ? null
+          : roleAfterName(
+              describeActor(event, names),
+              roles.get(event.actor) ?? null,
+              req.app.locals.demo === true,
+            ),
     }));
     const allowed = service.allowedActions(ticket, actor);
     const evidence = service.listEvidence(ticket.key, actor);

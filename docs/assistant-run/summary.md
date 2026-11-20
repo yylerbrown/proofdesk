@@ -5,7 +5,7 @@
 **Assistant:** Claude Code 2.1.319, headless, model alias `opus` (reported as `claude-opus-5-5`).
 **Outcome:** the whole path. It found SUP-4 ("Sample for your AI assistant: the total adds tax twice"), reproduced the bug and tested a fix with Node in its scratch folder, proposed a one-scenario test spec, attached the test run as evidence naming that scenario, and asked the owner to review. Everything it told Proofdesk matches a result in the transcript. 15 turns, 55 seconds, US$0.28 at list price.
 
-## Human steps before the run
+## Setup steps before the run
 1. As a visitor: "Get a demo connection" on the welcome page. Key into a private file, never printed. Connection "Demo visitor ea29379c". Scopes: read tickets (without internal notes), write notes, attach evidence, propose specs.
 2. Nothing else. SUP-4 was already owned by Demo Team Member and In Progress from the seed, and handed to every demo connection; the connection's `list_tickets` returned SUP-4 alone.
 

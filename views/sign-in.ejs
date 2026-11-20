@@ -9,7 +9,7 @@
 
 <% if (viewer) { %>
 <%# Who the visitor is and how to change it, said once, with how the real site differs. %>
-<p class="signed-in">You are <strong><%- include("demo-name", { person: viewer }) %></strong>, one of three made-up people. Switch with the menu at the top right.<% if (locals.realSiteUrl) { %> On <a href="<%= realSiteUrl %>">the real site</a>, people sign in with GitHub.<% if (locals.sourceUrl) { %> <a href="<%= sourceUrl %>#sign-in-and-roles">How sign-in and roles work</a><% } %><% } %></p>
+<p class="signed-in">You are <strong><%- include("demo-name", { person: viewer }) %></strong>, one of three made-up people. Switch with the menu at the top right.<% if (locals.realSiteUrl) { %> On <a href="<%= realSiteUrl %>">the real site</a>, people sign in with GitHub.<% if (locals.sourceUrl) { %> <a href="<%= sourceUrl %>#sign-in-and-roles" class="keep-together">How sign-in and roles work</a><% } %><% } %></p>
 <% } else if (nextTicket) { %>
 <%# A link to one ticket: whose view opens it is the visitor's choice, since a customer sees only their own. %>
 <p class="next-ticket" id="next-ticket">Pick a role to open <strong><%= nextTicket %></strong>.</p>
@@ -39,7 +39,7 @@
   <% if (!viewer) { %>
   <%# Signed out, the paragraph above has not said how roles work, so this one does. %>
   <% if (locals.realSiteUrl) { %>
-  <p class="real-site">On <a href="<%= realSiteUrl %>">the real site</a>, people sign in with GitHub. Here you switch between three made-up people with the menu at the top right.<% if (locals.sourceUrl) { %> <a href="<%= sourceUrl %>#sign-in-and-roles">How sign-in and roles work</a><% } %></p>
+  <p class="real-site">On <a href="<%= realSiteUrl %>">the real site</a>, people sign in with GitHub. Here you switch between three made-up people with the menu at the top right.<% if (locals.sourceUrl) { %> <a href="<%= sourceUrl %>#sign-in-and-roles" class="keep-together">How sign-in and roles work</a><% } %></p>
   <% } else { %>
   <p class="roles-note">Here you switch between three made-up people with the menu at the top right.</p>
   <% } %>
@@ -66,7 +66,7 @@
   <% if (locals.sampleBatch) { %>
   <%# A quiet helper for a fuller list: made-up tickets, filed at past times, gone at the next reset. %>
   <form method="post" action="/demo/samples" class="sample-batch">
-    <p id="sample-batch-what">Want a fuller list to filter, sort and search? Add made-up tickets.</p>
+    <p id="sample-batch-what">Want a fuller list to filter, sort and search? Add sample tickets.</p>
     <label>How many
       <select name="count">
         <% for (const size of sampleBatch.sizes) { %><option value="<%= size %>"<%= size === "10" ? " selected" : "" %>><%= size %></option><% } %>

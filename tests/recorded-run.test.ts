@@ -338,8 +338,9 @@ describe("the demo's history and the assistant samples' customer", () => {
       const rows = await who(`SUP-${n}`, "demo-team");
       expect(rows.join(" | "), `SUP-${n}`).not.toMatch(/Unknown person|demo-recorded-assistant/);
     }
-    expect(await who("SUP-7", "demo-admin")).toContain("Second Demo Customer customer");
-    expect(await who("SUP-8", "demo-admin")).toContain("Third Demo Customer customer");
+    // A demo name that ends with its role word is not followed by it again.
+    expect(await who("SUP-7", "demo-admin")).toContain("Second Demo Customer");
+    expect(await who("SUP-8", "demo-admin")).toContain("Third Demo Customer");
     expect(await who(recorded, "demo-team")).toContain("Demo visitor's assistant (AI assistant)");
     // Named in plain words, with no connection id.
     expect(RECORDED_ASSISTANT.name).not.toMatch(/[0-9a-f]{6,}/);
@@ -366,7 +367,7 @@ describe("the demo's history and the assistant samples' customer", () => {
     // description holds the customer's report alone.
     const description = parse(
       (await as("demo-team").get(`/tickets/${recorded}`)).text,
-    ).querySelector("h2 + p.user-text")!.text;
+    ).querySelector(".ticket-description")!.text;
     expect(description).toMatch(/^The checkout total is too high\./);
     expect(description).not.toMatch(/recorded|earlier copy|SUP-4/i);
   });

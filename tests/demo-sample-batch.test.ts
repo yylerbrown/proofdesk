@@ -136,7 +136,7 @@ describe("Add sample tickets, on the demo", () => {
     const form = html.querySelector(".about-demo form.sample-batch")!;
     expect(form.getAttribute("action")).toBe("/demo/samples");
     expect(form.querySelector("p")?.text).toBe(
-      "Want a fuller list to filter, sort and search? Add made-up tickets.",
+      "Want a fuller list to filter, sort and search? Add sample tickets.",
     );
     const count = form.querySelector("select[name=count]")!;
     expect(count.querySelectorAll("option").map((option) => option.text)).toEqual([

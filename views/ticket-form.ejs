@@ -8,6 +8,8 @@
   const focusIf = (name) => (firstError === name ? "autofocus" : "");
 %>
 <div class="column ticket-form">
+<%# Editing: the ticket pages' way back, one step further, as on the emails page. %>
+<% if (editKey) { %><p class="back"><a href="/tickets"><%= viewer && viewer.role === "customer" ? "My tickets" : "All tickets" %></a> / <a href="/tickets/<%= editKey %>"><%= editKey %></a> / Edit</p><% } %>
 <h1><%= editKey ? "Edit ticket" : title %></h1>
 <% if (locals.alreadyFiled) { %>
 <p class="notice already-filed" role="status">This form was already filed as <a href="/tickets/<%= alreadyFiled.key %>"><%= alreadyFiled.key %></a>. <a href="/tickets/new">Start a new ticket</a>.</p>

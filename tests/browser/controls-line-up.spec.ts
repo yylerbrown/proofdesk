@@ -128,12 +128,17 @@ test("on a phone, the open Owner list starts under its button and stays on the s
   await team.context().close();
 });
 
-test("status and owner as plain words start on the column's edge, wide and on a phone", async ({
+test("status and owner as plain words sit where a menu's words sit, wide and on a phone", async ({
   browser,
 }) => {
-  // The admin takes it, so the team member can change neither its status nor its owner.
+  // Where a menu's label starts inside its button, before anyone takes the ticket.
   const admin = await signInAs(browser, "Admin");
   await admin.goto(url);
+  const menu = await boxOf(admin, "details.status-menu > summary");
+  const menuLabel = await boxOf(admin, "details.status-menu > summary .fact-label");
+  const inset = menuLabel.left - menu.left;
+  expect(inset).toBeGreaterThan(0);
+  // The admin takes it, so the team member can change neither its status nor its owner.
   await admin.getByRole("button", { name: "Take ticket and start work" }).click();
   await expect(admin.locator(".ticket-facts .owner-menu summary")).toContainText("Admin");
   await admin.context().close();
@@ -144,12 +149,20 @@ test("status and owner as plain words start on the column's edge, wide and on a 
     const facts = team.locator(".ticket-facts .fact");
     await expect(facts).toHaveCount(2);
     const title = await boxOf(team, ".ticket-page h1");
+    // Each fact's box starts where a menu's button would, and its label where the menu's label
+    // would, so the line reads the same whether it can be changed or not.
+    const statusBox = await boxOf(team, ".ticket-facts .fact >> nth=0");
     const status = await boxOf(team, ".ticket-facts .fact >> nth=0 >> .fact-label");
-    expect(status.left).toBe(title.left);
+    expect(statusBox.left).toBe(title.left);
+    expect(status.left - statusBox.left).toBeCloseTo(inset, 0);
+    const ownerBox = await boxOf(team, ".ticket-facts .fact >> nth=1");
     const owner = await boxOf(team, ".ticket-facts .fact >> nth=1 >> .fact-label");
-    // Beside the status, or at the edge when it has wrapped to a line of its own.
-    if (owner.top > status.top) expect(owner.left).toBe(title.left);
+    expect(owner.left - ownerBox.left).toBeCloseTo(inset, 0);
+    // Beside the status, or under it when it has wrapped to a line of its own, and inside the
+    // column either way.
+    if (owner.top > status.top) expect(ownerBox.left).toBe(title.left);
     else expect(owner.left).toBeGreaterThan(status.right);
+    expect(ownerBox.right).toBeLessThanOrEqual(title.right + 1);
     await team.context().close();
   }
 });
@@ -220,7 +233,8 @@ test("on a phone, the new ticket form's picture says Remove under it and the sim
       titleCut: link.scrollWidth > link.clientWidth,
     };
   });
-  expect(shown.status).toMatch(/^ \((New|In Progress|Resolved)\)$/);
+  // A space that does not break joins the status to the title's last word.
+  expect(shown.status).toMatch(/^\u00a0\((New|In Progress|Resolved)\)$/);
   expect(shown.statusRight).toBeLessThanOrEqual(shown.lineRight + 0.5);
   expect(shown.statusCut).toBe(false);
   expect(shown.titleCut).toBe(false);

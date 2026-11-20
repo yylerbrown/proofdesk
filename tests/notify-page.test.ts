@@ -70,7 +70,8 @@ describe("the notices page", () => {
       "[SUP-1] Did this fix it? Printer jams",
       "[SUP-1] New reply: Printer jams",
     ]);
-    expect(res.text).toContain("Back to SUP-1");
+    // The ticket pages' way back, one step further.
+    expect(parse(res.text).querySelector("p.back")?.text).toBe("My tickets / SUP-1 / Emails");
   });
 
   it("shows the team every notice of the ticket, by name", async () => {

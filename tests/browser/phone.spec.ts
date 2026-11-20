@@ -571,25 +571,27 @@ test("on a phone the header says New, so the person's name is not cut", async ({
   expect((await newTicket.boundingBox())!.width).toBeGreaterThan(60);
 });
 
-test("on a phone History and More options each open directly under their own line", async ({
+test("at every width History and More options each open directly under their own line", async ({
   page,
 }) => {
   await signInAsTeam(page);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/tickets/SUP-7");
-  await page.locator("details.history > summary").click();
-  await page.locator("details.more-options > summary").click();
-  const top = (selector: string) =>
-    page.locator(selector).evaluate((element) => element.getBoundingClientRect().top);
-  const history = await top("details.history > summary");
-  const table = await top("details.history table");
-  const more = await top("details.more-options > summary");
-  const list = await top("details.more-options .more-list");
-  // History's own entries come right under it, then More options, then its own entries.
-  expect(table).toBeGreaterThan(history);
-  expect(more).toBeGreaterThan(table);
-  expect(list).toBeGreaterThan(more);
-  expect(list - more).toBeLessThan(80);
+  for (const width of [390, 1280]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/tickets/SUP-7");
+    await page.locator("details.history > summary").click();
+    await page.locator("details.more-options > summary").click();
+    const top = (selector: string) =>
+      page.locator(selector).evaluate((element) => element.getBoundingClientRect().top);
+    const history = await top("details.history > summary");
+    const table = await top("details.history table");
+    const more = await top("details.more-options > summary");
+    const list = await top("details.more-options .more-list");
+    // History's own entries come right under it, then More options, then its own entries.
+    expect(table, `${width}`).toBeGreaterThan(history);
+    expect(more, `${width}`).toBeGreaterThan(table);
+    expect(list, `${width}`).toBeGreaterThan(more);
+    expect(list - more, `${width}`).toBeLessThan(80);
+  }
 });
 
 test("on a phone the customer's No opens its box in place, scrolling only to show it", async ({
