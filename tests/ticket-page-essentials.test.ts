@@ -77,7 +77,7 @@ describe("the team's ticket page", () => {
     expect(more.firstElementChild?.tagName).toBe("SUMMARY");
     expect(more.firstElementChild?.text).toBe("More options");
     expect(more.hasAttribute("open")).toBe(false);
-    expect(more.querySelector("details > summary")?.text).toBe("Add evidence of the fix");
+    expect(more.querySelector(".more-list a")?.text).toBe("Edit ticket");
     // The owner's menu is in the line under the title, and nothing secondary is.
     expect(top.querySelectorAll(".owner-menu form[action$='/take']")).toHaveLength(1);
     expect(top.querySelector("details.more-options")).toBeNull();

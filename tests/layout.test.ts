@@ -46,7 +46,7 @@ describe("the ticket page layout", () => {
     expect(more.querySelector("summary")?.text).toBe("More options");
     expect(
       more.querySelectorAll(".more-list > li").map((el) => el.text.trim().split("\n")[0]),
-    ).toEqual(["Edit ticket", "Add evidence of the fix", "Archive ticket", "Delete permanently"]);
+    ).toEqual(["Edit ticket", "Archive ticket", "Delete permanently"]);
     // The next step is the card's.
     expect(
       html.querySelector(".ticket-card .next-action form[action$='/take-and-start']"),
@@ -168,7 +168,8 @@ describe("the ticket page's quiet parts", () => {
       (await ticketPage(admin(app))).querySelector(".ticket-page details.evidence-list");
     const before = await ticketPage(admin(app));
     const more = before.querySelector("details.more-options")!;
-    expect(more.querySelectorAll("summary").map((s) => s.text)).toContain(
+    // Evidence is added through the API and the assistants' tools; the page has no form for it.
+    expect(more.querySelectorAll("summary").map((s) => s.text)).not.toContain(
       "Add evidence of the fix",
     );
     expect(await line()).toBeNull();
@@ -188,8 +189,8 @@ describe("the ticket page's quiet parts", () => {
       const page = await ticketPage(viewer);
       expect(page.querySelector("form#change-link")).toBeNull();
       expect(page.text).not.toContain("Add the code change link");
-      // A link given with evidence makes it a change.
-      expect(page.querySelector("form[action$='/evidence'] input[name=link]")).not.toBeNull();
+      // Evidence, a linked change included, comes through the API; the page has no form for it.
+      expect(page.querySelector("form[action$='/evidence']")).toBeNull();
     }
     // A change linked through the API is the first line of the one closed evidence line.
     const link = "https://example.com/change/7";

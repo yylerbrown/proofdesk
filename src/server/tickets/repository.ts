@@ -138,7 +138,9 @@ export type Page = { limit: number; offset: number };
  * or description holds the search. A ticket is found when its text holds `search`, a LIKE pattern
  * the service escapes, or when its words match `match`, a query for the ticket_search word index
  * the service builds from quoted words. With `resolvedSince`, a resolved ticket is kept only when
- * it moved to Resolved at that time or later; open tickets are always kept.
+ * it moved to Resolved at that time or later; open tickets are always kept. With `resolvedBefore`,
+ * only resolved tickets that moved to Resolved before that time are kept (one with no time counts
+ * as older), as `countResolvedBefore` counts them.
  */
 export type Narrowing = {
   ownerId: string | null;
@@ -146,6 +148,7 @@ export type Narrowing = {
   search: string | null;
   match: string | null;
   resolvedSince: string | null;
+  resolvedBefore?: string | null;
 };
 export const NO_NARROWING: Narrowing = {
   ownerId: null,
@@ -193,6 +196,11 @@ const NARROWED = `AND (@ownerId IS NULL OR owner_id = @ownerId)
              AND id IN (SELECT rowid FROM ticket_search WHERE ticket_search MATCH @match)))
        AND (@resolvedSince IS NULL OR status <> 'resolved' OR last_resolved_at >= @resolvedSince)`;
 
+// The list page's "only older resolved tickets", added to a list only when it asks for that. A
+// fixed string: the time is bound.
+const RESOLVED_BEFORE = `AND status = 'resolved'
+       AND (last_resolved_at IS NULL OR last_resolved_at < @resolvedBefore)`;
+
 // Each column's sort as SQL terms, each ending on the id, so the order is total and a page never
 // repeats or skips a ticket that did not change. Descending runs every term the other way, so it
 // is the exact reverse. Migrations 0032 and 0034 have an index for each, read forwards or
@@ -208,14 +216,18 @@ const SORT_TERMS: Record<ListSortColumn, string[]> = {
   updated: ["updated_at", "id"],
 };
 
-/** The ORDER BY for a sort, built only from the fixed terms above. */
-function orderBy(sort: ListSort): string {
+/** The ORDER BY for a sort in this scope, built only from the fixed terms above. */
+function orderBy(sort: ListSort, scope: ListScope): string {
   // The default: open tickets first, then resolved ones, each newest first. Among the open ones,
   // New tickets that say how to verify the fix come first, so the team can start on them sooner.
   // Migration 0040 has the index for this order.
-  if (sort === "open_first") {
-    return "status = 'resolved', (status = 'new' AND fix_check IS NOT NULL) DESC, id DESC";
+  const openFirst = "status = 'resolved', (status = 'new' AND fix_check IS NOT NULL) DESC, id DESC";
+  // A customer's own list starts with the tickets the team marked fixed, which wait for their
+  // answer. The team's order does not change.
+  if (sort === "open_first" && scope.kind === "filed_by") {
+    return `(status = 'resolved' AND resolved_reason IS 'fixed_no_reply') DESC, ${openFirst}`;
   }
+  if (sort === "open_first") return openFirst;
   const way = sort.direction === "asc" ? "ASC" : "DESC";
   return SORT_TERMS[sort.by].map((term) => `${term} ${way}`).join(", ");
 }
@@ -250,14 +262,17 @@ export function listTickets(
   page: Page,
   narrow: Narrowing = NO_NARROWING,
 ): TicketRow[] {
+  const before = narrow.resolvedBefore ?? null;
+  const olderOnly = before === null ? "" : RESOLVED_BEFORE;
+  const beforeValue = before === null ? {} : { resolvedBefore: before };
   return db
     .prepare(
       `SELECT * FROM tickets
        WHERE ${SCOPE_SQL[scope.kind]} AND (@status IS NULL OR status = @status)
-       ${NARROWED}
-       ORDER BY ${orderBy(sort)} LIMIT @limit OFFSET @offset`,
+       ${NARROWED} ${olderOnly}
+       ORDER BY ${orderBy(sort, scope)} LIMIT @limit OFFSET @offset`,
     )
-    .all({ ...bound(scope, narrow), status, ...page }) as TicketRow[];
+    .all({ ...bound(scope, narrow), status, ...page, ...beforeValue }) as TicketRow[];
 }
 
 /**
@@ -428,6 +443,29 @@ export function updateTicketStatus(db: Db, id: number, status: TicketStatus, now
        END
      WHERE id = @id`,
   ).run({ status, now, id });
+}
+
+/**
+ * Moves one ticket this many days into the past: when it was filed, changed and resolved, and
+ * when its messages were written. Only the demo's seed uses it, for samples resolved weeks ago.
+ * History entries never change, so they keep their own times.
+ */
+export function moveTicketBack(db: Db, id: number, days: number): void {
+  const back = `-${days} days`;
+  db.transaction(() => {
+    db.prepare(
+      `UPDATE tickets SET
+         created_at = strftime('%Y-%m-%dT%H:%M:%fZ', created_at, @back),
+         updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', updated_at, @back),
+         last_resolved_at = strftime('%Y-%m-%dT%H:%M:%fZ', last_resolved_at, @back),
+         resolved_at = strftime('%Y-%m-%dT%H:%M:%fZ', resolved_at, @back)
+       WHERE id = @id`,
+    ).run({ id, back });
+    db.prepare(
+      `UPDATE ticket_entries SET created_at = strftime('%Y-%m-%dT%H:%M:%fZ', created_at, @back)
+       WHERE ticket_id = @id`,
+    ).run({ id, back });
+  })();
 }
 
 export type TeamResolution = {

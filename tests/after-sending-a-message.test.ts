@@ -34,11 +34,13 @@ const chosen = (html: ReturnType<typeof parse>) =>
   html.querySelector('input[name="kind"][checked]')?.getAttribute("value");
 
 describe("after an internal note", () => {
-  it("keeps the choice on Internal note and shows the sent line by the message box", async () => {
+  it("starts the box on a reply again and shows the sent line by the message box", async () => {
     const app = await setup();
     const { location, html } = await send(app, teamActor, "note");
     expect(location).toBe("/tickets/SUP-1#sent");
-    expect(chosen(html)).toBe("note");
+    // The next message is for the customer unless the person chooses otherwise again, so a
+    // reply never goes to the team only because the note before it did.
+    expect(chosen(html)).toBe("reply");
     const line = html.querySelector('.ticket-page p#sent[role="status"]');
     expect(line?.text).toBe("Internal note added. The customer does not see it.");
     // The line comes after the conversation, so the note it names is just above it.

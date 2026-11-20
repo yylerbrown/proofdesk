@@ -119,7 +119,7 @@ describe("the list's empty search", () => {
       "No tickets that you own. Clear the owner filter.",
     );
     expect(await sentence(app, "owner=me&q=zzz")).toBe(
-      'No tickets that you own and match "zzz". Clear the owner filter and search.',
+      'No tickets that you own and match "zzz". Clear the owner filter and the search.',
     );
   });
 });

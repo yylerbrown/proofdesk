@@ -236,3 +236,45 @@ test("the bar's controls have round corners, and a row reached by the keyboard i
     expect(focused, `stop ${press}`).toBeGreaterThanOrEqual(barBottom.y + barBottom.height - 1);
   }
 });
+
+test("a refused change keeps the bar above the table, so its message covers nothing", async ({
+  page,
+}) => {
+  const marker = "Refusedmark";
+  await page.goto("/sign-in");
+  // Filed by the admin, so the suite stays under one person's filing limit.
+  await page.getByRole("button", { name: "View as Admin" }).click();
+  await page.goto("/tickets/new");
+  await page.getByLabel("Title").fill(`${marker} receipt is blank`);
+  await page.getByLabel("Description").fill("It happens every time.");
+  await page.getByRole("button", { name: "File ticket" }).click();
+  await expect(page).toHaveURL(/\/tickets\/SUP-\d+\?step=verify$/);
+  await page.context().clearCookies();
+  await page.goto("/sign-in");
+  await page.getByRole("button", { name: "View as Team Member" }).click();
+
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto(`/tickets?q=${marker}`);
+    const bar = page.locator("[data-bulk-bar]");
+    await page.locator('input[name="keys"]').first().check();
+    // Apply with nothing chosen is refused with a message under the choices.
+    await bar.getByRole("button", { name: "Apply", exact: true }).click();
+    await expect(bar.locator("[data-bulk-error]")).toBeVisible();
+    // The bar is in the page's flow, not the dock, and the filter row is shown and reachable.
+    await expect(page.locator("[data-bulk-dock] [data-bulk-bar]")).toHaveCount(0);
+    await expect(page.locator(".list-filters")).toBeVisible();
+    await expect(page.getByRole("searchbox")).toBeVisible();
+    expect(
+      await page.locator(".list-filters").evaluate((element) => (element as HTMLElement).inert),
+    ).toBe(false);
+    // Nothing of the table is under the bar.
+    const barBottom = await bar.evaluate((element) => element.getBoundingClientRect().bottom);
+    const tableTop = await page
+      .locator("table.tickets")
+      .evaluate((element) => element.getBoundingClientRect().top);
+    expect(barBottom).toBeLessThanOrEqual(tableTop);
+    // The tick and the choice stay.
+    await expect(page.locator('input[name="keys"]').first()).toBeChecked();
+  }
+});

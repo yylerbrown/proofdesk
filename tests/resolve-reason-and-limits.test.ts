@@ -144,10 +144,11 @@ describe("a long text with line breaks", () => {
     const form = parse(
       (await as(app, customerOne).get("/tickets/new").redirects(1)).text,
     ).querySelector('form[action="/tickets"]')!;
-    const limit = (name: string) =>
-      Number(form.querySelector(`[name="${name}"]`)!.getAttribute("maxlength"));
     const shape = createTicketSchema.shape;
-    expect(limit("title")).toBe(shape.title.maxLength);
+    // The title counts against its limit too, as the description does.
+    expect(Number(form.querySelector('[name="title"]')!.getAttribute("data-count-limit"))).toBe(
+      shape.title.maxLength,
+    );
     // The description counts against the limit instead, so a long paste is never cut off.
     const description = form.querySelector('[name="description"]')!;
     expect(Number(description.getAttribute("data-count-limit"))).toBe(shape.description.maxLength);

@@ -61,7 +61,9 @@
   <label>
     <span id="title-label">Title</span>
     <small id="title-hint" class="hint">The problem, in a few words.</small>
-    <input type="text" name="title" value="<%= values.title %>" required minlength="3" maxlength="120" aria-labelledby="title-label" aria-describedby="<% if (errors.title) { %>title-error <% } %>title-hint" <% if (errors.title) { %>aria-invalid="true"<% } %> <% if (!editKey) { %>data-similar-into="title-similar"<% } %> <%= focusIf("title") %> />
+    <%# No maxlength, as for the description: a long paste is kept whole, the count under it says how far over it is, and the server refuses it with what was typed kept. %>
+    <input type="text" name="title" value="<%= values.title %>" required minlength="3" autocomplete="off" aria-labelledby="title-label" data-count-limit="120" data-count-into="title-count" aria-describedby="<% if (errors.title) { %>title-error <% } %>title-hint title-count" <% if (errors.title) { %>aria-invalid="true"<% } %> <% if (!editKey) { %>data-similar-into="title-similar"<% } %> <%= focusIf("title") %> />
+    <small id="title-count" class="hint char-count" aria-live="polite" hidden></small>
   </label>
   <% if (errors.title) { %><small id="title-error"><%= errors.title.join(" ") %></small><% } %>
   <%# On the new form only, a script names one earlier ticket like the title once the person pauses. %>

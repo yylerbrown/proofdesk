@@ -7,6 +7,7 @@ import { buildKey, parseKey } from "./tickets/keys.js";
 import * as repository from "./tickets/repository.js";
 import type { TicketService } from "./tickets/service.js";
 import type { Budget } from "./tickets/types.js";
+import { seedOlderSamples } from "./demo-older-samples.js";
 
 /**
  * Made-up customers who filed some of the samples. They cannot sign in. They make the team's
@@ -45,9 +46,11 @@ export function seedDemo(service: TicketService): void {
   // The other customers file some samples, so the demo customer's own list stays short.
   const [second, third] = OTHER_DEMO_CUSTOMERS as [Actor, Actor];
 
-  // The two samples for AI assistants are filed first, so they are the oldest tickets and sit
-  // low in the default list, under the plain support samples a visitor sees first. Their keys
-  // come from this seed, which records them, so nothing else names a fixed number for them.
+  // The sample for AI assistants is filed first, so it is the oldest ticket and sits low in the
+  // default list, under the plain support samples a visitor sees first. The recorded assistant
+  // run is filed fourth, so it has the key it had when the run was recorded, SUP-4, which the
+  // run's own words name. Both keys come from this seed, which records them, so nothing else
+  // names a fixed number for them.
   // A sample made for a visitor's own AI assistant to work on: a clear check and a small,
   // complete example it can reproduce on its own machine. Another customer filed it, so it
   // stays out of the demo customer's list.
@@ -66,7 +69,15 @@ export function seedDemo(service: TicketService): void {
   // Owned and in progress, so an assistant's request for review reaches a named person.
   service.takeAndStart(assistantSample.key, team);
 
-  const recorded = seedRecordedRun(service, team, second);
+  // The one sample that does not say yet what would prove it is fixed, so the list's Proof
+  // column shows a row without a mark, and its filer sees the quiet link to add one.
+  service.createTicket(
+    {
+      title: "Invoice shows the wrong date",
+      description: "My invoice for March says February.",
+    },
+    customer,
+  );
 
   const login = service.createTicket(
     {
@@ -87,15 +98,7 @@ export function seedDemo(service: TicketService): void {
   service.takeTicket(login.key, team);
   service.changeStatus(login.key, { status: "in_progress" }, team);
 
-  // The one sample that does not say yet what would prove it is fixed, so the list's Proof
-  // column shows a row without a mark, and its filer sees the quiet link to add one.
-  service.createTicket(
-    {
-      title: "Invoice shows the wrong date",
-      description: "My invoice for March says February.",
-    },
-    customer,
-  );
+  const recorded = seedRecordedRun(service, team, second);
 
   service.createTicket(
     {
@@ -144,6 +147,9 @@ export function seedDemo(service: TicketService): void {
     third,
     null,
   );
+
+  // Two samples resolved weeks ago, filed last so no other sample's key changes.
+  seedOlderSamples(service, team, customer, second);
 
   // Record what was seeded, so a visitor's assistant is shown only this, never what other
   // visitors write.
@@ -317,6 +323,16 @@ export function createDemoRecord(
   logEvent: (event: repository.NewEvent) => void,
 ) {
   return {
+    /**
+     * Moves one sample ticket this many days into the past, since the ticket service takes its
+     * times from the clock. Its History keeps the times seeding wrote: a history entry never
+     * changes. Called only while seeding, before recordDemoSeed.
+     */
+    moveDemoSampleBack(key: string, days: number): void {
+      const id = parseKey(prefix, key);
+      if (id !== null) repository.moveTicketBack(db, id, days);
+    },
+
     /**
      * Records what seeding wrote, so a demo connection can be shown only that. Called once,
      * right after the demo's sample data is created on an empty database.

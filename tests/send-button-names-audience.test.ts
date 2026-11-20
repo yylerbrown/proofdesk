@@ -42,6 +42,7 @@ function fakeChoice(value: string, checked: boolean) {
   const choice: KindChoice = {
     value,
     checked,
+    defaultChecked: checked,
     addEventListener: (_type, given) => (listener = given),
   };
   return { choice, change: () => listener() };
@@ -74,5 +75,31 @@ describe("the script", () => {
     const button: SendButton = { dataset: { ...labels }, textContent: "Send" };
     wireSendLabel(button, [fakeChoice("reply", false).choice]);
     expect(button.textContent).toBe("Send");
+  });
+
+  it("puts the choice back to the page's own when the page comes back, and the button with it", () => {
+    const button: SendButton = { dataset: { ...labels }, textContent: "Send" };
+    const reply = fakeChoice("reply", true);
+    const note = fakeChoice("note", false);
+    const backToPage = wireSendLabel(button, [reply.choice, note.choice]);
+    // The person chose Internal note, then the browser brought the page back with that choice.
+    reply.choice.checked = false;
+    note.choice.checked = true;
+    note.change();
+    backToPage();
+    expect(reply.choice.checked).toBe(true);
+    expect(note.choice.checked).toBe(false);
+    expect(button.textContent).toBe("Send reply to customer");
+  });
+});
+
+describe("the message box's choice of who sees it", () => {
+  it("asks the browser not to fill it in from an earlier visit", async () => {
+    const { app } = buildTestApp();
+    await as(app, customerOne).post("/api/tickets").send(valid);
+    const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
+    const radios = page.querySelectorAll("form.reply-box input[type=radio][name=kind]");
+    expect(radios).toHaveLength(2);
+    for (const radio of radios) expect(radio.getAttribute("autocomplete")).toBe("off");
   });
 });

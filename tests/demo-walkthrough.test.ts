@@ -206,7 +206,7 @@ describe("the real site's sign-in page", () => {
 describe("the next action on the demo", () => {
   it("comes right under the status, alone until the customer is asked", async () => {
     const { app } = buildDemo();
-    const html = parse((await asDemo(app, "demo-team").get("/tickets/SUP-4")).text);
+    const html = parse((await asDemo(app, "demo-team").get("/tickets/SUP-2")).text);
     const main = html.querySelector("main")!.toString();
     const next = html.querySelector(".next-action button")!;
     expect(next.text).toBe("Take ticket and start work");
@@ -221,9 +221,9 @@ describe("the next action on the demo", () => {
     const { app } = buildDemo();
     const team = (path: string) =>
       asDemo(app, "demo-team").post(path).set(FROM_THIS_SITE).type("form");
-    await team("/tickets/SUP-4/take-and-start").send({});
-    await team("/tickets/SUP-4/ready").send({});
-    const html = parse((await asDemo(app, "demo-team").get("/tickets/SUP-4")).text);
+    await team("/tickets/SUP-2/take-and-start").send({});
+    await team("/tickets/SUP-2/ready").send({});
+    const html = parse((await asDemo(app, "demo-team").get("/tickets/SUP-2")).text);
     const role = html.querySelector(".demo-next button")!;
     expect(role.text).toBe("View this ticket as the customer who filed it");
     expect(role.classList.contains("outline")).toBe(true);

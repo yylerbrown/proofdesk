@@ -807,31 +807,39 @@ ul.role-lines li {
   white-space: nowrap;
 }
 /*
- * One family of small rings, drawn the same way: a 1.5px ring, a hair of space, then the fill.
- * New is an empty ring, In Progress half full, Resolved full, Archived a square. Tell-apart in
- * greyscale, and never a tick.
+ * One family of small rings: New is an empty ring, In Progress half full, Resolved full. Each is
+ * one small picture used as a mask and painted in the status colour, as the Proof marks are, so
+ * the ring and its fill always share a centre at every screen density. Tell-apart in greyscale,
+ * and never a tick.
  */
 .badge::before {
   flex: none;
-  box-sizing: border-box;
   width: var(--pd-badge-dot);
   height: var(--pd-badge-dot);
-  padding: 1.5px;
-  border: 1.5px solid currentColor;
-  border-radius: 50%;
-  background-clip: content-box;
+  background-color: currentColor;
+  -webkit-mask: url("/assets/status-new.svg") center / contain no-repeat;
+  mask: url("/assets/status-new.svg") center / contain no-repeat;
   content: "";
 }
 .status-new::before {
-  border-color: var(--pd-badge-new);
+  background-color: var(--pd-badge-new);
 }
 .status-in_progress::before {
-  border-color: var(--pd-badge-in_progress);
-  background-image: conic-gradient(var(--pd-badge-in_progress) 0 50%, transparent 50% 100%);
+  background-color: var(--pd-badge-in_progress);
+  -webkit-mask-image: url("/assets/status-in-progress.svg");
+  mask-image: url("/assets/status-in-progress.svg");
 }
 .status-resolved::before {
-  border-color: var(--pd-badge-resolved);
   background-color: var(--pd-badge-resolved);
+  -webkit-mask-image: url("/assets/status-resolved.svg");
+  mask-image: url("/assets/status-resolved.svg");
+}
+/* In forced colours the browser would drop the fill, hiding the mark. */
+@media (forced-colors: active) {
+  .badge::before {
+    background-color: CanvasText;
+    forced-color-adjust: none;
+  }
 }
 
 /* ---------- 6. Filter tabs ---------- */
@@ -842,24 +850,44 @@ ul.role-lines li {
  * get the soft grey under the pointer. The row scrolls sideways on its own if it must; the page
  * never does.
  */
-:is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"]) {
+:is(
+  nav[aria-label="Filter by status"],
+  nav[aria-label="Filter by owner"],
+  nav[aria-label="Resolved tickets by age"]
+) {
   display: block;
   /* Room inside the scrolling row for the focus ring, which sits 4px outside each segment. */
   margin: -4px;
   padding: 4px;
   overflow-x: auto;
 }
-:is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"]) ul {
+:is(
+    nav[aria-label="Filter by status"],
+    nav[aria-label="Filter by owner"],
+    nav[aria-label="Resolved tickets by age"]
+  )
+  ul {
   display: flex;
   gap: 2px;
   margin: 0;
   padding: 0;
   white-space: nowrap;
 }
-:is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"]) li {
+:is(
+    nav[aria-label="Filter by status"],
+    nav[aria-label="Filter by owner"],
+    nav[aria-label="Resolved tickets by age"]
+  )
+  li {
   padding: 0;
 }
-:is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"]) li a {
+:is(
+    nav[aria-label="Filter by status"],
+    nav[aria-label="Filter by owner"],
+    nav[aria-label="Resolved tickets by age"]
+  )
+  li
+  a {
   display: inline-block;
   margin: 0;
   padding: 5px 10px;
@@ -873,15 +901,30 @@ ul.role-lines li {
     background-color var(--pd-ease),
     color var(--pd-ease);
 }
-:is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"]) li a:hover {
+:is(
+    nav[aria-label="Filter by status"],
+    nav[aria-label="Filter by owner"],
+    nav[aria-label="Resolved tickets by age"]
+  )
+  li
+  a:hover {
   background-color: var(--pd-subtle);
   color: var(--pd-text);
 }
 /*
  * "This is the current one": the list's selected filter is a grey box with a strong edge.
  */
-:is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"]) a[aria-current="page"],
-:is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"])
+:is(
+    nav[aria-label="Filter by status"],
+    nav[aria-label="Filter by owner"],
+    nav[aria-label="Resolved tickets by age"]
+  )
+  a[aria-current="page"],
+:is(
+    nav[aria-label="Filter by status"],
+    nav[aria-label="Filter by owner"],
+    nav[aria-label="Resolved tickets by age"]
+  )
   a[aria-current="page"]:hover {
   border-color: var(--pd-border-strong);
   background-color: var(--pd-subtle);
@@ -927,17 +970,24 @@ form.list-search input:is(:focus, :focus-visible) {
   border-color: var(--pico-form-element-border-color);
   box-shadow: none;
 }
-/* The owner toggles follow the status filters after a thin divider. On a phone they take a row
-   of their own, which needs no divider. */
-nav[aria-label="Filter by owner"] ul {
+/* The owner toggles, and the filter by age on "All", each follow the filters before them after a
+   thin divider. On a phone each takes a row of its own, which needs no divider. */
+:is(nav[aria-label="Filter by owner"], nav[aria-label="Resolved tickets by age"]) ul {
   padding-left: var(--pd-space-4);
   border-left: var(--pd-hairline);
 }
 @media (max-width: 639px) {
-  nav[aria-label="Filter by owner"] ul {
+  :is(nav[aria-label="Filter by owner"], nav[aria-label="Resolved tickets by age"]) ul {
     padding-left: 0;
     border-left: 0;
   }
+}
+/* The filter by age starts with its grey name, "Resolved:", which is words, not a choice. */
+nav[aria-label="Resolved tickets by age"] .filter-label {
+  align-self: center;
+  margin-inline-end: var(--pd-space-1);
+  color: var(--pd-muted);
+  font-size: var(--pd-text-sm);
 }
 /* How many tickets each status filter holds: smaller and muted, inside the filter's own link. */
 .filter-count {
@@ -1074,7 +1124,7 @@ table.tickets .turn-tag {
  * is a bare check with no circle, pale grey at half strength; "Customer confirmed" is the solid
  * green circle with its check, the one tick. Both fill the same box, so rows line up.
  */
-table.tickets .proof-mark {
+:is(table.tickets, .proof-legend) .proof-mark {
   display: inline-block;
   width: 16px;
   height: 16px;
@@ -1083,17 +1133,25 @@ table.tickets .proof-mark {
   -webkit-mask: url("/assets/proof-said.svg") center / contain no-repeat;
   mask: url("/assets/proof-said.svg") center / contain no-repeat;
 }
-table.tickets .proof-said {
+:is(table.tickets, .proof-legend) .proof-said {
   opacity: 0.5;
 }
-table.tickets .confirmed-mark {
+:is(table.tickets, .proof-legend) .confirmed-mark {
   background-color: var(--pd-status-resolved);
   -webkit-mask-image: url("/assets/proof-confirmed.svg");
   mask-image: url("/assets/proof-confirmed.svg");
 }
+/* Under the list, the two marks with their words, in the same quiet grey as the line under it. */
+.proof-legend {
+  margin: var(--pd-space-4) 0 0;
+  color: var(--pd-muted);
+}
+.proof-legend .confirmed-mark {
+  margin-inline-start: var(--pd-space-4);
+}
 /* In forced colours the browser would drop the fill, hiding the mark. */
 @media (forced-colors: active) {
-  table.tickets .proof-mark {
+  :is(table.tickets, .proof-legend) .proof-mark {
     background-color: CanvasText;
     forced-color-adjust: none;
   }
@@ -1713,6 +1771,10 @@ article.ticket-card {
 .ticket-card .card-line + .card-step {
   margin-top: var(--pd-space-3);
 }
+/* The step that opens the card, when the proof moved into it, starts at the card's top. */
+.ticket-card > .card-step:first-child {
+  margin-top: 0;
+}
 .ticket-card .card-step + .card-step {
   margin-top: var(--pd-space-4);
 }
@@ -1973,6 +2035,53 @@ details.history td:first-child {
 @media (min-width: 640px) {
   details.history td:first-child {
     white-space: nowrap;
+  }
+}
+/*
+ * Below 640 wide each history row stacks, so What has the full width: When and Who on one grey
+ * line, What under it. The header row stays for a screen reader only.
+ */
+@media (max-width: 639px) {
+  details.history thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  details.history tbody tr {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      "when who"
+      "what what";
+    column-gap: var(--pd-space-2);
+    border-bottom: var(--pd-hairline);
+  }
+  details.history tbody tr:last-child {
+    border-bottom: 0;
+  }
+  details.history tbody td,
+  details.history tbody td:is(:first-child, :last-child) {
+    padding-block: 0;
+    padding-inline: var(--pd-space-3);
+    border-bottom: 0;
+    text-align: start;
+  }
+  details.history tbody td:nth-child(1) {
+    grid-area: when;
+    padding-top: var(--pd-space-2);
+    font-size: var(--pd-text-sm);
+  }
+  details.history tbody td:nth-child(2) {
+    grid-area: what;
+    padding-bottom: var(--pd-space-2);
+  }
+  details.history tbody td:nth-child(3) {
+    grid-area: who;
+    padding-top: var(--pd-space-2);
+    color: var(--pd-muted);
+    font-size: var(--pd-text-sm);
   }
 }
 
@@ -2340,7 +2449,7 @@ details.history td:first-child {
 }
 /* The boxes a reason reveals: a short key box, and a wider one for where it is fixed. */
 .step-form .resolve-duplicate input {
-  max-width: 12rem;
+  max-width: 16rem;
 }
 .step-form .resolve-fixed-in input {
   max-width: 20rem;
@@ -2413,9 +2522,10 @@ details.history td:first-child {
   margin-inline-start: var(--pd-space-2);
   color: var(--pd-muted);
 }
-/* On a phone, Change keeps a 44-pixel tap area without making its line taller. */
+/* On a phone, Change, "Add what would prove it" and "Read your message" each keep a tap area at
+   least 40 pixels tall without making their lines taller. */
 @media (max-width: 639px) {
-  .ticket-card .card-label a.card-label-link {
+  .ticket-card :is(.card-label a.card-label-link, .card-proof-add a, .card-line a.card-line-link) {
     display: inline-block;
     margin-block: -12px;
     padding-block: 12px;
@@ -3065,11 +3175,23 @@ textarea:focus-visible {
   max-width: calc(100vw - 32px);
 }
 .person-menu .role-current {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: var(--pd-space-2);
   padding: 6px 10px;
   color: var(--pd-text);
   font-size: var(--pd-text-sm);
   font-weight: var(--pd-weight-medium);
+}
+/* The person you are now: the small dot at the row's end that the Status menu's current choice has. */
+.person-menu .role-current::after {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-inline-start: auto;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
 }
 
 /*
@@ -3154,6 +3276,14 @@ textarea:focus-visible {
 .site-footer a {
   color: inherit;
 }
+/* On a phone each footer link keeps a tap area at least 40 pixels tall, looking the same. */
+@media (max-width: 639px) {
+  .site-footer a {
+    display: inline-block;
+    margin-block: -12px;
+    padding-block: 12px;
+  }
+}
 /* Under a page in the centred column, the footer's links start at the column's left edge. */
 main:has(> :is(.column, .column-narrow)) + .site-footer > small {
   display: block;
@@ -3191,7 +3321,13 @@ button.copy {
     padding-inline: 16px;
   }
   /* The list's filter chips, the reply's "Who sees it" choices and the person menu's rows. */
-  :is(nav[aria-label="Filter by status"], nav[aria-label="Filter by owner"]) li a,
+  :is(
+      nav[aria-label="Filter by status"],
+      nav[aria-label="Filter by owner"],
+      nav[aria-label="Resolved tickets by age"]
+    )
+    li
+    a,
   fieldset:has(input[value="note"]) label,
   .person-menu ul button.link,
   .person-menu ul button.link:is(:hover, :active) {
@@ -3264,6 +3400,19 @@ table.tickets td.title-cell a:hover {
 .next-note {
   color: var(--pd-muted);
 }
+/* Above "Mark fixed and tell the customer", and in the Status menu's Fixed: one grey sentence that
+   says the press agrees that what would prove it is fixed was met. */
+.next-oath,
+.step-form .resolve-oath {
+  margin: 0 0 var(--pd-space-2);
+  color: var(--pd-muted);
+  font-size: var(--pd-text-sm);
+}
+/* Its own line in the step's row, above the button. */
+.next-oath {
+  flex-basis: 100%;
+  margin: 0;
+}
 /* The recorded run's facts: each label above its paragraph, in the normal body size. */
 dl.run-facts dt {
   color: var(--pd-muted);
@@ -3277,18 +3426,15 @@ dl.run-facts dd {
 
 /*
  * Under the team's tickets, one quiet sentence: Proofdesk works with their own AI assistant. Small
- * muted text, so it never pushes the tickets down. The line saying how many older resolved
- * tickets "All" leaves out looks the same.
+ * muted text, so it never pushes the tickets down.
  */
-.assistant-invite,
-.older-resolved {
+.assistant-invite {
   margin: var(--pd-space-4) 0 0;
   color: var(--pd-muted);
 }
 /* On a phone each link keeps a 44-pixel tap area without making the line taller. */
 @media (max-width: 639px) {
   .assistant-invite a,
-  .older-resolved a,
   .list-sort a {
     display: inline-block;
     margin-block: -12px;

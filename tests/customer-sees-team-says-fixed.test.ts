@@ -33,7 +33,7 @@ describe("a ticket the team resolved as fixed, for its customer", () => {
   it("shows Resolved in the list, and asks the customer on their own row", async () => {
     const { page } = await resolvedByTeam("fixed_no_reply");
     const mine = await page(customerOne, "/tickets");
-    expect(statusCell(mine)).toBe("Resolved Did this fix it?");
+    expect(statusCell(mine)).toBe("Resolved Needs your answer");
     expect(mine.querySelector("a.turn-tag")?.getAttribute("href")).toBe(
       "/tickets/SUP-1#did-this-fix-it",
     );
@@ -88,7 +88,7 @@ describe("a ticket the team resolved as fixed, for its customer", () => {
     expect(
       history.some((row) =>
         row.includes(
-          "Resolved by the team: Fixed. Not customer-confirmed. Fixed in: version 4.2.1.",
+          "Resolved by the team: Fixed. Agreed that what would prove it is fixed was met. Not customer-confirmed. Fixed in: version 4.2.1.",
         ),
       ),
     ).toBe(true);

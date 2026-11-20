@@ -69,10 +69,12 @@ describe("the ticket's card", () => {
     const expected: Record<string, string[]> = {
       "customer, their own New ticket": ["label", "check", "step"],
       "team, New with no owner": ["label", "check", "step"],
-      "team, In Progress after the customer's No": ["label", "check", "line", "step"],
+      // While the step is "Mark fixed and tell the customer", it says the check once, above
+      // its button, since the press agrees the check was met.
+      "team, In Progress after the customer's No": ["line", "step"],
       "team, Resolved by the customer": ["label", "check", "line"],
       // The assistant's suggested test waits for review, so its card comes before the step.
-      "team, the ticket an assistant worked": ["label", "check", "assistant-card", "step"],
+      "team, the ticket an assistant worked": ["assistant-card", "step"],
       "team, waiting on the customer": ["label", "check", "line", "step"],
       "customer, asked Did this fix it?": ["question", "check", "answer"],
     };

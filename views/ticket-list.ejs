@@ -3,8 +3,8 @@
   // What an empty list says, for each filter. A customer is told about their own tickets.
   const mine = viewerRole === "customer";
   const empty = {
-    // With older resolved tickets left out, the list is not empty: the line under it says where they are.
-    all: locals.olderResolved ? "No open tickets." : mine ? "You have not filed any tickets yet." : "There are no tickets yet.",
+    // With older resolved tickets left out, the list is not empty: its filter by age leads to them.
+    all: ageFilter && ageFilter.age === "older" ? "No tickets were resolved more than 14 days ago." : ageFilter ? "No open tickets." : mine ? "You have not filed any tickets yet." : "There are no tickets yet.",
     new: "No new tickets.",
     in_progress: "Nothing is in progress.",
     resolved: "No resolved tickets yet.",
@@ -51,12 +51,23 @@
   </ul>
 </nav>
 <% } %>
+<% if (ageFilter) { %>
+<%# On "All" with nothing searched: which resolved tickets it shows. The last 14 days is the default and writes nothing in the address. %>
+<nav aria-label="Resolved tickets by age">
+  <ul>
+    <li class="filter-label" aria-hidden="true">Resolved:</li>
+    <% for (const [age, label] of [["recent", "Last 14 days"], ["older", "Older"], ["any", "Any age"]]) { %>
+    <li><a href="<%= href({ resolved: age === "recent" ? undefined : age }) %>" <% if (ageFilter.age === age) { %>aria-current="page"<% } %>><%= label %><% if (age === "older") { %> <span class="filter-count"><%= ageFilter.olderCount %></span><% } %></a></li>
+    <% } %>
+  </ul>
+</nav>
+<% } %>
 <form method="get" action="/tickets" role="search" class="list-search">
   <% if (current !== "all") { %><input type="hidden" name="status" value="<%= current %>" /><% } %>
   <% if (filters.owner) { %><input type="hidden" name="owner" value="<%= filters.owner %>" /><% } %>
   <% if (filters.sort !== "open_first") { %><input type="hidden" name="sort" value="<%= filters.sort.by %>" /><input type="hidden" name="direction" value="<%= filters.sort.direction %>" /><% } %>
   <%# One box and no button: pressing Enter sends a form with one text box. %>
-  <input type="search" name="q" value="<%= filters.q ?? "" %>" placeholder="Search, then press Enter" aria-label="Search titles and descriptions, or open a ticket by its key" maxlength="100" />
+  <input type="search" name="q" autocomplete="off" value="<%= filters.q ?? "" %>" placeholder="Search, then press Enter" aria-label="Search titles and descriptions, or open a ticket by its key" maxlength="100" />
 </form>
 </div>
 
@@ -145,10 +156,10 @@
 <% if (nextPage) { %>
 <p><a href="<%= nextPage %>">Next page</a></p>
 <% } %>
+<%# What the Proof column's two marks mean, once a row shows one: the marks drawn as in the column, with their words. A phone's list has no header row, so this is where it says so. %>
+<% if (tickets.some((t) => (t.resolution && t.resolution.by === "customer") || t.fix_check)) { %>
+<p class="proof-legend"><small><span class="proof-mark proof-said" aria-hidden="true"></span> Says what would prove it is fixed <span class="proof-mark confirmed-mark" aria-hidden="true"></span> Customer confirmed</small></p>
 <% } %>
-<%# "All" shows resolved tickets for 14 days after they were resolved. One quiet line says how many older ones it leaves out, and links to them. %>
-<% if (locals.olderResolved) { %>
-<p class="older-resolved"><small><%= olderResolved.words %> <a href="<%= olderResolved.href %>">Resolved</a>.</small></p>
 <% } %>
 </div>
 <%- include("assistant-invite", { invite }) %>

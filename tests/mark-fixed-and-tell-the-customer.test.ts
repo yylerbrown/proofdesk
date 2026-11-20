@@ -207,7 +207,7 @@ describe("the customer's answer to a ticket marked fixed", () => {
       "/tickets/SUP-1/answer",
     );
     const mine = parse((await as(app, customerOne).get("/tickets")).text);
-    expect(mine.querySelector("a.turn-tag")?.text).toBe("Did this fix it?");
+    expect(mine.querySelector("a.turn-tag")?.text).toBe("Needs your answer");
   });
 });
 
@@ -262,18 +262,18 @@ describe("the demo's seat change on a ticket marked fixed", () => {
     seedDemo(createTicketService(built.db, built.config.ticketPrefix));
     const asDemo = (id: string) =>
       visitor(built.app).set("Cookie", `${DEV_COOKIE}=${id}`).set(FROM_THIS_SITE);
-    await asDemo("demo-team").post("/tickets/SUP-4/take-and-start");
+    await asDemo("demo-team").post("/tickets/SUP-2/take-and-start");
     await asDemo("demo-team")
-      .post("/tickets/SUP-4/resolve")
+      .post("/tickets/SUP-2/resolve")
       .type("form")
       .send({ reason: "fixed_no_reply", from: "next-step" })
       .expect(303);
     const seat = async () =>
-      parse((await asDemo("demo-team").get("/tickets/SUP-4")).text)
+      parse((await asDemo("demo-team").get("/tickets/SUP-2")).text)
         .querySelector(".demo-next button")
         ?.text.trim() ?? null;
     expect(await seat()).toBe("View this ticket as the customer who filed it");
-    await asDemo("demo-customer").post("/tickets/SUP-4/confirm").type("form").send({}).expect(303);
+    await asDemo("demo-customer").post("/tickets/SUP-2/confirm").type("form").send({}).expect(303);
     expect(await seat()).toBeNull();
   });
 });

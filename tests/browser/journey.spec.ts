@@ -4,7 +4,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 // is the basics: a customer files a ticket, a team member takes it and asks the customer in one
 // press, and the customer answers Yes. The plain one uses the Status menu: In Progress, then
 // Resolved with a reason. The long one adds what is optional: the customer's own
-// check, a reply and a note, a change link, evidence and a message with the question; the
+// check, a reply and a note, a reply showing the fix and a message with the question; the
 // customer says No once and Yes the second time. Then a second customer tries to open the ticket.
 //
 // Elements are found by role, label and visible words, never by CSS paths. The ticket key
@@ -191,7 +191,7 @@ test("the long path: a check, a change link and evidence, a No, then the custome
     await expectTicketStatus(team, key, "In Progress");
   });
 
-  await test.step("the team member replies, adds a note, links the change, attaches evidence", async () => {
+  await test.step("the team member replies, adds a note, then shows the fix in a reply", async () => {
     await openMessageBox(team);
     await team.getByRole("radio", { name: "Reply to the customer" }).check();
     await team.getByLabel("Your message").fill(reply);
@@ -207,21 +207,12 @@ test("the long path: a check, a change link and evidence, a No, then the custome
     await expect(savedMessage(team)).toContainText("Internal note added");
     await expect(team.getByText(note)).toBeVisible();
 
-    // Both are optional evidence, added from More options. A link makes it a change.
-    await team.locator("summary", { hasText: "More options" }).click();
-    await team.locator("summary", { hasText: "Add evidence" }).click();
-    await team.getByRole("textbox", { name: "What does it show?" }).fill("The code change");
-    await team.getByRole("textbox", { name: "Link (optional)" }).fill(changeUrl);
-    await team.getByRole("button", { name: "Add evidence" }).click();
-    await expect(savedMessage(team)).toContainText("Evidence added");
-    await team.locator("summary", { hasText: "Evidence (1)" }).click();
-    await expect(team.getByRole("link", { name: changeUrl })).toBeVisible();
-
-    await team.locator("summary", { hasText: "More options" }).click();
-    await team.locator("summary", { hasText: "Add evidence" }).click();
-    await team.getByRole("textbox", { name: "What does it show?" }).fill(evidence);
-    await team.getByRole("button", { name: "Add evidence" }).click();
-    await expect(savedMessage(team)).toContainText("Evidence added");
+    // What the fix shows goes in the conversation, plainly, for the customer to read.
+    await openMessageBox(team);
+    await team.getByRole("radio", { name: "Reply to the customer" }).check();
+    await team.getByLabel("Your message").fill(`${evidence} The change: ${changeUrl}`);
+    await team.getByRole("button", { name: "Send reply to customer" }).click();
+    await expect(savedMessage(team)).toContainText("Reply sent");
   });
 
   await test.step("the team member asks the customer to check", async () => {
@@ -248,9 +239,8 @@ test("the long path: a check, a change link and evidence, a No, then the custome
     await expect(question.getByText(ticket.check)).toBeVisible();
     await expect(question.getByText("Team Member wrote:")).toBeVisible();
     await expect(question.getByText(message)).toBeVisible();
-    // The evidence the team showed, the change among it, is one closed line in the question.
-    await question.getByText("What the team showed (2)").click();
-    await expect(question.getByText(evidence)).toBeVisible();
+    // What the team showed is in the conversation, with the change.
+    await expect(customer.getByText(`${evidence} The change: ${changeUrl}`)).toBeVisible();
 
     await question.getByText("No, it is not fixed", { exact: true }).click();
     await question.getByLabel("What is still wrong?").fill(notFixedComment);

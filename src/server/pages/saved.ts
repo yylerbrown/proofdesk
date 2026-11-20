@@ -32,7 +32,6 @@ export const SAVED_MESSAGES = {
   restored: "Ticket restored.",
   archived: "Ticket archived.",
   check: "Team's check saved.",
-  evidence: "Evidence added. It is shown as reported by you; it does not resolve the ticket.",
   link: "Change link saved.",
   ready: "Asked the customer: Did this fix it?",
   fixed: "Thank you. The ticket is resolved.",
@@ -40,6 +39,8 @@ export const SAVED_MESSAGES = {
   notFixed: "Thank you. The ticket is back with the team.",
   specAccepted: "Test accepted. It is the agreed test now.",
   specDiscarded: "Suggested test discarded.",
+  // After a switch of person on the demo. The page names the person; see switchedMessage below.
+  switched: "You are now someone else on this demo.",
 } as const;
 
 export type SavedKey = keyof typeof SAVED_MESSAGES;
@@ -51,6 +52,12 @@ export type SavedKey = keyof typeof SAVED_MESSAGES;
  */
 export function filedMessage(key: string): string {
   return `Ticket ${key} filed. ${FILED_NEXT}`;
+}
+
+/** The line after a switch of person on the demo, naming who the visitor is now. */
+export function switchedMessage(person: { name: string; readOnly?: boolean }): string {
+  const name = person.readOnly === true ? `${person.name} (read-only)` : person.name;
+  return `You are now ${name}.`;
 }
 
 const COOKIE = "saved";

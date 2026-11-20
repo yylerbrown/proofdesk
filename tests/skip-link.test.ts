@@ -89,7 +89,7 @@ describe("the look", () => {
 
   it("gives the filter row room for the focus ring inside its scrolling box", () => {
     expect(css).toMatch(
-      /nav\[aria-label="Filter by owner"\]\) \{\s*display: block;[^}]*margin: -4px;\s*padding: 4px;\s*overflow-x: auto;/,
+      /nav\[aria-label="Resolved tickets by age"\]\s*\) \{\s*display: block;[^}]*margin: -4px;\s*padding: 4px;\s*overflow-x: auto;/,
     );
   });
 

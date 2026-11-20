@@ -81,7 +81,8 @@ export function createReads(shared: Shared, options: ServiceOptions) {
      * own, and a customer only the ones they filed. "archived" lists only archived tickets, for
      * a team member or admin. Every other filter leaves archived tickets out. With
      * `resolvedSince`, a resolved ticket is listed only when it moved to Resolved at that time or
-     * later; the list page uses it, and the JSON API leaves it out.
+     * later; with `resolvedBefore`, only resolved tickets that moved to Resolved before it are.
+     * The list page uses them, and the JSON API leaves them out.
      */
     listTickets(
       filter: TicketListFilter,
@@ -90,6 +91,7 @@ export function createReads(shared: Shared, options: ServiceOptions) {
       narrowing: ListNarrowing = {},
       sort: ListSort = "open_first",
       resolvedSince?: string,
+      resolvedBefore?: string,
     ): Ticket[] {
       const page = { limit: LIST_PAGE_SIZE, offset: (pageNumber - 1) * LIST_PAGE_SIZE };
       if (filter === "archived") requirePermission(actor, "list_archived");
@@ -98,6 +100,7 @@ export function createReads(shared: Shared, options: ServiceOptions) {
       const rows = repository.listTickets(db, scope, status, sort, page, {
         ...narrowed(narrowing, actor),
         resolvedSince: resolvedSince ?? null,
+        resolvedBefore: resolvedBefore ?? null,
       });
       return rows.map((row) => toTicket(row, actor));
     },
