@@ -63,7 +63,7 @@ pictures, possible duplicates, changing many tickets at once, email notices and 
 ## Tests
 
 ```bash
-npm test
+npm test    # npm run test:coverage also shows coverage
 ```
 
 Over 2,000 unit and route tests with vitest, against a real SQLite file and the real app. Then
