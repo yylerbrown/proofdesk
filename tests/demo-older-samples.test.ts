@@ -72,7 +72,11 @@ describe("the demo's older samples", () => {
         timeZone: "UTC",
       });
     const text = page.text.replace(/\s+/g, " ");
-    expect(text).toContain(`customer confirmed on ${dayOf(Date.now() - 20 * DAY)}`);
+    // The sample is confirmed two hours after it is resolved, so late in the UTC day that is the
+    // next day. Either day is right; today's date never is.
+    const resolved = Date.now() - 20 * DAY;
+    const confirmedDays = [dayOf(resolved), dayOf(resolved + 2 * 60 * 60 * 1000)];
+    expect(confirmedDays.some((day) => text.includes(`customer confirmed on ${day}`))).toBe(true);
     const today = dayOf(Date.now());
     expect(text).not.toContain(today);
   });
