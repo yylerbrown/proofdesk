@@ -48,7 +48,7 @@ describe("a ticket the team resolved as fixed, for its customer", () => {
     expect(card.querySelector("blockquote")?.text).toBe("Ten pages print");
     // It is said once, in the line under the title, and not again on the card.
     expect(ticket.querySelector(".ticket-standing")?.text).toBe(
-      "Resolved, the team says it is fixed",
+      "Resolved, the team says it is fixed Edit",
     );
     expect(card.text).not.toContain("The team says it is fixed");
     expect(card.text).not.toContain("Fixed in:");

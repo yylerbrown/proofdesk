@@ -97,13 +97,8 @@ export function createReads(shared: Shared, options: ServiceOptions) {
       const page = { limit: LIST_PAGE_SIZE, offset: (pageNumber - 1) * LIST_PAGE_SIZE };
       if (filter === "archived") requirePermission(actor, "list_archived");
       const scope = filter === "archived" ? ARCHIVED : visibleScope(actor);
-      const statuses: TicketStatus[] | null =
-        filter === "open"
-          ? ["new", "in_progress"]
-          : filter === "all" || filter === "archived"
-            ? null
-            : [filter];
-      const rows = repository.listTickets(db, scope, statuses, sort, page, {
+      const status = filter === "all" || filter === "archived" ? null : filter;
+      const rows = repository.listTickets(db, scope, status, sort, page, {
         ...narrowed(narrowing, actor),
         resolvedSince: resolvedSince ?? null,
         resolvedBefore: resolvedBefore ?? null,

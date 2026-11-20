@@ -158,15 +158,24 @@ describe("status and owner", () => {
     const { pages } = await everyState();
     for (const [state, page] of pages) {
       if (state.startsWith("customer")) {
-        // The customer reads one line of plain words, with no labels and no controls.
+        // The customer reads one line of plain words, with no labels and no controls but the
+        // quiet links Edit and Archive at its end.
         const standing = page.querySelector(".ticket-standing")!;
-        expect(standing.querySelector("a, button, details, form"), state).toBeNull();
+        expect(standing.querySelector("button, details, form"), state).toBeNull();
+        for (const link of standing.querySelectorAll("a")) {
+          expect(link.classList.contains("ticket-line-link"), state).toBe(true);
+        }
         continue;
       }
       const line = page.querySelector(".ticket-facts")!;
       const labels = line.querySelectorAll(".fact-label").map((label) => label.text);
       expect(labels, state).toEqual(["Status", "Owner"]);
-      expect(line.querySelector("a[href$='/edit']"), state).toBeNull();
+      // Edit, when allowed, is the line's last link, and the only one outside the two menus.
+      const quiet = line.querySelectorAll(":scope > a");
+      expect(
+        quiet.map((a) => a.text),
+        state,
+      ).toEqual(quiet.length === 0 ? [] : ["Edit"]);
     }
   });
 

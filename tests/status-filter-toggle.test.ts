@@ -29,7 +29,7 @@ describe("the status filters", () => {
   it("clear the lit one on a second press, keeping the owner, the search and the sort", async () => {
     const { app } = await setup();
     const kept = "owner=me&q=print&sort=title&direction=asc";
-    for (const status of ["new", "in_progress", "resolved", "archived"]) {
+    for (const status of ["open", "new", "in_progress", "resolved", "archived"]) {
       const filters = await statusFilters(app, `/tickets?status=${status}&${kept}`);
       const lit = filters.filter((filter) => filter.lit);
       expect(lit, status).toHaveLength(1);
@@ -45,6 +45,7 @@ describe("the status filters", () => {
     const { app } = await setup();
     expect(await statusFilters(app, "/tickets")).toEqual([
       { label: "All", href: "/tickets", lit: true },
+      { label: "Open", href: "/tickets?status=open", lit: false },
       { label: "New", href: "/tickets?status=new", lit: false },
       { label: "In Progress", href: "/tickets?status=in_progress", lit: false },
       { label: "Resolved", href: "/tickets?status=resolved", lit: false },

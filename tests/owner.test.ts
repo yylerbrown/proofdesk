@@ -164,8 +164,8 @@ describe("the owner on the ticket page", () => {
 
     // A customer reads the owner in the plain line under the title, once somebody owns it.
     const customer = await as(app, customerOne).get("/tickets/SUP-1");
-    expect(parse(customer.text).querySelector(".ticket-standing")?.text).toBe(
-      "New, with Team Member",
+    expect(parse(customer.text).querySelector(".ticket-standing .standing-rest")?.text).toBe(
+      ", with Team Member",
     );
     expect(customer.text).not.toContain("/take");
   });

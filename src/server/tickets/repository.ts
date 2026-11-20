@@ -254,13 +254,13 @@ function scopeValues(scope: ListScope): Record<string, unknown> {
 }
 
 /**
- * One page of the tickets in this scope, of these statuses or of every status (null), sorted
- * this way.
+ * One page of the tickets in this scope, of one status, of every open status ("open": New and
+ * In Progress) or of every status (null), sorted this way.
  */
 export function listTickets(
   db: Db,
   scope: ListScope,
-  statuses: TicketStatus[] | null,
+  status: TicketStatus | "open" | null,
   sort: ListSort,
   page: Page,
   narrow: Narrowing = NO_NARROWING,
@@ -272,16 +272,11 @@ export function listTickets(
     .prepare(
       `SELECT * FROM tickets
        WHERE ${SCOPE_SQL[scope.kind]}
-       AND (@statuses IS NULL OR status IN (SELECT value FROM json_each(@statuses)))
+       AND (@status IS NULL OR status = @status OR (@status = 'open' AND status <> 'resolved'))
        ${NARROWED} ${olderOnly}
        ORDER BY ${orderBy(sort, scope)} LIMIT @limit OFFSET @offset`,
     )
-    .all({
-      ...bound(scope, narrow),
-      statuses: statuses === null ? null : JSON.stringify(statuses),
-      ...page,
-      ...beforeValue,
-    }) as TicketRow[];
+    .all({ ...bound(scope, narrow), status, ...page, ...beforeValue }) as TicketRow[];
 }
 
 /**

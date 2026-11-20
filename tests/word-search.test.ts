@@ -119,7 +119,7 @@ describe("searching by words, with the development entrance", () => {
     const counts = page
       .querySelectorAll("nav[aria-label='Filter by status'] a .filter-count")
       .map((count) => count.text.trim());
-    expect(counts).toHaveLength(3);
+    expect(counts).toHaveLength(4);
     expect(counts.every((count) => count === "0")).toBe(true);
   });
 

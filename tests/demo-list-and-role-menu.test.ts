@@ -23,7 +23,13 @@ const tabs = (html: ReturnType<typeof parse>) =>
 describe("the Archived tab", () => {
   it("is not offered on the demo, where nothing can be archived", async () => {
     for (const person of ["demo-team", "demo-admin"]) {
-      expect(tabs(await demoList(person))).toEqual(["All", "New", "In Progress", "Resolved"]);
+      expect(tabs(await demoList(person))).toEqual([
+        "All",
+        "Open",
+        "New",
+        "In Progress",
+        "Resolved",
+      ]);
     }
   });
 

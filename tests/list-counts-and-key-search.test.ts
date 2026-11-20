@@ -47,39 +47,49 @@ describe("the counts beside the status filters", () => {
   it("cover only a customer's own tickets, and equal their own filtered lists", async () => {
     const { app } = await setup();
     for (const [who, expected] of [
-      [customerOne, { New: 2, "In Progress": 1, Resolved: 0 }],
-      [customerTwo, { New: 1, "In Progress": 1, Resolved: 0 }],
+      [customerOne, { Open: 3, New: 2, "In Progress": 1, Resolved: 0 }],
+      [customerTwo, { Open: 2, New: 1, "In Progress": 1, Resolved: 0 }],
     ] as const) {
       expect(await counts(app, who)).toEqual(expected);
       expect(await shown(app, who, "/tickets?status=new")).toBe(expected.New);
       expect(await shown(app, who, "/tickets?status=in_progress")).toBe(expected["In Progress"]);
+      expect(await shown(app, who, "/tickets?status=open")).toBe(expected.Open);
     }
   });
 
   it("count everyone's tickets for the team", async () => {
     const { app } = await setup();
-    expect(await counts(app, teamActor)).toEqual({ New: 3, "In Progress": 2, Resolved: 0 });
+    expect(await counts(app, teamActor)).toEqual({
+      Open: 5,
+      New: 3,
+      "In Progress": 2,
+      Resolved: 0,
+    });
   });
 
   it("honour the owner filter and the search in force, as the list does", async () => {
     const { app } = await setup();
     expect(await counts(app, teamActor, "/tickets?q=printer")).toEqual({
+      Open: 3,
       New: 1,
       "In Progress": 2,
       Resolved: 0,
     });
     expect(await counts(app, teamActor, "/tickets?owner=me")).toEqual({
+      Open: 2,
       New: 0,
       "In Progress": 2,
       Resolved: 0,
     });
     expect(await counts(app, teamActor, "/tickets?owner=none&q=printer")).toEqual({
+      Open: 1,
       New: 1,
       "In Progress": 0,
       Resolved: 0,
     });
     // A customer's search counts only their own matches.
     expect(await counts(app, customerTwo, "/tickets?q=printer")).toEqual({
+      Open: 1,
       New: 0,
       "In Progress": 1,
       Resolved: 0,
