@@ -10,11 +10,13 @@ import {
   rolesTable,
 } from "../src/server/roles-table.js";
 import { SCOPE_LABELS } from "../src/server/routes/connections.js";
+import { allowedActions } from "../src/server/tickets/allowed-actions.js";
+import type { Ticket } from "../src/server/tickets/types.js";
 import { as, buildTestApp, teamActor, visitor } from "./helpers.js";
 
-// The page "Who may do what" is computed from can(), the check the server runs on every
-// request, with one small overlay for the owner rules that live in the ticket service. These
-// tests tie the page to the check, so the two cannot drift apart.
+// The page "Who may do what" starts from can(), the server's own permission check, and adds a
+// small overlay, typed by hand, for the owner rules that live in the ticket service. These tests
+// tie the page to the check and the overlay to the ticket service's own rules.
 
 const actions = Object.keys(CAPABILITIES) as Action[];
 const rows = rolesTable(SCOPE_LABELS).flatMap((group) => group.rows);
@@ -79,6 +81,27 @@ describe("the table of who may do what", () => {
     expect(mark.team).toBe("If they own it");
   });
 
+  it("says what the ticket service allows beyond owning: an admin ends an assistant's work, a filer reopens", () => {
+    const admin = STAND_INS.admin;
+    const team = STAND_INS.team;
+    // An admin who does not own the ticket may still end an assistant's work on it.
+    const handed = { created_by: "someone-else", owner_id: "another-member", archived_at: null };
+    expect(allowedActions(handed as unknown as Ticket, admin).endAgentWork).toBe(true);
+    expect(rows.find((row) => row.action === "hand_to_agent")!.admin).toBe(
+      "If they own it; any admin may end it",
+    );
+    // A team member who filed a resolved ticket may reopen it without owning it.
+    const resolved = {
+      created_by: team.id,
+      owner_id: "another-member",
+      status: "resolved",
+      resolution: { by: "customer" },
+      archived_at: null,
+    };
+    expect(allowedActions(resolved as unknown as Ticket, team).reopen).toBe(true);
+    expect(rows.find((row) => row.action === "reopen")!.team).toBe("If they own it or filed it");
+  });
+
   it("uses stand-ins that are not demo people, so the admin column reads true", () => {
     for (const person of Object.values(STAND_INS)) {
       expect(person.demo).toBeUndefined();
@@ -131,8 +154,14 @@ describe("the page at /roles", () => {
     const html = parse((await as(app, teamActor).get("/roles")).text);
     expect(html.querySelectorAll("h1").map((h) => h.text)).toEqual(["Who may do what"]);
     expect(html.querySelector("main")!.text).toContain(
-      "This page is computed from the same check the server runs on every request",
+      "This page uses the server's own permission check and adds who must own the ticket.",
     );
+    expect(html.querySelector("main")!.text).not.toContain("cannot disagree");
+    // The four lines on who may say it is fixed sit under a small label, not a bold block.
+    const lead = html.querySelector("h2.roles-fixed-lead")!;
+    expect(lead.text).toBe("Who may say it is fixed");
+    expect(lead.querySelector("strong")).toBeNull();
+    expect(html.querySelectorAll("ul.roles-fixed li")).toHaveLength(4);
     expect(html.querySelector("main")!.text).toContain(
       "An assistant acts only on tickets a person has handed to it.",
     );

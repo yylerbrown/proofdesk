@@ -821,6 +821,12 @@ form.role-check-make button {
 
 /* Who may do what, at /roles, and the quiet links to it. The table scrolls inside its own box
    at phone width, so the page never scrolls sideways. */
+.roles-page h2.roles-fixed-lead {
+  margin-bottom: var(--pd-space-1);
+  color: var(--pd-muted);
+  font-size: var(--pd-text-sm);
+  font-weight: var(--pd-weight-medium);
+}
 .roles-page ul.roles-fixed {
   padding-left: var(--pd-space-4);
 }
