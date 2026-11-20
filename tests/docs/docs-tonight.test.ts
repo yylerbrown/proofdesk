@@ -98,7 +98,7 @@ describe("the docs, against the pages of 19 November", () => {
     expect(pageSource).toContain("What would prove it is fixed?");
     expect(read("views/ticket-list.ejs")).toMatch(/>Proof</);
     const tour = flat("docs/TOUR.md");
-    expect(tour).toContain('"What would prove it is fixed?", one grey line, one box');
+    expect(tour).toContain('"What would prove it is fixed?", two grey lines, one box');
     expect(tour).toContain("A narrow **Proof** column after Status");
     expect(readme).toContain("Proof column");
   });

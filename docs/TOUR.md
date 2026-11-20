@@ -17,19 +17,19 @@ Each one takes under a minute on the demo, which opens on the ticket list as the
 
 - Start as: The ticket you just filed, on its second step
 - Press: **Save**, or **Skip for now**; later, **Change** beside the label
-- You should see: "What would prove it is fixed?", one grey line, one box, **Save** and **Skip for now**. On the demo three labelled sample suggestions sit above the box, the first already in it. Saved words are quoted under the label, with "Saved. The team will check the fix against it." once. A ticket with none shows its filer "Add what would prove it". The team cannot write it; it is the customer's own words. A form or API call that already carries it files the ticket without the step.
+- You should see: "What would prove it is fixed?", two grey lines, one box, **Save** and **Skip for now**. The first line says it is one thing you can check yourself; on the demo the second reads "Sample suggestions. On a real site the team's own AI assistant writes these.", over three sample suggestions with the first already in the box. Saved words are quoted under the label, with "Saved. The team will check the fix against it." once. A ticket with none shows its filer "Add what would prove it". The team cannot write it; it is the customer's own words. A form or API call that already carries it files the ticket without the step.
 
 **Ticket list with filters**
 
 - Start as: The menu at the top right, then **Demo Team Member**
-- Press: **New**, **In Progress**, **Resolved**; **Mine** and **Unassigned**; type words, or a ticket's key such as SUP-3, and press Enter; a column header such as **Title** or **Filed**, then the same header again
+- Press: **New**, **In Progress**, **Resolved**; **Mine** and **Unassigned**; type words, or a ticket's key such as SUP-3, in the box that reads "Search, then press Enter", and press Enter; a column header such as **Title** or **Filed**, then the same header again
 - You should see: "All tickets", with a count beside each status, and each filter changes the list; a lit filter pressed again clears it. A typed key opens that ticket. Words match in any order and form, so "sign in phone" finds "Cannot sign in on my phone". A header sorts the list by its column, with an arrow on it, and a second press reverses it. Filters, search and sort combine in the address, so a view can be shared. On a phone the same sorts sit in a "Sort by" line above the list. A short grey tag follows the status when it is not simply the team's turn, such as "Customer says not fixed" or "Assistant asks for review". A customer's list is "My tickets": only their own, with the search, and "Did this fix it?" on a ticket waiting for their answer.
 
 **The Proof column and the list's order**
 
 - Start as: Demo Team Member, on All tickets
 - Press: Nothing at first; then a column header, to sort by it instead
-- You should see: A narrow **Proof** column after Status. One mark says the ticket states what would prove it is fixed, and a solid green check says the customer confirmed it. With no header pressed, New tickets that say what would prove them fixed come first, newest first, then the other open tickets, then resolved ones. All shows open tickets and those resolved in the last 14 days; a line under the list says how many older resolved tickets are under Resolved.
+- You should see: A narrow **Proof** column after Status. A pale grey check says the ticket states what would prove it is fixed, a solid green circle with a check says the customer confirmed it, and a ticket with neither has no mark. With no header pressed, New tickets that say what would prove them fixed come first, newest first, then the other open tickets, then resolved ones. All shows open tickets and those resolved in the last 14 days; a line under the list says how many older resolved tickets are under Resolved.
 
 **Update status: New to In Progress**
 
@@ -45,7 +45,7 @@ Each one takes under a minute on the demo, which opens on the ticket list as the
 
 **Possible duplicates**
 
-- Start as: Demo Customer, on **New ticket**
+- Start as: Demo Customer, on **New ticket** (on a phone the header's button reads **New**)
 - Press: Type a title like an open ticket's, such as "Cannot sign in on my phone after the update", and pause; file it, then **View this ticket as a team member**
 - You should see: Under the Title box, "Similar ticket: SUP-3 Cannot sign in on my phone (In Progress)", a link that opens in a new tab so the form is kept. On the team's page, "Possible duplicate: SUP-3 Cannot sign in on my phone" and "Close as a duplicate of SUP-3", which resolves it as a duplicate in one press. Only an older ticket is named, the line never shows on a demo sample itself, and customers never see it.
 
@@ -53,7 +53,7 @@ Each one takes under a minute on the demo, which opens on the ticket list as the
 
 - Start as: The new ticket form, or any ticket's message box
 - Press: **Add pictures**, or paste a screenshot into the box
-- You should see: Each chosen picture as a small square with its own remove button; after sending, small squares under the words, each opening the full picture. PNG, JPEG, GIF or WebP, up to 2 MB each and 4 at a time (1 MB and 2 on the demo). A picture is shown to whoever may see what it is attached to. On the shared demo a visitor's picture is shown only to the browser that added it, and everyone else reads one grey line in its place. The dark-mode sample carries one drawn picture for the team.
+- You should see: Each chosen picture as a small square with its own remove button; after sending (the customer's button reads **Send to the team**), small squares under the words, each opening the full picture. PNG, JPEG, GIF or WebP, up to 2 MB each and 4 at a time (1 MB and 2 on the demo). A picture is shown to whoever may see what it is attached to. On the shared demo a visitor's picture is shown only to the browser that added it, and everyone else reads one grey line in its place. The dark-mode sample carries one drawn picture for the team.
 
 **Change many tickets at once**
 
@@ -88,5 +88,5 @@ Each one takes under a minute on the demo, which opens on the ticket list as the
 **Evidence, history and email notices**
 
 - Start as: Any ticket, as the team
-- Press: **History**, and **More options**
-- You should see: Evidence is labelled as reported, never as verified, and the history cannot be changed. Proofdesk writes an email notice to the customer or the owner when the ticket needs them; marking a ticket fixed sends "Did this fix it?" with the customer's own words. A ticket's notices page (`/tickets/<key>/notices`, such as the ticket you filed), linked under More options once there is one, shows each notice in its exact words.
+- Press: **History**, and **More options**, then **Add evidence of the fix**
+- You should see: Evidence is labelled as reported, never as verified, and the history cannot be changed. Proofdesk writes an email notice to the customer or the owner when the ticket needs them; marking a ticket fixed sends "Did this fix it?" with the customer's own words. A ticket's notices page (`/tickets/<key>/notices`, such as the ticket you filed), linked as **Emails sent about this ticket** under More options once there is one, shows each notice in its exact words. **Add evidence of the fix** asks what it shows, with an optional link.

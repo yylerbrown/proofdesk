@@ -13,7 +13,7 @@ Say what would prove it is fixed, and your ticket is listed first and checked ag
 - **The production site, with GitHub sign-in: <https://proofdesk.fly.dev>.**
 - **The source: <https://github.com/yylerbrown/proofdesk>.**
 
-<img src="docs/img/ticket-list.png" width="720" alt="The team member's ticket list on the demo, which has no welcome card: status filters All, New, In Progress and Resolved with a count beside each status, the Mine and Unassigned toggles, a search box, and the sample tickets with their key, title, status, a Proof column marking the tickets that say what would prove them fixed, owner and when each was filed, under column headers that sort the list">
+<img src="docs/img/ticket-list.png" width="720" alt="The team member's ticket list on the demo, which has no welcome card: status filters All, New, In Progress and Resolved with a count beside each status, the Mine and Unassigned toggles, a search box reading &quot;Search, then press Enter&quot;, and the sample tickets with their key, title, status, owner and when each was filed, under column headers that sort the list. In the Proof column a pale check marks a ticket that says what would prove it fixed, a solid green check marks one its customer confirmed, and one New ticket has neither">
 
 ## Run it yourself
 
@@ -41,7 +41,7 @@ On the demo, in about two minutes, with eight presses:
 2. The filed ticket asks "What would prove it is fixed?", with three sample suggestions and the
    first in the box. Press **Save**: the ticket is **New**, with your words under that label.
 
-<img src="docs/img/what-would-prove-it.png" width="560" alt="The step after filing: under &quot;What would prove it is fixed?&quot; one grey line, three sample suggestions to pick from, a box holding the first one, and the buttons &quot;Save&quot; and &quot;Skip for now&quot;">
+<img src="docs/img/what-would-prove-it.png" width="560" alt="The step after filing: under &quot;What would prove it is fixed?&quot; two grey lines, a hint and a note that these are sample suggestions, then three sample suggestions to pick from, a box holding the first one, and the buttons &quot;Save&quot; and &quot;Skip for now&quot;">
 
 3. Press **View this ticket as a team member**, then **Take ticket and start work**. The ticket
    is **In Progress**, and you own it.
@@ -66,10 +66,9 @@ pictures, possible duplicates, changing many tickets at once, email notices and 
 npm test
 ```
 
-Over 1,000 unit and route tests with vitest, against a real SQLite file and the real app.
-`npm run test:browser` runs the Playwright journey (run `npx playwright install chromium webkit`
-once first), and `npm run typecheck`, `npm run lint` and `npm run format:check` run the rest of
-the checks every merge passes.
+Over 2,000 unit and route tests with vitest, against a real SQLite file and the real app. Then
+`npm run test:browser` (after `npx playwright install chromium webkit`), `npm run typecheck`,
+`npm run lint` and `npm run format:check` finish the checks every merge passes.
 
 ## Sign-in and roles
 
@@ -100,6 +99,12 @@ it reproduced the arithmetic problem and tested a fix, then proposed a test, att
 evidence and asked the owner to review it. It resolved nothing: a test can pass while the
 customer is still stuck, so only the customer's Yes counts as confirmed.
 
+Three real faults in Proofdesk were also filed as tickets in a local Proofdesk. A listening
+assistant offered ways to prove each fix within about five seconds, a headless assistant fixed
+each with a test, and a person checked each before pressing "Mark fixed and tell the customer".
+The first fixer run was blocked by the runner's own permission settings and was run once more
+with the same prompt. [The record](docs/dogfood-run/summary.md) has the prompts and transcripts.
+
 To try it, open **About this demo** from the demo's footer, then **Connect your own AI
 assistant** and **Get a demo connection**, for a key that lasts a day at most and a message to
 paste into your assistant. On the production site an admin issues connections, and a ticket's
@@ -109,18 +114,14 @@ assistant can read everything it needs in one fetch: <https://support-desk-demo.
 
 ## Read first
 
-For someone reading the code, in this order:
-
 1. [`src/server/permissions.ts`](src/server/permissions.ts): the capability table and `can()`,
    who may take each action.
 2. [`src/server/tickets/workflow.ts`](src/server/tickets/workflow.ts): taking a ticket and
    changing its status. Then [`resolve-and-reopen.ts`](src/server/tickets/resolve-and-reopen.ts):
    `resolveWithReason`, which marking fixed calls, and
    [`customer-question.ts`](src/server/tickets/customer-question.ts): `confirmFix`, the customer's Yes.
-3. [`tests/confirmation.test.ts`](tests/confirmation.test.ts): the confirmation workflow on the
-   real routes.
-4. [`tests/capabilities.test.ts`](tests/capabilities.test.ts): every action, tested for agents
-   from the capability table.
+3. [`tests/confirmation.test.ts`](tests/confirmation.test.ts): confirmation, on the real routes.
+4. [`tests/capabilities.test.ts`](tests/capabilities.test.ts): every action, tested for agents.
 
 Express 5 and TypeScript (strict), SQLite with numbered migrations, EJS pages, Better Auth for
 GitHub sign-in and zod for every input. Routes read the request, the ticket service
@@ -159,8 +160,7 @@ code. The specification ([`docs/SPEC.md`](docs/SPEC.md)), the history of every s
   reopened ticket whose owner has left goes back to New with no owner.
 - **Left out on purpose:** a board with status columns, priority ordering and any model call of
   the site's own.
-- **Design debt** is listed with a plan for each item in
-  [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#design-debt).
+- **Design debt**, each item with its plan: [`ARCHITECTURE.md`](docs/ARCHITECTURE.md#design-debt).
 
 ## More
 
