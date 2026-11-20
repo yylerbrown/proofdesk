@@ -99,6 +99,10 @@ export const HINTS: Record<string, string> = {
     "Other assistants already offer enough ways to verify this ticket. Offer fewer, or none.",
   suggestion_gone: "Get the ticket again and pick one of its offered check_suggestions.",
   check_exists: "The ticket already has a check. Edit the ticket to change it.",
+  no_assistant_listening:
+    "Write the check yourself, or ask again once the team's assistant is running.",
+  request_not_found: "Answer only the requests wait_for_requests handed you.",
+  request_closed: "Nothing to do for this request. Call wait_for_requests for the next one.",
   question_changed: "Get the ticket again and answer with its current ready_token.",
   idempotency_key_reused:
     "Use a new idempotency key for a new request. Reuse a key only to retry the very same request.",

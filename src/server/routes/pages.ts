@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { Actor } from "../actor.js";
 import { DEMO_ACTORS, signedIn } from "../actor.js";
 import { RECORDED_SAMPLE_KEY } from "../demo.js";
-import { forbidden, HttpError, onTicketPage, ValidationError } from "../errors.js";
+import { errorBody, forbidden, HttpError, onTicketPage, ValidationError } from "../errors.js";
 import { can } from "../permissions.js";
 import {
   cardLine,
@@ -476,11 +476,42 @@ export function pagesRouter(
   // them, as for the ticket. Like /version above, it never uses up the message a page shows
   // once, and reading is not counted against the write limit. Signed-in pages are never kept by
   // a cache, and this answer says so itself too.
+  // Beside them: whether an assistant that may answer a request is listening now, whether one
+  // takes the requests a page sends by itself, and where this person's own request stands.
   router.get("/tickets/:key/check-suggestions", (req, res) => {
     const actor = signedIn(req);
     const suggestions = service.listCheckSuggestions(req.params.key, actor);
+    const { available, request } = service.suggestionRequestState(req.params.key, actor);
     res.set("Cache-Control", "private, no-store");
-    res.json({ check_suggestions: suggestions });
+    res.json({ check_suggestions: suggestions, available, request });
+  });
+
+  // The customer who filed a New ticket with no check asks a listening assistant for ways to
+  // verify it: by pressing for them, or their page by itself with pressed=false. A page's
+  // script asks for JSON and gets the request's state, or the refusal as JSON. A form with
+  // scripts off goes back to the ticket, with the reason when it was refused.
+  router.post("/tickets/:key/check-suggestions/request", (req, res) => {
+    const actor = signedIn(req);
+    const wantsJson = req.accepts(["html", "json"]) === "json";
+    res.set("Cache-Control", "private, no-store");
+    try {
+      const answer = service.requestSuggestions(req.params.key, req.body, actor);
+      if (wantsJson) {
+        res.status(201).json(answer);
+        return;
+      }
+    } catch (err) {
+      if (!(err instanceof HttpError)) throw err;
+      if (wantsJson) {
+        const { status, body } = errorBody(err);
+        res.status(status).json(body);
+        return;
+      }
+      // A ticket this person may not see is answered as every other page answers it.
+      if (err.status === 404 || err.status === 403) throw err;
+      rememberProblem(res, err.message);
+    }
+    res.redirect(303, `/tickets/${encodeURIComponent(req.params.key)}`);
   });
 
   // One picture on a ticket, for whoever may see what it is attached to. Every refusal is the

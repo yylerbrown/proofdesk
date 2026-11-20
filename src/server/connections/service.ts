@@ -36,26 +36,51 @@ export const DEFAULT_SCOPES: AgentScope[] = [
 /** What a visitor's demo connection may do: the same as a new connection's default. */
 export const DEMO_SCOPES: AgentScope[] = DEFAULT_SCOPES;
 
+/** The scopes that hold the suggestion setting, which the form offers as one choice of three. */
+export const SUGGESTION_SCOPES: AgentScope[] = ["suggest_when_asked", "suggest_automatic"];
+
+/** The three choices of the suggestion setting, and the scopes each one stores. */
+export const SUGGESTION_CHOICES = ["off", "when_asked", "automatic"] as const;
+const SCOPES_OF_CHOICE: Record<(typeof SUGGESTION_CHOICES)[number], AgentScope[]> = {
+  off: [],
+  when_asked: ["suggest_when_asked"],
+  automatic: ["suggest_when_asked", "suggest_automatic"],
+};
+
+/** The suggestion setting a list of scopes holds. Automatic includes everything When asked does. */
+export function suggestionChoiceOf(scopes: string[]): (typeof SUGGESTION_CHOICES)[number] {
+  if (scopes.includes("suggest_automatic")) return "automatic";
+  if (scopes.includes("suggest_when_asked")) return "when_asked";
+  return "off";
+}
+
 // A form sends one checkbox as a text and several as a list; both are read as a list.
 const scopeList = z.preprocess(
   (value) => (value === undefined ? [] : [value].flat()),
-  z
-    .array(z.enum(AGENT_SCOPES))
-    .min(1, "Choose at least one thing it may do.")
-    // Suggesting is done from what the assistant reads, so it needs reading too.
-    .refine((scopes) => !scopes.includes("suggest_checks") || scopes.includes("read_tickets"), {
-      message: "Suggesting ways to verify needs reading the tickets too.",
-    }),
+  z.array(z.enum(AGENT_SCOPES)).min(1, "Choose at least one thing it may do."),
 );
 
-export const createConnectionSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1, "Give it a name you will recognise.")
-    .max(60, "Must be at most 60 characters."),
-  scopes: scopeList,
-});
+export const createConnectionSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(1, "Give it a name you will recognise.")
+      .max(60, "Must be at most 60 characters."),
+    scopes: scopeList,
+    // The form's choice of three. Without it, the scopes sent say which it is.
+    suggestions: z.enum(SUGGESTION_CHOICES).optional(),
+  })
+  .transform(({ name, scopes, suggestions }) => {
+    const choice = suggestions ?? suggestionChoiceOf(scopes);
+    const others = scopes.filter((scope) => !SUGGESTION_SCOPES.includes(scope));
+    return { name, scopes: [...others, ...SCOPES_OF_CHOICE[choice]] };
+  })
+  // Suggesting is done from what the assistant reads, so it needs reading too.
+  .refine(({ scopes }) => suggestionChoiceOf(scopes) === "off" || scopes.includes("read_tickets"), {
+    message: "Suggesting ways to verify needs reading the tickets too.",
+    path: ["suggestions"],
+  });
 
 /** A connection as people and programs see it. The key and its hash are never part of it. */
 export type Connection = {
@@ -180,6 +205,10 @@ export function createConnectionService(db: Db, issuerMayIssue: (personId: strin
       },
     ): void {
       if (actor.kind !== "agent" || actor.connection === undefined) return;
+      // A listening assistant calls wait_for_requests again and again, and would push its real
+      // work out of the trail. Only a refused or failed wait is kept; the answers it then sends
+      // are recorded as usual.
+      if (entry.action === "wait_for_requests" && entry.outcome === "done") return;
       repository.insertActivity(
         db,
         {

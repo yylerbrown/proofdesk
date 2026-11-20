@@ -3,7 +3,7 @@ import { createDocument, type ZodOpenApiPathsObject } from "zod-openapi";
 import type { Actor } from "../actor.js";
 import { WRITE_LIMIT_DESCRIPTION } from "../limits.js";
 import { CAPABILITIES } from "../permissions.js";
-import { maySuggestChecks } from "../tickets/access.js";
+import { maySuggestChecks, suggestionSetting } from "../tickets/access.js";
 import { LIST_PAGE_SIZE } from "../tickets/service.js";
 import { ACTIONS, documentedPath } from "./actions.js";
 import { errorOutput } from "./schemas.js";
@@ -40,9 +40,22 @@ export const SUGGEST_CHECKS_TEXT =
   "themselves with suggest_checks, in the customer's words, each one thing they can do and " +
   "see. The customer picks one or writes their own.";
 
+/**
+ * Said only to a connection whose suggestions are not Off: how to answer people as they ask,
+ * in the same places as the text above.
+ */
+export const LISTEN_TEXT =
+  "Your connection may also answer people who ask for ways to verify their new ticket. Call " +
+  "wait_for_requests in a loop. For each request, read the title and description and answer " +
+  "within a few seconds with answer_request: up to three ways the person could check the fix " +
+  "themselves, each one thing they can do and see, in their own words.";
+
 /** The MCP server's instructions for this connection. */
 export function mcpInstructions(actor: Actor): string {
-  return maySuggestChecks(actor) ? `${MCP_INSTRUCTIONS} ${SUGGEST_CHECKS_TEXT}` : MCP_INSTRUCTIONS;
+  const parts = [MCP_INSTRUCTIONS];
+  if (suggestionSetting(actor) !== "off") parts.push(LISTEN_TEXT);
+  if (maySuggestChecks(actor)) parts.push(SUGGEST_CHECKS_TEXT);
+  return parts.join(" ");
 }
 
 /** Who is asking, and what they may do, from the capability table. */
@@ -80,6 +93,9 @@ export function guide(actor: Actor | null, address: string, sourceUrl?: string) 
       "A support desk where the customer says how they will know a ticket is fixed, and only the customer can confirm it is.",
     untrusted_text: UNTRUSTED_TEXT,
     you: you(actor),
+    ...(actor !== null && suggestionSetting(actor) !== "off"
+      ? { wait_for_requests: LISTEN_TEXT }
+      : {}),
     ...(actor !== null && maySuggestChecks(actor) ? { suggest_checks: SUGGEST_CHECKS_TEXT } : {}),
     start_here: {
       steps: [

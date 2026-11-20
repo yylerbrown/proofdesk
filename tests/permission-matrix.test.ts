@@ -259,10 +259,10 @@ const TABLE: Record<string, Row> = {
     otherAgent: all(HIDDEN),
     nobody: all(SIGN_IN),
   },
-  // Only the customer who filed it says how they will know it is fixed, and only while it has
-  // no check. This ticket has one.
+  // Only the customer who filed it sets or changes how they will know it is fixed, as when
+  // they edit the ticket.
   choose_check: {
-    filer: [NOT_NOW, NOT_NOW, NOT_NOW, NOT_NOW, NOT_NOW, NOT_NOW, HIDDEN],
+    filer: [OK, OK, OK, OK, OK, OK, HIDDEN],
     owner: all(NO),
     teamNotOwner: all(NO),
     demoTeam: all(NO),
@@ -270,7 +270,34 @@ const TABLE: Record<string, Row> = {
     preview: all(NO),
     handedAgent: whileHanded(NO),
     ...outsiders,
+  }, // Only an assistant whose suggestions are not Off listens for people asking, and the key
+  // holding every scope is set to Automatic. Listening is not about one ticket.
+  wait_for_requests: {
+    filer: all(NO),
+    otherCustomer: all(NO),
+    owner: all(NO),
+    teamNotOwner: all(NO),
+    demoTeam: all(NO),
+    admin: all(NO),
+    preview: all(NO),
+    handedAgent: all(NO),
+    otherAgent: all(OK),
+    nobody: all(SIGN_IN),
   },
+  // The same callers answer a request; nobody asked for one here, so there is none to answer.
+  answer_request: {
+    filer: all(NO),
+    otherCustomer: all(NO),
+    owner: all(NO),
+    teamNotOwner: all(NO),
+    demoTeam: all(NO),
+    admin: all(NO),
+    preview: all(NO),
+    handedAgent: all(NO),
+    otherAgent: all(HIDDEN),
+    nobody: all(SIGN_IN),
+  },
+
   // The team links changes; the handed agent's key has no link_changes scope.
   link_change: {
     filer: [NO, NO, NO, NO, NO, NO, HIDDEN],
@@ -567,7 +594,8 @@ async function buildTemplate(state: State, owner: Actor): Promise<Template> {
     "attach_evidence",
     "propose_specs",
     "link_changes",
-    "suggest_checks",
+    "suggest_when_asked",
+    "suggest_automatic",
   ]);
   // The team's wording to adopt and a spec to decide on, in every state.
   must(
@@ -711,6 +739,13 @@ function callFor(action: string, template: Template, demo: boolean): Call {
     adopt_check: post("/adopt-check"),
     suggest_checks: post("/check-suggestions", { options: ["Twenty pages print with no jam"] }),
     choose_check: post("/check", { words: "Eleven pages print" }),
+    // A short wait, so a key that may listen is not held for long.
+    wait_for_requests: { method: "get", path: "/api/suggestion-requests?wait_seconds=1" },
+    answer_request: {
+      method: "post",
+      path: "/api/suggestion-requests/answer",
+      body: { id: 1, options: ["Twenty pages print with no jam"] },
+    },
     link_change: {
       method: "put",
       path: `${at}/change-link`,

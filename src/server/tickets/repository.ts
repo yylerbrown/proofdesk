@@ -704,6 +704,7 @@ export const TICKET_TABLES = [
   "ticket_agent_handoffs",
   "email_outbox",
   "check_suggestions",
+  "suggestion_requests",
 ];
 
 /**

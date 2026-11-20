@@ -12,10 +12,17 @@
   <% if (form.errors.name) { %><small id="name-error"><%= form.errors.name.join(" ") %></small><% } %>
   <fieldset <% if (form.errors.scopes) { %>aria-describedby="scopes-error"<% } %>>
     <legend>What it may do</legend>
-    <% for (const scope of scopes) { %>
+    <% for (const scope of tickedScopes) { %>
     <label><input type="checkbox" name="scopes" value="<%= scope %>" <% if (form.scopes.includes(scope)) { %>checked<% } %> /> <%= scopeLabels[scope] %></label>
     <% } %>
     <% if (form.errors.scopes) { %><small id="scopes-error"><%= form.errors.scopes.join(" ") %></small><% } %>
+  </fieldset>
+  <fieldset <% if (form.errors.suggestions) { %>aria-describedby="suggestions-error"<% } %>>
+    <legend>Suggestions</legend>
+    <% for (const choice of suggestionChoices) { %>
+    <label><input type="radio" name="suggestions" value="<%= choice.value %>" <% if (form.suggestions === choice.value) { %>checked<% } %> /> <%= choice.label %>: <small><%= choice.hint %></small></label>
+    <% } %>
+    <% if (form.errors.suggestions) { %><small id="suggestions-error"><%= form.errors.suggestions.join(" ") %></small><% } %>
   </fieldset>
   <p><small>Never, whatever you choose: answer "Did this fix it?", resolve a ticket, own one, ask the customer, archive, restore, delete, or manage connections.</small></p>
   <button type="submit">Issue connection</button>

@@ -95,9 +95,10 @@ function buildServer(
               query: row.query ? fields : {},
               body: row.body ? fields : {},
             });
+          // A read may answer later, as listening for requests does, so it is awaited.
           const ran =
             row.method === "get"
-              ? call()
+              ? await call()
               : service.once(
                   actor,
                   typeof idempotencyKey === "string" ? idempotencyKey : undefined,
