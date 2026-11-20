@@ -1,12 +1,12 @@
 <%- include("header") %>
 <div class="column notices">
 <p class="back"><a href="/tickets/<%= ticket.key %>">Back to <%= ticket.key %></a></p>
-<h1>Email notices for <%= ticket.key %></h1>
+<h1>Emails sent about this ticket</h1>
 <p><strong class="user-text"><%= ticket.title %></strong></p>
 <p class="notices-lead"><%= forTeam ? "What this ticket emailed its customer and owner, newest first." : "What this ticket emailed you, newest first." %></p>
 
 <% if (notices.length === 0) { %>
-<p>No email notices yet.</p>
+<p>No emails sent yet.</p>
 <% } %>
 <%# Each email reads like one: who it went to and when, its subject in bold, then its words. %>
 <% for (const notice of notices) { %>

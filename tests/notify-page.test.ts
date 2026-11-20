@@ -147,7 +147,17 @@ describe("the notices page", () => {
       201,
     );
     const res = await ok(as(app, customerOne).get("/tickets/SUP-1/notices"));
-    expect(res.text).toContain("No email notices yet.");
+    expect(res.text).toContain("No emails sent yet.");
+  });
+
+  it("is named as its link in More options names it, in its heading and its title", async () => {
+    const { app } = await lifeWithNotices();
+    const ticket = parse((await ok(as(app, customerOne).get("/tickets/SUP-1"))).text);
+    const link = ticket.querySelector('a[href="/tickets/SUP-1/notices"]')!;
+    const html = parse((await ok(as(app, customerOne).get("/tickets/SUP-1/notices"))).text);
+    expect(html.querySelector("h1")?.text).toBe(link.text);
+    expect(html.querySelector("title")?.text).toBe(`${link.text} - Proofdesk`);
+    expect(link.text).toBe("Emails sent about this ticket");
   });
 });
 
