@@ -316,7 +316,7 @@ describe("a picture as it is served", () => {
     expect(loaded.headers["content-type"]).toBe("image/png");
     expect(loaded.headers["x-content-type-options"]).toBe("nosniff");
     expect(loaded.headers["content-security-policy"]).toBe("default-src 'none'; sandbox");
-    expect(loaded.headers["cache-control"]).toBe("private, max-age=3600");
+    expect(loaded.headers["cache-control"]).toBe("private, no-store");
     expect(loaded.headers["content-disposition"]).toBe("inline");
     // A cache never hands one person's picture to another browser.
     expect(loaded.headers.vary).toContain("Cookie");
