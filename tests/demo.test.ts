@@ -97,13 +97,14 @@ describe("the sample data", () => {
   it("is made through the service, with a real history", async () => {
     const { app } = buildDemo();
     const list = await asDemo(app, demoTeam.id).get("/api/tickets");
-    // Open tickets newest first, then the resolved one. The two samples for AI assistants were
-    // filed first, so they are the oldest and sit under the plain support samples.
+    // Open tickets newest first, the New ones that say how to verify ahead of the others, then
+    // the resolved one. The two samples for AI assistants were filed first, so they are the
+    // oldest and sit under the plain support samples.
     expect(list.body.map((t: { key: string }) => t.key)).toEqual([
       "SUP-8",
-      "SUP-7",
       "SUP-5",
       "SUP-4",
+      "SUP-7",
       "SUP-3",
       "SUP-2",
       "SUP-1",

@@ -210,8 +210,12 @@ const SORT_TERMS: Record<ListSortColumn, string[]> = {
 
 /** The ORDER BY for a sort, built only from the fixed terms above. */
 function orderBy(sort: ListSort): string {
-  // The default: open tickets first, newest first, then resolved ones, newest first.
-  if (sort === "open_first") return "status = 'resolved', id DESC";
+  // The default: open tickets first, then resolved ones, each newest first. Among the open ones,
+  // New tickets that say how to verify the fix come first, so the team can start on them sooner.
+  // Migration 0040 has the index for this order.
+  if (sort === "open_first") {
+    return "status = 'resolved', (status = 'new' AND fix_check IS NOT NULL) DESC, id DESC";
+  }
   const way = sort.direction === "asc" ? "ASC" : "DESC";
   return SORT_TERMS[sort.by].map((term) => `${term} ${way}`).join(", ");
 }
