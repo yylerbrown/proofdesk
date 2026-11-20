@@ -41,6 +41,7 @@ export const SUGGESTION_SCOPES: AgentScope[] = ["suggest_when_asked", "suggest_a
 
 /** The three choices of the suggestion setting, and the scopes each one stores. */
 export const SUGGESTION_CHOICES = ["off", "when_asked", "automatic"] as const;
+export type SuggestionChoice = (typeof SUGGESTION_CHOICES)[number];
 const SCOPES_OF_CHOICE: Record<(typeof SUGGESTION_CHOICES)[number], AgentScope[]> = {
   off: [],
   when_asked: ["suggest_when_asked"],

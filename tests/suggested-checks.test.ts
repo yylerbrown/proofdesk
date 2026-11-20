@@ -135,10 +135,11 @@ describe("the suggestion setting an admin gives a connection", () => {
       ["read_tickets", "suggest_when_asked"],
       ["read_tickets", "suggest_when_asked", "suggest_automatic"],
     ]);
-    // The list of issued connections names what each may do.
+    // The list of issued connections names each one's Suggestions setting.
     const page = (await admin(app).get("/connections")).text;
-    expect(page).toContain("Suggest ways to verify a ticket when a person asks");
-    expect(page).toContain("Suggest ways to verify new tickets without being asked");
+    for (const words of ["Off", "When asked", "Automatic"]) {
+      expect(page).toContain(`Suggestions: ${words}.`);
+    }
   });
 
   it("needs reading the tickets too", async () => {

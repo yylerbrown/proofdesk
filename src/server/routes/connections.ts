@@ -1,7 +1,7 @@
 import { Router, type Request } from "express";
 import { signedIn } from "../actor.js";
 import type { Config } from "../config.js";
-import { agentPaste } from "../connections/agent-paste.js";
+import { agentPaste, SUGGESTION_WORDS } from "../connections/agent-paste.js";
 import {
   DEFAULT_SCOPES,
   SUGGESTION_CHOICES,
@@ -32,13 +32,13 @@ export const SUGGESTION_CHOICE_LABELS: Record<
   (typeof SUGGESTION_CHOICES)[number],
   { label: string; hint: string }
 > = {
-  off: { label: "Off", hint: "It is never asked for ways to verify a ticket." },
+  off: { label: SUGGESTION_WORDS.off, hint: "It is never asked for ways to verify a ticket." },
   when_asked: {
-    label: "When asked",
+    label: SUGGESTION_WORDS.when_asked,
     hint: "It answers only when a customer presses for suggestions on their new ticket.",
   },
   automatic: {
-    label: "Automatic",
+    label: SUGGESTION_WORDS.automatic,
     hint: "It also answers the requests a customer's page sends by itself, and suggests on new tickets unasked.",
   },
 };
@@ -82,7 +82,12 @@ export function connectionsRouter(
       tickedScopes,
       suggestionChoices,
       title: "Assistant connections",
-      connections: connections.list(actor),
+      // Each row says its Suggestions setting in one word or two, beside the other scopes.
+      connections: connections.list(actor).map((connection) => ({
+        ...connection,
+        otherScopes: connection.scopes.filter((scope) => !SUGGESTION_SCOPES.includes(scope)),
+        suggestionWords: SUGGESTION_WORDS[suggestionChoiceOf(connection.scopes)],
+      })),
       canManage: can(actor, "manage_connections"),
       form: { name: "", scopes: DEFAULT_SCOPES, suggestions: "off", errors: {}, ...form },
     });
@@ -97,12 +102,15 @@ export function connectionsRouter(
     try {
       const { connection, key } = connections.create(req.body, actor);
       const address = siteAddress(config, req);
+      const suggestions = suggestionChoiceOf(connection.scopes);
       res.render("connection-created", {
         title: `Connection ${connection.name}`,
         connection,
         key,
         address,
-        paste: agentPaste({ address, key, demo: false }),
+        suggestions,
+        suggestionWords: SUGGESTION_WORDS[suggestions],
+        paste: agentPaste({ address, key, demo: false, suggestions }),
         formatTime,
       });
     } catch (err) {

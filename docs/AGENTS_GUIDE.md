@@ -5,11 +5,11 @@ AI calls of its own; an admin gives each connection its permissions.
 
 ## Connect
 
-An admin opens **Connections** (in the menu under their name, or at `/connections`), names the
-connection, ticks what it may do, sets its **Suggestions** to Off, When asked or Automatic, and
-copies the key, which is shown once. If the key is lost or leaked, revoke the connection and
-issue a new one. The page shown with the key is one message to paste into your assistant: it
-says to read `/llms.txt` first, to send the key on every request, and what to do first.
+An admin opens **Connections** (in the menu under their name, or at `/connections`), names it,
+ticks what it may do, sets its **Suggestions** to Off, When asked or Automatic, and copies the
+key, which is shown once; reloading that page issues another. If a key is lost or leaked, revoke
+it and issue a new one. The message to paste says to read `/llms.txt` first, to send the key on
+every request, what to do first, its Suggestions setting, and what to say if it has no ticket yet.
 
 **Claude Code**: under "If that did not work" the same page shows this command with the real
 address and key filled in:

@@ -311,10 +311,22 @@ describe("the demo key page", () => {
     const res = await visitor(app).post("/demo/connection");
     const page = parse(res.text, { blockTextElements: { script: true, style: true } });
     const column = page.querySelector(".connection-created")!;
-    // In order: the heading, the one line, the box, its Copy button, the sentence, the fold.
+    // In order: the heading, the one line, the box, its Copy button, the sentence, the note
+    // about reloading, what to do next, the fold.
     expect(
       column.childNodes.filter((n) => n.nodeType === 1).map((n) => (n as typeof column).tagName),
-    ).toEqual(["H1", "P", "PRE", "BUTTON", "P", "DETAILS"]);
+    ).toEqual(["H1", "P", "PRE", "BUTTON", "P", "P", "DIV", "DETAILS"]);
+    expect(column.querySelector(".reload-note")?.text).toBe(
+      "Reloading this page issues another connection.",
+    );
+    // A demo connection never suggests, so its next step is only the sample ticket it has.
+    const next = column.querySelector(".connection-next")!;
+    expect(next.querySelector(".next-label")?.text).toBe("Next");
+    expect(next.querySelectorAll("p:not(.next-label)").map((p) => p.text)).toEqual([
+      `Its ticket is ${sample}, the sample ticket for assistants, already handed to it.`,
+    ]);
+    expect(next.querySelector("a")?.getAttribute("href")).toBe(`/tickets/${sample}`);
+    expect(column.querySelector(".connection-facts")).toBeNull();
     expect(column.querySelector("h1 + p")?.text).toBe("Paste this into your AI agent:");
     const message = page.querySelector("#agent-paste code")!.text;
     expect(message).toContain(`Authorization: Bearer ${keyOnPage(res.text)}`);
@@ -336,8 +348,8 @@ describe("the demo key page", () => {
     expect(help.querySelector(".see-what-it-wrote")?.text).toBe(
       `To see what it wrote, view as Demo Team Member with the menu at the top right and open ${sample}.`,
     );
-    // Nothing else: no numbered steps, no scope list, no links away.
+    // Nothing else: no numbered steps, no scope list, and one link, to its ticket.
     expect(page.querySelector("ol")).toBeNull();
-    expect(column.querySelectorAll("a")).toHaveLength(0);
+    expect(column.querySelectorAll("a")).toHaveLength(1);
   });
 });

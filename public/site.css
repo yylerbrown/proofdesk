@@ -3593,6 +3593,18 @@ pre.paste.command {
 .connection-created details.connection-help {
   margin-top: var(--pd-space-5);
 }
+/* The key page's quiet lines: the warning about reloading and the small "Next" label. */
+.connection-created .reload-note,
+.connection-created .next-label {
+  color: var(--pd-muted);
+  font-size: var(--pd-text-sm);
+}
+.connection-created .connection-next {
+  margin-top: var(--pd-space-5);
+}
+.connection-created .connection-next p {
+  margin-bottom: var(--pd-space-2);
+}
 
 /*
  * The ticket list on a phone: each row stacks. The key, the status and the proof mark share one

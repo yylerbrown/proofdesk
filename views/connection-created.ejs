@@ -2,6 +2,9 @@
 <%# The page that shows a new key: one message to paste into an AI agent, and the manual setup folded away under it. %>
 <div class="column-form connection-created">
 <h1><%= connection.demo ? "Your demo connection" : "Connection issued" %></h1>
+<% if (!connection.demo) { %>
+<p class="connection-facts"><span class="user-text"><%= connection.name %></span>. Suggestions: <%= suggestionWords %>.</p>
+<% } %>
 <p>Paste this into your AI agent:</p>
 <pre class="paste" id="agent-paste"><code><%= paste %></code></pre>
 <button type="button" class="copy" data-copy="<%= paste %>" aria-label="Copy the message for your AI agent" hidden>Copy</button>
@@ -9,6 +12,23 @@
 <p class="key-once">The key is shown only once, on this page, and stops working <%- include("time", { iso: connection.expires_at }) %>.</p>
 <% } else { %>
 <p class="key-once">The key is shown only once, on this page.</p>
+<% } %>
+<p class="reload-note">Reloading this page issues another connection.</p>
+
+<%# What to do once the message is pasted: only the lines this connection's settings allow. %>
+<% if (!connection.demo) { %>
+<div class="connection-next">
+  <p class="next-label">Next</p>
+  <p>Hand it a ticket: open <a href="/tickets?owner=me">a ticket you own</a>, then More options, Hand to an AI assistant.</p>
+  <% if (suggestions !== "off") { %>
+  <p>Or let it suggest proofs: while your assistant is listening, <a href="/tickets/new">file a ticket</a><%= suggestions === "when_asked" ? " and press Suggest ways to prove it" : "" %>.</p>
+  <% } %>
+</div>
+<% } else if (locals.sampleKey) { %>
+<div class="connection-next">
+  <p class="next-label">Next</p>
+  <p>Its ticket is <a href="/tickets/<%= sampleKey %>"><%= sampleKey %></a>, the sample ticket for assistants, already handed to it.</p>
+</div>
 <% } %>
 
 <details class="connection-help">
