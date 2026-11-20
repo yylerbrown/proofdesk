@@ -2,8 +2,8 @@ import type { Actor } from "./actor.js";
 import type { TicketService } from "./tickets/service.js";
 
 /**
- * Two of the demo's samples, resolved weeks ago, so the ticket list's "Resolved:" filter has
- * older tickets to show. The demo's seed files them after its other samples, so no other
+ * Two of the demo's samples, resolved weeks ago, so the age filter under the list's "Resolved"
+ * tab ("Any age", "Last 14 days", "Older") has older tickets to show. The demo's seed files them after its other samples, so no other
  * sample's key changes. One is the demo customer's, marked fixed by the team and then confirmed
  * by them, 20 days ago. Another customer's was resolved as Won't fix, 35 days ago. Each is
  * written with its own past times, History included.

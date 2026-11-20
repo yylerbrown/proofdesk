@@ -1,9 +1,8 @@
 import type { CheckSuggestion } from "../tickets/suggested-checks.js";
-import { sameText } from "../tickets/schemas.js";
 
 // The second step of filing: the customer says what would prove the ticket is fixed. It is a
-// small form on the ticket page, in the place the check takes once it is saved. Suggested ways
-// fill its one box; the box is the only thing saved.
+// small form on the ticket page, in the place the check takes once it is saved. Each suggested
+// way is a "+" button that adds its words to the one box; the box is the only thing saved.
 
 /**
  * The three ways to prove the demo's sample is fixed. They are fixed sample text, written here,
@@ -15,57 +14,59 @@ export const SAMPLE_PROOFS = [
   "I open the exported file and see this month's figures, not only the header row.",
 ] as const;
 
-/** One choice above the box: a stored suggestion by its id, or a sample by its place. */
+/** One suggestion above the box, drawn as a "+" button that adds its words to the box. */
 export type ProofChoice = {
-  /** The form field the choice is sent as, with scripts off. */
-  name: "suggestion_id" | "sample_choice";
-  value: string;
   words: string;
-  /** True when the box holds these words now. */
-  checked: boolean;
+  /** True when the box holds these words now: the button shows a check in place of the "+". */
+  added: boolean;
 };
 
+/** Text with plain line breaks and no space at either end, as the box is compared. */
+function plain(text: string): string {
+  return text.replace(/\r\n?/g, "\n").trim();
+}
+
+/** True when the box holds these words, alone or among other words. */
+export function inBox(box: string, words: string): boolean {
+  return plain(words) !== "" && plain(box).includes(plain(words));
+}
+
 /**
- * The choices above the box: the sample's three on the demo's sample, or else those offered.
- * A choice is picked when the box holds its words, or when it is the one picked in a form that
- * came back refused (picked, by the form's field names).
+ * The box after a suggestion's "+" is pressed: the words alone in an empty box, otherwise on a
+ * new line after what is there. Words already in the box are not added again.
  */
+export function addToBox(box: string, words: string): string {
+  if (plain(words) === "" || inBox(box, words)) return box;
+  const before = box.replace(/\s+$/, "");
+  return before === "" ? plain(words) : `${before}\n${plain(words)}`;
+}
+
+/** The suggestions the step offers: those still offered, at most three, in their order. */
+function shownSuggestions(offered: CheckSuggestion[]): CheckSuggestion[] {
+  return offered.filter((suggestion) => suggestion.state === "offered").slice(0, 3);
+}
+
+/** The suggestions above the box: the sample's three on the demo's sample, or else those offered. */
 export function proofChoices(
   sample: boolean,
   offered: CheckSuggestion[],
   boxWords: string,
-  picked: Record<string, string | undefined> = {},
 ): ProofChoice[] {
-  const choices: Omit<ProofChoice, "checked">[] = sample
-    ? SAMPLE_PROOFS.map((words, index) => ({
-        name: "sample_choice",
-        value: String(index),
-        words,
-      }))
-    : offered
-        .filter((suggestion) => suggestion.state === "offered")
-        .slice(0, 3)
-        .map((suggestion) => ({
-          name: "suggestion_id",
-          value: String(suggestion.id),
-          words: suggestion.words,
-        }));
-  return choices.map((choice) => ({
-    ...choice,
-    checked:
-      boxWords.trim() === ""
-        ? picked[choice.name] === choice.value
-        : sameText(choice.words, boxWords.trim()),
-  }));
+  const words = sample
+    ? [...SAMPLE_PROOFS]
+    : shownSuggestions(offered).map((suggestion) => suggestion.words);
+  return words.map((choice) => ({ words: choice, added: inBox(boxWords, choice) }));
 }
 
 /**
- * The words a sample choice sends when the box was left empty, as a page with scripts off may
- * send it, or undefined when it names no sample.
+ * The suggestion a saved box started from: the first one shown whose words are still in the
+ * box, or undefined when none is.
  */
-export function sampleWords(choice: unknown): string | undefined {
-  if (typeof choice !== "string" || !/^[0-2]$/.test(choice)) return undefined;
-  return SAMPLE_PROOFS[Number(choice)];
+export function firstInBox(
+  offered: CheckSuggestion[],
+  boxWords: string,
+): CheckSuggestion | undefined {
+  return shownSuggestions(offered).find((suggestion) => inBox(boxWords, suggestion.words));
 }
 
 /**

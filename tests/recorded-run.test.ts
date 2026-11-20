@@ -167,7 +167,7 @@ describe("the recorded run on the demo", () => {
     const { app } = demo();
     const run = parse((await visitor(app).get("/assistant-run")).text);
     expect(run.getElementById("how-it-was-run")?.text).toBe(
-      "The run was recorded on 18 Nov 2026 against the sample ticket of an earlier copy of this demo. What the ticket shows from the assistant is exactly what it sent.",
+      "The run was recorded on 18 Nov 2026 against the sample ticket of an earlier copy of this demo. It worked in a scratch file, from the ticket's text, because it had no access to the product's code: it reproduced the problem, tested a fix that passed three tests and proposed a test. What the ticket shows from the assistant is exactly what it sent.",
     );
     // The page afterwards names the evidence's label as the ticket shows it, and says why the
     // demo cannot show the customer's view.

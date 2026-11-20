@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  addToBox,
   afterRead,
   askMode,
+  inBox,
   readProof,
-  stillMatches,
   waitForSuggestions,
   READ_EVERY_MS,
   WAIT_FOR_MS,
@@ -13,8 +14,8 @@ import {
 } from "../src/browser/proof-step.js";
 
 // The step's script: it reads the page's read of the suggestions, decides whether to ask a
-// listening assistant, waits for an answer for up to 20 seconds, and keeps a picked choice in
-// step with the box.
+// listening assistant, waits for an answer for up to 20 seconds, and adds a suggestion's words
+// to the box when its "+" is pressed.
 
 const quiet: ProofRead = { suggestions: [], listening: false, automatic: false, request: "none" };
 
@@ -75,12 +76,27 @@ describe("after each read while waiting", () => {
   });
 });
 
-describe("a picked choice and the box", () => {
-  it("stay together only while the box holds the choice's words", () => {
-    expect(stillMatches("Every row", "Every row")).toBe(true);
-    expect(stillMatches("  Every row\r\n", "Every row")).toBe(true);
-    expect(stillMatches("Every row, in order", "Every row")).toBe(false);
-    expect(stillMatches("", "")).toBe(false);
+describe("a suggestion's + and the box", () => {
+  it("adds the words to an empty box as they are, else on a new line after what is there", () => {
+    expect(addToBox("", "Every row")).toBe("Every row");
+    expect(addToBox("  \n", "Every row")).toBe("Every row");
+    expect(addToBox("My own words", "Every row")).toBe("My own words\nEvery row");
+    expect(addToBox("My own words\n\n", "Every row")).toBe("My own words\nEvery row");
+  });
+
+  it("adds nothing when the words are already in the box", () => {
+    expect(addToBox("Every row\nThe file opens", "Every row")).toBe("Every row\nThe file opens");
+    expect(addToBox("Every row\r\nThe file opens", "The file opens")).toBe(
+      "Every row\r\nThe file opens",
+    );
+  });
+
+  it("counts words as in the box alone or among other words, and never empty words", () => {
+    expect(inBox("Every row", "Every row")).toBe(true);
+    expect(inBox("  Every row\r\n", "Every row")).toBe(true);
+    expect(inBox("Mine\nEvery row\nMore", "Every row")).toBe(true);
+    expect(inBox("Every ro", "Every row")).toBe(false);
+    expect(inBox("", "")).toBe(false);
   });
 });
 

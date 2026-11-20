@@ -232,7 +232,9 @@ describe("the About page's assistant setup", () => {
     expect(outside).not.toMatch(/key|assistant/i);
     // Its summary reads as a quiet link, like the other small disclosures, not a full-width row.
     const css = fs.readFileSync("public/site.css", "utf8");
-    expect(css).toMatch(/\.welcome details\.connect > summary \{\s*display: inline-block;/);
+    expect(css).toMatch(
+      /details:not\(\.dropdown\) > summary:where\(:not\(\[role\]\)\) \{\s*display: inline-block;/,
+    );
   });
 
   it("explains itself, once opened, in muted small print like the rest of the page", async () => {

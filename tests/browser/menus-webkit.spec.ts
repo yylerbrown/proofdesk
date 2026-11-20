@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { expectOneLook, foldLines } from "./fold-lines.js";
 
 // Mouse use of a ticket page in WebKit, the engine behind Safari: More options opens with a
 // press, and Edit, the quiet link on the line under the title, leads to the edit page.
@@ -24,6 +25,14 @@ test("More options and Edit work with a mouse in WebKit", async ({ page }) => {
     await more.locator("summary").first().click();
     await expect(more).toHaveAttribute("open", "");
     await expect(more.getByRole("link", { name: "Archive ticket" })).toBeVisible();
+  });
+
+  await test.step("History and More options read as fold-open lines", async () => {
+    const lines = await foldLines(page);
+    expect(lines.map((line) => line.words)).toEqual(
+      expect.arrayContaining([expect.stringMatching(/^History/), "More options"]),
+    );
+    expectOneLook(lines);
   });
 
   await test.step("Edit", async () => {

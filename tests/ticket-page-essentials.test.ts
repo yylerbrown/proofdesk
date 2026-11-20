@@ -108,11 +108,12 @@ describe("the small controls on a phone", () => {
       phone.some((block) =>
         new RegExp(`${selector.source}[^{]*\\{[^}]*min-height: 44px`).test(block),
       );
-    expect(rule(/details\.history > summary/)).toBe(true);
+    // One rule covers every fold-open line, History included.
+    expect(rule(/details:not\(\.dropdown\) > summary:where\(:not\(\[role\]\)\)/)).toBe(true);
     expect(rule(/\.ticket-facts details\.dropdown\.fact-menu > summary/)).toBe(true);
     // The closed message line, drawn as a text box.
     expect(rule(/details\.reply-fold:not\(\[open\]\) > summary/)).toBe(true);
-    expect(rule(/details\.more-options summary/)).toBe(true);
+    expect(rule(/ul\.more-list details > summary/)).toBe(true);
     expect(rule(/button\.copy/)).toBe(true);
   });
 });
