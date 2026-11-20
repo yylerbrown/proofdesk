@@ -73,11 +73,16 @@ Over 2,000 unit and route tests with vitest, against a real SQLite file and the 
 ## Sign-in and roles
 
 The production site signs people in with GitHub; Microsoft sign-in for one organization is
-built and off until its three settings are set. Proofdesk reads your name and email address, and
-your picture from GitHub, never your files, mail or code, and keeps no GitHub token. An admin
-chooses who is on the team on the **People** page, and the change applies on that person's next
-page. People named in the server settings keep that role and show as locked on **People**. The
-menu under each person's name links their account page, with a switch for email notices.
+built and off until its three settings are set. Proofdesk reads your name, email address and
+GitHub picture, never your files, mail or code, and keeps no GitHub token. The menu under each
+person's name links their account page, with a switch for email notices. Who may do what is one
+table in the code ([`permissions.ts`](src/server/permissions.ts)). The page **Who may do what**
+(`/roles`), open to anyone, is computed from the same check the server runs on every request, so
+the page and the rules cannot disagree. An admin chooses who is on the team on the **People** page.
+Before a change is made, **Check this change** shows what it will do: what the person will see,
+which assistant connections end, and which tickets must be handed on first. The change applies on
+their next page, and every change is kept in a log that cannot be edited. People named in the
+server settings keep that role and show as locked on **People**.
 
 | Role        | How someone gets it                                       | What they do                                                                                                                                                                                                                                                                                                                                                            |
 | ----------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -86,18 +91,17 @@ menu under each person's name links their account page, with a switch for email 
 | Admin       | An admin chooses it on **People**, or `ADMIN_GITHUB_IDS`. | Everything a team member does. Hands on or resolves any open ticket, can reopen any ticket the team resolved, chooses who is on the team, issues AI assistant connections on **Connections**, and deletes a ticket permanently.                                                                                                                                         |
 
 On the demo there is no sign-in: you start as Demo Customer, and the menu at the top right
-switches to Demo Team Member or Demo Admin (read-only), who sees everything and changes nothing.
-**About this demo**, in every page's footer, says how the demo works.
+switches to Demo Team Member or Demo Admin (read-only), who sees everything and changes nothing,
+even with **Check this change**. **About this demo**, in every page's footer, says how the demo works.
 
 ## The AI assistant
 
 Proofdesk makes no AI calls of its own. A person's own assistant works on tickets through an MCP
 endpoint, with only the permissions its connection allows. **See an assistant's work**
-(<https://support-desk-demo.fly.dev/assistant-run>) shows one recorded run. The assistant worked
-in a scratch file from the ticket's text, because it had no access to the product's code. There
-it reproduced the arithmetic problem and tested a fix, then proposed a test, attached the run as
-evidence and asked the owner to review it. It resolved nothing: a test can pass while the
-customer is still stuck, so only the customer's Yes counts as confirmed.
+(<https://support-desk-demo.fly.dev/assistant-run>) shows one recorded run: the assistant worked in
+a scratch file from the ticket's text, because it had no access to the product's code. It tested a fix,
+proposed a test, attached the run as evidence and asked the owner to review it. It resolved
+nothing: a test can pass while the customer is still stuck, so only the customer's Yes confirms it.
 
 [Three real faults](docs/dogfood-run/summary.md) were filed as tickets in a local Proofdesk. A
 listening assistant offered ways to prove each fix within about five seconds, and a headless
@@ -114,12 +118,10 @@ assistant can read everything it needs in one fetch: <https://support-desk-demo.
 
 ## Read first
 
-1. [`src/server/permissions.ts`](src/server/permissions.ts): the capability table and `can()`,
-   who may take each action.
+1. [`src/server/permissions.ts`](src/server/permissions.ts): the table of who may do what, and `can()`.
 2. [`src/server/tickets/workflow.ts`](src/server/tickets/workflow.ts): taking a ticket and
    changing its status. Then [`resolve-and-reopen.ts`](src/server/tickets/resolve-and-reopen.ts):
-   `resolveWithReason`, which marking fixed calls, and
-   [`customer-question.ts`](src/server/tickets/customer-question.ts): `confirmFix`, the customer's Yes.
+   `resolveWithReason`, which marking fixed calls, and [`customer-question.ts`](src/server/tickets/customer-question.ts): `confirmFix`, the customer's Yes.
 3. [`tests/confirmation.test.ts`](tests/confirmation.test.ts): confirmation, on the real routes.
 4. [`tests/capabilities.test.ts`](tests/capabilities.test.ts): every action, tested for agents.
 
@@ -149,17 +151,15 @@ code. The specification ([`docs/SPEC.md`](docs/SPEC.md)), the history of every s
   one as not sent, with its exact words.
 - **Evidence is reported, not verified.** Proofdesk shows who reported it and checks none of it.
 - **One machine.** SQLite on one disk; rate-limit counts are in memory and reset on a restart.
-- **Roles in the server settings win** over the People page until the settings change.
 - **Demo visitors share identities.** Everyone who views as Demo Customer is the same customer,
   so a visitor's picture on the demo is shown only to the browser that added it.
 - **The dev login's cookie is unsigned**, safe only because production refuses the dev login.
 - **`ops/prove` is not a sandbox.** It runs the candidate code on the machine with only the
   environment cleaned.
 - **No bulk handover when someone leaves the team.** The People page will not make someone a
-  customer while they own open tickets, and names those tickets, so each is handed on first. A
-  reopened ticket whose owner has left goes back to New with no owner.
-- **Left out on purpose:** a board with status columns, priority ordering and any model call of
-  the site's own.
+  customer while they own open tickets, so each is handed on first. A reopened ticket whose owner
+  has left goes back to New with no owner.
+- **Left out on purpose:** a board with status columns, priority ordering and model calls of its own.
 - **Design debt**, each item with its plan: [`ARCHITECTURE.md`](docs/ARCHITECTURE.md#design-debt).
 
 ## More

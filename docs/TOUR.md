@@ -73,6 +73,20 @@ Each one takes under a minute on the demo, which opens on the ticket list as the
 - Press: **Sign in with GitHub**
 - You should see: Signed in as a customer, a team member or an admin, as [Sign-in and roles](../README.md#sign-in-and-roles) explains. Microsoft sign-in for one organization sits beside it once its settings are set. On the demo the three roles are in the menu at the top right, the admin as Demo Admin (read-only).
 
+**Who may do what**
+
+- Start as: Any demo page
+- Press: The menu at the top right, then **Who may do what** at its foot; then switch to **Demo Team Member** in the same menu
+- You should see: "This page is computed from the same check the server runs on every request, so the page and the rules cannot disagree." Under four lines on who may say a ticket is fixed, one table: each action with its rule in small words, and a column each for Customer, Team member, Admin and AI assistant, grouped as The ticket, Proving it is fixed, Working it, and People and connections. Your column is marked, such as "Team member (you)", and the mark moves when you switch; the demo admin's reads "Admin (you, read-only on this demo)". Anyone can open the page at `/roles`, signed in or not, and People, Account and About this demo link it.
+
+<img src="img/who-may-do-what.png" width="720" alt="The page Who may do what, as Demo Team Member: its heading, the line saying it is computed from the same check the server runs on every request, four lines under &quot;Who may say it is fixed&quot;, then the table's columns Action, Customer, &quot;Team member (you)&quot;, Admin and AI assistant, and the first rows of The ticket: File a ticket, See every ticket, See archived tickets and Read a ticket, each with Yes, No, Own tickets only, Never or the scope an assistant needs">
+
+**Check a role change first**
+
+- Start as: **Demo Admin (read-only)**, from the menu at the top right, then **People** in the same menu
+- Press: The role beside Demo Team Member, set to Customer, then **Check this change**
+- You should see: "Make Demo Team Member a customer?", then what the change would do, worked out from the real data: "Demo Team Member will see only their own tickets from their next page." and the open tickets they still own, such as "Demo Team Member still owns SUP-1, SUP-3, SUP-4 and SUP-7. Hand them to someone else first." The demo ends with "Demo Admin (read-only) changes nothing, so there is no button here. On the real site this is where the change is made." On the real site, when nothing stands in the way, the page's one black button names the change, such as "Make <name> a team member", with Cancel beside it, and lowering an admin says how many of their assistant connections will be revoked. Every change made is kept in a log that cannot be edited, under "Role changes" on People.
+
 **AI features**
 
 - Start as: **About this demo**, in the footer of every demo page

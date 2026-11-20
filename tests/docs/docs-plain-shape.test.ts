@@ -77,8 +77,9 @@ describe("the guides' shape", () => {
     // The Suggestions setting added one short section on how a listening assistant helps.
     ["docs/AGENTS_GUIDE.md", 190],
     // The proof step, the Proof column, pictures, possible duplicates, the bulk bar and the
-    // Suggestions setting each added one feature of four lines.
-    ["docs/TOUR.md", 93],
+    // Suggestions setting each added one feature of four lines. Who may do what and checking a
+    // role change added two more, and the one picture of Who may do what two lines.
+    ["docs/TOUR.md", 107],
     // Microsoft sign-in beside GitHub added its settings and setup steps, and its "off until
     // set" line came later.
     ["docs/DEPLOY.md", 352],
