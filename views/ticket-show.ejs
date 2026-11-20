@@ -304,9 +304,10 @@
       <% }) %>
     </fieldset>
     <%# The stylesheet shows each of these only for the reason that needs it. %>
+    <%# Its example is never this ticket's own key. %>
     <label class="resolve-duplicate">
       Duplicate of
-      <input type="text" name="duplicate_of" placeholder="SUP-3" maxlength="20" value="<%= resolving.duplicate_of ?? possibleDuplicate?.key ?? "" %>" <%= focusIf("resolve", "duplicate_of") %> />
+      <input type="text" name="duplicate_of" placeholder="A ticket key, like <%= ticket.key === "SUP-12" ? "SUP-11" : "SUP-12" %>" maxlength="20" value="<%= resolving.duplicate_of ?? possibleDuplicate?.key ?? "" %>" <%= focusIf("resolve", "duplicate_of") %> />
     </label>
     <%# One box for a note: "Why?" for Other, which needs it, and an optional note for the
         customer with Won't fix or Cannot reproduce. Only the label for the chosen reason shows. %>
@@ -482,7 +483,8 @@
   <div class="picture-strip" id="reply-picture-strip" hidden></div>
   <div class="reply-actions">
     <%# With a choice of who sees it, a small script makes the button name that audience. %>
-    <button type="submit" class="secondary compact" <% if (allowed.note) { %>data-label-reply="Send reply to customer" data-label-note="Save internal note"<% } %>>Send</button>
+    <%# The customer's one audience is the team, and the button says so. %>
+    <button type="submit" class="secondary compact" <% if (allowed.note) { %>data-label-reply="Send reply to customer" data-label-note="Save internal note"<% } %>><%= allowed.note ? "Send" : "Send to the team" %></button>
     <%- include("add-pictures", { limit: pictureLimits.perMessage, strip: "reply-picture-strip", box: "body", line: null }) %>
     <%# Shown only while Internal note is chosen, at the row's right end. %>
     <% if (allowed.note) { %><small class="note-hint">Only the team can see this.</small><% } %>
@@ -532,7 +534,7 @@
 <% if (staff && allowed.attachEvidence) { %>
 <li>
 <details name="more-option" <% if (problem?.form === "evidence") { %>open<% } %>>
-  <summary>Add evidence</summary>
+  <summary>Add evidence of the fix</summary>
   <%# The page picks the kind: a change when a link is given, otherwise "I checked it". %>
   <form method="post" action="/tickets/<%= ticket.key %>/evidence">
     <label>
@@ -597,7 +599,7 @@
 </li>
 <% } %>
 <% if (noticeCount > 0) { %>
-<li><a href="/tickets/<%= ticket.key %>/notices">Email notices</a></li>
+<li><a href="/tickets/<%= ticket.key %>/notices">Emails sent about this ticket</a></li>
 <% } %>
 <% if (allowed.archive) { %>
 <li><a href="/tickets/<%= ticket.key %>/archive">Archive ticket</a></li>

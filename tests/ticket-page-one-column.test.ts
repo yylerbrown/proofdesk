@@ -275,7 +275,7 @@ describe("More options", () => {
     await admin(app).post("/api/tickets/SUP-1/take-and-start");
     expect(lines(await page(app, adminActor))).toEqual([
       "Edit ticket",
-      "Add evidence",
+      "Add evidence of the fix",
       "Ask before resolving",
       "Hand to an AI assistant",
       "Archive ticket",
@@ -294,9 +294,9 @@ describe("More options", () => {
     collectNotices(db, settings);
     expect(lines(await page(app, adminActor))).toEqual([
       "Edit ticket",
-      "Add evidence",
+      "Add evidence of the fix",
       "Withdraw the question",
-      "Email notices",
+      "Emails sent about this ticket",
       "Archive ticket",
       "Delete permanently",
     ]);

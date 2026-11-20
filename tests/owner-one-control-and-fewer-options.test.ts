@@ -142,7 +142,7 @@ describe("More options", () => {
     });
     expect(names).toEqual([
       "Edit ticket",
-      "Add evidence",
+      "Add evidence of the fix",
       "Ask before resolving",
       "Archive ticket",
       "Delete permanently",

@@ -46,7 +46,7 @@ describe("the ticket page layout", () => {
     expect(more.querySelector("summary")?.text).toBe("More options");
     expect(
       more.querySelectorAll(".more-list > li").map((el) => el.text.trim().split("\n")[0]),
-    ).toEqual(["Edit ticket", "Add evidence", "Archive ticket", "Delete permanently"]);
+    ).toEqual(["Edit ticket", "Add evidence of the fix", "Archive ticket", "Delete permanently"]);
     // The next step is the card's.
     expect(
       html.querySelector(".ticket-card .next-action form[action$='/take-and-start']"),
@@ -168,7 +168,9 @@ describe("the ticket page's quiet parts", () => {
       (await ticketPage(admin(app))).querySelector(".ticket-page details.evidence-list");
     const before = await ticketPage(admin(app));
     const more = before.querySelector("details.more-options")!;
-    expect(more.querySelectorAll("summary").map((s) => s.text)).toContain("Add evidence");
+    expect(more.querySelectorAll("summary").map((s) => s.text)).toContain(
+      "Add evidence of the fix",
+    );
     expect(await line()).toBeNull();
     await admin(app).post("/api/tickets/SUP-1/evidence").send({ kind: "note", summary: "Checked" });
     const after = await line();
