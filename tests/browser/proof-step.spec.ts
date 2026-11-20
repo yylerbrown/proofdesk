@@ -212,3 +212,68 @@ test("Automatic: the page asks once by itself, then says when nothing came", asy
   await expect(step.getByText("No suggestion this time.")).toHaveCount(0, { timeout: 8000 });
   await customer.context().close();
 });
+
+// Choices as long as an assistant may write them: up to 200 characters each.
+const LONG_WAYS = [
+  {
+    id: 911,
+    words:
+      "I export the report for this month from the reports page and the downloaded file has one row for every order I can see on screen.",
+  },
+  {
+    id: 912,
+    words:
+      "The exported file opens in a spreadsheet without a warning, the columns have their headings, and the dates show as dates and not as numbers or blank cells in any of the rows.",
+  },
+  {
+    id: 913,
+    words:
+      "The total at the bottom of the export matches the total the dashboard shows for the same month, to the cent, and the count of rows matches the count of orders on that page too.",
+  },
+];
+
+for (const width of [390, 1280]) {
+  for (const automatic of [true, false]) {
+    test(`${automatic ? "Automatic" : "When asked"} at ${width} wide: long choices arrive and the box stays still`, async ({
+      browser,
+    }) => {
+      const customer = await signInAs(browser, "Customer One", width);
+      let askedAt = Infinity;
+      const reads = await standInRead(customer, (read) => {
+        if (read === 1) return { listening: true, automatic };
+        // The suggestions arrive on the third read after asking.
+        return read - askedAt >= 3
+          ? { listening: true, automatic, suggestions: LONG_WAYS }
+          : { request: "waiting" };
+      });
+      await customer.route(/\/check-suggestions\/request$/, (route: Route) => {
+        askedAt = reads();
+        return route.fulfill({ status: 201, json: { request: "waiting" } });
+      });
+      // A failed test restarts the worker and forgets the shared ticket, so file one then.
+      if (quietTicket === "") {
+        await fileTicket(customer, "Export is empty for the long choices");
+        quietTicket = new URL(customer.url()).pathname;
+      }
+      await customer.goto(`${quietTicket}?step=verify`);
+      const step = customer.locator("form#verify-form");
+      const box = step.getByLabel("What would prove it is fixed?");
+      if (!automatic) await step.getByRole("button", { name: "Suggest ways to prove it" }).click();
+      await expect(step.getByText("Asking the team's AI assistant...")).toBeVisible();
+      const boxTop = (await box.boundingBox())!.y;
+      await expect(step.getByRole("radio")).toHaveCount(3);
+      expect((await box.boundingBox())!.y).toBe(boxTop);
+      // Each choice shows at most two lines; picking one puts all its words in the box.
+      for (const label of await step.locator(".proof-choices label").all()) {
+        const lines = await label.locator(".user-text").evaluate((words) => {
+          const style = getComputedStyle(words);
+          return Math.round(words.clientHeight / parseFloat(style.lineHeight));
+        });
+        expect(lines).toBeLessThanOrEqual(2);
+      }
+      await step.getByRole("radio", { name: LONG_WAYS[2]!.words }).check();
+      await expect(box).toHaveValue(LONG_WAYS[2]!.words);
+      await customer.context().close();
+    });
+  }
+}

@@ -146,8 +146,12 @@ export function wireChoices(form: HTMLFormElement, box: HTMLTextAreaElement): vo
   });
 }
 
-/** Draws the arrived suggestions in the choices' place. Every word goes in as text. */
-function drawChoices(place: HTMLElement, suggestions: Suggestion[]): void {
+/**
+ * The choices as the script draws them. Each choice's words are cut to two lines on screen, so
+ * three choices always fit the room kept for them while asking. The full words go in the box
+ * when one is picked, and stay in the label for screen readers and as its tooltip.
+ */
+function buildChoices(suggestions: Suggestion[]): HTMLFieldSetElement {
   const fieldset = document.createElement("fieldset");
   const legend = document.createElement("legend");
   legend.className = "hint";
@@ -155,29 +159,50 @@ function drawChoices(place: HTMLElement, suggestions: Suggestion[]): void {
   fieldset.append(legend);
   for (const suggestion of suggestions) {
     const label = document.createElement("label");
+    label.title = suggestion.words;
     const radio = document.createElement("input");
     radio.type = "radio";
     radio.name = "suggestion_id";
     radio.value = String(suggestion.id);
     radio.dataset.words = suggestion.words;
     const words = document.createElement("span");
-    words.className = "user-text";
+    words.className = "user-text two-lines";
     words.textContent = suggestion.words;
     label.append(radio, " ", words);
     fieldset.append(label);
   }
-  // The place keeps the room it held while asking, so the box under it stays where it was.
-  place.replaceChildren(fieldset);
+  return fieldset;
+}
+
+/** Words long enough to fill two lines at any width, for measuring the room choices take. */
+const LONG_WORDS = "Words ".repeat(100);
+
+/**
+ * Keeps in the choices' place the room that the legend and three two-line choices take at the
+ * page's width now, measured by drawing them unseen for a moment. Choices that arrive never
+ * need more, so the box under the place does not move.
+ */
+function keepRoomForChoices(place: HTMLElement): void {
+  const sample = buildChoices([1, 2, 3].map((id) => ({ id, words: LONG_WORDS })));
+  sample.style.visibility = "hidden";
+  place.style.minHeight = "";
+  place.replaceChildren(sample);
+  place.hidden = false;
+  place.style.minHeight = `${place.getBoundingClientRect().height}px`;
+}
+
+/** Draws the arrived suggestions in the choices' place, in the room kept for them. */
+function drawChoices(place: HTMLElement, suggestions: Suggestion[]): void {
+  place.replaceChildren(buildChoices(suggestions));
   place.hidden = false;
 }
 
-/** One grey line in the choices' place, keeping their room. */
+/** One grey line in the choices' place, in the room kept for the choices. */
 function drawLine(place: HTMLElement, words: string): void {
   const line = document.createElement("p");
   line.className = "hint";
   line.textContent = words;
   place.replaceChildren(line);
-  place.classList.add("asking");
   place.hidden = false;
 }
 
@@ -204,6 +229,7 @@ function wireAsking(form: HTMLFormElement, readUrl: string, askUrl: string): voi
   const ask = (pressed: boolean) => {
     if (asking) return;
     asking = true;
+    keepRoomForChoices(place);
     drawLine(place, ASKING_WORDS);
     waitForSuggestions(send(pressed), read, clock, {
       show: (suggestions) => {
@@ -214,7 +240,7 @@ function wireAsking(form: HTMLFormElement, readUrl: string, askUrl: string): voi
         drawLine(place, NONE_WORDS);
         window.setTimeout(() => {
           place.replaceChildren();
-          place.classList.remove("asking");
+          place.style.minHeight = "";
           place.hidden = true;
           asking = false;
         }, NONE_SHOWN_MS);

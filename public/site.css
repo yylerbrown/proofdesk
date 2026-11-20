@@ -2253,8 +2253,8 @@ details.history td:first-child {
 /*
  * The customer's step after filing, in the check's place: the label, with the assistant's quiet
  * button beside it when one listens, one grey line, the choices and the box. While an assistant
- * is asked, the choices' place keeps the room three choices take, so the box does not move
- * when they arrive.
+ * is asked, the script keeps in the choices' place the room three two-line choices take, so the
+ * box does not move when they arrive.
  */
 .proof-step .proof-label-row {
   display: flex;
@@ -2283,8 +2283,18 @@ details.history td:first-child {
   font-size: var(--pd-text-sm);
   font-weight: var(--pd-weight-regular);
 }
-.proof-step .proof-choices.asking {
-  min-height: 10rem;
+/* Its own block, so the margins inside it count in the room it keeps. */
+.proof-step .proof-choices:not([hidden]) {
+  display: flow-root;
+}
+/* A choice the script drew shows at most two lines; the box gets its full words. */
+.proof-step .proof-choices .two-lines {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 .proof-step .proof-choices fieldset {
   margin-bottom: var(--pd-space-3);
