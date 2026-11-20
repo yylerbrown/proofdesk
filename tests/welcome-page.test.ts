@@ -38,7 +38,7 @@ describe("the demo's welcome card", () => {
     const html = await page(demo().app, "/tickets");
     const card = html.querySelector("main > .demo-welcome")!;
     expect(card.querySelector("p")?.text).toBe(
-      "Proofdesk is a support desk where the customer says how they will know a fix worked. You are trying it as a customer.",
+      "Proofdesk is a support desk where a ticket is shaped like a good prompt: the problem, the context, and what would prove it is fixed. You are trying it as a customer.",
     );
     const buttons = card.querySelectorAll("[role=button], button:not(.link)");
     expect(buttons.map((button) => button.text)).toEqual(["File a sample ticket"]);

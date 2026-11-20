@@ -92,7 +92,7 @@ function whatHappened(input: NoticeInput, title: string, link: string): string[]
       // The team's note with the reason Fixed says where the fix is, such as a version.
       if (input.publicText) lines.push(`Fixed in: ${cut(oneLine(input.publicText), EXCERPT_MOST)}`);
       if (input.customerCheck) {
-        lines.push("", "You said you would know by:", excerpt(input.customerCheck));
+        lines.push("", "You said this would prove it is fixed:", excerpt(input.customerCheck));
       }
       lines.push(
         "",

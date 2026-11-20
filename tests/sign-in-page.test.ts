@@ -11,11 +11,13 @@ import { buildTestApp, SIGN_IN_ENV, visitor } from "./helpers.js";
 const signInPage = async (request: Promise<{ text: string }>) => parse((await request).text);
 
 describe("the real site's sign-in page", () => {
-  it("is headed Sign in to Proofdesk, with the tagline kept", async () => {
+  it("is headed Sign in to Proofdesk, with the sentence that says what it is", async () => {
     const { app } = buildTestApp(SIGN_IN_ENV);
     const html = await signInPage(visitor(app).get("/sign-in"));
     expect(html.querySelector("h1")?.text).toBe("Sign in to Proofdesk");
-    expect(html.querySelector("hgroup p")?.text).toContain("Tell us what went wrong");
+    expect(html.querySelector("hgroup p")?.text).toBe(
+      "Proofdesk is a support desk where a ticket is shaped like a good prompt: the problem, the context, and what would prove it is fixed.",
+    );
   });
 
   it("puts GitHub's mark on the button and says who can sign in and what is read", async () => {

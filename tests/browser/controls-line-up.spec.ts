@@ -57,7 +57,7 @@ test.beforeAll(async ({ browser }) => {
   await customer.getByLabel("Title").fill(TITLE);
   await customer.getByLabel("Description").fill("Every page comes out twice.");
   await customer
-    .getByLabel("How will we know it's fixed? (optional)")
+    .getByLabel("What would prove it is fixed? (optional)")
     .fill("One page prints once.");
   await customer.getByRole("button", { name: "File ticket" }).click();
   await expect(customer).toHaveURL(/\/tickets\/SUP-\d+$/);

@@ -118,6 +118,8 @@
         <% sortHeaders.forEach((header, index) => { %>
         <%# The plain name stands in for the link on a phone, where the header row is not drawn, so no keyboard stop hides there. %>
         <th scope="col" <% if (header.ariaSort) { %>aria-sort="<%= header.ariaSort %>"<% } %>><% if (bulk && index === 0) { %><input type="checkbox" class="bulk-tick" aria-label="Tick every ticket shown" hidden data-bulk-all /><% } %><a href="<%= header.href %>" class="sort-link" aria-label="<%= header.name %>"><%= header.label %><span class="sort-arrow" aria-hidden="true"><%= arrow(header) %></span></a><span class="sort-label"><%= header.label %></span></th>
+        <%# Right after Status, a narrow column that sorts nothing: the ticket's proof mark. %>
+        <% if (header.column === "status") { %><th scope="col" class="proof-cell">Proof</th><% } %>
         <% }) %>
       </tr>
     </thead>
@@ -127,8 +129,9 @@
         <%# The title is the row's one keyboard stop; the key stays a link for the mouse. %>
         <td><% if (bulk) { %><input type="checkbox" class="bulk-tick" name="keys" value="<%= ticket.key %>" aria-label="Tick <%= ticket.key %>" <% if (bulk.ticked.has(ticket.key)) { %>checked<% } %> /><% } %><a href="/tickets/<%= ticket.key %>" tabindex="-1"><%= ticket.key %></a></td>
         <td class="user-text title-cell" title="<%= ticket.title %>"><a href="/tickets/<%= ticket.key %>"><%= ticket.title %></a></td>
-        <%# One line: the status word, a check mark when the customer confirmed the fix, and a quiet tag only when it is not simply the team's turn. How the team resolved a ticket is on its own page. %>
-        <td class="status-cell"><%- include("status-badge", { status: ticket.status }) %><% if (ticket.resolution && ticket.resolution.by === "customer") { %> <span class="confirmed-mark" role="img" aria-label="Customer confirmed" title="Customer confirmed">✓</span><% } %><% if (ticket.tagHref) { %> <a class="turn-tag" href="<%= ticket.tagHref %>"><%= ticket.tag %></a><% } else if (ticket.tag) { %> <span class="turn-tag"><%= ticket.tag %></span><% } %></td>
+        <%# One line: the status word, and a quiet tag only when it is not simply the team's turn. How the team resolved a ticket is on its own page. %>
+        <td class="status-cell"><%- include("status-badge", { status: ticket.status }) %><% if (ticket.tagHref) { %> <a class="turn-tag" href="<%= ticket.tagHref %>"><%= ticket.tag %></a><% } else if (ticket.tag) { %> <span class="turn-tag"><%= ticket.tag %></span><% } %></td>
+        <td class="proof-cell"><%- include("proof-mark", { ticket }) %></td>
         <td><%= ticket.owner_name ?? "Unassigned" %></td>
         <% const when = byUpdated ? ticket.updated_at : ticket.created_at; %>
         <td><time datetime="<%= when %>" data-relative title="<%= formatTime(when) %>"><%= timeAgo(when) %></time></td>

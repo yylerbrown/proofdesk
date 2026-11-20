@@ -32,7 +32,7 @@ describe("the ticket page layout", () => {
     const labels = page.querySelectorAll(".ticket-facts .fact-label").map((label) => label.text);
     expect(labels).toEqual(["Status", "Owner"]);
     expect(html.querySelector(".ticket-page > .ticket-card .card-label")?.text).toBe(
-      "How will we know it's fixed?",
+      "What would prove it is fixed?",
     );
     // Nobody owns it, so the owner's menu assigns it to the viewer.
     const owner = page.querySelector(".ticket-facts details.owner-menu")!;

@@ -136,7 +136,7 @@
 <p class="page-link">Page: <a href="<%= ticket.where_url %>" rel="noopener noreferrer nofollow" class="user-text"><%= ticket.where_url %></a></p>
 <% } %>
 
-<%# How the customer will know it is fixed, where the ticket stands, and the one step this viewer
+<%# What the customer said would prove it is fixed, where the ticket stands, and the one step this viewer
     can take: plain lines in the column, set apart by space. Once the team marks it fixed, or asks,
     the check's label becomes the customer's question, "Did this fix it?". %>
 <%
@@ -165,7 +165,7 @@
   <% if (question) { %>
   <h2>Did this fix it?</h2>
   <% } else if (ticket.fix_check) { %>
-  <p class="card-label">How will we know it's fixed?</p>
+  <p class="card-label">What would prove it is fixed?</p>
   <% } %>
   <% if (ticket.fix_check) { %>
   <blockquote class="user-text"><%= ticket.fix_check %></blockquote>

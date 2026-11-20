@@ -256,7 +256,7 @@ describe("the customer's pick", () => {
       data: { to: "The file opens", suggested_by: "Helper" },
     });
     const page = (await as(app, customerOne).get("/tickets/SUP-1")).text;
-    expect(page).toContain("Customer chose how to verify, suggested by Helper");
+    expect(page).toContain("Customer chose what would prove it is fixed, suggested by Helper");
   });
 
   it("takes the customer's own words instead", async () => {
@@ -268,7 +268,7 @@ describe("the customer's pick", () => {
     const states = (await as(app, customerOne).get("/api/tickets/SUP-1")).body.check_suggestions;
     expect(states.map((s: { state: string }) => s.state)).toEqual(["withdrawn"]);
     expect((await as(app, customerOne).get("/tickets/SUP-1")).text).toContain(
-      "Customer wrote how to verify",
+      "Customer wrote what would prove it is fixed",
     );
   });
 

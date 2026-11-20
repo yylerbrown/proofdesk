@@ -284,7 +284,7 @@ const FIELD_LABELS: Record<string, string> = {
   title: "title",
   description: "description",
   where_url: "where it happened",
-  fix_check: "how we will know it's fixed",
+  fix_check: "what would prove it is fixed",
 };
 
 /** One line of plain words for a history entry. An unknown kind of entry shows its type. */
@@ -377,8 +377,8 @@ export function describeEvent(event: TicketEvent): string {
     const chosen = z.object({ suggested_by: z.string().nullable() }).safeParse(event.data);
     if (chosen.success) {
       return chosen.data.suggested_by === null
-        ? "Customer wrote how to verify"
-        : `Customer chose how to verify, suggested by ${chosen.data.suggested_by}`;
+        ? "Customer wrote what would prove it is fixed"
+        : `Customer chose what would prove it is fixed, suggested by ${chosen.data.suggested_by}`;
     }
   }
   if (event.type === "archived") return "Archived";

@@ -42,7 +42,7 @@ describe("the email for a ticket marked fixed", () => {
         'Demo Team Member says ticket SUP-3, "Cannot sign in on my phone", is fixed.',
         "Fixed in: version 4.2.1",
         "",
-        "You said you would know by:",
+        "You said this would prove it is fixed:",
         '"I can sign in on my phone"',
         "",
         "If it is not fixed, say so here: https://desk.test/tickets/SUP-3#did-this-fix-it",
@@ -57,13 +57,13 @@ describe("the email for a ticket marked fixed", () => {
     const { body } = composeNotice({ ...marked, publicText: null });
     expect(body).not.toContain("Fixed in:");
     expect(body).toContain(
-      '"Cannot sign in on my phone", is fixed.\n\nYou said you would know by:',
+      '"Cannot sign in on my phone", is fixed.\n\nYou said this would prove it is fixed:',
     );
   });
 
   it("leaves out the two lines about the check when the ticket has none", () => {
     const { body } = composeNotice({ ...marked, customerCheck: null });
-    expect(body).not.toContain("You said you would know by");
+    expect(body).not.toContain("You said this would prove it is fixed");
     expect(body).toContain("Fixed in: version 4.2.1\n\nIf it is not fixed");
   });
 });
@@ -118,7 +118,7 @@ describe("the email written when the team marks a ticket fixed", () => {
     expect(notice!.kind).toBe("marked_fixed");
     expect(notice!.subject).toBe("[SUP-1] Did this fix it? Printer jams");
     expect(notice!.body).toContain("Fixed in: version 4.2.1");
-    expect(notice!.body).toContain('You said you would know by:\n"Ten pages print"');
+    expect(notice!.body).toContain('You said this would prove it is fixed:\n"Ten pages print"');
     expect(notice!.body).toContain("https://desk.test/tickets/SUP-1#did-this-fix-it");
   });
 
@@ -126,6 +126,6 @@ describe("the email written when the team marks a ticket fixed", () => {
     const [notice] = await markFixed("");
     expect(notice!.kind).toBe("marked_fixed");
     expect(notice!.body).not.toContain("Fixed in:");
-    expect(notice!.body).not.toContain("You said you would know by");
+    expect(notice!.body).not.toContain("You said this would prove it is fixed");
   });
 });
