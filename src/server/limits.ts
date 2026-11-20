@@ -11,7 +11,8 @@ export const WRITE_LIMIT = 120;
 // "Similar ticket" question in ten minutes. These asks change nothing, so the write allowance
 // does not count them.
 export const SIMILAR_LIMIT = 60;
-// How many assistant connections one address may get from the demo's welcome page in an hour.
+// How many assistant connections one address may get from the demo's About page (/sign-in) in an
+// hour.
 export const DEMO_CONNECTIONS_PER_HOUR = 5;
 
 export const WRITE_LIMIT_DESCRIPTION = `${WRITE_LIMIT} writes per 10 minutes per person or connection (per address on the demo), across the pages, the API and the tools. Reading is not counted.`;

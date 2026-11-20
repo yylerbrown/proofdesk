@@ -87,8 +87,10 @@ export function admin(app: Express) {
 }
 
 /**
- * Takes a ticket all the way to Resolved, by the only road there is: the team takes it,
- * moves it to In Progress, adds the change link and asks; the person who filed it says yes.
+ * Takes a ticket all the way to Resolved by the ask-first road: the team takes it, moves it
+ * to In Progress, adds the change link and asks; the person who filed it says yes. The main
+ * road in the product is now "Mark fixed and tell the customer", where the customer's yes
+ * is optional.
  */
 export async function resolveTicket(app: Express, key: string, filedBy: Actor) {
   // The customer is asked against their own check, so a ticket filed without one gets one

@@ -20,12 +20,12 @@ kill_timeout = 10
   # Where Fly's proxy puts the visitor's address. Used for rate limits. See docs/DEPLOY.md:
   # this must be checked on the first deploy.
   CLIENT_IP_HEADER = "fly-client-ip"
-  # The public copy of the source, linked from the welcome page as "Source and setup".
+  # The public copy of the source, linked from the About page (/sign-in) as "Source and setup".
   SOURCE_URL = "https://github.com/yylerbrown/proofdesk"
   # This app is the public demo: sample data and the three demo people, no GitHub sign-in.
   # Without it the server would start in production with no sign-in settings and refuse.
   DEMO = "on"
-  # Where GitHub sign-in with roles runs, named on the demo's welcome page.
+  # Where GitHub sign-in with roles runs, named on the demo's About page (/sign-in).
   REAL_SITE_URL = "https://proofdesk.fly.dev"
   # The demo's own address, given in the commands a visitor pastes into an assistant. Fly's
   # proxy ends HTTPS, so a request reaches the server over plain http and cannot tell.

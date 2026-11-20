@@ -167,9 +167,9 @@ export function createConnectionService(db: Db, issuerMayIssue: (personId: strin
 
     /**
      * A visitor's own short-lived connection to the public demo. No admin issues it: anyone
-     * on the demo's welcome page may ask. It sees only the sample tickets and what it writes
-     * itself, it expires within a day, and only so many may be live at once. At that cap the
-     * live one issued first is ended to make room. Using a key does not keep it, so nobody
+     * on the demo's About page (/sign-in) may ask. It sees only the sample tickets and what it
+     * writes itself, it expires within a day, and only so many may be live at once. At that cap
+     * the live one issued first is ended to make room. Using a key does not keep it, so nobody
      * can choose whose key the next one ends: pushing out a visitor's key takes a new
      * connection for every live one issued before it.
      */
@@ -278,7 +278,7 @@ export function createConnectionService(db: Db, issuerMayIssue: (personId: strin
       const now = new Date().toISOString();
       if (row.revoked_at !== null) return null;
       if (row.expires_at !== null && row.expires_at <= now) return null;
-      // A demo connection is issued by the demo's welcome page, not by a person.
+      // A demo connection is issued by the demo's About page (/sign-in), not by a person.
       if (row.demo !== 1 && !issuerMayIssue(row.issued_by)) return null;
       repository.markUsed(db, row.id, now);
       const connection = toConnection(row);
