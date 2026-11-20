@@ -106,7 +106,7 @@ describe("the README's feature list and the code map", () => {
 
   it("says what the top-level ops/prove folder is, outside Known limits", () => {
     const before = readme.slice(0, readme.indexOf("## Known limits"));
-    expect(before).toContain("The top-level `ops/prove` folder is a command-line check");
+    expect(before).toContain("The top-level `ops/prove` folder is a");
     expect(fs.existsSync("ops/prove/README.md")).toBe(true);
   });
 

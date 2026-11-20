@@ -68,6 +68,8 @@ Each is one line, raised while the demo was walked before sending, to weigh afte
 - Keyboard shortcuts: j and k to move through the list, a key for the search, Ctrl+Enter to send.
 - The message box open by default.
 - One fixed place for one-time lines, so a notice never moves the buttons under it.
+- A private copy of the samples for each demo visitor, so the demo's admin can really change roles
+  and delete, and a reset touches only that visitor's data.
 - Shorter role names in the demo's menu, so the header does not shift when switching.
 - Web addresses in a description shown as links, and a box on the form for the page it happened on.
 - A live replay of the recorded assistant run, with its real times.

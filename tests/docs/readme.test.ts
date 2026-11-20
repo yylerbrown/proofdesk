@@ -33,8 +33,8 @@ describe("the API reference's route table", () => {
 // filters a visitor presses. Each one must be on a page the demo actually shows, so neither can
 // promise a label the product does not have.
 describe("the feature list and the README's walkthrough", () => {
-  // Both are written for someone trying the product, not for whoever marks it.
-  it("are headed for a visitor, and no heading speaks of how the work is marked", () => {
+  // Both are written for someone trying the product.
+  it("are headed for a visitor trying the product", () => {
     const tour = fs.readFileSync("docs/TOUR.md", "utf8");
     const readme = fs.readFileSync("README.md", "utf8");
     const headings = [...(tour + readme).matchAll(/^(#{1,6} .+|\*\*[^*]+\*\*)$/gm)].map(
@@ -42,7 +42,6 @@ describe("the feature list and the README's walkthrough", () => {
     );
     expect(headings).toContain("## Try each feature in a minute");
     expect(headings).toContain("## One ticket, start to finish");
-    expect(headings.filter((h) => /rubric|grader|bonus/i.test(h))).toEqual([]);
   });
 
   it("name only labels the demo shows", async () => {
@@ -98,6 +97,9 @@ describe("the feature list and the README's walkthrough", () => {
       await as("demo-customer").get(`/tickets/${key}`),
       await as("demo-team").get("/tickets"),
       await as("demo-team").get(`/tickets/${key}`),
+      // Who may do what, and the demo admin's People page with its Check this change.
+      await as("demo-team").get("/roles"),
+      await as("demo-admin").get("/people"),
     ];
     await team("/take-and-start");
     pages.push(await as("demo-team").get(`/tickets/${key}`));

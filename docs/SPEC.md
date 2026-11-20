@@ -17,7 +17,7 @@ A customer support desk where the customer says how they will know it is fixed, 
 
 - **Customer:** files tickets and follows their own.
 - **Team member:** answers tickets and fixes code. One role.
-- **Admin:** a team member named in configuration.
+- **Admin:** a team member named in configuration. (Since 18 Nov an admin chooses each person's role on People, and the settings only lock a role. See that afternoon's entry and 20 Nov's.)
 - **AI agent:** a worker that is not a person. It takes approved work orders and proposes changes.
 
 ## The customer's side
@@ -44,7 +44,7 @@ A customer support desk where the customer says how they will know it is fixed, 
 
 ## Getting in
 
-- GitHub sign-in through a standard library. A new sign-in is a customer. Team members and the admin are named in configuration.
+- GitHub sign-in through a standard library. A new sign-in is a customer. Team members and the admin are named in configuration. (Since 18 Nov they are chosen on People, and people named in the settings keep that role, locked.)
 - A labelled demo entrance: view as customer, team member or admin, on a separate sample database, enforced by the server. The admin view is read-only there, and AI calls and agent runs are off.
 - Running locally with no keys needs an explicit development setting. In production, missing sign-in settings stop the server from starting.
 
@@ -251,3 +251,11 @@ Fixes only; the rules, the JSON API and the three statuses are unchanged.
 The owner's change to the proof step; the rules, the JSON API, the assistant tools and `/llms.txt` are unchanged.
 
 - **Suggested proofs are "+" buttons.** Each suggestion, from an assistant or from the demo's samples, is one button: a small "+" and its sentence. Pressing it adds the sentence to the box, alone in an empty box or on a new line after what is there; a sentence already in the box is not added again, and its button shows a check until the sentence is deleted. With scripts off each "+" posts the form and the step comes back with the sentence added and nothing saved. The box is still the one thing saved, and the save records as chosen the first suggestion shown whose sentence is still in the box, or none.
+
+### 2026-11-20, afternoon: roles, shown and checked
+
+The owner asked for roles to be done more thoroughly. No new role, and the rules themselves are unchanged.
+
+- **Who may do what.** A page at `/roles`, open to anyone, shows every action in one table with a column for the customer, the team member, the admin and an AI assistant. It uses the server's own permission check and adds who must own the ticket. The viewer's column is marked "(you)". The person menu, People, Account and About this demo link it.
+- **Check this change.** On People, choosing a role opens a check that says what the change will do before it is made: what the person will see, which of their assistant connections end, and which open tickets must be handed on first, when those block it. On the demo the check only reads, so it works for the read-only admin and changes nothing.
+- **Where roles come from.** Roles are chosen on People; the server settings `ADMIN_GITHUB_IDS` and `TEAM_GITHUB_IDS` lock a person's role. Every change is kept in a log that cannot be edited.

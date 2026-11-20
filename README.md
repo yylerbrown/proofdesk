@@ -7,13 +7,34 @@ or an assistant, can tell when it is done.
 
 Say what would prove it is fixed, and your ticket is listed first and checked against your own words.
 
+Proofdesk is a support desk for filing, filtering and tracking tickets through New, In Progress and
+Resolved. The team marks a ticket fixed, and the customer can confirm it against the proof they
+wrote.
+
 - **The demo, no account needed: <https://support-desk-demo.fly.dev>.** Sample data, shared with
   everyone who visits, so do not type anything private. It returns to its samples by itself when
   it has been quiet for a while.
 - **The production site: <https://proofdesk.fly.dev>.** People sign in with GitHub and start as customers.
 - **The source: <https://github.com/yylerbrown/proofdesk>.**
 
-<img src="docs/img/ticket-list.png" width="720" alt="The team member's ticket list on the demo, which has no welcome card: status filters All, Open, New, In Progress and Resolved with a count beside each but All, the Mine and Unassigned toggles, a search box reading &quot;Search words or a key, then press Enter&quot;, and every sample ticket, open ones first, with its key, title, status, owner and when it was filed, under column headers that sort the list. In the Proof column a pale check marks a ticket that says what would prove it fixed, a solid green check marks one its customer confirmed, and one New ticket has neither; a line under the list names the two marks">
+<img src="docs/img/ticket-list.png" width="720" alt="The team member's ticket list on the demo, which has no welcome card: status filters All, Open, New, In Progress and Resolved with a count beside each but All, the Mine and Unassigned toggles, a search box reading &quot;Search words or a key, then press Enter&quot;, and every sample ticket in the team's default order, open ones first and among them New tickets that say what would prove them fixed, with its key, title, status, owner and when it was filed, under column headers that sort the list. In the Proof column a pale check marks a ticket that says what would prove it fixed, a solid green check marks one its customer confirmed, and one New ticket has neither; a line under the list names the two marks">
+
+## What it is built with
+
+| Layer                          | Choice                                                                        | Why                                                       |
+| ------------------------------ | ----------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Language and runtime           | TypeScript, strict, on Node 22.14 or newer                                    | The compiler catches a wrong field before a test runs     |
+| Web framework                  | Express 5                                                                     | Small and well known; it catches errors from async routes |
+| Pages                          | EJS rendered on the server, Pico CSS, small browser scripts                   | Plain pages that need little to load                      |
+| Database                       | SQLite through better-sqlite3, 40 numbered SQL migrations                     | One process and real transactions, a short local setup    |
+| Sign-in                        | Better Auth with GitHub; Microsoft is built and off until set                 | A maintained library rather than home-made sign-in        |
+| Validation and API description | zod for every input; zod-openapi writes `/api/openapi.json`                   | One schema checks the input and describes it              |
+| AI assistants                  | An MCP endpoint at `/mcp`, built with the official MCP SDK                    | Any MCP assistant uses the same actions as the JSON API   |
+| Tests                          | Vitest and Supertest on a real SQLite file; Playwright in Chromium and WebKit | The tests run the real app and its SQL, not mocks         |
+| Hosting                        | A Docker image on Fly.io, one machine and one disk per site                   | One small machine is enough for one SQLite file           |
+| CI                             | GitHub Actions on every push and pull request                                 | Each push runs the checks a local run does, plus Docker   |
+
+How a request moves through it: [the diagram in `docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Run it yourself
 
@@ -62,22 +83,26 @@ pictures, possible duplicates, changing many tickets at once, email notices and 
 
 ## Tests
 
-```bash
-npm test    # npm run test:coverage also shows coverage
-```
-
-Over 2,000 unit and route tests with vitest, against a real SQLite file and the real app. Then
-`npm run test:browser` (after `npx playwright install chromium webkit`), `npm run typecheck`,
-`npm run lint` and `npm run format:check` finish the checks every merge passes.
+`npm test` runs over 2,600 unit and route tests with vitest, against a real SQLite file and the
+real app. `npm run test:coverage` measures them at 92% of statements, 91% of branches, 94% of
+functions and 92% of lines in `src`; the browser scripts are exercised by the Playwright tests,
+which this measure does not count. Then `npm run test:browser` (after
+`npx playwright install chromium webkit`), `npm run typecheck`, `npm run lint` and
+`npm run format:check` finish the checks every merge passes.
 
 ## Sign-in and roles
 
-The production site signs people in with GitHub; Microsoft sign-in for one organization is
-built and off until its three settings are set. Proofdesk reads your name and email address, and
-your picture from GitHub, never your files, mail or code, and keeps no GitHub token. An admin
-chooses who is on the team on the **People** page, and the change applies on that person's next
-page. People named in the server settings keep that role and show as locked on **People**. The
-menu under each person's name links their account page, with a switch for email notices.
+The production site signs people in with GitHub; Microsoft sign-in for one organization is built and
+off until set. Proofdesk reads your name, email address and GitHub picture, never your files, mail
+or code, and keeps no GitHub token. The menu under each person's name links their account page, with
+a switch for email notices. Who may do what is one table in the code
+([`permissions.ts`](src/server/permissions.ts)). The page **Who may do what** (`/roles`), open to
+anyone, uses the server's own permission check and adds who must own the ticket. An admin chooses
+who is on the team on the **People** page. Before a change is made, **Check this change** shows what
+it will do: what the person will see, which assistant connections end, and which tickets must be
+handed on first. The change applies on their next page, and every change is kept in a log that
+cannot be edited. People named in the server settings keep that role and show as locked on
+**People**. A refusal names who may and links **Who may do what**.
 
 | Role        | How someone gets it                                       | What they do                                                                                                                                                                                                                                                                                                                                                            |
 | ----------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -86,18 +111,17 @@ menu under each person's name links their account page, with a switch for email 
 | Admin       | An admin chooses it on **People**, or `ADMIN_GITHUB_IDS`. | Everything a team member does. Hands on or resolves any open ticket, can reopen any ticket the team resolved, chooses who is on the team, issues AI assistant connections on **Connections**, and deletes a ticket permanently.                                                                                                                                         |
 
 On the demo there is no sign-in: you start as Demo Customer, and the menu at the top right
-switches to Demo Team Member or Demo Admin (read-only), who sees everything and changes nothing.
-**About this demo**, in every page's footer, says how the demo works.
+switches to Demo Team Member or Demo Admin (read-only), who sees everything and changes nothing,
+even with **Check this change**. **About this demo**, in every page's footer, says how it works.
 
 ## The AI assistant
 
 Proofdesk makes no AI calls of its own. A person's own assistant works on tickets through an MCP
 endpoint, with only the permissions its connection allows. **See an assistant's work**
-(<https://support-desk-demo.fly.dev/assistant-run>) shows one recorded run. The assistant worked
-in a scratch file from the ticket's text, because it had no access to the product's code. There
-it reproduced the arithmetic problem and tested a fix, then proposed a test, attached the run as
-evidence and asked the owner to review it. It resolved nothing: a test can pass while the
-customer is still stuck, so only the customer's Yes counts as confirmed.
+(<https://support-desk-demo.fly.dev/assistant-run>) shows one recorded run: the assistant worked in
+a scratch file from the ticket's text, because it had no access to the product's code. It tested a
+fix, proposed a test, attached the run as evidence and asked the owner to review it. It resolved
+nothing: a test can pass while the customer is still stuck, so only their Yes confirms it.
 
 [Three real faults](docs/dogfood-run/summary.md) were filed as tickets in a local Proofdesk. A
 listening assistant offered ways to prove each fix within about five seconds, and a headless
@@ -114,21 +138,18 @@ assistant can read everything it needs in one fetch: <https://support-desk-demo.
 
 ## Read first
 
-1. [`src/server/permissions.ts`](src/server/permissions.ts): the capability table and `can()`,
-   who may take each action.
+1. [`src/server/permissions.ts`](src/server/permissions.ts): who may do what, and `can()`.
 2. [`src/server/tickets/workflow.ts`](src/server/tickets/workflow.ts): taking a ticket and
    changing its status. Then [`resolve-and-reopen.ts`](src/server/tickets/resolve-and-reopen.ts):
-   `resolveWithReason`, which marking fixed calls, and
-   [`customer-question.ts`](src/server/tickets/customer-question.ts): `confirmFix`, the customer's Yes.
+   `resolveWithReason`, which marking fixed calls, and `confirmFix` in
+   [`customer-question.ts`](src/server/tickets/customer-question.ts), the customer's Yes.
 3. [`tests/confirmation.test.ts`](tests/confirmation.test.ts): confirmation, on the real routes.
 4. [`tests/capabilities.test.ts`](tests/capabilities.test.ts): every action, tested for agents.
 
-Express 5 and TypeScript (strict), SQLite with numbered migrations, EJS pages, Better Auth for
-GitHub sign-in and zod for every input. Routes read the request, the ticket service
-([`service.ts`](src/server/tickets/service.ts) assembles one file per concern) holds the rules,
-and repositories hold the SQL; the pages, the [JSON API](docs/API.md) and MCP call the same
-service. The top-level `ops/prove` folder is a command-line check, apart from the site, for a
-patch an assistant proposes ([`ops/prove/README.md`](ops/prove/README.md)).
+Routes read the request, the ticket service ([`service.ts`](src/server/tickets/service.ts), one
+file per concern) holds the rules, and repositories hold the SQL; the pages, the
+[JSON API](docs/API.md) and MCP call the same service. The top-level `ops/prove` folder is a
+command-line check of a patch an assistant proposes ([`ops/prove/README.md`](ops/prove/README.md)).
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) maps the rest.
 
 ## How the work was directed
@@ -140,26 +161,23 @@ code. The specification ([`docs/SPEC.md`](docs/SPEC.md)), the history of every s
 
 ## Known limits
 
-- **The version check is up to API callers.** The pages always send the version they show, so a
-  save or a press from an old copy is refused. A JSON or MCP caller that leaves out
-  `expected_version` is not checked, and archive and restore take no version.
+- **The version check is up to API callers.** Edits and changes of status, owner, proof or
+  question take a version, and the pages send the one they show, so a save from an old copy is
+  refused; an API caller may leave out `expected_version`. Replies, notes, evidence, specs,
+  archive, restore and deletion take none, and a bulk change acts on each ticket as it is now.
 - **Email needs a mail server.** Notices are written to an outbox from the ticket history and
   sent with nodemailer only once `SMTP_URL` and `MAIL_FROM` are set; each person can switch them
-  off on their account page. The demo never sends, so there a ticket's notices page shows each
-  one as not sent, with its exact words.
+  off on their account page. The demo never sends, and a ticket's notices page shows each unsent.
 - **Evidence is reported, not verified.** Proofdesk shows who reported it and checks none of it.
 - **One machine.** SQLite on one disk; rate-limit counts are in memory and reset on a restart.
-- **Roles in the server settings win** over the People page until the settings change.
 - **Demo visitors share identities.** Everyone who views as Demo Customer is the same customer,
   so a visitor's picture on the demo is shown only to the browser that added it.
 - **The dev login's cookie is unsigned**, safe only because production refuses the dev login.
-- **`ops/prove` is not a sandbox.** It runs the candidate code on the machine with only the
-  environment cleaned.
+- **`ops/prove` is not a sandbox.** It runs the candidate code on the machine, environment cleaned.
 - **No bulk handover when someone leaves the team.** The People page will not make someone a
-  customer while they own open tickets, and names those tickets, so each is handed on first. A
-  reopened ticket whose owner has left goes back to New with no owner.
-- **Left out on purpose:** a board with status columns, priority ordering and any model call of
-  the site's own.
+  customer while they own open tickets, so each is handed on first. A reopened ticket whose owner
+  has left goes back to New with no owner.
+- **Left out on purpose:** a status board, priority ordering, and model calls of Proofdesk's own.
 - **Design debt**, each item with its plan: [`ARCHITECTURE.md`](docs/ARCHITECTURE.md#design-debt).
 
 ## More

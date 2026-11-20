@@ -68,7 +68,9 @@ describe("the guides' shape", () => {
   });
 
   it.each([
-    ["README.md", 175],
+    // The stack table, What it is built with, added its 17 lines and replaced a prose line.
+    // The plain description under the pitch line takes one more, to stay within 100 columns.
+    ["README.md", 193],
     // The customer's confirm of a ticket marked fixed added its row, and suggested ways to
     // verify added two: the assistant's suggestion and the customer's pick. Listening for
     // requests and answering one added two more.
@@ -77,8 +79,9 @@ describe("the guides' shape", () => {
     // The Suggestions setting added one short section on how a listening assistant helps.
     ["docs/AGENTS_GUIDE.md", 190],
     // The proof step, the Proof column, pictures, possible duplicates, the bulk bar and the
-    // Suggestions setting each added one feature of four lines.
-    ["docs/TOUR.md", 93],
+    // Suggestions setting each added one feature of four lines. Who may do what and checking a
+    // role change added two more, and the one picture of Who may do what two lines.
+    ["docs/TOUR.md", 107],
     // Microsoft sign-in beside GitHub added its settings and setup steps, and its "off until
     // set" line came later.
     ["docs/DEPLOY.md", 352],

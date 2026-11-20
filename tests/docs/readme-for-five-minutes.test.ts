@@ -11,6 +11,7 @@ const headings = [...readme.matchAll(/^## (.+)$/gm)].map((m) => m[1]!);
 describe("the README", () => {
   it("keeps to the sections a first reader needs, in this order", () => {
     expect(headings).toEqual([
+      "What it is built with",
       "Run it yourself",
       "One ticket, start to finish",
       "Tests",
@@ -24,7 +25,10 @@ describe("the README", () => {
   });
 
   it("is short enough to read in five minutes", () => {
-    expect(readme.split("\n").length).toBeLessThanOrEqual(175);
+    // 175 lines, plus the 17 of "What it is built with": the stack table that replaced the
+    // prose line listing the stack, its heading, and the line linking the diagram. One more for
+    // the plain description under the pitch line, wrapped to stay within 100 columns.
+    expect(readme.split("\n").length).toBeLessThanOrEqual(193);
   });
 
   it("walks one ticket from filing to the customer's Yes", () => {
