@@ -211,7 +211,7 @@ describe("the email switch", () => {
     expect(mailed.text).not.toContain("never sends email");
   });
 
-  it("is the word On, not a switch, on the demo, which never sends email", async () => {
+  it("reads Off on this demo and nothing else, not a switch, on the demo, which never sends email", async () => {
     const { app, db } = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
     for (const who of DEMO_ACTORS) {
       const page = accountOf((await as(app, who).get("/account")).text);
@@ -219,11 +219,10 @@ describe("the email switch", () => {
         "dl.account-card > .account-row",
       );
       expect(rows[1]?.querySelector("dd")?.text, who.id).toBe("None on the demo");
-      // The quiet words sit on the switch's own row.
-      expect(rows[3]?.querySelector(".mail-line")?.text, who.id).toBe("The demo sends no email");
-      // A switch that cannot move looks the same on, off and disabled, so the setting is words.
+      // A switch that cannot move looks the same on, off and disabled, so the setting is words:
+      // one plain phrase, with no "On" beside a line that says no email is sent.
       expect(page.switchOn, who.id).toBeNull();
-      expect(rows[3]?.querySelector(".email-me-state")?.text, who.id).toBe("On");
+      expect(rows[3]?.querySelector("dd")?.text.trim(), who.id).toBe("Off on this demo");
       expect(rows[3]?.querySelector("form, button"), who.id).toBeNull();
       const tried = await as(app, who).post("/account").type("form").send({});
       expect(tried.status, who.id).toBe(403);

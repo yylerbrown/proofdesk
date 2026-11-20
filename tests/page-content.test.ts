@@ -44,12 +44,12 @@ function unlabelled(html: HTMLElement): string[] {
 }
 
 describe("the welcome for a signed-out visitor", () => {
-  it("says what the desk is before asking anyone to sign in", async () => {
+  it("says in one plain line what the customer does here before asking anyone to sign in", async () => {
     const { app } = buildTestApp();
     const html = await page(visitor(app), "/sign-in");
     expect(html.querySelector("h1")?.text).toBe("Proofdesk");
     expect(html.querySelector("hgroup p")?.text).toBe(
-      "Proofdesk is a support desk where a ticket is shaped like a good prompt: the problem, the context, and what would prove it is fixed.",
+      "Tell us what went wrong and what would prove it is fixed.",
     );
   });
 
@@ -124,7 +124,7 @@ describe("the ticket list", () => {
     }
     await resolveTicket(app, "SUP-3", customerOne);
     const html = await page(admin(app), "/tickets");
-    const keys = html.querySelectorAll("tbody tr td:first-child a").map((a) => a.text);
+    const keys = html.querySelectorAll("tbody tr td:first-child .ticket-key").map((a) => a.text);
     expect(keys).toEqual(["SUP-2", "SUP-1", "SUP-3"]);
   });
 

@@ -87,11 +87,12 @@ export function seedDemo(service: TicketService): void {
   service.takeTicket(login.key, team);
   service.changeStatus(login.key, { status: "in_progress" }, team);
 
+  // The one sample that does not say yet what would prove it is fixed, so the list's Proof
+  // column shows a row without a mark, and its filer sees the quiet link to add one.
   service.createTicket(
     {
       title: "Invoice shows the wrong date",
       description: "My invoice for March says February.",
-      fix_check: "The invoice shows March",
     },
     customer,
   );
