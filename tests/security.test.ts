@@ -251,7 +251,6 @@ const OWN_SCRIPTS = [
   '<script type="module" src="/assets/js/ticket-changed.js"></script>',
   '<script type="module" src="/assets/js/char-count.js"></script>',
   '<script type="module" src="/assets/js/similar-ticket.js"></script>',
-  '<script type="module" src="/assets/js/open-details.js"></script>',
   '<script type="module" src="/assets/js/send-label.js"></script>',
   '<script type="module" src="/assets/js/bulk.js"></script>',
   '<script type="module" src="/assets/js/pictures.js"></script>',
