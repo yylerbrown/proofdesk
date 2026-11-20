@@ -9,27 +9,12 @@ import type { TicketService } from "./tickets/service.js";
 import type { Budget } from "./tickets/types.js";
 import { seedOlderSamples } from "./demo-older-samples.js";
 import { writePastSample, type PastSample } from "./demo-past-sample.js";
+import { OTHER_DEMO_CUSTOMERS } from "./demo-people.js";
+import { fileSampleBatch } from "./demo-sample-batch.js";
 
-/**
- * Made-up customers who filed some of the samples. They cannot sign in. They make the team's
- * list hold more than one customer's tickets, so a customer's own list visibly holds fewer.
- */
-export const OTHER_DEMO_CUSTOMERS: Actor[] = [
-  {
-    id: "demo-customer-2",
-    kind: "person",
-    role: "customer",
-    name: "Second Demo Customer",
-    demo: true,
-  },
-  {
-    id: "demo-customer-3",
-    kind: "person",
-    role: "customer",
-    name: "Third Demo Customer",
-    demo: true,
-  },
-];
+// The other made-up customers live beside the batch of sample tickets, which files tickets as
+// them too. Their old address here still works.
+export { OTHER_DEMO_CUSTOMERS };
 
 /**
  * Fills an empty demo database with a few sample tickets, made through the ticket service
@@ -280,6 +265,12 @@ export const DEMO_BUDGET: Budget = {
   pictures: DEMO_PICTURE_LIMITS,
 };
 
+/**
+ * How many of the demo's tickets "Add sample tickets" never uses, so a visitor can always file
+ * tickets of their own after any number of presses.
+ */
+export const ROOM_KEPT_FOR_VISITORS = 50;
+
 // ---- The record of what seeding wrote ----------------------------------------------------
 // On the public demo, many visitors share the sample tickets, and each may connect their own
 // assistant. An assistant must never read text another visitor wrote, so the ticket service
@@ -326,6 +317,20 @@ export function createDemoRecord(
   return {
     /** Writes one sample resolved weeks ago, with its History at its own past times. */
     seedPastSample: (sample: PastSample) => writePastSample(db, prefix, logEvent, sample),
+
+    /**
+     * On the demo, files a batch of made-up tickets. Batches stop short of the demo's budget of
+     * tickets, so there is always room left for visitors to file their own.
+     */
+    addSampleBatch: (input: unknown, actor: Actor, seed: number, now = new Date()) =>
+      fileSampleBatch(
+        { db, prefix, logEvent },
+        (DEMO_BUDGET.tickets ?? 0) - ROOM_KEPT_FOR_VISITORS,
+        input,
+        actor,
+        seed,
+        now,
+      ),
 
     /**
      * Records what seeding wrote, so a demo connection can be shown only that. Called once,

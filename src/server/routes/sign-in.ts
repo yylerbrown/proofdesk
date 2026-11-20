@@ -4,6 +4,7 @@ import { DEV_COOKIE, entrancePeople } from "../actor.js";
 import { type Auth, signInWayOf } from "../auth.js";
 import type { Config } from "../config.js";
 import type { Db } from "../db.js";
+import { SAMPLE_BATCH_PERIODS, SAMPLE_BATCH_SIZES } from "../demo-sample-batch.js";
 import { HttpError } from "../errors.js";
 import {
   noticeForError,
@@ -95,6 +96,11 @@ export function signInRouter(
       demo: config.demo,
       // On the demo, the page offers a visitor their own assistant connection.
       demoAgents: config.demo && demoReady(),
+      // On the demo, someone who may file tickets may also add a batch of made-up ones.
+      sampleBatch:
+        config.demo && req.actor !== null && req.actor.readOnly !== true
+          ? { sizes: SAMPLE_BATCH_SIZES, periods: Object.entries(SAMPLE_BATCH_PERIODS) }
+          : null,
       // On the demo, a signed-out visitor starts again as its customer, with one button.
       walkthrough: config.demo ? people.find((person) => person.role === "customer") : undefined,
       // The real site links to the demo, so a visitor can try it without signing in.

@@ -63,6 +63,23 @@
     <% } %>
     </div>
   </details>
+  <% if (locals.sampleBatch) { %>
+  <%# A quiet helper for a fuller list: made-up tickets, filed at past times, gone at the next reset. %>
+  <form method="post" action="/demo/samples" class="sample-batch">
+    <p id="sample-batch-what">Want a fuller list to filter, sort and search? Add made-up tickets.</p>
+    <label>How many
+      <select name="count">
+        <% for (const size of sampleBatch.sizes) { %><option value="<%= size %>"<%= size === "10" ? " selected" : "" %>><%= size %></option><% } %>
+      </select>
+    </label>
+    <label>Filed over
+      <select name="period">
+        <% for (const [value, period] of sampleBatch.periods) { %><option value="<%= value %>"<%= value === "month" ? " selected" : "" %>><%= period.label %></option><% } %>
+      </select>
+    </label>
+    <button type="submit" class="secondary" aria-describedby="sample-batch-what">Add sample tickets</button>
+  </form>
+  <% } %>
 </section>
 <% } else { %>
 <hgroup>

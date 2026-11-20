@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto";
 import { Router, type Request, type RequestHandler, type Response } from "express";
 import { z } from "zod";
 import type { Actor } from "../actor.js";
@@ -484,10 +485,19 @@ function picturesSent(res: Response): boolean {
   return picturesOf(res).files.some((bytes) => bytes.length > 0);
 }
 
+/** The line the ticket list shows after a batch of sample tickets, by how many were added. */
+const SAMPLES_ADDED = new Map<number, SavedKey>([
+  [10, "samplesAdded10"],
+  [25, "samplesAdded25"],
+  [50, "samplesAdded50"],
+]);
+
 /** What the pages need to know about this server. */
 export type PageOptions = {
   /** True in production, where cookies are sent over https only. */
   secureCookies: boolean;
+  /** True on the demo, which also offers a batch of made-up tickets on its About page. */
+  demo?: boolean;
 };
 
 export function pagesRouter(
@@ -1099,6 +1109,22 @@ export function pagesRouter(
     });
     res.redirect(303, "/tickets");
   });
+
+  // On the demo only, "Add sample tickets" on About this demo files a batch of made-up tickets,
+  // then opens the ticket list, which says how many were added, or that the demo is full.
+  if (options.demo === true) {
+    router.post("/demo/samples", (req, res) => {
+      const actor = signedIn(req);
+      try {
+        const added = service.addSampleBatch(req.body, actor, randomInt(2 ** 31));
+        rememberSaved(res, SAMPLES_ADDED.get(added)!);
+      } catch (err) {
+        if (!(err instanceof HttpError && err.code === "budget_full")) throw err;
+        rememberSaved(res, "samplesFull");
+      }
+      res.redirect(303, "/tickets");
+    });
+  }
 
   // Registered before "/tickets/:key" so that "new" is not read as a ticket key.
   router.get("/tickets/new", (req, res) => {

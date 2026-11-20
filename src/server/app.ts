@@ -286,7 +286,7 @@ export function createApp(config: Config, db: Db, options: { log?: LogLine } = {
     pagesRouter(
       tickets,
       (key, actor) => noticeCountFor(db, parseKey(config.ticketPrefix, key)!, actor),
-      { secureCookies: config.nodeEnv === "production" },
+      { secureCookies: config.nodeEnv === "production", demo: config.demo },
     ),
   );
   app.use(peopleRouter(createPeopleService(db, config)));
