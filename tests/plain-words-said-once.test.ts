@@ -80,7 +80,7 @@ describe("the team's edit form", () => {
     const form = parse((await as(app, teamActor).get("/tickets/SUP-1/edit")).text);
     const box = form.querySelector("textarea[readonly]")!;
     const label = box.parentNode!;
-    expect(label.querySelector("#fix_check-label")?.text).toBe("How will we know it's fixed?");
+    expect(label.querySelector("#fix_check-label")?.text).toBe("What would prove it is fixed?");
     expect(label.querySelector("#fix_check-hint")).toBeNull();
     expect(label.querySelector("#fix_check-locked")?.text).toBe(
       "The customer's own words. Only they can change them.",
@@ -89,7 +89,7 @@ describe("the team's edit form", () => {
     // The customer's own form still offers it as optional, with its hint.
     const own = parse((await as(app, customerOne).get("/tickets/SUP-1/edit")).text);
     expect(own.querySelector("#fix_check-label")?.text).toBe(
-      "How will we know it's fixed? (optional)",
+      "What would prove it is fixed? (optional)",
     );
     expect(own.querySelector("#fix_check-hint")).not.toBeNull();
   });

@@ -46,8 +46,8 @@ describe("whose turn it is, in the list", () => {
     expect(cells["SUP-2"]).toBe("In Progress Assistant asks for review");
     expect(cells["SUP-3"]).toBe("In Progress");
     expect(cells["SUP-8"]).toBe("New");
-    // The customer's confirmation keeps its check mark, and nothing else follows it.
-    expect(cells["SUP-6"]).toBe("Resolved ✓");
+    // The customer's confirmation is a mark in the Proof column, so nothing follows the word.
+    expect(cells["SUP-6"]).toBe("Resolved");
     // None of the old column's words are left on the page.
     const main = team.querySelector("main")!.text;
     for (const gone of ["Waiting on", "Support team", "Nobody", "Review requested by"]) {

@@ -1055,6 +1055,31 @@ table.tickets .turn-tag {
   font-size: var(--pd-text-sm);
   white-space: nowrap;
 }
+/*
+ * The Proof column: one mark the size of a status icon, or nothing. The outlined mark is the
+ * muted grey; the solid one is the resolved green, the one tick for "Customer confirmed".
+ */
+table.tickets .proof-mark {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  vertical-align: -3px;
+  background-color: var(--pd-muted);
+  -webkit-mask: url("/assets/proof-said.svg") center / contain no-repeat;
+  mask: url("/assets/proof-said.svg") center / contain no-repeat;
+}
+table.tickets .confirmed-mark {
+  background-color: var(--pd-status-resolved);
+  -webkit-mask-image: url("/assets/proof-confirmed.svg");
+  mask-image: url("/assets/proof-confirmed.svg");
+}
+/* In forced colours the browser would drop the fill, hiding the mark. */
+@media (forced-colors: active) {
+  table.tickets .proof-mark {
+    background-color: CanvasText;
+    forced-color-adjust: none;
+  }
+}
 table.tickets td.user-text {
   color: var(--pd-text);
   font-size: var(--pd-text-md);
@@ -1129,22 +1154,29 @@ table.tickets td:first-child a::after {
   table.tickets th:nth-child(3) {
     width: 18.5rem;
   }
+  /* The Proof column holds one mark under its short header. */
   table.tickets th:nth-child(4) {
+    width: 4.5rem;
+  }
+  table.tickets th:nth-child(5) {
     width: 11.5rem;
   }
   /* Room for the longest "Filed" value, such as "59 minutes ago", inside the cell's padding. */
-  table.tickets th:nth-child(5) {
+  table.tickets th:nth-child(6) {
     width: 9rem;
   }
-  table.tickets td:is(:nth-child(3), :nth-child(4)) {
+  table.tickets td:is(:nth-child(3), :nth-child(5)) {
     overflow: hidden;
     text-overflow: ellipsis;
   }
 }
-/* On a phone: key, title and status with its tag. Owner and filed are on the ticket page. */
+/*
+ * On a phone: key, title, status with its tag, and the proof mark. Owner and filed are on the
+ * ticket page.
+ */
 @media (max-width: 639px) {
-  table.tickets th:nth-child(n + 4),
-  table.tickets td:nth-child(n + 4) {
+  table.tickets th:nth-child(n + 5),
+  table.tickets td:nth-child(n + 5) {
     display: none;
   }
   table.tickets th:nth-child(3),
@@ -2749,12 +2781,13 @@ textarea:focus-visible {
 }
 
 /*
- * The ticket list on a narrow window: drop the owner rather than cut the last column off. The
+ * The ticket list on a narrow window: drop the owner (the fifth column, after Proof) rather than
+ * cut the last column off. The
  * owner is on each ticket's own page.
  */
 @media (max-width: 860px) {
-  table.tickets th:nth-child(4),
-  table.tickets td:nth-child(4) {
+  table.tickets th:nth-child(5),
+  table.tickets td:nth-child(5) {
     display: none;
   }
 }
@@ -3053,11 +3086,6 @@ dl.run-facts dd {
 }
 
 /* In the list, a ticket the customer confirmed carries a small check mark after "Resolved". */
-.confirmed-mark {
-  margin-left: var(--pd-space-1);
-  color: var(--pd-status-resolved);
-  font-weight: var(--pd-weight-semibold);
-}
 /* Words for a screen reader only, such as what a Copy button just did. */
 .visually-hidden {
   position: absolute;
@@ -3083,9 +3111,9 @@ pre.paste.command {
 }
 
 /*
- * The ticket list on a phone: each row stacks. The key and the status share one small line and
- * the title takes the full width under them, so a long title reads in two or three lines instead
- * of five. The markup stays a table, so a screen reader still reads rows, cells and the column
+ * The ticket list on a phone: each row stacks. The key, the status and the proof mark share one
+ * small line and the title takes the full width under them, so a long title reads in two or three
+ * lines instead of five. The markup stays a table, so a screen reader still reads rows, cells and the column
  * names; the header row is kept for it but not drawn, as the columns no longer line up.
  */
 @media (max-width: 639px) {
@@ -3105,8 +3133,8 @@ pre.paste.command {
     display: inline;
   }
   table.tickets tbody tr {
-    display: grid;
-    grid-template-columns: auto 1fr;
+    display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
     gap: 2px var(--pd-space-3);
     padding: 10px var(--pd-space-3);
@@ -3124,9 +3152,14 @@ pre.paste.command {
     font-size: var(--pd-text-sm);
     text-align: left;
   }
+  /* The status takes the rest of the first line, so the proof marks line up at its end. */
+  table.tickets tbody td.status-cell {
+    flex: 1 1 0;
+  }
+  /* The title takes a line of its own, under the key, the status and the proof mark. */
   table.tickets tbody td.title-cell {
-    grid-column: 1 / -1;
-    grid-row: 2;
+    flex-basis: 100%;
+    order: 1;
     font-size: var(--pd-text-md);
     line-height: 1.35;
   }

@@ -22,9 +22,12 @@ describe("the description box", () => {
     const box = page.querySelector("textarea[name=description]")!;
     expect(box.hasAttribute("maxlength")).toBe(false);
     expect(box.getAttribute("data-count-limit")).toBe("5000");
-    // No standing hint: the count shows near the limit, and a refused form says what is wrong.
-    expect(page.querySelector("#description-hint")).toBeNull();
-    expect(box.getAttribute("aria-describedby")).toBe("description-count");
+    // One standing hint says what the description is for. The count shows near the limit, and a
+    // refused form says what is wrong.
+    expect(page.querySelector("#description-hint")?.text).toBe(
+      "The context: what you were doing, and what happened.",
+    );
+    expect(box.getAttribute("aria-describedby")).toBe("description-hint description-count");
   });
 
   it("has the same limit as the service", async () => {

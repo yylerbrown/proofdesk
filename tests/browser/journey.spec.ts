@@ -151,7 +151,7 @@ test("the long path: a check, a change link and evidence, a No, then the custome
     await customer.getByRole("button", { name: "New ticket" }).click();
     await customer.getByLabel("Title").fill(ticket.title);
     await customer.getByLabel("Description").fill(ticket.description);
-    await customer.getByLabel("How will we know it's fixed?").fill(ticket.check);
+    await customer.getByLabel("What would prove it is fixed?").fill(ticket.check);
     await customer.getByRole("button", { name: "File ticket" }).click();
 
     await expect(savedMessage(customer)).toContainText(/Ticket [A-Z]{2,6}-\d+ filed\./);

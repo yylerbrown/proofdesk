@@ -143,16 +143,20 @@ describe("each column sorts both ways", () => {
 });
 
 describe("the list's column headers", () => {
+  // The Proof column sorts nothing, so its header has no link and is left out here.
   const headers = (html: ReturnType<typeof parse>) =>
-    html.querySelectorAll("table.tickets thead th").map((th) => {
-      const link = th.querySelector("a");
-      return {
-        text: link?.text ?? th.text,
-        sort: th.getAttribute("aria-sort") ?? null,
-        name: link?.getAttribute("aria-label") ?? null,
-        href: link?.getAttribute("href") ?? null,
-      };
-    });
+    html
+      .querySelectorAll("table.tickets thead th")
+      .filter((th) => th.querySelector("a.sort-link") !== null)
+      .map((th) => {
+        const link = th.querySelector("a");
+        return {
+          text: link?.text ?? th.text,
+          sort: th.getAttribute("aria-sort") ?? null,
+          name: link?.getAttribute("aria-label") ?? null,
+          href: link?.getAttribute("href") ?? null,
+        };
+      });
 
   it("are links that say what a press does, with no column marked sorted by default", async () => {
     const built = buildTestApp();
@@ -191,11 +195,12 @@ describe("the list's column headers", () => {
       },
     ]);
     // Each sortable header also holds its name as plain words, which stand in for the link on a
-    // phone, where the header row is not drawn and a link there would be a stop nobody sees.
+    // phone, where the header row is not drawn and a link there would be a stop nobody sees. The
+    // Proof header sorts nothing, so it is plain words already.
     const plain = html
       .querySelectorAll("table.tickets thead th")
-      .map((th) => th.querySelector("span.sort-label")?.text ?? null);
-    expect(plain).toEqual(["Key", "Title", "Status", "Owner", "Filed"]);
+      .map((th) => th.querySelector("span.sort-label")?.text ?? th.text);
+    expect(plain).toEqual(["Key", "Title", "Status", "Proof", "Owner", "Filed"]);
     // The default list is open first, newest first, as before.
     const keys = html
       .querySelectorAll("table.tickets tbody tr td:first-child")

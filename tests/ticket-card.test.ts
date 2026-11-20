@@ -85,7 +85,7 @@ describe("the ticket's card", () => {
       // The line under the title holds the status and the owner, and never the check.
       const top = page.querySelector(".ticket-facts, .ticket-standing")!;
       expect(top.querySelector("blockquote"), state).toBeNull();
-      expect(top.text, state).not.toContain("How will we know");
+      expect(top.text, state).not.toContain("What would prove it");
     }
   });
 
@@ -180,7 +180,7 @@ describe("a ticket with no check", () => {
       ".ticket-card",
     )!;
     expect(parts(card)).toEqual(["step"]);
-    expect(card.text).not.toContain("How will we know");
+    expect(card.text).not.toContain("What would prove it");
   });
 
   it("shows no card at all when it would be empty", async () => {

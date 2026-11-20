@@ -375,7 +375,7 @@ function readTicketForm(body: Record<string, unknown> | undefined): typeof empty
 const BOX_NAMES: [keyof typeof emptyForm, string][] = [
   ["title", "Title"],
   ["description", "Description"],
-  ["fix_check", "How will we know it's fixed?"],
+  ["fix_check", "What would prove it is fixed?"],
   ["where_url", "Page where it happened"],
 ];
 
