@@ -74,7 +74,7 @@ function buildServer(
     server.registerTool(
       row.name,
       { description: `${row.summary} ${UNTRUSTED_TEXT}`, inputSchema: inputSchema(row) },
-      async (args: Record<string, unknown>) => {
+      async (args: Record<string, unknown>, ctx) => {
         const { key, idempotency_key: idempotencyKey, ...fields } = args;
         const ticketKey = typeof key === "string" ? key : "";
         const record = (outcome: "done" | "refused" | "failed", code: string | null) =>
@@ -94,6 +94,8 @@ function buildServer(
               key: ticketKey,
               query: row.query ? fields : {},
               body: row.body ? fields : {},
+              // Aborted when the caller cancels or goes away, which ends a held call at once.
+              signal: ctx.mcpReq.signal,
             });
           // A read may answer later, as listening for requests does, so it is awaited.
           const ran =
