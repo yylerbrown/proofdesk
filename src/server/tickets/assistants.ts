@@ -104,9 +104,9 @@ export function createAssistants(shared: Shared) {
 
     /**
      * For the team: what an open ticket's assistant last said it needs, from its latest note.
-     * "Assistant blocked: <first line>" until it writes an ordinary note again, or "Review
-     * requested by <connection>" until the owner asks the customer. Nothing for anyone who may
-     * not read internal notes.
+     * "Assistant blocked: <first line>" until it writes another note or attaches evidence, or
+     * "Review requested by <connection>" until the owner asks the customer. The blocked note
+     * itself stays in the record. Nothing for anyone who may not read internal notes.
      */
     assistantSignals(tickets: Ticket[], actor: Actor): Map<string, AssistantSignal> {
       const open = new Map<number, Ticket>();
@@ -118,7 +118,7 @@ export function createAssistants(shared: Shared) {
       const signals = new Map<string, AssistantSignal>();
       for (const note of repository.latestAgentNotes(db, [...open.keys()])) {
         const ticket = open.get(note.ticket_id)!;
-        if (note.blocked === 1) {
+        if (note.blocked === 1 && note.evidence_after === 0) {
           const firstLine = note.body.split("\n")[0]!.trim().slice(0, 140);
           signals.set(ticket.key, { label: "Assistant blocked:", text: firstLine });
         } else if (note.purpose === "review_request" && ticket.ready_at === null) {

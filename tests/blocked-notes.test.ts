@@ -6,7 +6,8 @@ import { keyOnPage } from "./key-on-page.js";
 import { admin, as, buildTestApp, customerOne, handToAgent, teamActor } from "./helpers.js";
 
 // An assistant that is blocked says so in a note marked blocked, and the team sees it beside
-// the check and in the list, until the assistant writes an ordinary note again.
+// the check and in the list, until the same assistant writes another note, attaches evidence or
+// asks the owner to review. The note itself stays in the conversation.
 
 const valid = {
   title: "Printer jams",
@@ -21,12 +22,17 @@ async function handed() {
   const page = await admin(app)
     .post("/connections")
     .type("form")
-    .send({ name: "Helper", scopes: ["read_tickets", "write_notes"] });
+    .send({ name: "Helper", scopes: ["read_tickets", "write_notes", "attach_evidence"] });
   const key = keyOnPage(page.text);
   await handToAgent(app, "SUP-1", key);
   const note = (body: object) =>
     request(app).post("/api/tickets/SUP-1/notes").set("Authorization", `Bearer ${key}`).send(body);
-  return { app, note };
+  const write = (path: string, body: object) =>
+    request(app)
+      .post(`/api/tickets/SUP-1/${path}`)
+      .set("Authorization", `Bearer ${key}`)
+      .send(body);
+  return { app, note, write };
 }
 
 const blockedLine = async (app: Express, who: typeof teamActor) =>
@@ -62,6 +68,34 @@ describe("an assistant that is blocked", () => {
     await note({ body: "Access granted, carrying on." });
     expect(await blockedLine(app, teamActor)).toBeUndefined();
     expect(await listTag(app)).toBeNull();
+  });
+
+  it("stops being shown once the same assistant attaches evidence, and its note stays", async () => {
+    const { app, note, write } = await handed();
+    await note({ body: "Blocked on access to the print server.", blocked: true });
+    expect(await blockedLine(app, teamActor)).toBeDefined();
+    const attached = await write("evidence", {
+      kind: "test",
+      summary: "Ran it",
+      result: "3 passed",
+    });
+    expect(attached.status).toBe(201);
+    expect(await blockedLine(app, teamActor)).toBeUndefined();
+    expect(await listTag(app)).toBeNull();
+    // Nothing is deleted: the note is still in the conversation.
+    const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
+    expect(page.querySelector("article.entry.note")?.text).toContain(
+      "Blocked on access to the print server.",
+    );
+  });
+
+  it("stops being shown once the same assistant asks the owner to review", async () => {
+    const { app, note, write } = await handed();
+    await note({ body: "Blocked on access.", blocked: true });
+    const asked = await write("owner-review", { message: "Please review the evidence." });
+    expect(asked.status).toBe(201);
+    expect(await blockedLine(app, teamActor)).toBeUndefined();
+    expect(await listTag(app)).not.toBe("Assistant is blocked");
   });
 
   it("is a mark only an assistant can make", async () => {
