@@ -802,6 +802,22 @@ ul.role-lines li {
   margin: 0;
   list-style: none;
 }
+/* The check of a role change: what would happen, then its one button and Cancel on a line. */
+.role-check-stop {
+  font-weight: 600;
+}
+form.role-check-make {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pd-space-3);
+  align-items: center;
+}
+form.role-check-make > * {
+  margin: 0;
+}
+form.role-check-make button {
+  width: auto;
+}
 
 /* ---------- 5. Status badge ---------- */
 
