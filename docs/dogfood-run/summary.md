@@ -1,25 +1,26 @@
 # Dogfooding run: Proofdesk faults filed, fixed and checked through Proofdesk
 
-**When:** 20 Nov 2026, UTC. Listener 03:04:28 to 03:05:18 UTC; filing 03:04:57 to 03:05:14; fixer 03:10:38 to 03:20:06; person-side check and "Mark fixed" about 03:21 to 03:23.
+**When:** 20 Nov 2026, UTC. Listener 03:04:28 to 03:05:18 UTC; filing 03:04:57 to 03:05:14; fixer 03:10:38 to 03:20:06; operator's check and "Mark fixed" about 03:21 to 03:23.
 **Product:** a local Proofdesk on port 4170, run from a worktree of the repository (branch `fix/dogfood-run`, cut from main `8e2a336`), development entrance on, DEMO off, a throwaway database in a temporary folder. Never the live sites.
 **Assistant:** Claude Code, headless, model alias `opus`, reported as `claude-opus-5-5`. The listener reported Claude Code 2.1.319; the fixer run reported 2.1.329 (the CLI updated itself between the two).
-**Outcome:** three real faults filed as tickets by the customer through the pages. The listening assistant offered ways to prove each fix within 4 to 5 seconds of the second step opening. The fixer fixed all three in the code, each with a test that fails without it, committed each, attached evidence naming the proof and asked the owner to review. A person checked each fix (tests, undo, fail, restore, and the customer's own proof live), marked each fixed, and the customer answered Yes to each. Pull request #201, head `3b6293a`.
-**Not clean:** the first fixer run was blocked by the permission settings the person running it had written, and changed nothing; the person corrected the settings and ran it once more with the same prompt (details under "What went wrong").
+**Who did what:** the listener and the fixer were headless assistants connected over MCP. The operator's side (issuing the connection, confirming and filing the faults as the customer, taking the tickets as the team member, re-running the tests, undoing each change to see its test fail, pressing "Mark fixed and tell the customer", and answering as the customer) was done by a separate AI agent standing in for the people: a Claude Code session directed by the session that coordinated the build, working through the product's pages with a scripted browser and through the shell. No human was in the loop during the run, and no human checked the fixes before the tickets were marked fixed. The checks are real, and their commands and results are in this record, but the agreement that each proof was met was given by an AI agent in the team member's seat, which is the step the product otherwise leaves to people.
+**Outcome:** three real faults filed as tickets by the customer through the pages. The listening assistant offered ways to prove each fix within 4 to 5 seconds of the second step opening. The fixer fixed all three in the code, each with a test that fails without it, committed each, attached evidence naming the proof and asked the owner to review. The operator checked each fix (tests, undo, fail, restore, and the customer's own proof live), marked each fixed, and the customer answered Yes to each. Pull request #201, head `3b6293a`.
+**Not clean:** the first fixer run was blocked by the permission settings the operator had written, and changed nothing; the operator corrected the settings and ran it once more with the same prompt (details under "What went wrong").
 
-## Human steps
+## Operator steps
 
-1. Admin (development entrance, "View as Admin"), Connections: issued "Dogfood assistant" with read tickets, write notes, attach evidence, propose specs and link changes; Suggestions: Automatic. The person's script lost the first key it was shown (a page-reading bug in that script), so the person revoked that connection and issued a second. The key went straight from the page into a mode 600 file in the temp folder and was never printed.
-2. Before filing, the person confirmed each fault (below). The fault 2 and 3 probes ran on separate throwaway servers.
+1. Admin (development entrance, "View as Admin"), Connections: issued "Dogfood assistant" with read tickets, write notes, attach evidence, propose specs and link changes; Suggestions: Automatic. The operator's script lost the first key it was shown (a page-reading bug in that script), so the operator revoked that connection and issued a second. The key went straight from the page into a mode 600 file in the temp folder and was never printed.
+2. Before filing, the operator confirmed each fault (below). The fault 2 and 3 probes ran on separate throwaway servers.
 3. Started the listener, then filed the three tickets as Customer One: the form, "File ticket", then on "What would prove it is fixed?" waited for the assistant's choices, picked the first one unedited, and pressed "Save".
-4. As Team Member, on each ticket: "Take ticket and start work", then More options, "Hand to an AI assistant", "Dogfood assistant", "Hand to assistant". On SUP-1 the person also tried the fault itself: a PATCH to status resolved answered 409 `needs_customer` with the old wording.
+4. As Team Member, on each ticket: "Take ticket and start work", then More options, "Hand to an AI assistant", "Dogfood assistant", "Hand to assistant". On SUP-1 the operator also tried the fault itself: a PATCH to status resolved answered 409 `needs_customer` with the old wording.
 5. Ran the fixer (twice; see below).
-6. Person-side check (below), restarted the 4170 server on the fixed code, then as Team Member pressed "Mark fixed and tell the customer" on each ticket, and as Customer One pressed "Yes, it is fixed" on each after checking its proof.
+6. Operator's check (below), restarted the 4170 server on the fixed code, then as Team Member pressed "Mark fixed and tell the customer" on each ticket, and as Customer One pressed "Yes, it is fixed" on each after checking its proof.
 
 ## Faults confirmed before filing
 
 1. **Retired button name in a refusal.** `/llms.txt` on the local server, Errors table, `needs_customer`: "...which its owner asks with Ask the customer to verify (POST /api/tickets/{key}/ready)". The ticket page's step is "Mark fixed and tell the customer" (posts a resolve with reason fixed), and asking first is "Ask before resolving" under More options. Seen live again in step 4.
-2. **A cancelled wait keeps its place.** Reproduced on a separate throwaway server with five connections and the official MCP SDK client: four held `wait_for_requests` calls, call 1 cancelled through the SDK's abort signal (it sends `notifications/cancelled` and keeps the request open), and at 1.5 s the fifth connection was refused with `too_many_requests` "already holds 4"; it was held only after the 20 s deadline. The first probe passed the abort signal in the wrong argument and showed nothing; the person fixed the probe and ran it again.
-3. **The person's own find (rules/API), about ten minutes of reading:** the default list order `open_first` is described in the `order` field, the `list_tickets` summary and `/llms.txt` as "open tickets newest first, then resolved ones", but the SQL puts New tickets that say how to verify first. Reproduced: an older ticket with a proof listed before a newer one without.
+2. **A cancelled wait keeps its place.** Reproduced on a separate throwaway server with five connections and the official MCP SDK client: four held `wait_for_requests` calls, call 1 cancelled through the SDK's abort signal (it sends `notifications/cancelled` and keeps the request open), and at 1.5 s the fifth connection was refused with `too_many_requests` "already holds 4"; it was held only after the 20 s deadline. The first probe passed the abort signal in the wrong argument and showed nothing; the operator fixed the probe and ran it again.
+3. **The operator's own find (rules/API), about ten minutes of reading:** the default list order `open_first` is described in the `order` field, the `list_tickets` summary and `/llms.txt` as "open tickets newest first, then resolved ones", but the SQL puts New tickets that say how to verify first. Reproduced: an older ticket with a proof listed before a newer one without.
 
 ## How it was run
 
@@ -80,12 +81,12 @@ What the customer saw on the second step (time from the step page loading to the
 - `add_evidence` on each ticket (kind test, the command, "passed with fix; failed without it", the revision, a summary naming the proof), then `ask_owner_to_review` on each, saying what ran and what did not (no browser journey, no deployed site, only the SDK client and raw JSON-RPC for SUP-2).
 - Refused by the harness and worked around with the file tools: one `sed -i`, one `perl -pi` using `$TMPDIR`, and one `git rebase` (it amended instead). Every claim in its evidence and notes matches a result in the transcript.
 
-## Person-side check
+## Operator's check
 
 For each fix, at `3b6293a`: ran the named tests (pass), checked out main's version of only that fix's source files, ran them again (fail), restored them, and `git status` was clean.
 
 - SUP-1: 20 of 20 pass; with `errors.ts` and `workflow.ts` undone, 2 fail.
-- SUP-2: 4 pass; with `mcp.ts` undone, the cancel test fails. The cross-connection test passes without the fix by design; the person did not repeat the fixer's break of it.
+- SUP-2: 4 pass; with `mcp.ts` undone, the cancel test fails. The cross-connection test passes without the fix by design; the operator did not repeat the fixer's break of it.
 - SUP-3: 2 pass; with `actions.ts` and `schemas.ts` undone, both fail.
 - The customer's own proofs, live. On the restarted 4170 server, `/llms.txt` has no "Ask the customer to verify" (count 0) and shows the new `needs_customer` row. The original SDK probe on a fresh server at the fixed code: the fifth call was held at 1.5 s. An older ticket with a proof and a newer one without, on a fresh server: the older is listed first, and `/llms.txt` now says so.
 - Full local gate in the worktree: typecheck, lint, format check, `npx vitest run --maxWorkers=4` (behind a lock shared with other test runs) with 208 files and 2240 tests passed, and the build. Nothing needed fixing by hand.
@@ -106,14 +107,14 @@ Listener 49.6 s, US$0.18. Fixer run 1 51.7 s, US$0.34. Fixer run 2 9 min 28 s, U
 
 ## Not done / what went wrong
 
-- **Fixer run 1 failed because of the settings the person running it had written.** They denied `Read(~/**)` in the permissions, which also blocks the file tools in the worktree (a deny beats the `Read(./**)` allow). Their sandbox probe had checked only shell commands, not the Read tool. The run read the three tickets, wrote a blocked note on each saying it could not read the repository, changed nothing and stopped (17 turns, 51.7 s). It did not try to get round the block. The person moved the deny to named private folders, kept the home folder unreadable to shell commands through the sandbox, also denied the key's folder (a second probe showed a shell command could read it), and ran the fixer once more with the identical prompt. That is the one rerun allowed for a setup mistake. Run 1's transcript is kept beside this record, and its blocked notes stay on the tickets.
-- The person's connection script lost the first key it was shown; that connection was revoked and a second issued.
+- **Fixer run 1 failed because of the settings the operator had written.** It denied `Read(~/**)` in the permissions, which also blocks the file tools in the worktree (a deny beats the `Read(./**)` allow). Its sandbox probe had checked only shell commands, not the Read tool. The run read the three tickets, wrote a blocked note on each saying it could not read the repository, changed nothing and stopped (17 turns, 51.7 s). It did not try to get round the block. The operator moved the deny to named private folders, kept the home folder unreadable to shell commands through the sandbox, also denied the key's folder (a second probe showed a shell command could read it), and ran the fixer once more with the identical prompt. That is the one rerun allowed for a setup mistake. Run 1's transcript is kept beside this record, and its blocked notes stay on the tickets.
+- The operator's connection script lost the first key it was shown; that connection was revoked and a second issued.
 - The key is in the assistant process's environment, so a command it runs could read it; the same was true of the first recorded run.
-- The listener prompt names the stopping point of three requests because the person running it knew three would be filed.
-- The person picked the first suggestion on each ticket without editing it. SUP-1's first choice checks only `/llms.txt`, not the page refusal; the fix covers both.
-- The person restarted the 4170 server on the fixed code before marking the tickets fixed, so the customer's checks ran against the fix. The listener and the fixer ran against the server on main's code.
+- The listener prompt names the stopping point of three requests because the operator knew three would be filed.
+- The operator picked the first suggestion on each ticket without editing it. SUP-1's first choice checks only `/llms.txt`, not the page refusal; the fix covers both.
+- The operator restarted the 4170 server on the fixed code before marking the tickets fixed, so the customer's checks ran against the fix. The listener and the fixer ran against the server on main's code.
 - Each commit was not gated on its own; the gate ran on the last one. The browser journey (`npm run test:browser`) was not run; no page changed.
-- While the fault 2 probe server ran on port 4171, two tickets the person did not file ("Export is empty for the button", "Export is empty with nobody listening") appeared in it at 03:01:55 UTC: another session's tool was using that port. The person stopped that server at once and used 4172 for the later probes.
+- While the fault 2 probe server ran on port 4171, two tickets the operator did not file ("Export is empty for the button", "Export is empty with nobody listening") appeared in it at 03:01:55 UTC: another session's tool was using that port. The operator stopped that server at once and used 4172 for the later probes.
 - Nobody accepted a spec (none was proposed), and nothing was deployed.
 
 ## Faults noticed in the product along the way (not fixed here)
