@@ -56,16 +56,20 @@ export type TurnFacts = {
   signal: { label: string } | undefined;
 };
 
+/** The customer's tag on a ticket that waits on their answer, linking to the question. */
+export const CUSTOMER_ANSWER_TAG = "Needs your answer";
+
 /**
  * The short tag the list shows after a ticket's status when it is not simply the team's turn,
  * or null when there is nothing to flag. Each tag is a reason for someone to look at it.
  */
 export function turnTag(ticket: Ticket, viewer: Role, facts: TurnFacts): string | null {
-  // The customer meets one name for the question, whether the team asked it or marked it fixed.
+  // The customer meets one tag for the question, whether the team asked it or marked it fixed:
+  // the ticket waits on their answer to "Did this fix it?".
   if (ticket.waiting_on === "customer") {
-    return viewer === "customer" ? "Did this fix it?" : "Asked the customer";
+    return viewer === "customer" ? CUSTOMER_ANSWER_TAG : "Asked the customer";
   }
-  if (viewer === "customer" && markedFixed(ticket)) return "Did this fix it?";
+  if (viewer === "customer" && markedFixed(ticket)) return CUSTOMER_ANSWER_TAG;
   // The rest are about the team's turn, which the customer is not told about.
   if (ticket.waiting_on !== "team" || viewer === "customer") return null;
   // What an assistant said it needs is what the team needs to see first.
@@ -305,8 +309,17 @@ const FIELD_LABELS: Record<string, string> = {
   fix_check: "what would prove it is fixed",
 };
 
+/** What the ticket page knows about a history entry besides the entry itself. */
+export type EventFacts = {
+  /**
+   * The team marked it fixed while the ticket said what would prove it is fixed, and the customer
+   * did not write those words later, so marking it fixed agreed they were met.
+   */
+  agreedProof?: boolean;
+};
+
 /** One line of plain words for a history entry. An unknown kind of entry shows its type. */
-export function describeEvent(event: TicketEvent): string {
+export function describeEvent(event: TicketEvent, facts: EventFacts = {}): string {
   if (event.type === "created") return "Ticket filed";
   if (event.type === "status_changed") {
     const change = statusChangeSchema.safeParse(event.data);
@@ -373,6 +386,11 @@ export function describeEvent(event: TicketEvent): string {
         reason === "duplicate" && duplicate_of
           ? `Duplicate of ${duplicate_of}`
           : RESOLVE_REASON_LABELS[reason];
+      if (reason === "fixed_no_reply" && facts.agreedProof === true) {
+        const agreed =
+          "Resolved by the team: Fixed. Agreed that what would prove it is fixed was met. Not customer-confirmed.";
+        return note ? `${agreed} ${fixedInLine(note)}` : agreed;
+      }
       if (reason === "fixed_no_reply" && note)
         return `Resolved by the team: ${why} ${fixedInLine(note)}`;
       return `Resolved by the team: ${why}${note ? ` (${note})` : ""}`;

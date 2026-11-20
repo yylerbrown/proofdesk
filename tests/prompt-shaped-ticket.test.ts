@@ -37,7 +37,10 @@ describe("the ticket forms", () => {
     const html = parse((await as(app, customerOne).get("/tickets/new").redirects(1)).text);
     expect(boxes(html)).toEqual(SHAPE);
     // Each hint is read as its box's description, never as part of its name.
-    expect(html.querySelector("[name=title]")?.getAttribute("aria-describedby")).toBe("title-hint");
+    // The title's count comes after its hint, and is empty until the title nears its limit.
+    expect(html.querySelector("[name=title]")?.getAttribute("aria-describedby")).toBe(
+      "title-hint title-count",
+    );
   });
 
   it("leave what would prove it is fixed to the step after filing, with its own hint", async () => {
@@ -133,7 +136,9 @@ describe("the list's Proof column", () => {
     const css = fs.readFileSync("public/site.css", "utf8");
     expect(css).toContain('mask: url("/assets/proof-said.svg")');
     expect(css).toContain('mask-image: url("/assets/proof-confirmed.svg")');
-    expect(css).toMatch(/table\.tickets \.proof-said \{\s*opacity: 0\.5;\s*\}/);
+    expect(css).toMatch(
+      /:is\(table\.tickets, \.proof-legend\) \.proof-said \{\s*opacity: 0\.5;\s*\}/,
+    );
   });
 });
 

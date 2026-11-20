@@ -163,6 +163,11 @@
   // The customer's way back in, except while the question's own No does that.
   const reopening = allowed.reopen && !staff && !confirming;
   const hasStep = Boolean(locals.nextStep || locals.demoNext || restoring || reopening || stepForm);
+  // While "Mark fixed and tell the customer" shows, what would prove it is fixed is said once, in
+  // the sentence above that button, since the press agrees it was met. Its filer keeps it where it
+  // is, beside their "Change".
+  const oath = !stepForm && locals.nextStep && nextStep.oath ? nextStep.oath : null;
+  const proofMoved = oath !== null && !proof.canChange;
   // Its filer's one quiet link on a ticket that does not say yet what would prove it is fixed.
   const addProof = proof.canChange && !ticket.fix_check;
   const showCard = question || ticket.fix_check || ticket.agreed_check || card.line || card.asked || hasStep || addProof || proof.waiting;
@@ -182,11 +187,11 @@
   <h2>Did this fix it?</h2>
   <% } else if (proofStep) { %>
   <%- include("proof-step", { proof, versionField }) %>
-  <% } else if (ticket.fix_check) { %>
+  <% } else if (ticket.fix_check && !proofMoved) { %>
   <%# Its filer may change it in the same step, from one quiet link beside its label. %>
   <p class="card-label">What would prove it is fixed?<% if (proof.canChange) { %> <a href="/tickets/<%= ticket.key %>?step=verify#verify-form" class="card-label-link" aria-label="Change what would prove it is fixed">Change</a><% } %></p>
   <% } %>
-  <% if (ticket.fix_check && !proofStep) { %>
+  <% if (ticket.fix_check && !proofStep && !proofMoved) { %>
   <blockquote class="user-text"><%= ticket.fix_check %></blockquote>
   <%# Just after saving, once, under the words saved. %>
   <% if (proof.saved) { %><p class="card-saved" role="status"><%= proof.saved %></p><% } %>
@@ -310,7 +315,7 @@
     <%# Its example is never this ticket's own key. %>
     <label class="resolve-duplicate">
       Duplicate of
-      <input type="text" name="duplicate_of" placeholder="A ticket key, like <%= ticket.key === "SUP-12" ? "SUP-11" : "SUP-12" %>" maxlength="20" value="<%= resolving.duplicate_of ?? possibleDuplicate?.key ?? "" %>" <%= focusIf("resolve", "duplicate_of") %> />
+      <input type="text" name="duplicate_of" autocomplete="off" placeholder="A ticket key, like <%= ticket.key === "SUP-12" ? "SUP-11" : "SUP-12" %>" maxlength="20" value="<%= resolving.duplicate_of ?? possibleDuplicate?.key ?? "" %>" <%= focusIf("resolve", "duplicate_of") %> />
     </label>
     <%# One box for a note: "Why?" for Other, which needs it, and an optional note for the
         customer with Won't fix or Cannot reproduce. Only the label for the chosen reason shows. %>
@@ -319,9 +324,11 @@
       <span class="resolve-note-customer">Note for the customer (optional)</span>
       <textarea name="note" rows="2" maxlength="500" <%= focusIf("resolve", "note") %>><%= resolving.note ?? "" %></textarea>
     </label>
+    <%# Fixed is the team's word that what would prove it is fixed was met, as on the next step's button. %>
+    <% if (ticket.fix_check) { %><p class="resolve-fixed-in resolve-oath">By marking it fixed, you agree this is met: "<span class="user-text"><%= ticket.fix_check %></span>"</p><% } %>
     <label class="resolve-fixed-in">
       Fixed in (optional)
-      <input type="text" name="fixed_in" placeholder="a version, or live now" maxlength="120" value="<%= resolving.fixed_in ?? "" %>" <%= focusIf("resolve", "fixed_in") %> />
+      <input type="text" name="fixed_in" autocomplete="off" placeholder="a version, or live now" maxlength="120" value="<%= resolving.fixed_in ?? "" %>" <%= focusIf("resolve", "fixed_in") %> />
     </label>
     <% if (problem?.form === "resolve") { %><p><small id="resolve-error" role="alert"><%= problem.message %></small></p><% } %>
     <div class="form-actions">
@@ -347,6 +354,8 @@
       assistant's request for review comes first. %>
   <% if (locals.nextStep) { %>
   <div class="card-step next-action">
+    <%# The press is the team's word that what would prove it is fixed was met: one grey sentence says so. %>
+    <% if (oath) { %><p class="next-oath">By marking it fixed, you agree this is met: "<span class="user-text"><%= oath %></span>"</p><% } %>
     <% if (nextStep.form) { %>
     <form method="post" action="<%= nextStep.form.action %>">
       <%- versionField %>
@@ -465,7 +474,9 @@
     message is shown back. The second is History and More options; an open one shows its content
     under that row, and its own line stays where it was. %>
 <div class="ticket-last-row">
-<% if (allowed.reply) { %>
+<%# A message refused because this person may not send it, say after the browser's person changed
+    in another tab, comes back in its box with the reason, so the typed words are not lost. %>
+<% if (allowed.reply || entry.error) { %>
 <details class="reply-fold" <% if (entry.body || entry.error) { %>open<% } %>>
 <summary><%= allowed.note ? "Reply or add a note" : "Write a message" %></summary>
 <%# Sent as multipart, since a message may carry pictures. %>
@@ -474,8 +485,8 @@
   <%# Who sees it: two tabs directly on top of the box. %>
   <fieldset class="kind-tabs">
     <legend class="visually-hidden">Who sees it</legend>
-    <label><input type="radio" name="kind" value="reply" <% if (entry.kind !== "note") { %>checked<% } %> /> Reply to the customer</label>
-    <label><input type="radio" name="kind" value="note" <% if (entry.kind === "note") { %>checked<% } %> /> Internal note</label>
+    <label><input type="radio" name="kind" value="reply" autocomplete="off" <% if (entry.kind !== "note") { %>checked<% } %> /> Reply to the customer</label>
+    <label><input type="radio" name="kind" value="note" autocomplete="off" <% if (entry.kind === "note") { %>checked<% } %> /> Internal note</label>
   </fieldset>
   <% } else { %>
   <input type="hidden" name="kind" value="reply" />
@@ -527,35 +538,15 @@
 <%# Everything else this viewer may do, behind one closed line, in a fixed order. Each is one
     closed line of its own, and only one is open at a time. After a refused form inside it, it
     opens on that form and its message. %>
-<% const moreForms = ["evidence", "ready"]; %>
+<% const moreForms = ["ready"]; %>
 <% const giveToAgent = staff && allowed.giveToAgent && !agentHelp.current && agentHelp.candidates.length > 0; %>
-<% const hasMore = allowed.edit || (staff && (allowed.attachEvidence || allowed.markReady || allowed.withdrawQuestion)) || giveToAgent || noticeCount > 0 || allowed.archive || allowed.delete; %>
+<% const hasMore = allowed.edit || (staff && (allowed.markReady || allowed.withdrawQuestion)) || giveToAgent || noticeCount > 0 || allowed.archive || allowed.delete; %>
 <% if (hasMore) { %>
 <details class="more-options" id="more-options" <% if (moreForms.includes(problem?.form)) { %>open<% } %>>
 <summary>More options</summary>
 <ul class="more-list">
 <% if (allowed.edit) { %>
 <li><a href="/tickets/<%= ticket.key %>/edit">Edit ticket</a></li>
-<% } %>
-<% if (staff && allowed.attachEvidence) { %>
-<li>
-<details name="more-option" <% if (problem?.form === "evidence") { %>open<% } %>>
-  <summary>Add evidence of the fix</summary>
-  <%# The page picks the kind: a change when a link is given, otherwise "I checked it". %>
-  <form method="post" action="/tickets/<%= ticket.key %>/evidence">
-    <label>
-      What does it show?
-      <input type="text" name="summary" required maxlength="500" value="<%= problem?.form === "evidence" ? (problem.values?.summary ?? "") : "" %>" <% if (problem?.form === "evidence") { %>aria-invalid="true" aria-describedby="evidence-error"<% } %> <%= focusIf("evidence", "summary") %> />
-    </label>
-    <% if (problem?.form === "evidence") { %><small id="evidence-error"><%= problem.message %></small><% } %>
-    <label>
-      Link (optional)
-      <input type="url" name="link" placeholder="https://" value="<%= problem?.form === "evidence" ? (problem.values?.link ?? "") : "" %>" <%= focusIf("evidence", "link") %> />
-    </label>
-    <button type="submit" class="secondary compact">Add evidence</button>
-  </form>
-</details>
-</li>
 <% } %>
 <% if (staff && allowed.markReady) { %>
 <% const asked = problem?.form === "ready" ? (problem.values ?? {}) : {}; %>

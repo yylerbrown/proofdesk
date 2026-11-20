@@ -11,6 +11,7 @@ import {
   type SignInWay,
   takeSignInNotice,
 } from "../sign-in-notice.js";
+import { rememberSaved } from "../pages/saved.js";
 import { parseKey } from "../tickets/keys.js";
 
 // The sign-in page and its ways in: GitHub, when its settings are present, Microsoft beside
@@ -159,6 +160,8 @@ export function signInRouter(
       sameSite: "lax",
       secure: config.nodeEnv === "production",
     });
+    // On the demo the next page says once who the visitor is now.
+    if (person.demo === true) rememberSaved(res, "switched");
     res.redirect(303, safeNext(req.body?.next));
   });
 

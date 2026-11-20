@@ -63,7 +63,7 @@ describe("the ticket page's type", () => {
     expect(ruleFor(".step-form legend")).toContain("font-size: 1.0667rem;");
     expect(ruleFor(".step-form fieldset label")).toContain("font-size: 1.0667rem;");
     expect(ruleFor(".step-form fieldset label")).toContain("min-height: 32px;");
-    expect(ruleFor(".step-form .resolve-duplicate input")).toContain("max-width: 12rem;");
+    expect(ruleFor(".step-form .resolve-duplicate input")).toContain("max-width: 16rem;");
     expect(ruleFor("article.entry > p")).toContain("line-height: 1.5;");
   });
 });

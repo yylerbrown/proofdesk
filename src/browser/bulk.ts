@@ -4,7 +4,9 @@
 // height, and shows only while something is ticked, so ticking a row moves nothing on the page.
 // While it shows, the filters under it are out of sight and out of reach. It says how many are
 // ticked, "Tick every ticket shown" ticks or clears them all, and Clear unticks every row. A bar
-// that came back with an error stays shown until Clear or the last untick.
+// that came back with an error stays where the page put it, above the table with the filter row
+// shown, since its message makes it taller than that row; it stays shown until Clear or the last
+// untick.
 
 // An element's hidden property, which the browser may also give as "until-found".
 type Hideable = { hidden: boolean | string };
@@ -89,7 +91,10 @@ if (typeof document !== "undefined") {
     const clear = bar.querySelector<HTMLButtonElement>("[data-bulk-clear]");
     const dock = document.querySelector<HTMLElement>("[data-bulk-dock]");
     const filters = document.querySelector<HTMLElement>("[data-list-filters]");
-    if (dock && filters) {
+    // A refused change: the bar stays in the page's flow, so its message covers nothing.
+    const refused = bar.querySelector("[data-bulk-error]") !== null;
+    const docked = dock !== null && filters !== null && !refused;
+    if (docked) {
       // The dock takes no room and sits where the filter row starts. The bar inside it is at
       // least as tall as the filter row, so it covers the row exactly; it grows down over the
       // list, never pushing it, when it needs more room.
@@ -117,9 +122,9 @@ if (typeof document !== "undefined") {
         ...(clear ? [clear] : []),
       ],
       count,
-      covered: filters ? [filters] : [],
+      covered: docked ? [filters] : [],
       clear,
-      keepOpen: bar.querySelector("[data-bulk-error]") !== null,
+      keepOpen: refused,
     });
     // Clear hides the bar it sits in, so focus goes back to the first row's box.
     clear?.addEventListener("click", () => rows[0]?.focus());

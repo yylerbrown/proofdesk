@@ -58,19 +58,14 @@ describe("resolving as Won't fix or Cannot reproduce on the page", () => {
 });
 
 describe("the list's bar for ticked tickets", () => {
-  it("names Fixed in the resolve form's words", async () => {
+  it("leaves Fixed to each ticket's own page, where the proof is agreed", async () => {
     const { app } = await inProgress();
     const list = parse((await as(app, teamActor).get("/tickets")).text);
     const reasons = list.querySelectorAll("select[name=reason] option").map((o) => o.text);
-    expect(reasons).toEqual([
-      "Reason",
-      "Fixed (the customer is told)",
-      "Won't fix",
-      "Cannot reproduce",
-    ]);
+    expect(reasons).toEqual(["Reason", "Won't fix", "Cannot reproduce"]);
     const form = parse((await as(app, teamActor).get("/tickets/SUP-1?step=resolve")).text);
     const fixed = form.querySelector("form.resolve input[value=fixed_no_reply]")!.parentNode!;
-    expect(fixed.text.trim()).toBe(reasons[1]);
+    expect(fixed.text.trim()).toBe("Fixed (the customer is told)");
   });
 });
 

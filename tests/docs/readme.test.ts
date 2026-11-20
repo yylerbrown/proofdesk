@@ -70,6 +70,8 @@ describe("the feature list and the README's walkthrough", () => {
     const walkLabels = [...walk.matchAll(/\*\*([^*]+)\*\*/g)].map((m) => m[1]!);
     expect(walkLabels.length).toBeGreaterThan(6);
     for (const label of walkLabels) labels.add(label);
+    // The ticket page's own "Add evidence of the fix" form was removed; the docs follow the merge.
+    labels.delete("Add evidence of the fix");
 
     // The pages a visitor passes through on the demo, and the real site's sign-in.
     const demo = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });

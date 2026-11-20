@@ -43,3 +43,39 @@ test("the send button follows the tab, and the box grows as text is typed", asyn
   await box.fill(["One line.", "Two.", "Three.", "Four.", "Five.", "Six."].join("\n"));
   expect(await height()).toBeGreaterThan(empty);
 });
+
+test("after an internal note, a reload and Back open the box on Reply to the customer", async ({
+  page,
+}) => {
+  // Filed by the admin, so the suite stays under one person's filing limit.
+  await signIn(page, "Admin");
+  await page.goto("/tickets/new");
+  await page.getByLabel("Title").fill("The box starts on a reply again");
+  await page.getByLabel("Description").fill("A ticket for the team to answer.");
+  await page.getByRole("button", { name: "File ticket" }).click();
+  await expect(page).toHaveURL(/\/tickets\/SUP-\d+\?step=verify$/);
+  const ticketUrl = new URL(page.url()).pathname;
+  await signIn(page, "Team Member");
+  await page.goto(ticketUrl);
+  await page.locator("summary", { hasText: "Reply or add a note" }).click();
+  await page.getByRole("radio", { name: "Internal note" }).check();
+  await page.getByRole("textbox", { name: "Your message" }).fill("Checked the logs.");
+  await page.getByRole("button", { name: "Save internal note" }).click();
+  await expect(page.getByText("Internal note added.")).toBeVisible();
+
+  // A fresh load of the ticket: the box starts on a reply.
+  await page.goto(ticketUrl);
+  await page.reload();
+  await page.locator("summary", { hasText: "Reply or add a note" }).click();
+  await expect(page.getByRole("radio", { name: "Reply to the customer" })).toBeChecked();
+  await expect(page.getByRole("button", { name: "Send reply to customer" })).toBeVisible();
+
+  // Choosing a note, leaving and coming back with Back: the box starts on a reply again.
+  await page.getByRole("radio", { name: "Internal note" }).check();
+  await page.goto("/tickets");
+  await page.goBack();
+  // The box is closed again, so the choice is read from the page itself.
+  await expect(page.locator('input[name="kind"][value="reply"]')).toBeChecked();
+  await expect(page.locator('input[name="kind"][value="note"]')).not.toBeChecked();
+  await expect(page.locator("button[data-label-reply]")).toHaveText("Send reply to customer");
+});

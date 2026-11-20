@@ -1,14 +1,7 @@
 import fs from "node:fs";
+import { parse } from "node-html-parser";
 import { describe, expect, it } from "vitest";
-import {
-  admin,
-  as,
-  buildTestApp,
-  customerOne,
-  customerTwo,
-  refusedBackToTicket,
-  teamActor,
-} from "./helpers.js";
+import { admin, as, buildTestApp, customerOne, customerTwo, teamActor } from "./helpers.js";
 
 const valid = { title: "Printer is broken", description: "It jams on every page." };
 const reply = (body: string) => ({ kind: "reply", body });
@@ -77,8 +70,21 @@ describe("replies and internal notes", () => {
     const { app } = await setup();
     const res = await as(app, customerOne).post("/api/tickets/SUP-1/entries").send(note("x"));
     expect(res.status).toBe(403);
-    // A page form that tries it is refused too.
-    await refusedBackToTicket(as(app, customerOne), "/tickets/SUP-1/entries", note("x"));
+    // A page form that tries it, as after the browser's person changed in another tab, is
+    // refused too: the ticket again, with the words kept in the box and the reason under it.
+    const page = await as(app, customerOne)
+      .post("/tickets/SUP-1/entries")
+      .type("form")
+      .send(note("The corrected invoice is attached."));
+    expect(page.status).toBe(403);
+    const html = parse(page.text);
+    expect(html.querySelector("details.reply-fold")?.hasAttribute("open")).toBe(true);
+    expect(html.querySelector("#entry-body")?.text).toBe("The corrected invoice is attached.");
+    // The box now sends a message, so the reason says who is signed in.
+    expect(html.querySelector("#body-error")?.text).toBe(
+      `Nothing was sent. You are now signed in as ${customerOne.name}, who cannot write ` +
+        "internal notes, so sending this again would send it as a message.",
+    );
     expect((await admin(app).get("/api/tickets/SUP-1/entries")).body).toHaveLength(3);
   });
 

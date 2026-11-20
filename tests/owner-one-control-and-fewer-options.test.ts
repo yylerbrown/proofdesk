@@ -131,7 +131,7 @@ describe("the Owner menu", () => {
 });
 
 describe("More options", () => {
-  it("holds, in order, Edit, Add evidence and Ask before resolving, then Archive and Delete", async () => {
+  it("holds, in order, Edit and Ask before resolving, then Archive and Delete", async () => {
     const { app } = await filed();
     await admin(app).post("/api/tickets/SUP-1/take-and-start");
     const more = (await page(app, adminActor)).querySelector("details.more-options")!;
@@ -142,29 +142,24 @@ describe("More options", () => {
     });
     expect(names).toEqual([
       "Edit ticket",
-      "Add evidence of the fix",
       "Ask before resolving",
       "Archive ticket",
       "Delete permanently",
     ]);
     // Only one of them is open at a time.
     const folds = more.querySelectorAll(".more-list details");
-    expect(folds.map((fold) => fold.getAttribute("name"))).toEqual(["more-option", "more-option"]);
+    expect(folds.map((fold) => fold.getAttribute("name"))).toEqual(["more-option"]);
     expect(more.text).not.toContain("Offer a clearer check");
     expect(more.text).not.toContain("code change link");
   });
 
-  it("adds a change as evidence, with its link", async () => {
+  it("shows a change the API attached as evidence, with its link", async () => {
     const { app } = await filed();
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
-    const form = (await page(app)).querySelector("form[action='/tickets/SUP-1/evidence']")!;
-    expect(form.querySelector("button[type=submit]")?.text).toBe("Add evidence");
-    const added = await savedAfter(app, "/tickets/SUP-1/evidence", {
-      kind: "change_link",
-      summary: "The fix",
-      link: "https://example.com/pull/9",
-    });
-    expect(added).toMatch(/^Evidence added\./);
+    await as(app, teamActor)
+      .post("/api/tickets/SUP-1/evidence")
+      .send({ kind: "change_link", summary: "The fix", link: "https://example.com/pull/9" })
+      .expect(201);
     const html = await page(app);
     const evidence = html.querySelector("details.evidence-list")!;
     expect(evidence.querySelector("summary")?.text).toBe("Evidence (1)");

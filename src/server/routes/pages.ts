@@ -2,12 +2,13 @@ import { Router, type Request, type RequestHandler, type Response } from "expres
 import { z } from "zod";
 import type { Actor } from "../actor.js";
 import { DEMO_ACTORS, signedIn } from "../actor.js";
-import { RECORDED_SAMPLE_KEY } from "../demo.js";
+import { RECORDED_ASSISTANT, RECORDED_SAMPLE_KEY } from "../demo.js";
 import { errorBody, forbidden, HttpError, onTicketPage, ValidationError } from "../errors.js";
 import { can } from "../permissions.js";
 import {
   cardLine,
   confirmedAt,
+  CUSTOMER_ANSWER_TAG,
   describeActor,
   describeEvent,
   firstParagraph,
@@ -33,10 +34,10 @@ import { sendPicturesFewAtOnce } from "../pictures/sending.js";
 import { keepUploaderToken, picturesOf, uploaderToken, viewerToken } from "../pictures/upload.js";
 import {
   noMatchWords,
-  olderResolvedWords,
   readListPageQuery,
   recentResolvedCutoff,
   sortHeaders,
+  type ResolvedAge,
 } from "../pages/list-query.js";
 import { sameText, type ListSort, type TicketListFilter } from "../tickets/schemas.js";
 import { rememberBulkOutcome, takeBulkOutcome } from "../pages/bulk-outcome.js";
@@ -49,6 +50,7 @@ import {
   rememberProblem,
   rememberSaved,
   SAVED_MESSAGES,
+  switchedMessage,
   takeProblem,
   takeSaved,
   type SavedKey,
@@ -81,7 +83,6 @@ type Problem = {
     | "agreedCheck"
     | "changeLink"
     | "ready"
-    | "evidence"
     | "reopen"
     | "handOff"
     | "resolve"
@@ -104,7 +105,6 @@ const FORM_FIELDS: Record<Problem["form"], string[]> = {
   changeLink: ["change_url"],
   // The page has one box, the message; the API also takes the other three.
   ready: ["response", "try_url", "tried", "result"],
-  evidence: ["summary", "link"],
   reopen: ["reason"],
   handOff: ["to"],
   resolve: ["reason", "duplicate_of", "note", "fixed_in"],
@@ -170,14 +170,29 @@ function demoNext(ticket: Ticket, actor: Actor) {
     return { switchTo: filer.id, label: "View this ticket as the customer who filed it" };
   }
   if (ticket.status === "resolved") return null;
-  if (actor.id === ticket.created_by && ticket.ready_at === null && team !== undefined) {
+  // Only a customer is offered the team's side: a team member who filed it is on that side.
+  if (
+    actor.role === "customer" &&
+    actor.id === ticket.created_by &&
+    ticket.ready_at === null &&
+    team !== undefined
+  ) {
     return { switchTo: team.id, label: "View this ticket as a team member" };
   }
   return null;
 }
 
-/** The ticket list's filters and sort, as they stand in its address. */
-type ListFilters = { status: string; owner?: "me" | "none"; q?: string; sort: ListSort };
+/**
+ * The ticket list's filters and sort, as they stand in its address. Which resolved tickets "All"
+ * shows by age is left out at its default, the last 14 days.
+ */
+type ListFilters = {
+  status: string;
+  owner?: "me" | "none";
+  q?: string;
+  sort: ListSort;
+  resolved?: Exclude<ResolvedAge, "recent">;
+};
 
 /** The list's filters as read from its address, with the page. */
 type ListView = ListFilters & { status: TicketListFilter; page: number };
@@ -192,6 +207,10 @@ function listHref(filters: ListFilters, page?: number): string {
   if (filters.status !== "all") params.set("status", filters.status);
   if (filters.owner) params.set("owner", filters.owner);
   if (filters.q) params.set("q", filters.q);
+  // The filter by age is only on "All" with nothing searched.
+  if (filters.resolved && filters.status === "all" && !filters.q) {
+    params.set("resolved", filters.resolved);
+  }
   if (filters.sort !== "open_first") {
     params.set("sort", filters.sort.by);
     params.set("direction", filters.sort.direction);
@@ -238,6 +257,11 @@ type NextStep = {
   note?: string;
   /** Outlined rather than filled: while an assistant asks for a review, the review comes first. */
   outlined?: boolean;
+  /**
+   * What would prove it is fixed, said once more right above "Mark fixed and tell the customer":
+   * the press is the team's word that it was met. Only when the ticket has one.
+   */
+  oath?: string;
 };
 
 /**
@@ -245,6 +269,7 @@ type NextStep = {
  * fixed and tell the customer. Each is possible when it is shown; null when there is nothing for
  * this viewer to press. On the demo's sample, marking it fixed says the sample skips the fix.
  * While an assistant asks for a review, that step is outlined, since the review comes first.
+ * Marking it fixed carries what would prove it is fixed, which the press agrees was met.
  */
 function nextStep(
   ticket: Ticket,
@@ -272,6 +297,7 @@ function nextStep(
     };
     if (sample) step.note = "The sample skips the fix.";
     if (reviewRequested) step.outlined = true;
+    if (ticket.fix_check !== null && ticket.fix_check.trim() !== "") step.oath = ticket.fix_check;
     return step;
   }
   return null;
@@ -307,7 +333,6 @@ const FORM_SAVED: Record<Problem["form"], (input: unknown, actor: Actor) => Save
   agreedCheck: () => "check",
   changeLink: () => "link",
   ready: () => "ready",
-  evidence: () => "evidence",
   // The customer's reopening says the same as their No: the ticket is back with the team.
   reopen: (_input, actor) => (actor.role === "customer" ? "notFixed" : "reopenedByTeam"),
   handOff: () => "handedOff",
@@ -354,12 +379,12 @@ const RESOLVE_FORM_LABELS = {
   fixed_no_reply: "Fixed (the customer is told)",
 };
 
-// The reasons the list's bar offers for resolving many tickets at once: the three that need no
+// The reasons the list's bar offers for resolving many tickets at once: the two that need no
 // more words, so the bar never holds a text box. A duplicate or an odd case is one ticket's
-// judgement, made on its own page. The rules and the JSON API keep all five. Fixed has the
-// resolve form's words, so the two places name it the same.
+// judgement, made on its own page. Fixed is too: marking a ticket fixed agrees that what would
+// prove it is fixed was met, which is said ticket by ticket. The rules and the JSON API keep all
+// five.
 const BULK_RESOLVE_REASONS = {
-  fixed_no_reply: RESOLVE_FORM_LABELS.fixed_no_reply,
   wont_fix: RESOLVE_REASON_LABELS.wont_fix,
   cannot_reproduce: RESOLVE_REASON_LABELS.cannot_reproduce,
 };
@@ -560,6 +585,10 @@ export function pagesRouter(
     res.locals.pictureLimits = service.pictureLimits;
     if (req.method === "GET") {
       res.locals.saved = takeSaved(req, res);
+      // After a switch of person on the demo: who the visitor is now, by name.
+      if (res.locals.saved === SAVED_MESSAGES.switched && req.actor !== null) {
+        res.locals.saved = switchedMessage(req.actor);
+      }
       res.locals.refused = takeProblem(req, res);
     }
     next();
@@ -588,9 +617,27 @@ export function pagesRouter(
     const names = service.peopleNames(events.map((event) => event.actor));
     // A person's role beside their name, as in the conversation, since the name is theirs to set.
     const roles = service.peopleRoles(events.map((event) => event.actor));
-    const history = events.map((event) => ({
+    // Marking it fixed agreed that what would prove it is fixed was met, when the ticket says
+    // that now and nobody wrote or changed it afterwards: chose a check, adopted one, or edited
+    // it in Edit ticket.
+    const setsProof = (event: (typeof events)[number]) => {
+      if (event.type === "check_chosen" || event.type === "check_adopted") return true;
+      if (event.type !== "edited") return false;
+      const changes = (event.data as { changes?: Record<string, unknown> }).changes ?? {};
+      return changes.fix_check !== undefined;
+    };
+    const agreedProof = (index: number) =>
+      ticket.fix_check !== null && !events.slice(index + 1).some(setsProof);
+    // The recorded assistant's rows on the demo happened in a run of their own, on an earlier day.
+    const historyWhat = (event: (typeof events)[number], index: number) => {
+      const what = describeEvent(event, { agreedProof: agreedProof(index) });
+      return event.actor === RECORDED_ASSISTANT.id
+        ? `${what}, replayed from the run of Nov 18, 2026`
+        : what;
+    };
+    const history = events.map((event, index) => ({
       when: event.created_at,
-      what: describeEvent(event),
+      what: historyWhat(event, index),
       who: describeActor(event, names),
       role: event.actor_kind === "agent" ? null : (roles.get(event.actor) ?? null),
     }));
@@ -656,8 +703,13 @@ export function pagesRouter(
           // The reported line links here, and the evidence then shows unfolded.
           evidenceOpen: req.query.evidence === "open",
           evidence: staff ? evidence : [],
-          // On the demo's recorded run, the key the sample had when the run was recorded.
-          recordedAs: staff && service.recordedRunKey() === ticket.key ? RECORDED_SAMPLE_KEY : null,
+          // On the demo's recorded run, for the team: when it was recorded, and the key the
+          // sample had then, only when it differs from this ticket's key.
+          recorded: staff && service.recordedRunKey() === ticket.key,
+          recordedAs:
+            staff && service.recordedRunKey() === ticket.key && ticket.key !== RECORDED_SAMPLE_KEY
+              ? RECORDED_SAMPLE_KEY
+              : null,
         }
       : null;
     // The card at the top of the main column: the customer's check, the one line saying where the
@@ -872,7 +924,8 @@ export function pagesRouter(
     const status =
       query.status === "archived" && !can(actor, "list_archived") ? "all" : query.status;
     const owner = actor.role === "customer" ? undefined : query.owner;
-    return { status, owner, q: query.q, sort: query.sort, page: query.page };
+    const resolved = query.resolved === "recent" ? undefined : query.resolved;
+    return { status, owner, q: query.q, sort: query.sort, page: query.page, resolved };
   }
 
   router.get("/tickets", (req, res) => {
@@ -945,16 +998,25 @@ export function pagesRouter(
     const current = view.status;
     const { owner, q, sort } = view;
     const pageNumber = view.page;
-    // "All" shows the open tickets and the ones resolved in the last 14 days. Older ones stay
-    // under Resolved, and a line under the list says how many and links there.
+    // "All" shows the open tickets and the ones resolved in the last 14 days, or with its filter
+    // by age, only the ones resolved before that, or every ticket. A search finds every age.
     const cutoff = recentResolvedCutoff(current, q, new Date());
-    const tickets = service.listTickets(current, actor, pageNumber, { owner, q }, sort, cutoff);
+    const age: ResolvedAge = cutoff === undefined ? "any" : (view.resolved ?? "recent");
+    const tickets = service.listTickets(
+      current,
+      actor,
+      pageNumber,
+      { owner, q },
+      sort,
+      age === "recent" ? cutoff : undefined,
+      age === "older" ? cutoff : undefined,
+    );
     const olderResolved =
       cutoff === undefined ? 0 : service.countResolvedBefore(actor, { owner, q }, cutoff);
     // Beside each status filter: how many tickets it holds with the same owner filter and search.
     const counts = service.countTickets(actor, { owner, q });
     // Every link on the list keeps the other filters, so a filtered view can be shared.
-    const filters: ListFilters = { status: current, owner, q, sort };
+    const filters: ListFilters = { status: current, owner, q, sort, resolved: view.resolved };
     const signals = service.assistantSignals(tickets, actor);
     const reopened =
       actor.role === "customer" ? new Set<string>() : service.reopenedByCustomer(tickets);
@@ -987,7 +1049,7 @@ export function pagesRouter(
         });
         // The customer's question leads straight to where they answer it on the ticket.
         const tagHref =
-          actor.role === "customer" && tag === "Did this fix it?"
+          actor.role === "customer" && tag === CUSTOMER_ANSWER_TAG
             ? `/tickets/${ticket.key}#did-this-fix-it`
             : null;
         return { ...ticket, tag, tagHref };
@@ -1000,15 +1062,14 @@ export function pagesRouter(
       // Who owns a ticket is the team's question; a customer's list is their own tickets.
       ownerFilters: actor.role !== "customer",
       narrowed: owner !== undefined || q !== undefined,
-      noMatch: noMatchWords(current, owner, q),
+      noMatch: noMatchWords(current, owner, q, age),
       counts,
-      olderResolved:
-        olderResolved === 0
-          ? null
-          : {
-              words: olderResolvedWords(olderResolved),
-              href: listHref({ ...filters, status: "resolved" }),
-            },
+      // On "All" with nothing searched: which resolved tickets it shows by age. It shows once
+      // there is an older resolved ticket, or a choice other than the default is in the address.
+      ageFilter:
+        cutoff !== undefined && (olderResolved > 0 || view.resolved !== undefined)
+          ? { age, olderCount: olderResolved }
+          : null,
       // Each header that sorts, with the address a press opens. A new sort starts on page one.
       sortHeaders: sortHeaders(sort).map((header) => ({
         ...header,
@@ -1129,22 +1190,23 @@ export function pagesRouter(
   });
 
   router.get("/tickets/:key", (req, res) => {
-    // Just after a message was sent, the line saying so sits by the message box, where the
-    // browser lands, and the box keeps the choice of who sees it for this page load, so a second
-    // note is not sent to the customer by accident.
-    const sentKind =
-      res.locals.saved === SAVED_MESSAGES.note
-        ? "note"
-        : res.locals.saved === SAVED_MESSAGES.reply
-          ? "reply"
-          : null;
-    if (sentKind === null) {
-      showTicket(req, res, 200, emptyEntry);
+    // A key typed in lower case, such as /tickets/sup-3, opens the ticket at its own address
+    // when this viewer may see it, as the list's search does.
+    const typedKey = service.visibleKey(req.params.key, signedIn(req));
+    if (typedKey !== null && typedKey !== req.params.key) {
+      res.redirect(`/tickets/${typedKey}`);
       return;
     }
-    res.locals.sent = res.locals.saved;
-    res.locals.saved = null;
-    showTicket(req, res, 200, { kind: sentKind, body: "" });
+    // Just after a message was sent, the line saying so sits by the message box, where the
+    // browser lands. The box starts again on a reply to the customer, as on every page load,
+    // so a message meant for the customer never goes to the team only because the last one did.
+    const sent =
+      res.locals.saved === SAVED_MESSAGES.note || res.locals.saved === SAVED_MESSAGES.reply;
+    if (sent) {
+      res.locals.sent = res.locals.saved;
+      res.locals.saved = null;
+    }
+    showTicket(req, res, 200, emptyEntry);
   });
 
   // Adds a reply or a note from the form under the conversation.
@@ -1170,17 +1232,35 @@ export function pagesRouter(
       // The line that says it was sent is drawn by the message box, with this id.
       res.redirect(303, `/tickets/${ticket.key}#sent`);
     } catch (err) {
-      if (!(err instanceof ValidationError)) throw err;
+      // A message this person may not send, such as one sent after the browser's person changed
+      // in another tab, is refused like a mistake in the box: the ticket again, with what was
+      // typed kept and the reason under it. Nothing is saved. The read-only preview's form is
+      // never read, so it has no text to keep and goes back to the ticket with the reason.
+      let status: number;
+      let message: string;
+      let pictureError: string | undefined;
+      if (err instanceof ValidationError) {
+        status = 400;
+        message = err.fieldErrors.body?.join(" ") ?? err.message;
+        pictureError = err.fieldErrors.pictures?.join(" ");
+      } else if (err instanceof HttpError && err.status === 403 && entry.body.trim() !== "") {
+        status = 403;
+        message = err.message;
+        // An internal note from someone who cannot write notes now, as after the browser's person
+        // changed in another tab. The box shown next sends a message, so say who is signed in.
+        if (entry.kind === "note" && !can(actor, "note")) {
+          message =
+            `Nothing was sent. You are now signed in as ${actor.name}, who cannot write ` +
+            "internal notes, so sending this again would send it as a message.";
+        }
+      } else {
+        throw err;
+      }
       // Show the ticket again with what was typed and the message under the box. The browser
       // has dropped any chosen pictures, so the message says to choose them again.
-      showTicket(req, res, 400, {
+      showTicket(req, res, status, {
         ...entry,
-        error: messageRefusalLine(
-          err.fieldErrors.body?.join(" ") ?? err.message,
-          err.fieldErrors.pictures?.join(" "),
-          picturesSent(res),
-          entry.body,
-        ),
+        error: messageRefusalLine(message, pictureError, picturesSent(res), entry.body),
       });
     }
   });
@@ -1417,22 +1497,6 @@ export function pagesRouter(
     rememberSaved(res, "started");
     res.redirect(303, `/tickets/${ticket.key}`);
   });
-  // The team attaches evidence from the ticket page. An empty link means none.
-  router.post(
-    "/tickets/:key/evidence",
-    ticketForm("evidence", (key, input, actor) => {
-      const fields = { ...(input as Record<string, unknown>) };
-      if (fields.link === "") delete fields.link;
-      // The page asks only what it shows and an optional link, so it picks the kind: a change
-      // when a link is given, otherwise a check the person ran.
-      if (fields.kind === undefined) {
-        fields.kind = fields.link === undefined ? "check_run" : "change_link";
-      }
-      service.addEvidence(key, fields, actor);
-      return service.getTicket(key, actor);
-    }),
-  );
-
   router.post("/tickets/:key/take", (req, res) => {
     const ticket = service.takeTicket(req.params.key, signedIn(req), req.body);
     rememberSaved(res, "taken");

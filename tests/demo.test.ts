@@ -98,9 +98,10 @@ describe("the sample data", () => {
     const { app } = buildDemo();
     const list = await asDemo(app, demoTeam.id).get("/api/tickets");
     // Open tickets newest first, the New ones that say how to verify ahead of the others, then
-    // the resolved one. SUP-4 is the one sample that does not say yet, so it comes after them.
-    // The two samples for AI assistants were filed first, so they are the oldest and sit under
-    // the plain support samples.
+    // the resolved ones. SUP-2 is the one sample that does not say yet, so it comes after them.
+    // The sample for AI assistants was filed first, so it is the oldest and sits under the plain
+    // support samples. The recorded run was filed fourth, so it has the key its words name.
+    // The two samples resolved weeks ago were filed last.
     expect(list.body.map((t: { key: string }) => t.key)).toEqual([
       "SUP-8",
       "SUP-5",
@@ -109,10 +110,12 @@ describe("the sample data", () => {
       "SUP-3",
       "SUP-2",
       "SUP-1",
+      "SUP-10",
+      "SUP-9",
       "SUP-6",
     ]);
     const sample = list.body.find((t: { key: string }) => t.key === "SUP-1");
-    const recorded = list.body.find((t: { key: string }) => t.key === "SUP-2");
+    const recorded = list.body.find((t: { key: string }) => t.key === "SUP-4");
     expect(sample.title).toBe("Sample for your AI assistant: the total adds tax twice");
     expect(recorded.title).toBe("The checkout total adds tax twice");
     // Every status is there, so each filter changes the list.
@@ -137,7 +140,7 @@ describe("the sample data", () => {
     const { db, config } = buildDemo();
     const service = createTicketService(db, config.ticketPrefix);
     seedDemo(service);
-    expect(service.listTickets("all", demoAdmin)).toHaveLength(8);
+    expect(service.listTickets("all", demoAdmin)).toHaveLength(10);
   });
 });
 
@@ -188,7 +191,7 @@ describe("the other demo people", () => {
     expect((await team.delete("/api/tickets/SUP-3").send({ confirm: "SUP-3" })).status).toBe(403);
     const mine = await asDemo(app, demoCustomer.id).post("/api/tickets/SUP-3/archive");
     expect(mine.status).toBe(403);
-    expect((await team.get("/api/tickets")).body).toHaveLength(8);
+    expect((await team.get("/api/tickets")).body).toHaveLength(10);
     expect((await team.get("/tickets/SUP-3")).text).not.toContain("/tickets/SUP-3/archive");
   });
 

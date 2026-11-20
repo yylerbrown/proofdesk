@@ -123,7 +123,7 @@ describe("the filters on the page", () => {
     const html = parse((await as(app, teamActor).get("/tickets?status=new&owner=none&q=zzz")).text);
     const empty = html.querySelector("p.empty")!;
     expect(empty.text).toBe(
-      'No new tickets that nobody owns and match "zzz". Clear the owner filter and search.',
+      'No new tickets that nobody owns and match "zzz". Clear the owner filter and the search.',
     );
     expect(empty.querySelector("a")?.getAttribute("href")).toBe("/tickets?status=new");
   });

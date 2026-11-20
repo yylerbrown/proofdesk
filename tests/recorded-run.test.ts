@@ -112,12 +112,12 @@ describe("the recorded run on the demo", () => {
     const note = html.querySelector(".assistant-card .card-recorded")!;
     // The title and the description are the customer's problem alone, so this one line in the
     // assistant's card is the one place on the ticket that says a recorded run is shown, and
-    // under which key the assistant knew the sample.
-    // The day is a fixed day in the past, printed as written, and SUP-4 is named as the key on
-    // an earlier copy, so nobody takes it for today's SUP-4.
+    // The day is a fixed day in the past, printed as written. The seed gives the ticket the key
+    // the run had, SUP-4, so the line names no other key.
+    expect(recorded).toBe("SUP-4");
     expect(note.querySelector("time")).toBeNull();
     expect(note.text).toBe(
-      `Recorded on ${formatDay("2026-11-18T12:00:00.000Z")} on an earlier copy of this demo, where this ticket was SUP-4. How this was run`,
+      `Recorded on ${formatDay("2026-11-18T12:00:00.000Z")} on an earlier copy of this demo. How this was run`,
     );
     expect(html.querySelectorAll(".card-recorded")).toHaveLength(1);
     expect(html.querySelector(".recorded-run")).toBeNull();
@@ -135,19 +135,22 @@ describe("the recorded run on the demo", () => {
   it("lets the assistant's card be the review request, with no line saying it again", async () => {
     const { asTeam, recorded } = demo();
     const html = parse((await asTeam().get(`/tickets/${recorded}`)).text);
-    // The ticket's card holds the customer's words, then the assistant's card directly under
-    // them. No standing line repeats the request the card itself makes.
+    // The ticket's card holds the assistant's card, then the next step, which says the
+    // customer's words once: marking it fixed agrees they were met. No standing line repeats
+    // the request the card itself makes.
     const card = html.querySelector(".ticket-card")!;
-    expect(card.querySelector(".card-label")?.text).toBe("What would prove it is fixed?");
-    expect(card.querySelector("blockquote")).not.toBeNull();
+    expect(card.querySelector(".card-label")).toBeNull();
+    expect(card.querySelector("blockquote")).toBeNull();
+    expect(card.querySelector(".next-action .next-oath")?.text).toBe(
+      'By marking it fixed, you agree this is met: "total(100, 0.1) returns 110, and a test shows it"',
+    );
     expect(card.querySelector(".card-line")).toBeNull();
     expect(html.querySelector("main")!.text).not.toContain("asks for your review");
-    // While its suggested test waits for a decision, the assistant's card sits between the
-    // check and the next step.
+    // While its suggested test waits for a decision, the assistant's card comes before the
+    // next step.
     const parts = card.childNodes.filter((node) => node.nodeType === 1) as typeof card.childNodes;
     const classes = parts.map((node) => (node as unknown as { classNames: string }).classNames);
-    expect(classes.indexOf("user-text")).toBeGreaterThan(-1);
-    expect(classes.indexOf("user-text")).toBeLessThan(classes.indexOf("assistant-card"));
+    expect(classes.indexOf("assistant-card")).toBeGreaterThan(-1);
     expect(classes.indexOf("assistant-card")).toBeLessThan(
       classes.indexOf("card-step next-action"),
     );
@@ -160,12 +163,37 @@ describe("the recorded run on the demo", () => {
     expect(html.querySelector("main")!.text).not.toContain("Review requested by");
   });
 
-  it("says on the run page, not on the ticket, why the assistant's words name SUP-4", async () => {
+  it("says on the run page when the run was recorded, with no key to explain", async () => {
     const { app } = demo();
     const run = parse((await visitor(app).get("/assistant-run")).text);
     expect(run.getElementById("how-it-was-run")?.text).toBe(
-      "The run was recorded on 18 Nov 2026 against the sample ticket of an earlier copy of this demo, where that ticket was SUP-4, which is why the assistant's own words name SUP-4. What the ticket shows from the assistant is exactly what it sent.",
+      "The run was recorded on 18 Nov 2026 against the sample ticket of an earlier copy of this demo. What the ticket shows from the assistant is exactly what it sent.",
     );
+    // The page afterwards names the evidence's label as the ticket shows it, and says why the
+    // demo cannot show the customer's view.
+    const text = run.querySelector("main")!.text.replace(/\s+/g, " ");
+    expect(text).toContain('the evidence "Reported by Demo visitor\'s assistant (AI assistant)"');
+    expect(text).toContain(
+      "Customer view (its customer is not one of the demo's people, so this demo cannot show it): the check and the evidence with its label. No spec and no note.",
+    );
+    expect(text).not.toContain("AI agent");
+  });
+
+  it("marks each History row by the recorded assistant as replayed from its run", async () => {
+    const { asTeam, recorded } = demo();
+    const html = parse((await asTeam().get(`/tickets/${recorded}`)).text);
+    const rows = html.querySelectorAll("details.history tbody tr").map((row) => ({
+      what: row.querySelectorAll("td")[1]!.text,
+      who: row.querySelectorAll("td")[2]!.text,
+    }));
+    const byAssistant = rows.filter((row) => row.who.includes(RECORDED_ASSISTANT.name));
+    expect(byAssistant.length).toBeGreaterThan(0);
+    for (const row of byAssistant) {
+      expect(row.what).toMatch(/, replayed from the run of Nov 18, 2026$/);
+    }
+    for (const row of rows.filter((row) => !row.who.includes(RECORDED_ASSISTANT.name))) {
+      expect(row.what).not.toContain("replayed");
+    }
   });
 });
 

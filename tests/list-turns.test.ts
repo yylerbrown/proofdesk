@@ -43,7 +43,7 @@ describe("whose turn it is, in the list", () => {
     ]);
     const cells = Object.fromEntries(statusByKey(team));
     expect(cells["SUP-7"]).toBe("In Progress Customer says not fixed");
-    expect(cells["SUP-2"]).toBe("In Progress Assistant asks for review");
+    expect(cells["SUP-4"]).toBe("In Progress Assistant asks for review");
     expect(cells["SUP-3"]).toBe("In Progress");
     expect(cells["SUP-8"]).toBe("New");
     // The customer's confirmation is a mark in the Proof column, so nothing follows the word.
@@ -63,7 +63,7 @@ describe("whose turn it is, in the list", () => {
     const tag = async (who: typeof teamActor) =>
       parse((await as(app, who).get("/tickets")).text).querySelector("table.tickets .turn-tag")
         ?.text;
-    expect(await tag(customerOne)).toBe("Did this fix it?");
+    expect(await tag(customerOne)).toBe("Needs your answer");
     expect(await tag(teamActor)).toBe("Asked the customer");
   });
 
@@ -77,17 +77,13 @@ describe("whose turn it is, in the list", () => {
 });
 
 describe("the bar for ticked tickets", () => {
-  it("offers the three reasons that need no more words, no text box, and Unassigned", async () => {
+  it("offers the two reasons that need no more words, no Fixed, no text box, and Unassigned", async () => {
     const { list } = demoApp();
     const bar = (await list("demo-team")).querySelector("[data-bulk-bar]")!;
     const options = (name: string) =>
       bar.querySelectorAll(`select[name=${name}] option`).map((option) => option.text);
-    expect(options("reason")).toEqual([
-      "Reason",
-      "Fixed (the customer is told)",
-      "Won't fix",
-      "Cannot reproduce",
-    ]);
+    // Marking fixed agrees that what would prove it is fixed was met, ticket by ticket.
+    expect(options("reason")).toEqual(["Reason", "Won't fix", "Cannot reproduce"]);
     expect(bar.querySelectorAll("input[type=text], textarea")).toEqual([]);
     expect(options("owner")).toContain("Unassigned");
     expect(options("owner")).not.toContain("Nobody");

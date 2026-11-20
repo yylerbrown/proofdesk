@@ -284,7 +284,6 @@ describe("More options", () => {
     await admin(app).post("/api/tickets/SUP-1/take-and-start");
     expect(lines(await page(app, adminActor))).toEqual([
       "Edit ticket",
-      "Add evidence of the fix",
       "Ask before resolving",
       "Hand to an AI assistant",
       "Archive ticket",
@@ -303,28 +302,11 @@ describe("More options", () => {
     collectNotices(db, settings);
     expect(lines(await page(app, adminActor))).toEqual([
       "Edit ticket",
-      "Add evidence of the fix",
       "Withdraw the question",
       "Emails sent about this ticket",
       "Archive ticket",
       "Delete permanently",
     ]);
-  });
-
-  it("asks for evidence with two boxes, and picks the kind from the link", async () => {
-    const { app } = await filed();
-    const form = (await page(app)).querySelector("form[action='/tickets/SUP-1/evidence']")!;
-    const boxes = form.querySelectorAll("label").map((label) => label.text.trim().split("\n")[0]);
-    expect(boxes).toEqual(["What does it show?", "Link (optional)"]);
-    expect(form.querySelector("select, [name=kind]")).toBeNull();
-    const add = (fields: object) =>
-      as(app, teamActor).post("/tickets/SUP-1/evidence").type("form").send(fields).expect(303);
-    await add({ summary: "Printed ten pages", link: "" });
-    await add({ summary: "The fix", link: "https://example.com/pull/9" });
-    const kinds = (await as(app, teamActor).get("/api/tickets/SUP-1/evidence")).body.map(
-      (item: { kind: string }) => item.kind,
-    );
-    expect(kinds).toEqual(["check_run", "change_link"]);
   });
 
   it("asks with details in one box, which the customer reads with the question", async () => {

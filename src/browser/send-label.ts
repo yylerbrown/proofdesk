@@ -14,6 +14,8 @@ export type SendButton = {
 export type KindChoice = {
   value: string;
   checked: boolean;
+  /** The choice the page was sent with. */
+  defaultChecked: boolean;
   addEventListener(type: "change", listener: () => void): void;
 };
 
@@ -24,8 +26,11 @@ export function labelFor(button: SendButton, kind: string | undefined): string |
   return null;
 }
 
-/** Labels the button for the choice made now, and again each time the choice changes. */
-export function wireSendLabel(button: SendButton, choices: KindChoice[]): void {
+/**
+ * Labels the button for the choice made now, and again each time the choice changes. Returns the
+ * function that puts the choice back to the one the page was sent with, and the button with it.
+ */
+export function wireSendLabel(button: SendButton, choices: KindChoice[]): () => void {
   const update = () => {
     const chosen = choices.find((choice) => choice.checked);
     const label = labelFor(button, chosen?.value);
@@ -33,6 +38,20 @@ export function wireSendLabel(button: SendButton, choices: KindChoice[]): void {
   };
   for (const choice of choices) choice.addEventListener("change", update);
   update();
+  return () => {
+    for (const choice of choices) choice.checked = choice.defaultChecked;
+    update();
+  };
+}
+
+/**
+ * A pageshow listener that runs reset only for a page the browser brought back from its cache,
+ * by Back or Forward. A page loaded fresh keeps any choice made while it was still loading.
+ */
+export function whenBroughtBack(reset: () => void): (event: { persisted: boolean }) => void {
+  return (event) => {
+    if (event.persisted) reset();
+  };
 }
 
 if (typeof document !== "undefined") {
@@ -40,7 +59,12 @@ if (typeof document !== "undefined") {
   const form = button?.form;
   if (button && form) {
     const choices = [...form.querySelectorAll<HTMLInputElement>("input[type=radio][name=kind]")];
-    wireSendLabel(button, choices);
+    const backToPage = wireSendLabel(button, choices);
+    // A page brought back by Back or Forward keeps the choice made on it, even after an internal
+    // note was saved, so the next message could reach no customer. The box starts again on the
+    // page's own choice: "Reply to the customer", unless the page means otherwise.
+    // A reload needs none of this: the choices ask the browser not to fill them in.
+    window.addEventListener("pageshow", whenBroughtBack(backToPage));
   }
 }
 

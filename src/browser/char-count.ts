@@ -43,7 +43,11 @@ export function wireCount(box: CountedBox, line: CountLine) {
 }
 
 if (typeof document !== "undefined") {
-  for (const box of document.querySelectorAll<HTMLTextAreaElement>("textarea[data-count-limit]")) {
+  // The description's box and the title's one-line box.
+  const boxes = document.querySelectorAll<HTMLTextAreaElement | HTMLInputElement>(
+    "textarea[data-count-limit], input[data-count-limit]",
+  );
+  for (const box of boxes) {
     const line = document.getElementById(box.dataset.countInto ?? "");
     if (line !== null) wireCount(box, line);
   }

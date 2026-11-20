@@ -142,7 +142,7 @@ describe("the sentence when nothing matches", () => {
       "No new tickets that you own. Clear the owner filter.",
     );
     expect(await empty("/tickets?status=in_progress&owner=none&q=zzz")).toBe(
-      'No tickets in progress that nobody owns and match "zzz". Clear the owner filter and search.',
+      'No tickets in progress that nobody owns and match "zzz". Clear the owner filter and the search.',
     );
   });
 });

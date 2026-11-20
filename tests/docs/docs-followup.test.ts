@@ -14,7 +14,6 @@ describe("the labels the finishing pass renamed", () => {
   it("are named in the tour exactly as the views draw them", () => {
     const show = read("views/ticket-show.ejs");
     expect(show).toContain('"Send to the team"');
-    expect(show).toContain("<summary>Add evidence of the fix</summary>");
     expect(show).toContain(">Emails sent about this ticket</a>");
     expect(read("views/ticket-list.ejs")).toContain('placeholder="Search, then press Enter"');
     expect(read("views/header.ejs")).toContain('class="outline new-ticket">New<span');

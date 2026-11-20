@@ -79,16 +79,22 @@ describe("the ticket form after a refused submit", () => {
 });
 
 describe("the Title box", () => {
-  it("leaves its limits to the browser, which stops at 120 and says when it is under 3", async () => {
+  it("counts toward 120 without cutting a long paste, and the browser says when it is under 3", async () => {
     const { app } = buildTestApp();
     const res = await admin(app).get("/tickets/new").redirects(1);
     const html = parse(res.text);
     const title = html.querySelector("[name=title]");
     expect(nameOf(html, title)).toBe("Title");
     // Its one hint says what the title is for: the problem, the first part of a good prompt.
-    expect(descriptionOf(html, title)).toEqual(["The problem, in a few words."]);
+    // Then the count, empty and hidden until the title nears the limit.
+    expect(descriptionOf(html, title)).toEqual(["The problem, in a few words.", ""]);
     expect(title?.getAttribute("minlength")).toBe("3");
-    expect(title?.getAttribute("maxlength")).toBe("120");
+    // No maxlength: the browser would cut a long paste off without a word.
+    expect(title?.hasAttribute("maxlength")).toBe(false);
+    expect(title?.getAttribute("data-count-limit")).toBe("120");
+    expect(title?.getAttribute("data-count-into")).toBe("title-count");
+    expect(html.querySelector("#title-count")?.classList.contains("char-count")).toBe(true);
+    expect(title?.getAttribute("autocomplete")).toBe("off");
   });
 
   it("reads the server's message when it is refused", async () => {
@@ -101,7 +107,10 @@ describe("the Title box", () => {
     expect(descriptionOf(html, html.querySelector("[name=title]"))).toEqual([
       "Must be at most 120 characters.",
       "The problem, in a few words.",
+      "",
     ]);
+    // The whole title typed is kept in the box.
+    expect(html.querySelector("[name=title]")?.getAttribute("value")).toBe("x".repeat(121));
   });
 });
 

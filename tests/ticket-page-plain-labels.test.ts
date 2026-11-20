@@ -64,7 +64,7 @@ describe("the ticket page's labels", () => {
 
 describe("the assistant's card", () => {
   it("shows what the assistant reported above Accept test and Discard, as sent", async () => {
-    const page = await demoPage("demo-team", "SUP-2");
+    const page = await demoPage("demo-team", "SUP-4");
     const card = page.querySelector(".assistant-card")!;
     const reported = card.querySelector(".card-reported")!;
     expect(reported.text.trim()).toBe(
@@ -75,7 +75,7 @@ describe("the assistant's card", () => {
   });
 
   it("prints the day the run was recorded as written, not as a time to move", async () => {
-    const page = await demoPage("demo-team", "SUP-2");
+    const page = await demoPage("demo-team", "SUP-4");
     const recorded = page.querySelector(".assistant-card .card-recorded")!;
     expect(recorded.querySelector("time")).toBeNull();
     expect(recorded.text).toContain("Recorded on 18 Nov 2026 on an earlier copy of this demo");
@@ -83,7 +83,7 @@ describe("the assistant's card", () => {
 
   it("is the review request for every viewer, so the read-only admin is not told twice", async () => {
     for (const id of ["demo-team", "demo-admin"]) {
-      const page = await demoPage(id, "SUP-2");
+      const page = await demoPage(id, "SUP-4");
       expect(page.querySelector(".assistant-card .card-proposal")).not.toBeNull();
       expect(page.text, id).not.toContain("asks for your review.");
     }
