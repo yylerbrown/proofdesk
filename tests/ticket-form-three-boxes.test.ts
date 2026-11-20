@@ -2,8 +2,8 @@ import { parse } from "node-html-parser";
 import { describe, expect, it } from "vitest";
 import { admin, as, buildTestApp, customerOne } from "./helpers.js";
 
-// The new ticket form and the edit form are three boxes: Title, Description and "How will we know
-// it's fixed? (optional)". The page link is no longer asked for, but a ticket that has one keeps
+// The new ticket form and the edit form are three boxes: Title, Description and "What would prove
+// it is fixed? (optional)". The page link is no longer asked for, but a ticket that has one keeps
 // it through an edit, and the API still takes it.
 
 const valid = { title: "Printer jams", description: "It jams on page two." };

@@ -139,7 +139,7 @@ describe("the recorded run on the demo", () => {
     // The ticket's card holds the customer's words, then the assistant's card directly under
     // them. No standing line repeats the request the card itself makes.
     const card = html.querySelector(".ticket-card")!;
-    expect(card.querySelector(".card-label")?.text).toBe("How will we know it's fixed?");
+    expect(card.querySelector(".card-label")?.text).toBe("What would prove it is fixed?");
     expect(card.querySelector("blockquote")).not.toBeNull();
     expect(card.querySelector(".card-line")).toBeNull();
     expect(html.querySelector("main")!.text).not.toContain("asks for your review");

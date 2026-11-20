@@ -51,10 +51,13 @@
   <% if (values.where_url && !errors.where_url) { %><input type="hidden" name="where_url" value="<%= values.where_url %>" /><% } %>
   <%# Each box's minlength and maxlength are the server's limits for it, so the browser stops at the
       same length and says when a title is too short. The description is the one exception, below. %>
-  <%# The one hint sits inside its label, so the box is named by the label words alone and the hint is read once, as its description. %>
+  <%# The three boxes follow the shape of a good prompt: the problem, the context, and what would
+      prove it is fixed. Each says its part in one grey hint inside its label, so the box is
+      named by the label words alone and the hint is read once, as its description. %>
   <label>
     <span id="title-label">Title</span>
-    <input type="text" name="title" value="<%= values.title %>" required minlength="3" maxlength="120" aria-labelledby="title-label" <% if (errors.title) { %>aria-invalid="true" aria-describedby="title-error"<% } %> <% if (!editKey) { %>data-similar-into="title-similar"<% } %> <%= focusIf("title") %> />
+    <small id="title-hint" class="hint">The problem, in a few words.</small>
+    <input type="text" name="title" value="<%= values.title %>" required minlength="3" maxlength="120" aria-labelledby="title-label" aria-describedby="<% if (errors.title) { %>title-error <% } %>title-hint" <% if (errors.title) { %>aria-invalid="true"<% } %> <% if (!editKey) { %>data-similar-into="title-similar"<% } %> <%= focusIf("title") %> />
   </label>
   <% if (errors.title) { %><small id="title-error"><%= errors.title.join(" ") %></small><% } %>
   <%# On the new form only, a script names one earlier ticket like the title once the person pauses. %>
@@ -64,7 +67,8 @@
       The count under it shows as the text nears the limit, and the server says how far over it is. %>
   <label>
     <span id="description-label">Description</span>
-    <textarea name="description" rows="3" required aria-labelledby="description-label" data-count-limit="<%= descriptionLimit %>" data-count-into="description-count" <% if (errors.description) { %>aria-invalid="true" aria-describedby="description-error description-count"<% } else { %>aria-describedby="description-count"<% } %> <%= focusIf("description") %>><%= values.description %></textarea>
+    <small id="description-hint" class="hint">The context: what you were doing, and what happened.</small>
+    <textarea name="description" rows="3" required aria-labelledby="description-label" data-count-limit="<%= descriptionLimit %>" data-count-into="description-count" aria-describedby="<% if (errors.description) { %>description-error <% } %>description-hint description-count" <% if (errors.description) { %>aria-invalid="true"<% } %> <%= focusIf("description") %>><%= values.description %></textarea>
     <small id="description-count" class="hint char-count" aria-live="polite" hidden></small>
   </label>
   <% if (errors.description) { %><small id="description-error"><%= errors.description.join(" ") %></small><% } %>
@@ -78,12 +82,12 @@
   <label>
     <% if (locals.checkLocked) { %>
     <%# Greyed for the team: only its label and whose words they are. %>
-    <span id="fix_check-label">How will we know it's fixed?</span>
+    <span id="fix_check-label">What would prove it is fixed?</span>
     <textarea rows="3" readonly aria-labelledby="fix_check-label" aria-describedby="fix_check-locked"><%= values.fix_check %></textarea>
     <small id="fix_check-locked">The customer's own words. Only they can change them.</small>
     <% } else { %>
-    <span id="fix_check-label">How will we know it's fixed? (optional)</span>
-    <small id="fix_check-hint" class="hint">One thing you can check yourself, like "I can sign in on my phone". The team asks you to confirm the fix against it.</small>
+    <span id="fix_check-label">What would prove it is fixed? (optional)</span>
+    <small id="fix_check-hint" class="hint">One thing you can check yourself, like "I can sign in on my phone".</small>
     <textarea name="fix_check" rows="3" maxlength="500" aria-labelledby="fix_check-label" aria-describedby="<%= fixCheckDescribedBy %>" <% if (errors.fix_check) { %>aria-invalid="true"<% } %> <%= focusIf("fix_check") %>><%= values.fix_check %></textarea>
     <% } %>
   </label>

@@ -1,0 +1,10 @@
+<%# The ticket list's Proof mark, in two stages of one thing. Blank while the ticket does not say
+    what would prove it is fixed. An outlined grey check once the customer wrote or chose what
+    would. The solid green check once the customer confirmed the fix. The two are the same size,
+    and only the second is filled, so they differ in more than colour. Each is drawn by the style
+    sheet, so the page carries no picture markup. %>
+<% if (ticket.resolution && ticket.resolution.by === "customer") { %>
+<span class="proof-mark confirmed-mark" role="img" aria-label="Customer confirmed" title="Customer confirmed"></span>
+<% } else if (ticket.fix_check) { %>
+<span class="proof-mark proof-said" role="img" aria-label="Says what would prove it" title="Says what would prove it"></span>
+<% } %>

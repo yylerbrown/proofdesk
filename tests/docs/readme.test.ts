@@ -109,11 +109,13 @@ describe("the feature list and the README's walkthrough", () => {
       .join(" ");
     // The demo's menu now names its people without "View as". The tour says it the old way
     // until the explaining documents are next written.
-    // The same for the two labels that changed when marking fixed began to resolve a ticket.
+    // The same for the two labels that changed when marking fixed began to resolve a ticket,
+    // and for the check's label, now "What would prove it is fixed?".
     const renamed = new Set([
       "View as Demo Team Member",
       "Ask the customer to verify",
       "Yes, resolve ticket",
+      "How will we know it's fixed?",
     ]);
     for (const label of labels) if (!renamed.has(label)) expect(shown, label).toContain(label);
   });

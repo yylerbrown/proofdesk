@@ -85,7 +85,8 @@ describe("the Title box", () => {
     const html = parse(res.text);
     const title = html.querySelector("[name=title]");
     expect(nameOf(html, title)).toBe("Title");
-    expect(descriptionOf(html, title)).toEqual([]);
+    // Its one hint says what the title is for: the problem, the first part of a good prompt.
+    expect(descriptionOf(html, title)).toEqual(["The problem, in a few words."]);
     expect(title?.getAttribute("minlength")).toBe("3");
     expect(title?.getAttribute("maxlength")).toBe("120");
   });
@@ -99,6 +100,7 @@ describe("the Title box", () => {
     const html = parse(res.text);
     expect(descriptionOf(html, html.querySelector("[name=title]"))).toEqual([
       "Must be at most 120 characters.",
+      "The problem, in a few words.",
     ]);
   });
 });
@@ -109,7 +111,7 @@ describe("the check box", () => {
     const res = await admin(app).get("/tickets/new").redirects(1);
     const html = parse(res.text);
     const check = html.querySelector("[name=fix_check]");
-    expect(nameOf(html, check)).toBe("How will we know it's fixed? (optional)");
+    expect(nameOf(html, check)).toBe("What would prove it is fixed? (optional)");
     expect(descriptionOf(html, check)).toHaveLength(1);
     expect(descriptionOf(html, check)[0]).toMatch(/^One thing you can check yourself/);
   });

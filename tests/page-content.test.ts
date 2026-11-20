@@ -48,7 +48,9 @@ describe("the welcome for a signed-out visitor", () => {
     const { app } = buildTestApp();
     const html = await page(visitor(app), "/sign-in");
     expect(html.querySelector("h1")?.text).toBe("Proofdesk");
-    expect(html.querySelector("hgroup p")?.text).toContain("follow it while the team works on it");
+    expect(html.querySelector("hgroup p")?.text).toBe(
+      "Proofdesk is a support desk where a ticket is shaped like a good prompt: the problem, the context, and what would prove it is fixed.",
+    );
   });
 
   it("offers each demo person by name alone, in the role menu it lands under", async () => {
@@ -88,7 +90,7 @@ describe("status badges", () => {
 });
 
 describe("the ticket list", () => {
-  it("shows five columns: owner and the age, with the exact time in a time element", async () => {
+  it("shows six columns: owner and the age, with the exact time in a time element", async () => {
     const { app } = buildTestApp();
     await admin(app).post("/api/tickets").send(valid);
     await admin(app)
@@ -101,13 +103,13 @@ describe("the ticket list", () => {
     const headings = html
       .querySelectorAll("thead th")
       .map((th) => (th.querySelector("span.sort-label") ?? th).text);
-    expect(headings).toEqual(["Key", "Title", "Status", "Owner", "Filed"]);
+    expect(headings).toEqual(["Key", "Title", "Status", "Proof", "Owner", "Filed"]);
     const rows = html.querySelectorAll("tbody tr").map((tr) => tr.querySelectorAll("td"));
-    expect(rows[0]?.[3]?.text).toBe("Team Member");
-    expect(rows[1]?.[3]?.text).toBe("Unassigned");
+    expect(rows[0]?.[4]?.text).toBe("Team Member");
+    expect(rows[1]?.[4]?.text).toBe("Unassigned");
     // The team's turn is the normal case, so the status has no tag after it.
     expect(rows[0]?.[2]?.querySelector(".turn-tag")).toBeNull();
-    const time = rows[0]?.[4]?.querySelector("time");
+    const time = rows[0]?.[5]?.querySelector("time");
     expect(time?.getAttribute("datetime")).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(time?.getAttribute("title")).toMatch(/ UTC$/);
     expect(time?.text).toBe("just now");
