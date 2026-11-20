@@ -97,6 +97,26 @@ describe("permanent deletion", () => {
     expect(files.some((file) => fs.readFileSync(file).includes(SECRET))).toBe(false);
   });
 
+  it("works when the delete carries an Idempotency-Key", async () => {
+    const { app, db } = await setup();
+    const res = await admin(app)
+      .delete("/api/tickets/SUP-1")
+      .set("Idempotency-Key", "delete-once")
+      .send({ confirm: "SUP-1" });
+    expect(res.status).toBe(200);
+    // The files on disk are cleaned at the next checkpoint, and the answer says so.
+    expect(res.body).toEqual({ deleted: true, files_cleaned: false });
+    expect(count(db, "SELECT COUNT(*) AS n FROM tickets WHERE id = 1")).toBe(0);
+    expect((await admin(app).get("/api/tickets/SUP-1")).status).toBe(410);
+    // A retry with the same key gets the same answer.
+    const again = await admin(app)
+      .delete("/api/tickets/SUP-1")
+      .set("Idempotency-Key", "delete-once")
+      .send({ confirm: "SUP-1" });
+    expect(again.status).toBe(200);
+    expect(again.body).toEqual(res.body);
+  });
+
   it("never gives the number to a new ticket", async () => {
     const { app } = await setup();
     await admin(app).delete("/api/tickets/SUP-2").send({ confirm: "SUP-2" });
