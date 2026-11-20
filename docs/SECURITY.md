@@ -18,9 +18,8 @@ named).
 - Rate limits: 20 new tickets per ten minutes per person, 10 sign-in starts a minute per
   address, and 120 writes per ten minutes across pages, API and tools, per person or connection
   (per address on the demo). The demo also has a hard row budget.
-- Answers to signed-in people are never cached, except a ticket's pictures, which the browser may
-  keep privately for an hour. A request body over 100 KB is refused, except
-  the two picture forms (2 MB each, at most 4).
+- Answers to signed-in people are never cached, a ticket's pictures included. A request body over
+  100 KB is refused, except the two picture forms (2 MB each, at most 4).
 - The permission rules are tested on the real routes (`tests/roles.test.ts`,
   `tests/capabilities.test.ts`, `tests/connections.test.ts`).
 
@@ -38,10 +37,6 @@ ticket carries a `ticket_id` column, and a test fails if one is missing from the
 One exception: the answer kept for retrying a change to several tickets at once belongs to no
 single ticket, so it keeps that change's words, such as a resolution note, until a retry-safe
 write a day or more later forgets it.
-
-Saved retry answers go with the ticket they name. A change to many tickets at once sent with an
-idempotency key names no single ticket, so its saved answer, which can hold a resolution note,
-stays until a later keyed write clears saved answers over a day old.
 
 Permanent deletion does not reach backups, the host's snapshots of the disk until they expire, or
 anything already sent elsewhere.

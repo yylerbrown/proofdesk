@@ -111,11 +111,11 @@ describe("claims made exact", () => {
     }
   });
 
-  it("say pictures are kept privately for an hour", () => {
+  it("say a ticket's pictures are never cached either", () => {
     expect(flat("docs/SECURITY.md")).toContain(
-      "except a ticket's pictures, which the browser may keep privately for an hour",
+      "Answers to signed-in people are never cached, a ticket's pictures included.",
     );
-    expect(read("src/server/routes/pages.ts")).toContain('"private, max-age=3600"');
+    expect(read("src/server/routes/pages.ts")).not.toContain("max-age=3600");
   });
 
   it("say what a keyed delete leaves, and that a bulk change's saved answer outlives the ticket", () => {
@@ -124,9 +124,7 @@ describe("claims made exact", () => {
       "a delete sent with an idempotency key leaves that wipe to the next checkpoint",
     );
     expect(read("src/server/tickets/filing.ts")).toContain("db.inTransaction ? false");
-    expect(security).toContain(
-      "stays until a later keyed write clears saved answers over a day old",
-    );
+    expect(security).toContain("belongs to no single ticket, so it keeps that change's words");
     expect(read("src/server/tickets/repository.ts")).toContain(
       "DELETE FROM idempotency_keys WHERE created_at < ?",
     );
