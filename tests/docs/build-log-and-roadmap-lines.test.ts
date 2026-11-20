@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 
 // Two lines this step adds to the docs: the build log's last rows, numbered one after another in
-// the order their pull requests merged (#208, then #209, then #210), and one roadmap idea.
+// the order their pull requests merged (#208, #209, #210, then #212), and one roadmap idea.
 
 const log = fs.readFileSync("docs/BUILD_LOG.md", "utf8");
 
@@ -15,7 +15,7 @@ function stepOf(pr: number): number {
 
 describe("the build log's last rows", () => {
   it("have a row for #209, between #208 and #210, numbered in merge order", () => {
-    expect([208, 209, 210].map(stepOf)).toEqual([194, 195, 196]);
+    expect([208, 209, 210, 212].map(stepOf)).toEqual([194, 195, 196, 197]);
   });
 });
 
