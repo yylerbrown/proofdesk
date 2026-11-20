@@ -265,6 +265,12 @@ export const DEMO_BUDGET: Budget = {
   pictures: DEMO_PICTURE_LIMITS,
 };
 
+/**
+ * How many of the demo's tickets "Add sample tickets" never uses, so a visitor can always file
+ * tickets of their own after any number of presses.
+ */
+export const ROOM_KEPT_FOR_VISITORS = 50;
+
 // ---- The record of what seeding wrote ----------------------------------------------------
 // On the public demo, many visitors share the sample tickets, and each may connect their own
 // assistant. An assistant must never read text another visitor wrote, so the ticket service
@@ -312,9 +318,19 @@ export function createDemoRecord(
     /** Writes one sample resolved weeks ago, with its History at its own past times. */
     seedPastSample: (sample: PastSample) => writePastSample(db, prefix, logEvent, sample),
 
-    /** On the demo, files a batch of made-up tickets, within the demo's budget of tickets. */
+    /**
+     * On the demo, files a batch of made-up tickets. Batches stop short of the demo's budget of
+     * tickets, so there is always room left for visitors to file their own.
+     */
     addSampleBatch: (input: unknown, actor: Actor, seed: number, now = new Date()) =>
-      fileSampleBatch({ db, prefix, logEvent }, DEMO_BUDGET.tickets ?? 0, input, actor, seed, now),
+      fileSampleBatch(
+        { db, prefix, logEvent },
+        (DEMO_BUDGET.tickets ?? 0) - ROOM_KEPT_FOR_VISITORS,
+        input,
+        actor,
+        seed,
+        now,
+      ),
 
     /**
      * Records what seeding wrote, so a demo connection can be shown only that. Called once,

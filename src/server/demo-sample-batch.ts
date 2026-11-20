@@ -375,9 +375,10 @@ export type DemoPlace = { db: Db; prefix: string; logEvent: (event: repository.N
 
 /**
  * On the demo, files a batch of made-up tickets for a visitor who asked for a fuller list,
- * planned from the seed, each with its History at its own past times. The batch counts against
- * the demo's budget of tickets, mostTickets: when it would not fit, nothing is filed and the
- * answer is 409. The tickets are not in the seeding record, so no assistant connection is shown
+ * planned from the seed, each with its History at its own past times. mostTickets is how many
+ * tickets the demo may hold once the batch is in. The caller sets it below the demo's budget, so
+ * batches leave room for visitors' own tickets. When a batch would not fit, nothing is filed and
+ * the answer is 409. The tickets are not in the seeding record, so no assistant connection is shown
  * them, and nothing is sent for them. Returns how many were filed.
  */
 export function fileSampleBatch(

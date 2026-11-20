@@ -1,12 +1,20 @@
 import { parse } from "node-html-parser";
 import { describe, expect, it } from "vitest";
 import { DEMO_ACTORS, DEV_COOKIE } from "../src/server/actor.js";
-import { DEMO_BUDGET, OTHER_DEMO_CUSTOMERS, readDemoSeed, seedDemo } from "../src/server/demo.js";
 import {
+  DEMO_BUDGET,
+  OTHER_DEMO_CUSTOMERS,
+  readDemoSeed,
+  ROOM_KEPT_FOR_VISITORS,
+  seedDemo,
+} from "../src/server/demo.js";
+import {
+  fileSampleBatch,
   planSampleBatch,
   SAMPLE_PROBLEMS,
   type SampleBatchInput,
 } from "../src/server/demo-sample-batch.js";
+import { HttpError } from "../src/server/errors.js";
 import { createTicketService } from "../src/server/tickets/service.js";
 import { as, buildTestApp, customerOne, visitor } from "./helpers.js";
 
@@ -223,6 +231,46 @@ describe("Add sample tickets, on the demo", () => {
     expect(parse(list.text).querySelector("p.saved")?.text).toBe(
       "The demo is full of samples. It returns to its own when it resets.",
     );
+  });
+
+  it("always leaves room for visitors to file their own tickets, however often it is pressed", async () => {
+    const { asDemo, count } = demo();
+    const fullLine = "The demo is full of samples. It returns to its own when it resets.";
+    let line = "";
+    for (let press = 0; press < 10 && line !== fullLine; press++) {
+      const pressed = await asDemo("demo-customer")
+        .post("/demo/samples")
+        .type("form")
+        .send({ count: "50", period: "month" });
+      const cookie = [pressed.headers["set-cookie"]].flat().join("; ");
+      const list = await asDemo("demo-customer").get("/tickets").set("Cookie", cookie);
+      line = parse(list.text).querySelector("p.saved")?.text ?? "";
+    }
+    expect(line).toBe(fullLine);
+    const room = (DEMO_BUDGET.tickets ?? 0) - count();
+    expect(room).toBeGreaterThanOrEqual(ROOM_KEPT_FOR_VISITORS);
+    // A visitor can still file a ticket of their own.
+    const filed = await asDemo("demo-customer")
+      .post("/tickets")
+      .type("form")
+      .send({ title: "My own problem", description: "Filed after the samples." });
+    expect(filed.status).toBe(303);
+    expect(filed.headers.location).toMatch(/^\/tickets\/SUP-\d+/);
+  });
+
+  it("files nothing for someone who is not a demo visitor, even when called directly", () => {
+    const { db, config } = demo();
+    const place = { db, prefix: config.ticketPrefix, logEvent: () => {} };
+    const before = (db.prepare("SELECT COUNT(*) AS n FROM tickets").get() as { n: number }).n;
+    let thrown: unknown;
+    try {
+      fileSampleBatch(place, 1000, { count: "10", period: "week" }, customerOne, 1, NOW);
+    } catch (err) {
+      thrown = err;
+    }
+    expect(thrown).toBeInstanceOf(HttpError);
+    expect(thrown).toMatchObject({ status: 403 });
+    expect((db.prepare("SELECT COUNT(*) AS n FROM tickets").get() as { n: number }).n).toBe(before);
   });
 
   it("refuses the read-only preview, a size it does not offer and a cross-site post", async () => {
