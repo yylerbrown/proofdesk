@@ -3351,9 +3351,16 @@ pre.paste.command {
   table.tickets tbody td.status-cell {
     display: contents;
   }
-  /* The proof mark ends the first line, so the marks line up. */
+  /*
+   * The proof mark ends the first line, so the marks line up. Its mask lifts it above the
+   * title's press area, so a press on it is passed through to the row; a phone has no hover
+   * for its title anyway.
+   */
   table.tickets tbody td.proof-cell {
     margin-inline-start: auto;
+  }
+  table.tickets tbody .proof-mark {
+    pointer-events: none;
   }
   table.tickets tbody .turn-tag {
     order: 2;

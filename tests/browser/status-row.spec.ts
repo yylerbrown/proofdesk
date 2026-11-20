@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
 
 // The Status menu in a real browser: it opens on a press and closes on Escape, with focus back
-// on it. Choosing Resolved shows one small form in the next step's place, with no reason chosen
-// at first, so a reason must be picked before "Resolve ticket", and Cancel puts the step back.
+// on it, and once open the arrow keys move between its choices. Choosing Resolved shows one
+// small form in the next step's place, with no reason chosen at first, so a reason must be
+// picked before "Resolve ticket", and Cancel puts the step back.
 
 test("Resolved shows its form in the next step's place, and a reason must be chosen", async ({
   page,
@@ -31,6 +32,23 @@ test("Resolved shows its form in the next step's place, and a reason must be cho
   await page.keyboard.press("Escape");
   await expect(status).toHaveJSProperty("open", false);
   await expect(summary).toBeFocused();
+  // Once it is open, Down and Up move between its choices, skipping the current status and
+  // wrapping round at the ends, and the page does not scroll.
+  const choices = status.locator("ul a[href], ul button:not([disabled])");
+  const count = await choices.count();
+  expect(count).toBeGreaterThan(1);
+  const scrolled = await page.evaluate(() => window.scrollY);
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("ArrowDown");
+  await expect(choices.nth(0)).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(choices.nth(1)).toBeFocused();
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("ArrowUp");
+  await expect(choices.nth(count - 1)).toBeFocused();
+  expect(await page.evaluate(() => window.scrollY)).toBe(scrolled);
+  await page.keyboard.press("Escape");
+  await expect(status).toHaveJSProperty("open", false);
   // Opening Owner closes Status: only one is open at a time.
   await summary.click();
   await page.locator("details.owner-menu summary").click();

@@ -491,12 +491,16 @@ test("on a phone the small links and Add pictures are 40 pixels or more to press
   await expectPressable(page, 'nav[aria-label="Sort by"] a');
   // The whole row opens its ticket: a press on the row's key lands on the title's link.
   const row = page.locator("table.tickets tbody tr").first();
-  const key = (await row.locator(".ticket-key").boundingBox())!;
-  const landed = await page.evaluate(
-    ([x, y]) => document.elementFromPoint(x!, y!)?.closest("td.title-cell a") !== null,
-    [key.x + key.width / 2, key.y + key.height / 2],
-  );
-  expect(landed).toBe(true);
+  const landsOnTitle = async (selector: string) => {
+    const box = (await page.locator(selector).first().boundingBox())!;
+    return page.evaluate(
+      ([x, y]) => document.elementFromPoint(x!, y!)?.closest("td.title-cell a") !== null,
+      [box.x + box.width / 2, box.y + box.height / 2],
+    );
+  };
+  expect(await landsOnTitle("table.tickets tbody .ticket-key")).toBe(true);
+  // The proof mark too, though its mask draws it above the title's press area.
+  expect(await landsOnTitle("table.tickets tbody .proof-mark")).toBe(true);
   expect((await row.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   // Change beside the customer's own check, and Add pictures on the form.
   await page.goto("/tickets/SUP-5");
