@@ -1,5 +1,6 @@
 import type { ErrorRequestHandler, RequestHandler } from "express";
 import { rememberProblem } from "./pages/saved.js";
+import { CAPABILITIES, type Action } from "./permissions.js";
 
 /** An error that carries an HTTP status and a stable machine-readable code. */
 export class HttpError extends Error {
@@ -31,13 +32,23 @@ export class ValidationError extends HttpError {
 export const READ_ONLY_REFUSAL =
   "The admin preview is read-only. Use the menu at the top right to act as the customer or the team.";
 
+/** The refusal when nothing more can be said about who may act. */
+const NOT_ALLOWED = "You are not allowed to do that.";
+
 /**
  * The 403 for an action this person may not do. The demo's read-only admin preview is told
- * why, and how to try the action, instead of a bare refusal.
+ * why, and how to try the action, instead of a bare refusal. Anyone else is told who may do
+ * the action, in the words of the table the page Who may do what shows.
  */
-export function forbidden(actor: { readOnly?: boolean }): HttpError {
-  const message = actor.readOnly === true ? READ_ONLY_REFUSAL : "You are not allowed to do that.";
-  return new HttpError(403, "forbidden", message);
+export function forbidden(actor: { readOnly?: boolean }, action?: Action): HttpError {
+  if (actor.readOnly === true) return new HttpError(403, "forbidden", READ_ONLY_REFUSAL);
+  if (action === undefined) return new HttpError(403, "forbidden", NOT_ALLOWED);
+  const whoMay = CAPABILITIES[action].people;
+  return new HttpError(
+    403,
+    "forbidden",
+    `${NOT_ALLOWED} Who may: ${whoMay} See who may do what at /roles.`,
+  );
 }
 
 /** The demo was not seeded with its assistant sample, so assistant connections are off. */
