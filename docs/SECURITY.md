@@ -35,6 +35,9 @@ are kept, and the number is never given to a new ticket. The deleted text is als
 database files, and a test searches the raw files for it; a delete sent with an idempotency key
 leaves that wipe to the next checkpoint, and its answer says so. Every table whose rows belong to a
 ticket carries a `ticket_id` column, and a test fails if one is missing from the deletion.
+One exception: the answer kept for retrying a change to several tickets at once belongs to no
+single ticket, so it keeps that change's words, such as a resolution note, until a retry-safe
+write a day or more later forgets it.
 
 Saved retry answers go with the ticket they name. A change to many tickets at once sent with an
 idempotency key names no single ticket, so its saved answer, which can hold a resolution note,
