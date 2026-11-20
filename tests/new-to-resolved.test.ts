@@ -29,7 +29,7 @@ const valid = {
 const page = async (app: Express, who: typeof teamActor) =>
   parse((await as(app, who).get("/tickets/SUP-1")).text);
 const rule = (html: ReturnType<typeof parse>) =>
-  html.querySelector(".ticket-facts [title]")?.getAttribute("title");
+  html.querySelector(".ticket-facts [title]:not(a)")?.getAttribute("title");
 const resolveLink = (html: ReturnType<typeof parse>) =>
   html.querySelector(".status-menu a[href$='?step=resolve#resolve-form']");
 

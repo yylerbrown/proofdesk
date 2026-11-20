@@ -139,7 +139,7 @@ test("the guided path is eight presses, from the welcome card to the customer's 
       );
       await expect(
         step.getByText(
-          "Sample suggestions. Press one or more to add them to the box. On a real site the team's own AI assistant writes these.",
+          "Sample suggestions. Press one or more to add them to the box. On a real site the team's own AI assistant writes these. Edit or remove added text in the box.",
         ),
       ).toBeVisible();
     }

@@ -17,7 +17,7 @@
       the suggestions may take, so nothing under it moves down when they arrive. %>
   <div class="proof-choices" aria-live="polite"<% if (proof.choices.length === 0) { %> hidden<% } %>>
     <% if (proof.choices.length > 0) { %>
-    <p class="hint" id="proof-adds-line"><%= proof.sample ? "Sample suggestions. Press one or more to add them to the box. On a real site the team's own AI assistant writes these." : "Suggested by the team's AI assistant. Press one or more to add them to the box, then edit as you like." %></p>
+    <p class="hint" id="proof-adds-line"><%= proof.sample ? "Sample suggestions. Press one or more to add them to the box. On a real site the team's own AI assistant writes these. Edit or remove added text in the box." : "Suggested by the team's AI assistant. Press one or more to add them to the box. Edit or remove added text in the box." %></p>
     <div class="proof-adds">
       <% for (const choice of proof.choices) { %>
       <button type="submit" name="add" value="<%= choice.words %>" class="proof-add secondary outline" formnovalidate aria-pressed="<%= choice.added %>" aria-label="Add: <%= choice.words %>"><span class="proof-add-mark" aria-hidden="true"></span><span class="user-text"><%= choice.words %></span></button>

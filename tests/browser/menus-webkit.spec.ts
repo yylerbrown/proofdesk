@@ -36,7 +36,10 @@ test("More options and Edit work with a mouse in WebKit", async ({ page }) => {
   });
 
   await test.step("Edit", async () => {
-    await page.locator(".ticket-facts").getByRole("link", { name: "Edit", exact: true }).click();
+    await page
+      .locator(".ticket-facts")
+      .getByRole("link", { name: "Edit title or description" })
+      .click();
     await expect(page).toHaveURL(/\/tickets\/SUP-\d+\/edit$/);
   });
 });

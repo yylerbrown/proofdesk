@@ -802,6 +802,22 @@ ul.role-lines li {
   margin: 0;
   list-style: none;
 }
+/* The check of a role change: what would happen, then its one button and Cancel on a line. */
+.role-check-stop {
+  font-weight: 600;
+}
+form.role-check-make {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pd-space-3);
+  align-items: center;
+}
+form.role-check-make > * {
+  margin: 0;
+}
+form.role-check-make button {
+  width: auto;
+}
 
 /* Who may do what, at /roles, and the quiet links to it. The table scrolls inside its own box
    at phone width, so the page never scrolls sideways. */
@@ -2069,11 +2085,12 @@ article.entry.note {
 /* ---------- 13. History ---------- */
 
 /*
- * Collapsed until opened. Every fold-open line on every page reads the same way: muted 13px
- * words with Pico's small chevron right after them, a pointer over the whole line, text-coloured
- * on hover, and one focus ring around the words and the chevron together. A menu drawn as a
- * dropdown and a summary drawn as a button keep their own look. The rule weighs as little as
- * one class, so a place that draws its lines its own way, such as More options, still does.
+ * Collapsed until opened. Every fold-open line on every page reads the same way: 13px words a
+ * step darker than muted, with Pico's small chevron right after them in the same colour, a
+ * pointer over the whole line, text-coloured and underlined on hover, and one focus ring around
+ * the words and the chevron together. A menu drawn as a dropdown and a summary drawn as a
+ * button keep their own look. The rule weighs as little as one class, so a place that draws its
+ * lines its own way, such as More options, still does.
  */
 details.history[open] > summary {
   margin-bottom: var(--pd-space-3);
@@ -2081,7 +2098,7 @@ details.history[open] > summary {
 details:not(.dropdown) > summary:where(:not([role])) {
   display: inline-block;
   cursor: pointer;
-  color: var(--pd-muted);
+  color: color-mix(in srgb, var(--pd-muted) 65%, var(--pd-text));
   font-size: var(--pd-text-sm);
   font-weight: var(--pd-weight-medium);
   line-height: 1.45;
@@ -2089,6 +2106,8 @@ details:not(.dropdown) > summary:where(:not([role])) {
 }
 details:not(.dropdown) > summary:where(:not([role])):hover {
   color: var(--pd-text);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }
 details:not(.dropdown) > summary:where(:not([role]))::after {
   display: inline-block;
@@ -2096,7 +2115,6 @@ details:not(.dropdown) > summary:where(:not([role]))::after {
   width: 0.9rem;
   margin-inline-start: 2px;
   vertical-align: middle;
-  opacity: 0.7;
 }
 details#reopen {
   margin-bottom: 0;
@@ -2701,8 +2719,19 @@ details.history td:first-child {
     animation: none;
   }
 }
+/*
+ * The box grows with its words, from three lines up to about ten, then scrolls. Where a browser
+ * cannot size a box to its words from the stylesheet, the proof-step script sets its height.
+ */
 .proof-step textarea {
+  min-height: calc(
+    3lh + 2 * var(--pico-form-element-spacing-vertical) + 2 * var(--pico-border-width)
+  );
+  max-height: calc(
+    10lh + 2 * var(--pico-form-element-spacing-vertical) + 2 * var(--pico-border-width)
+  );
   margin-bottom: 0;
+  field-sizing: content;
 }
 /* The filer's quiet links by their check: Change beside its label, or Add on a ticket without. */
 .ticket-card .card-label a.card-label-link {
@@ -2807,10 +2836,11 @@ details.reply-fold:not([open]) > summary {
   color: var(--pd-muted);
   font-size: 1.0667rem; /* 16px */
   font-weight: var(--pd-weight-regular);
-  cursor: text;
+  cursor: pointer;
 }
+/* Closed, the box shows the same small chevron right after its words as every fold-open line. */
 details.reply-fold:not([open]) > summary::after {
-  display: none;
+  margin-inline-start: 4px;
 }
 details.reply-fold[open] > summary {
   margin-bottom: var(--pd-space-3);
@@ -3609,19 +3639,19 @@ table.tickets td.title-cell a:hover {
 }
 /* The phone fixes, kept together at the end. */
 
-.next-note {
-  color: var(--pd-muted);
-}
 /* Above "Mark fixed and tell the customer", and in the Status menu's Fixed: one grey sentence that
-   says the press agrees that what would prove it is fixed was met. */
+   says the press agrees that what would prove it is fixed was met. A note about the press, such
+   as "The sample skips the fix.", reads the same way. */
 .next-oath,
+.next-note,
 .step-form .resolve-oath {
   margin: 0 0 var(--pd-space-2);
   color: var(--pd-muted);
   font-size: var(--pd-text-sm);
 }
-/* Its own line in the step's row, above the button. */
-.next-oath {
+/* Each on its own line in the step's row, above the button. */
+.next-oath,
+.next-note {
   flex-basis: 100%;
   margin: 0;
 }
