@@ -25,8 +25,9 @@ once work has started.
 ## The ticket's life
 
 - **Three statuses**: New, In Progress and Resolved.
-- The customer's Yes to "Did this fix it?" resolves a ticket as "Customer confirmed". Its owner or
-  an admin can also resolve it with a required reason, and so can a team member when nobody owns
+- The owner's "Mark fixed and tell the customer" resolves a ticket with the reason Fixed and asks
+  the customer "Did this fix it?"; their Yes, there or to a question asked first, marks it
+  "Customer confirmed". Its owner or an admin can also resolve it with another required reason, and so can a team member when nobody owns
   it yet, who then becomes its owner. It shows everywhere as "Resolved by the team: <reason>".
   The customer can reopen either; the owner or an admin can reopen only the team's own
   resolution. An agent never resolves or reopens.

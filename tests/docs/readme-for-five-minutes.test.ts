@@ -33,11 +33,12 @@ describe("the README", () => {
     const order = [
       "**File a sample ticket**",
       "**File ticket**",
+      "**Save**",
       "**Take ticket and start work**",
-      "**Ask the customer to verify**",
-      "**Yes, resolve ticket**",
-      "Customer confirmed it is fixed.",
-      'press "Resolve with a reason…" under Status',
+      "**Mark fixed and tell the customer**",
+      "**Yes, it is fixed**",
+      "Resolved, customer confirmed",
+      "`Resolved by the team: <reason>`",
     ].map((text) => walk.replace(/\s+/g, " ").indexOf(text));
     expect(order.every((at) => at >= 0)).toBe(true);
     expect(order).toEqual([...order].sort((a, b) => a - b));

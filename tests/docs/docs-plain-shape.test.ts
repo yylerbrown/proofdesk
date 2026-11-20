@@ -74,10 +74,14 @@ describe("the guides' shape", () => {
     // requests and answering one added two more.
     ["docs/API.md", 101],
     // Suggesting ways to verify added its tool's row, and listening and answering two more.
-    ["docs/AGENTS_GUIDE.md", 177],
-    ["docs/TOUR.md", 57],
-    // Microsoft sign-in beside GitHub added its settings and setup steps.
-    ["docs/DEPLOY.md", 349],
+    // The Suggestions setting added one short section on how a listening assistant helps.
+    ["docs/AGENTS_GUIDE.md", 190],
+    // The proof step, the Proof column, pictures, possible duplicates, the bulk bar and the
+    // Suggestions setting each added one feature of four lines.
+    ["docs/TOUR.md", 93],
+    // Microsoft sign-in beside GitHub added its settings and setup steps, and its "off until
+    // set" line came later.
+    ["docs/DEPLOY.md", 352],
   ])("%s is no longer than it was", (file, lines) => {
     expect(read(file).split("\n").length).toBeLessThanOrEqual(lines);
   });

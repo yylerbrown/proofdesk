@@ -74,14 +74,21 @@ describe("the README", () => {
     expect(anchorsIn("README.md")).toContain("sign-in-and-roles");
   });
 
-  it("shows the ticket list first, and the customer's question where it explains their answer", () => {
+  it("shows the ticket list first, then each step's picture after the step it shows", () => {
     const readme = fs.readFileSync("README.md", "utf8");
     const images = [...readme.matchAll(/<img src="([^"]+)"/g)].map((m) => m[1]);
-    expect(images).toEqual(["docs/img/ticket-list.png", "docs/img/did-this-fix-it.png"]);
+    expect(images).toEqual([
+      "docs/img/ticket-list.png",
+      "docs/img/what-would-prove-it.png",
+      "docs/img/did-this-fix-it.png",
+    ]);
     const list = readme.indexOf('src="docs/img/ticket-list.png"');
+    const proof = readme.indexOf('src="docs/img/what-would-prove-it.png"');
     const question = readme.indexOf('src="docs/img/did-this-fix-it.png"');
     expect(list).toBeLessThan(readme.indexOf("## Run it yourself"));
-    expect(question).toBeGreaterThan(readme.indexOf("**Ask the customer to verify**"));
+    expect(proof).toBeGreaterThan(readme.indexOf("**Save**"));
+    expect(proof).toBeLessThan(readme.indexOf("**View this ticket as a team member**"));
+    expect(question).toBeGreaterThan(readme.indexOf("**Yes, it is fixed**"));
   });
 
   // A wide picture pushed the run steps far down the first screen, so each one has a width.

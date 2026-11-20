@@ -80,8 +80,14 @@ describe("the feature list and the README's walkthrough", () => {
       .post("/api/tickets")
       .send({ title: "Export is empty", description: "x", fix_check: "Every row" });
     const key = filed.body.key as string;
+    // A ticket filed with no proof opens on the second step, which a ticket with one reopens.
+    const bare = await as("demo-customer")
+      .post("/api/tickets")
+      .send({ title: "Printing is slow", description: "x" });
     const team = (path: string) => as("demo-team").post(`/api/tickets/${key}${path}`);
     const pages = [
+      await as("demo-customer").get(`/tickets/${bare.body.key as string}?step=verify`),
+      await as("demo-customer").get(`/tickets/${key}?step=verify`),
       await visitor(demo.app).get("/sign-in"),
       await as("demo-customer").get("/tickets"),
       await as("demo-customer").get("/tickets/new?try=1").redirects(1),
@@ -107,16 +113,6 @@ describe("the feature list and the README's walkthrough", () => {
     const shown = pages
       .map((res) => parse(res.text).querySelector("body")!.text.replace(/\s+/g, " "))
       .join(" ");
-    // The demo's menu now names its people without "View as". The tour says it the old way
-    // until the explaining documents are next written.
-    // The same for the two labels that changed when marking fixed began to resolve a ticket,
-    // and for the check's label, now "What would prove it is fixed?".
-    const renamed = new Set([
-      "View as Demo Team Member",
-      "Ask the customer to verify",
-      "Yes, resolve ticket",
-      "How will we know it's fixed?",
-    ]);
-    for (const label of labels) if (!renamed.has(label)) expect(shown, label).toContain(label);
+    for (const label of labels) expect(shown, label).toContain(label);
   });
 });
