@@ -37,9 +37,11 @@ describe("marking fixed, in the docs", () => {
 describe("the list's words, in the tour", () => {
   it("names the age filter's labels and addresses as the view draws them", () => {
     const list = read("views/ticket-list.ejs");
-    expect(list).toContain('[["recent", "Last 14 days"], ["older", "Older"], ["any", "Any age"]]');
-    expect(tour).toContain('a "Resolved:" filter reads **Last 14 days**, **Older** with its count');
-    expect(tour).toContain("`?resolved=older` or `?resolved=any`");
+    expect(list).toContain('[["any", "Any age"], ["recent", "Last 14 days"], ["older", "Older"]]');
+    expect(tour).toContain("a small group reads **Any age**, **Last 14 days** and **Older**");
+    expect(tour).toContain("`?resolved=recent` or `?resolved=older`");
+    expect(tour).not.toContain('"Resolved:"');
+    expect(tour).not.toContain("resolved=any");
     expect(tour).not.toContain("a line under the list says how many older resolved tickets");
   });
 
@@ -80,7 +82,7 @@ describe("the records", () => {
       .slice(start, roadmap.indexOf("## Already built"))
       .split("\n")
       .filter((line) => line.startsWith("- "));
-    expect(ideas).toHaveLength(13);
+    expect(ideas).toHaveLength(14);
     expect(new Set(ideas).size).toBe(ideas.length);
   });
 });

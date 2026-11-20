@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 
 // The last docs pass: the tour names the demo's sample batch as the view draws it, the age
-// filter is described as appearing only once there is an older resolved ticket, a roadmap line
+// filter is described as appearing only under Resolved, a roadmap line
 // lost a promise the product does not plan, prose fits the files' width, and the build log
 // has a row for each pull request merged since its last row.
 
@@ -29,10 +29,16 @@ describe("the demo's sample batch, in the tour", () => {
 });
 
 describe("the age filter, in the tour and the spec", () => {
-  it("appears once a ticket was resolved more than 14 days ago", () => {
-    const words = 'once a ticket was resolved more than 14 days ago, a "Resolved:" filter';
-    expect(tour).toContain(words);
-    expect(flat("docs/SPEC.md")).toContain(words);
+  it("appears only under Resolved, and All shows every ticket", () => {
+    expect(tour).toContain("Under **Resolved**, with nothing searched, a small group reads");
+    expect(tour).toContain("**All** shows every ticket");
+    const spec = flat("docs/SPEC.md");
+    expect(spec).toContain("Under Resolved, with nothing searched, a small group offers Any age");
+    expect(spec).toContain("### 2026-11-20: Edit beside the title, and Open on the list");
+    for (const file of [tour, spec, flat("README.md")]) {
+      expect(file).not.toContain('"Resolved:" filter');
+      expect(file).not.toContain("leaves out tickets resolved more than 14 days ago");
+    }
   });
 });
 
