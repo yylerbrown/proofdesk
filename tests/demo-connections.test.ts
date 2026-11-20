@@ -221,9 +221,7 @@ describe("a demo connection asking to resolve", () => {
     expect(res.status).toBe(409);
     expect(res.body.error).toMatchObject({ code: "needs_customer", retry: false });
     expect(res.body.error.message).toMatch(
-      new RegExp(
-        `A status change does not resolve ticket ${sample}\\. The customer confirms a fix`,
-      ),
+      new RegExp(`^A status change does not resolve ticket ${sample}\\.`),
     );
   });
 });

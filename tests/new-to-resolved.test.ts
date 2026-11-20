@@ -124,12 +124,20 @@ describe("where Resolved comes from", () => {
     const reason = await refusedBackToTicket(as(app, teamActor), "/tickets/SUP-1/status", {
       status: "resolved",
     });
-    expect(reason).toMatch(
-      /A status change does not resolve ticket SUP-1\. The customer confirms a fix/,
-    );
-    expect(reason).toMatch(/Ask the customer to verify/);
+    expect(reason).toMatch(/^A status change does not resolve ticket SUP-1\./);
+    // It names the buttons the team has, and each one is on the ticket's page.
+    const main = (await page(app, teamActor)).querySelector("main")!.text;
     const api = await as(app, teamActor).patch("/api/tickets/SUP-1").send({ status: "resolved" });
-    expect(api.body.error.hint).toMatch(/Ask the customer to verify/);
+    for (const button of ["Mark fixed and tell the customer", "Ask before resolving"]) {
+      expect(reason).toContain(button);
+      expect(api.body.error.hint).toContain(button);
+      expect(main).toContain(button);
+    }
+    expect(reason).toMatch(/resolves it as fixed at once/);
+    expect(api.body.error.hint).toMatch(/resolves it as fixed at once/);
+    for (const said of [reason, api.body.error.hint]) {
+      expect(said).not.toContain("Ask the customer to verify");
+    }
   });
 
   it("says who it waits for once asked, and that their Yes moves it to Resolved", async () => {

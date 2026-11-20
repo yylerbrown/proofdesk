@@ -75,7 +75,7 @@ export const HINTS: Record<string, string> = {
   keeps_owner:
     "Work has started, so the ticket keeps an owner. Hand it to a team member instead (POST .../hand-off).",
   needs_customer:
-    "A status change does not resolve a ticket. The customer confirms a fix with Yes, which its owner asks with Ask the customer to verify (POST /api/tickets/{key}/ready); its owner or an admin can also resolve it with a reason (POST /api/tickets/{key}/resolve), and a team member can resolve one nobody owns yet, becoming its owner.",
+    "A status change does not resolve a ticket. Its owner or an admin resolves it with a reason (POST /api/tickets/{key}/resolve), and a team member can resolve one nobody owns yet, becoming its owner. On the ticket page, Mark fixed and tell the customer resolves it as fixed at once and tells the customer, whose Yes afterwards is optional. To ask the customer first, its owner uses Ask before resolving under More options (POST /api/tickets/{key}/ready), and the customer's Yes resolves it.",
   not_in_progress: "Move the ticket to in_progress first.",
   not_waiting: "The team has not asked this question yet, or it was withdrawn.",
   only_filer_reopens:
