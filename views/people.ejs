@@ -23,11 +23,10 @@
         <td>
           <% if (person.locked) { %>
           <%= person.locked %><% if (person.locked === "You") { %>, <%= roleLabels[person.role] %><% } %>
-          <% } else if (!canChange) { %>
-          <%# The read-only preview: the role in words, with nothing to press. %>
-          <%= roleLabels[person.role] %>
           <% } else { %>
-          <form method="post" action="/people" class="inline role-choice">
+          <%# Choosing a role only opens its check, which says what the change would do. Nothing is
+              saved from here, so the demo admin may try it too. %>
+          <form method="get" action="/people/check" class="inline role-choice">
             <input type="hidden" name="person" value="<%= person.id %>" />
             <label>
               <span class="visually-hidden">Role of <%= person.name %></span>
@@ -37,7 +36,7 @@
                 <% } %>
               </select>
             </label>
-            <button type="submit">Save</button>
+            <button type="submit" class="secondary">Check this change</button>
           </form>
           <% } %>
         </td>

@@ -1,0 +1,26 @@
+<%- include("header") %>
+<div class="column-wide role-check">
+<h1><%= question %></h1>
+<% if (happens.length > 0) { %>
+<ul class="role-check-happens">
+  <% for (const line of happens) { %><li><span class="user-text"><%= line %></span></li><% } %>
+</ul>
+<% } %>
+<% if (stop) { %>
+<p class="role-check-stop"><span class="user-text"><%= stop %></span></p>
+<% } %>
+<% if (note) { %>
+<p class="role-note"><small><%= note %></small></p>
+<% } %>
+<% if (button) { %>
+<form method="post" action="/people" class="role-check-make">
+  <input type="hidden" name="person" value="<%= personId %>" />
+  <input type="hidden" name="role" value="<%= role %>" />
+  <button type="submit" class="user-text"><%= button %></button>
+  <a href="/people">Cancel</a>
+</form>
+<% } else { %>
+<p><a href="/people">Back to People</a></p>
+<% } %>
+</div>
+<%- include("footer") %>

@@ -48,6 +48,20 @@ export function peopleRouter(people: PeopleService): Router {
     show(req, res);
   });
 
+  // What a role change would do, before anyone makes it. It only reads, so it is a plain
+  // address that can be opened again, and the demo admin may open it too.
+  router.get("/people/check", (req, res) => {
+    const actor = signedIn(req);
+    try {
+      const preview = people.previewRoleChange(actor, req.query);
+      res.render("people-confirm", { title: preview.question, ...preview });
+    } catch (err) {
+      // An admin sees why on the People page itself. Anyone else gets the plain refusal page.
+      if (!(err instanceof HttpError) || !can(actor, "list_people")) throw err;
+      show(req, res, err.status, err.message);
+    }
+  });
+
   router.post("/people", (req, res) => {
     const actor = signedIn(req);
     try {
