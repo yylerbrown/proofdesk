@@ -135,7 +135,11 @@ describe("the status control", () => {
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
     for (const who of [teamActor, adminActor]) {
       const section = (await statusSection(app, who))!;
-      expect(row(section)).toEqual(["New: press", "In Progress: current", "Resolved: opens"]);
+      expect(row(section)).toEqual([
+        "New (unassigns it): press",
+        "In Progress: current",
+        "Resolved: opens",
+      ]);
       const back = formFor(section, "New");
       expect(back.getAttribute("action")).toBe("/tickets/SUP-1/status");
       expect(back.querySelector("input[name=status]")?.getAttribute("value")).toBe("new");
@@ -209,7 +213,7 @@ describe("the status control", () => {
       .send({ reason: "Resolved by mistake." })
       .expect(200);
     expect(row((await statusSection(app, teamActor))!)).toEqual([
-      "New: press",
+      "New (unassigns it): press",
       "In Progress: current",
       "Resolved: opens",
     ]);

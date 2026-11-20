@@ -44,8 +44,9 @@
           <% for (const [name, value] of Object.entries(choice.fields)) { %>
           <input type="hidden" name="<%= name %>" value="<%= value %>" />
           <% } %>
-          <%# Taking a ticket nobody owns is part of starting work on it, so the choice says so. %>
-          <button type="submit" class="link"><span class="menu-words"><%- include("status-badge", { status: choice.status }) %><% if (choice.action.endsWith("/take-and-start")) { %> (assigns it to you)<% } %></span></button>
+          <%# Taking a ticket nobody owns is part of starting work on it, and going back to New
+              leaves it with nobody, so each choice says so. %>
+          <button type="submit" class="link"><span class="menu-words"><%- include("status-badge", { status: choice.status }) %><% if (choice.action.endsWith("/take-and-start")) { %> (assigns it to you)<% } else if (choice.status === "new" && ticket.owner_id) { %> (unassigns it)<% } %></span></button>
         </form>
         <% } else if (choice.kind === "resolve") { %>
         <a href="/tickets/<%= ticket.key %>?step=resolve#resolve-form"><%- include("status-badge", { status: choice.status }) %></a>

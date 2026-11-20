@@ -4,6 +4,7 @@
 // clicking somewhere else on the page closes it too.
 //
 // The ticket page's Status and Owner menus are details elements too, and behave the same way.
+// Once a menu is open, the Up and Down arrow keys move focus between its choices.
 
 /** The button that opens a menu: the details element's summary. */
 export type MenuButton = { focus(): void };
@@ -42,6 +43,38 @@ export function wireMenu(menu: Menu, button: MenuButton, page: Page) {
   });
 }
 
+/**
+ * Which choice the Up or Down arrow moves focus to, by its place in the list: the next or the
+ * one before, wrapping round at either end. From the menu's own button, or anything that is not
+ * a choice (current is -1), Down goes to the first choice and Up to the last. Null for any other
+ * key, or when the menu has no choices.
+ */
+export function arrowTarget(count: number, current: number, key: string): number | null {
+  if (count === 0) return null;
+  if (key === "ArrowDown") return current < 0 ? 0 : (current + 1) % count;
+  if (key === "ArrowUp") return current < 0 ? count - 1 : (current - 1 + count) % count;
+  return null;
+}
+
+/** The choices in an open menu that the arrow keys move between: its links and live buttons. */
+function choicesIn(menu: HTMLDetailsElement): HTMLElement[] {
+  return [...menu.querySelectorAll<HTMLElement>("ul a[href], ul button:not([disabled])")];
+}
+
+/** Up and Down move focus between an open menu's choices; a select keeps its own arrows. */
+function moveWithArrows(menu: HTMLDetailsElement) {
+  menu.addEventListener("keydown", (event) => {
+    if (!menu.open || event.target instanceof HTMLSelectElement) return;
+    const choices = choicesIn(menu);
+    const current = choices.indexOf(document.activeElement as HTMLElement);
+    const target = arrowTarget(choices.length, current, event.key);
+    if (target === null) return;
+    // The arrow would otherwise scroll the page.
+    event.preventDefault();
+    choices[target]!.focus();
+  });
+}
+
 if (typeof document !== "undefined") {
   for (const menu of document.querySelectorAll<HTMLDetailsElement>(
     "details.person-menu, details.fact-menu",
@@ -50,5 +83,6 @@ if (typeof document !== "undefined") {
     if (button === null) continue;
     // A real details element has all the parts Menu names; its event types are only wider.
     wireMenu(menu as unknown as Menu, button, document as unknown as Page);
+    moveWithArrows(menu);
   }
 }
