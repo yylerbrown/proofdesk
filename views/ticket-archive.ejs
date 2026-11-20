@@ -6,7 +6,8 @@
 <% if (canSeeArchived) { %>
 <p>The ticket will leave the lists. Nothing is deleted. You can find it under Archived and restore it.</p>
 <% } else { %>
-<p>The ticket will leave your list and you will not be able to open it again. Nothing is deleted, and the support team can restore it if you ask.</p>
+<p class="archive-why">Filed by mistake, or twice? Archiving takes this ticket off your list and the team's.</p>
+<p>You will not be able to open it again. Nothing is deleted, and the support team can restore it if you ask.</p>
 <% } %>
 
 <form method="post" action="/tickets/<%= ticket.key %>/archive">

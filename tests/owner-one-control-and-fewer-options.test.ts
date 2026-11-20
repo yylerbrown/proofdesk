@@ -90,7 +90,10 @@ describe("the Owner menu", () => {
     // The customer sees the owner as plain words, with nothing to press.
     const customer = await page(app, customerOne);
     expect(customer.querySelector("details.owner-menu")).toBeNull();
-    expect(customer.querySelector(".ticket-standing")?.text).toBe("New, with Team Member");
+    expect(customer.querySelector(".ticket-standing .standing-rest")?.text).toBe(
+      ", with Team Member",
+    );
+    expect(customer.querySelector(".ticket-standing details, .ticket-standing form")).toBeNull();
   });
 
   it("is plain words for a team member who may change nothing", async () => {
@@ -131,7 +134,7 @@ describe("the Owner menu", () => {
 });
 
 describe("More options", () => {
-  it("holds, in order, Edit and Ask before resolving, then Archive and Delete", async () => {
+  it("holds, in order, Ask before resolving, then Archive and Delete", async () => {
     const { app } = await filed();
     await admin(app).post("/api/tickets/SUP-1/take-and-start");
     const more = (await page(app, adminActor)).querySelector("details.more-options")!;
@@ -140,12 +143,7 @@ describe("More options", () => {
       const line = item.querySelector("summary") ?? item.querySelector("a, button")!;
       return line.text.trim();
     });
-    expect(names).toEqual([
-      "Edit ticket",
-      "Ask before resolving",
-      "Archive ticket",
-      "Delete permanently",
-    ]);
+    expect(names).toEqual(["Ask before resolving", "Archive ticket", "Delete permanently"]);
     // Only one of them is open at a time.
     const folds = more.querySelectorAll(".more-list details");
     expect(folds.map((fold) => fold.getAttribute("name"))).toEqual(["more-option"]);

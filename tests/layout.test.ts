@@ -46,7 +46,9 @@ describe("the ticket page layout", () => {
     expect(more.querySelector("summary")?.text).toBe("More options");
     expect(
       more.querySelectorAll(".more-list > li").map((el) => el.text.trim().split("\n")[0]),
-    ).toEqual(["Edit ticket", "Archive ticket", "Delete permanently"]);
+    ).toEqual(["Archive ticket", "Delete permanently"]);
+    // Edit is a quiet link at the end of the line under the title.
+    expect(page.querySelector(".ticket-facts a.ticket-line-link")?.text).toBe("Edit");
     // The next step is the card's.
     expect(
       html.querySelector(".ticket-card .next-action form[action$='/take-and-start']"),
@@ -77,10 +79,13 @@ describe("the ticket page layout", () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
     const html = await ticketPage(as(app, customerOne));
-    // One line of plain words under the title, with no controls.
+    // One line of plain words under the title, with no controls but their two quiet links.
     expect(html.querySelector(".ticket-facts")).toBeNull();
-    expect(html.querySelector(".ticket-standing")?.text).toBe("New, not yet taken by the team");
-    expect(html.querySelector("a[href$='/archive']")?.text).toBe("Archive ticket");
+    const standing = html.querySelector(".ticket-standing")!;
+    expect(standing.querySelector(".standing-rest")?.text).toBe(", not yet taken by the team");
+    expect(standing.querySelectorAll("a").map((a) => a.text)).toEqual(["Edit", "Archive"]);
+    expect(standing.querySelector("button, details, form")).toBeNull();
+    expect(html.querySelector("a[href$='/archive']")?.text).toBe("Archive");
     expect(html.querySelectorAll("a.danger")).toHaveLength(0);
   });
 });

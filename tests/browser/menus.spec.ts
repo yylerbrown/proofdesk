@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
 
-// The keyboard on a ticket page and its text fields, in a real browser: More options and Edit
-// ticket work from the keyboard, and a text field shows the 2px focus ring, also when the
-// server has marked it as wrong.
+// The keyboard on a ticket page and its text fields, in a real browser: the customer's Edit and
+// Archive on the line under the title work from the keyboard, in that order, and a text field
+// shows the 2px focus ring, also when the server has marked it as wrong.
 
-test("More options and Edit work from the keyboard, and text fields show a real focus ring", async ({
+test("Edit and Archive work from the keyboard, and text fields show a real focus ring", async ({
   page,
 }) => {
   await page.goto("/sign-in");
@@ -31,18 +31,17 @@ test("More options and Edit work from the keyboard, and text fields show a real 
     await expect(page).toHaveURL(/\/tickets\/SUP-\d+\?step=verify$/);
   });
 
-  await test.step("Edit ticket and More options open from the keyboard", async () => {
-    const more = page.locator("details.more-options");
-    const summary = more.locator("summary").first();
-    await summary.focus();
-    await page.keyboard.press("Enter");
-    await expect(more).toHaveAttribute("open", "");
-    await page.keyboard.press("Enter");
-    await expect(more).not.toHaveAttribute("open");
-    // Edit ticket is its first line.
-    await page.keyboard.press("Enter");
+  await test.step("Edit and Archive on the line under the title, from the keyboard", async () => {
+    const line = page.locator(".ticket-standing");
+    const edit = line.getByRole("link", { name: "Edit", exact: true });
+    const archive = line.getByRole("link", { name: "Archive", exact: true });
+    // Nothing is left for the customer's More options, so it is not on the page.
+    await expect(page.locator("details.more-options")).toHaveCount(0);
+    await edit.focus();
     await page.keyboard.press("Tab");
-    await expect(page.getByRole("link", { name: "Edit ticket" })).toBeFocused();
+    await expect(archive).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(edit).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/tickets\/SUP-\d+\/edit$/);
   });

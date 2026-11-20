@@ -35,24 +35,20 @@ const shown = (html: ReturnType<typeof parse>, text: string) =>
   html.querySelector("main")!.text.split(text).length - 1;
 
 describe("the customer's ticket page", () => {
-  it("holds their words, the status and owner in one line, Edit under More options, nothing of the team's", async () => {
+  it("holds their words, the status and owner in one line with Edit and Archive, nothing of the team's", async () => {
     const { app } = await inProgress();
     const html = await page(app, customerOne);
     expect(html.querySelector(".back")?.text.trim()).toBe("My tickets / SUP-1");
-    // Where it stands and whose turn it is, in plain words, with nothing to press.
+    // Where it stands and whose turn it is, in plain words, then their two quiet links.
     const standing = html.querySelector(".ticket-standing")!;
-    expect(standing.text).toBe("In Progress, with Team Member");
-    expect(standing.querySelector("a, button, details, form")).toBeNull();
+    expect(standing.querySelector(".standing-rest")?.text).toBe(", with Team Member");
+    expect(standing.querySelectorAll("a").map((a) => a.text)).toEqual(["Edit", "Archive"]);
+    expect(standing.querySelector("button, details, form")).toBeNull();
     // Their words are under the check's small label, once.
     expect(html.querySelector(".ticket-card blockquote")?.text).toBe(words);
     expect(shown(html, words)).toBe(1);
     expect(html.querySelector("main")!.text).not.toContain("Printed ten pages twice");
-    expect(
-      html
-        .querySelector("details.more-options")
-        ?.querySelectorAll("a")
-        .map((a) => a.text),
-    ).toEqual(["Edit ticket", "Archive ticket"]);
+    expect(html.querySelector("details.more-options")).toBeNull();
   });
 
   it("shows the check once while they are asked: in the question, not again beside it", async () => {
@@ -61,7 +57,7 @@ describe("the customer's ticket page", () => {
     const html = await page(app, customerOne);
     expect(html.querySelector("#did-this-fix-it")?.text).toContain(words);
     expect(shown(html, words)).toBe(1);
-    expect(html.querySelector(".ticket-standing")?.text).toBe("In Progress, with Team Member");
+    expect(html.querySelector(".ticket-standing .standing-rest")?.text).toBe(", with Team Member");
   });
 });
 
@@ -77,11 +73,13 @@ describe("the team's ticket page", () => {
     expect(more.firstElementChild?.tagName).toBe("SUMMARY");
     expect(more.firstElementChild?.text).toBe("More options");
     expect(more.hasAttribute("open")).toBe(false);
-    expect(more.querySelector(".more-list a")?.text).toBe("Edit ticket");
-    // The owner's menu is in the line under the title, and nothing secondary is.
+    expect(more.querySelector(".more-list a")?.text).toBe("Archive ticket");
+    // The owner's menu is in the line under the title, with Edit at its end, and nothing else
+    // secondary is.
     expect(top.querySelectorAll(".owner-menu form[action$='/take']")).toHaveLength(1);
     expect(top.querySelector("details.more-options")).toBeNull();
-    expect(top.querySelector("a[href$='/edit']")).toBeNull();
+    expect(top.querySelector("a.ticket-line-link[href$='/edit']")?.text).toBe("Edit");
+    expect(more.querySelector("a[href$='/edit']")).toBeNull();
   });
 
   it("folds the evidence list and an existing change link away", async () => {

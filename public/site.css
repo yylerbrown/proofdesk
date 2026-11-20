@@ -699,6 +699,10 @@ table button.danger:is(:hover, :active) {
 .choice > * {
   margin: 0;
 }
+/* On the archive question, the filer's one grey line on what archiving is for. */
+p.archive-why {
+  color: var(--pd-muted);
+}
 form.inline {
   margin: 0;
 }
@@ -2483,6 +2487,27 @@ details.history td:first-child {
 }
 .ticket-standing .standing-rest {
   vertical-align: middle;
+}
+/*
+ * Edit, and the filer's Archive, at the end of the line under the title: quiet links in the
+ * manner of the card's "Change", in grey small type. When the line is full they wrap under it.
+ * On a phone each keeps a tap area at least 40 pixels tall without making the line taller.
+ */
+.ticket-page a.ticket-line-link {
+  margin-inline-start: var(--pd-space-2);
+  color: var(--pd-muted);
+  font-size: var(--pd-text-sm);
+  vertical-align: middle;
+}
+.ticket-facts a.ticket-line-link {
+  margin-inline-start: 0;
+}
+@media (max-width: 639px) {
+  .ticket-page a.ticket-line-link {
+    display: inline-block;
+    margin-block: -12px;
+    padding-block: 12px;
+  }
 }
 
 /* Resolving or reopening from the Status menu: one small form in the next step's place. */

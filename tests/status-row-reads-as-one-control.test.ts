@@ -9,8 +9,8 @@ import { createTicketService } from "../src/server/tickets/service.js";
 
 // On a ticket page the Status menu and the button at the top read as one control: both post to
 // the same place, so the same message follows either press, and that message says the viewer
-// owns the ticket now. Resolving starts with no reason chosen. "Edit ticket" is the first line
-// under More options, and the list's empty search names only what is set.
+// owns the ticket now. Resolving starts with no reason chosen. "Edit" is a quiet link at the end
+// of the line under the title, and the list's empty search names only what is set.
 
 const valid = {
   title: "Printer jams",
@@ -86,25 +86,23 @@ describe("the resolve form's first choice", () => {
   });
 });
 
-describe("Edit ticket", () => {
-  it("is the first line under More options, and the only one when nothing else is allowed", async () => {
+describe("Edit", () => {
+  it("sits on the line under the title, and More options goes when nothing is left in it", async () => {
     // SUP-5 is the demo customer's confirmed ticket; they may edit it and little else.
     const html = await demoPage("demo-customer", "/tickets/SUP-5");
-    const items = html.querySelectorAll("details.more-options .more-list > li");
-    const edit = items[0]!.querySelector("a")!;
+    const edit = html.querySelector(".ticket-standing a.ticket-line-link")!;
     expect(edit.getAttribute("href")).toBe("/tickets/SUP-5/edit");
-    expect(edit.text.trim()).toBe("Edit ticket");
+    expect(edit.text.trim()).toBe("Edit");
     expect(html.querySelectorAll("a[href$='/edit']")).toHaveLength(1);
+    expect(html.querySelector("details.more-options")).toBeNull();
   });
 
-  it("leaves the customer's archive under More options", async () => {
+  it("puts the filer's Archive beside it, so their More options goes", async () => {
     const { app } = await filed();
     const html = await page(app, customerOne);
-    const more = html.querySelector("details.more-options")!;
-    expect(more.querySelectorAll("a, button").map((el) => el.text.trim())).toEqual([
-      "Edit ticket",
-      "Archive ticket",
-    ]);
+    const line = html.querySelector(".ticket-standing")!;
+    expect(line.querySelectorAll("a").map((el) => el.text.trim())).toEqual(["Edit", "Archive"]);
+    expect(html.querySelector("details.more-options")).toBeNull();
   });
 });
 
