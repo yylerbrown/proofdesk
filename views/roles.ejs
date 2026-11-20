@@ -15,6 +15,10 @@
 
 <p class="roles-assistant-note"><small>An assistant acts only on tickets a person has handed to it.</small></p>
 
+<% if (demoAdminNote) { %>
+<p class="roles-demo-admin">On this demo the admin only looks. The Admin column says what an admin may do on a real site.</p>
+<% } %>
+
 <%# The table may scroll inside its own box at phone width, so the page never scrolls sideways. %>
 <div class="overflow-auto roles-scroll">
   <table class="roles">

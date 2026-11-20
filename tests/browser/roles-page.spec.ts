@@ -20,3 +20,21 @@ test("at 390 wide the page Who may do what never scrolls sideways", async ({ pag
   await expect(page.getByRole("columnheader", { name: "Team member (you)" })).toBeVisible();
   expect(await sideways(page)).toBe(0);
 });
+
+// The column headings stay in view after the reader scrolls to the last row, wide and narrow.
+for (const width of [1440, 390]) {
+  test(`at ${width} wide the roles table keeps its column headings in view`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/roles");
+    await page.locator("table.roles tbody tr").last().scrollIntoViewIfNeeded();
+    const heading = page.locator("table.roles thead th").first();
+    await expect(heading).toBeInViewport();
+    // The heading row sits on top of the rows: the point at its middle belongs to the heading.
+    const onTop = await heading.evaluate((th) => {
+      const box = th.getBoundingClientRect();
+      const hit = document.elementFromPoint(box.left + 4, box.top + box.height / 2);
+      return hit !== null && th.contains(hit);
+    });
+    expect(onTop).toBe(true);
+  });
+}

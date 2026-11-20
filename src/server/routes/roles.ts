@@ -9,10 +9,18 @@ import { SCOPE_LABELS } from "./connections.js";
 export function rolesRouter(): Router {
   const router = Router();
   router.get("/roles", (req, res) => {
+    // Only the demo's admin is read-only, so only they are told what the Admin column means.
+    const actor = req.actor;
+    const demoAdminNote =
+      actor !== null &&
+      actor.kind === "person" &&
+      actor.role === "admin" &&
+      actor.readOnly === true;
     res.render("roles", {
       title: "Who may do what",
       groups: rolesTable(SCOPE_LABELS),
-      headers: columnHeaders(req.actor),
+      headers: columnHeaders(actor),
+      demoAdminNote,
     });
   });
   return router;
