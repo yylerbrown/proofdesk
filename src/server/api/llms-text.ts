@@ -6,8 +6,8 @@ import { AGENT_SCOPES, CAPABILITIES } from "../permissions.js";
 import { TOOL_ACTIONS } from "../mcp.js";
 import { ACTIONS, type ApiAction } from "./actions.js";
 import type { Actor } from "../actor.js";
-import { maySuggestChecks } from "../tickets/access.js";
-import { guide, SUGGEST_CHECKS_TEXT, UNTRUSTED_TEXT } from "./describe.js";
+import { maySuggestChecks, suggestionSetting } from "../tickets/access.js";
+import { guide, LISTEN_TEXT, SUGGEST_CHECKS_TEXT, UNTRUSTED_TEXT } from "./describe.js";
 
 // One page for an AI assistant to read once, served at /llms.txt and /llms-full.txt. It is
 // written as Markdown and built from the same action table, capability table and zod schemas
@@ -200,6 +200,9 @@ export function llmsText(address: string, reader: Actor | null = null): string {
       `- Limits: ${WRITE_LIMIT_DESCRIPTION}`,
       `- ${rules.stop}`,
       "",
+      ...(reader !== null && suggestionSetting(reader) !== "off"
+        ? ["## Answering people who ask", "", LISTEN_TEXT, ""]
+        : []),
       ...(reader !== null && maySuggestChecks(reader)
         ? ["## Suggesting ways to verify", "", SUGGEST_CHECKS_TEXT, ""]
         : []),

@@ -26,8 +26,10 @@ import { bulkChangeSchema } from "../tickets/bulk.js";
 import { addEvidenceSchema } from "../tickets/evidence.js";
 import { decideSpecSchema, proposeSpecSchema } from "../tickets/spec.js";
 import { chooseCheckSchema, suggestChecksSchema } from "../tickets/suggested-checks.js";
+import { answerRequestSchema, waitForRequestsQuery } from "../suggestions/requests.js";
 import { LIST_PAGE_SIZE, type TicketService } from "../tickets/service.js";
 import {
+  answerRequestOutput,
   bulkOutput,
   deletedOutput,
   entryOutput,
@@ -40,6 +42,7 @@ import {
   ticketReadOutput,
   ticketRowOutput,
   ticketWantingCheckOutput,
+  waitForRequestsOutput,
 } from "./schemas.js";
 import { parse } from "../validation.js";
 
@@ -224,11 +227,42 @@ export const ACTIONS: ApiAction[] = [
     method: "post",
     path: "/tickets/:key/check",
     summary:
-      "The customer who filed a ticket with no check says how they will know it is fixed: " +
-      "suggestion_id picks one of check_suggestions, or words are their own. People only.",
+      "The customer who filed a ticket sets or changes how they will know it is fixed. words " +
+      "are saved; suggestion_id names the suggestion they started from, which is then marked " +
+      "chosen. With no words, that suggestion's own words are saved. Changing a check withdraws " +
+      "an open question and retires the team's wording, as editing it does. People only.",
     needs: "choose_check",
     body: chooseCheckSchema,
     run: ({ service, actor, key, body }) => service.chooseCheck(key, body, actor),
+  },
+  {
+    name: "wait_for_requests",
+    output: waitForRequestsOutput,
+    method: "get",
+    path: "/suggestion-requests",
+    summary:
+      "Listen for people asking for ways to verify their new ticket. The call is held open up " +
+      "to wait_seconds (25 at most) and answers as soon as there is a request you may answer: " +
+      "its id and the ticket's key, title and description. At the deadline it answers an " +
+      "empty list; call it again. Each request reaches you once. Only an assistant whose admin " +
+      "set its suggestions to When asked or Automatic, never on the demo.",
+    needs: "wait_for_requests",
+    query: waitForRequestsQuery,
+    run: ({ service, actor, query }) => service.waitForRequests(actor, query),
+  },
+  {
+    name: "answer_request",
+    output: answerRequestOutput,
+    method: "post",
+    path: "/suggestion-requests/answer",
+    summary:
+      "Answer a request from wait_for_requests with one to three ways the customer could check " +
+      "the fix themselves, the same as suggest_checks. The first answer wins: a second one, or " +
+      "one after the request expired, is refused.",
+    needs: "answer_request",
+    body: answerRequestSchema,
+    status: 201,
+    run: ({ service, actor, body }) => service.answerRequest(body, actor),
   },
   {
     name: "link_change",

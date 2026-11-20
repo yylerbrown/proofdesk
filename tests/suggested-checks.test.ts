@@ -51,7 +51,8 @@ async function issue(app: Express, scopes: string[], name = "Helper") {
   return keyOnPage(res.text);
 }
 
-const SUGGESTER = ["read_tickets", "suggest_checks"];
+// A connection whose suggestion setting is Automatic, which holds both suggestion scopes.
+const SUGGESTER = ["read_tickets", "suggest_when_asked", "suggest_automatic"];
 
 function agent(app: Express, key: string) {
   return {
@@ -79,15 +80,28 @@ function countRows(db: { prepare: (sql: string) => { get: () => unknown } }): nu
   return (db.prepare("SELECT COUNT(*) AS n FROM check_suggestions").get() as { n: number }).n;
 }
 
-describe("the tick an admin gives a connection", () => {
-  it("is off by default, labelled on the page, and never on a demo connection", async () => {
-    expect(DEFAULT_SCOPES).not.toContain("suggest_checks");
-    expect(DEMO_SCOPES).not.toContain("suggest_checks");
+describe("the suggestion setting an admin gives a connection", () => {
+  it("is Off by default, a choice of three on the page, and never on a demo connection", async () => {
+    for (const scope of ["suggest_when_asked", "suggest_automatic"]) {
+      expect(DEFAULT_SCOPES).not.toContain(scope);
+      expect(DEMO_SCOPES).not.toContain(scope);
+    }
     const { app } = buildTestApp();
     const page = parse((await admin(app).get("/connections")).text);
-    const box = page.querySelector("input[name='scopes'][value='suggest_checks']")!;
-    expect(box.parentNode!.text).toContain("Suggest ways to verify new tickets");
-    expect(box.hasAttribute("checked")).toBe(false);
+    const choices = page.querySelectorAll("input[name='suggestions']");
+    expect(choices.map((choice) => choice.getAttribute("value"))).toEqual([
+      "off",
+      "when_asked",
+      "automatic",
+    ]);
+    expect(choices.map((choice) => choice.parentNode!.text.split(":")[0]!.trim())).toEqual([
+      "Off",
+      "When asked",
+      "Automatic",
+    ]);
+    expect(choices[0]!.hasAttribute("checked")).toBe(true);
+    // The two scopes behind it are not offered as boxes of their own.
+    expect(page.querySelectorAll("input[name='scopes'][value^='suggest']")).toHaveLength(0);
 
     const demo = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
     const { createTicketService } = await import("../src/server/tickets/service.js");
@@ -95,8 +109,36 @@ describe("the tick an admin gives a connection", () => {
     seedDemo(createTicketService(demo.db, demo.config.ticketPrefix));
     const demoKey = keyOnPage((await visitor(demo.app).post("/demo/connection")).text);
     const guide = (await agent(demo.app, demoKey).get("/api")).body;
-    expect(guide.you.scopes).not.toContain("suggest_checks");
-    expect(guide.you.may).not.toContain("suggest_checks");
+    for (const scope of ["suggest_when_asked", "suggest_automatic"]) {
+      expect(guide.you.scopes).not.toContain(scope);
+    }
+    for (const action of ["suggest_checks", "wait_for_requests", "answer_request"]) {
+      expect(guide.you.may).not.toContain(action);
+    }
+  });
+
+  it("stores each choice as the scopes it allows", async () => {
+    const { app, db } = buildTestApp();
+    const choose = (suggestions: string) =>
+      admin(app)
+        .post("/connections")
+        .type("form")
+        .send({ name: `Helper ${suggestions}`, scopes: ["read_tickets"], suggestions });
+    for (const choice of ["off", "when_asked", "automatic"]) {
+      expect((await choose(choice)).status).toBe(200);
+    }
+    const rows = db.prepare("SELECT scopes FROM agent_connections ORDER BY id").all() as {
+      scopes: string;
+    }[];
+    expect(rows.map((row) => JSON.parse(row.scopes))).toEqual([
+      ["read_tickets"],
+      ["read_tickets", "suggest_when_asked"],
+      ["read_tickets", "suggest_when_asked", "suggest_automatic"],
+    ]);
+    // The list of issued connections names what each may do.
+    const page = (await admin(app).get("/connections")).text;
+    expect(page).toContain("Suggest ways to verify a ticket when a person asks");
+    expect(page).toContain("Suggest ways to verify new tickets without being asked");
   });
 
   it("needs reading the tickets too", async () => {
@@ -104,9 +146,12 @@ describe("the tick an admin gives a connection", () => {
     const res = await admin(app)
       .post("/connections")
       .type("form")
-      .send({ name: "Helper", scopes: ["suggest_checks"] });
+      .send({ name: "Helper", scopes: ["write_notes"], suggestions: "when_asked" });
     expect(res.status).toBe(400);
     expect(res.text).toContain("Suggesting ways to verify needs reading the tickets too.");
+    // The page keeps the choice that was made.
+    const kept = parse(res.text).querySelector("input[name='suggestions'][value='when_asked']")!;
+    expect(kept.hasAttribute("checked")).toBe(true);
   });
 });
 
@@ -289,18 +334,66 @@ describe("the customer's pick", () => {
     expect((await as(app, customerOne).get("/api/tickets/SUP-1")).body.fix_check).toBeNull();
   });
 
-  it("is refused once a check exists, except as a repeat that changes nothing", async () => {
+  it("saves the edited words and still marks the suggestion they started from chosen", async () => {
+    const { app, offered } = await suggested(["Every row is there", "The file opens"]);
+    const res = await as(app, customerOne)
+      .post("/api/tickets/SUP-1/check")
+      .send({ words: "Every row of March is there", suggestion_id: offered[0]!.id });
+    expect(res.status, res.text).toBe(200);
+    expect(res.body.fix_check).toBe("Every row of March is there");
+    const states = (await as(app, customerOne).get("/api/tickets/SUP-1")).body.check_suggestions;
+    expect(states.map((s: { state: string }) => s.state)).toEqual(["chosen", "withdrawn"]);
+    const events = (await as(app, customerOne).get("/api/tickets/SUP-1/events")).body;
+    expect(events.at(-1)).toMatchObject({
+      type: "check_chosen",
+      data: { from: null, to: "Every row of March is there", suggested_by: "Helper" },
+    });
+  });
+
+  it("changes a check that is there as editing it does, and a repeat changes nothing", async () => {
     const { app, offered } = await suggested(["Every row is there", "The file opens"]);
     const first = { suggestion_id: offered[0]!.id };
     await as(app, customerOne).post("/api/tickets/SUP-1/check").send(first);
-    expect((await as(app, customerOne).post("/api/tickets/SUP-1/check").send(first)).status).toBe(
-      200,
-    );
-    const other = await as(app, customerOne)
+    const repeat = await as(app, customerOne).post("/api/tickets/SUP-1/check").send(first);
+    expect(repeat.status).toBe(200);
+    expect(repeat.body.version).toBe(2);
+    // The team offers its wording and asks the customer; then the customer changes the check.
+    await as(app, teamActor)
+      .put("/api/tickets/SUP-1/agreed-check")
+      .send({ agreed_check: "The March export has 31 rows" });
+    await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
+    await as(app, teamActor).post("/api/tickets/SUP-1/ready").send({});
+    const asked = (await as(app, customerOne).get("/api/tickets/SUP-1")).body;
+    expect(asked.waiting_on).toBe("customer");
+    const changed = await as(app, customerOne)
+      .post("/api/tickets/SUP-1/check")
+      .send({ words: "I count the rows myself" });
+    expect(changed.status, changed.text).toBe(200);
+    expect(changed.body.fix_check).toBe("I count the rows myself");
+    expect(changed.body.agreed_check ?? null).toBeNull();
+    expect(changed.body.waiting_on).not.toBe("customer");
+    const events = (await as(app, customerOne).get("/api/tickets/SUP-1/events")).body as {
+      type: string;
+      data: Record<string, unknown>;
+    }[];
+    expect(events.find((event) => event.data.to === "I count the rows myself")).toMatchObject({
+      type: "check_chosen",
+      data: { from: "Every row is there", to: "I count the rows myself", suggested_by: null },
+    });
+    expect(events.at(-1)).toMatchObject({
+      type: "check_agreed",
+      data: { from: "The March export has 31 rows", to: null },
+    });
+  });
+
+  it("refuses a withdrawn suggestion with no words of its own", async () => {
+    const { app, offered } = await suggested(["Every row is there", "The file opens"]);
+    await as(app, customerOne).post("/api/tickets/SUP-1/check").send({ words: "My own words" });
+    const late = await as(app, customerOne)
       .post("/api/tickets/SUP-1/check")
       .send({ suggestion_id: offered[1]!.id });
-    expect(other.status).toBe(409);
-    expect(other.body.error.code).toBe("check_exists");
+    expect(late.status).toBe(409);
+    expect(late.body.error.code).toBe("suggestion_gone");
   });
 });
 
