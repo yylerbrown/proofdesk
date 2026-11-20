@@ -5,8 +5,15 @@ import { HttpError, ValidationError } from "../errors.js";
 import { parseKey } from "./keys.js";
 import * as repository from "./repository.js";
 
-/** The retry-safe wrapper around a write, for the JSON API, the MCP tools and the new-ticket form. */
-export function createOnce(db: Db, prefix: string) {
+/**
+ * The retry-safe wrapper around a write, for the JSON API, the MCP tools and the new-ticket form.
+ * requireRow is the ticket service's own check that an actor may read a ticket.
+ */
+export function createOnce(
+  db: Db,
+  prefix: string,
+  requireRow: (key: string, actor: Actor) => repository.TicketRow,
+) {
   return {
     /**
      * Runs a write once per idempotency key. A retry with the same key and the same request
@@ -40,6 +47,17 @@ export function createOnce(db: Db, prefix: string) {
               "idempotency_key_reused",
               "That idempotency key was already used for a different request.",
             );
+          }
+          // The saved answer is given back only to a caller who may still read the ticket.
+          // Anyone else gets the refusal the same write without a key would get. A ticket
+          // deleted permanently (410, told only to the team) still answers the retry of its
+          // own delete with the saved answer.
+          if (ticketKey !== "") {
+            try {
+              requireRow(ticketKey, actor);
+            } catch (err) {
+              if (!(err instanceof HttpError && err.status === 410)) throw err;
+            }
           }
           return JSON.parse(seen.response) as T;
         }

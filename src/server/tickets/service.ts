@@ -119,7 +119,7 @@ export function createTicketService(
     // assistants.ts: giveToAgent, endAgentWork, connectedAssistants, agentHelp, assistantSignals
     ...createAssistants(shared),
     // once.ts: once, the retry-safe wrapper around a write
-    ...createOnce(db, prefix),
+    ...createOnce(db, prefix, shared.requireRow),
     // ../demo.ts: recordDemoSeed, hasDemoSeed, assistantSampleKey, recordedRunKey
     ...createDemoRecord(db, prefix, shared.logEvent),
     // allowed-actions.ts: which controls a page shows
