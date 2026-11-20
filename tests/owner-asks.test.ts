@@ -65,7 +65,7 @@ describe("who asks the customer", () => {
       .post("/api/tickets/SUP-1/hand-off")
       .send({ to: "dev-admin-1", expected_owner: "dev-team-1" });
     const reason = await refusedBackToTicket(as(app, teamActor), "/tickets/SUP-1/ready", ask);
-    expect(reason).toMatch(/Only Admin, who owns ticket SUP-1, can ask the customer to verify/);
+    expect(reason).toMatch(/Only Admin, who owns ticket SUP-1, can ask the customer\./);
     expect((await reread(app)).ready_at).toBeNull();
 
     const owner = await admin(app).post("/api/tickets/SUP-1/ready").send(ask);

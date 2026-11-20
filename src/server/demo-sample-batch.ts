@@ -25,8 +25,6 @@ export const SAMPLE_BATCH_PERIODS = {
   quarter: { label: "The last three months", days: 90 },
 } as const;
 
-export type SampleBatchPeriod = keyof typeof SAMPLE_BATCH_PERIODS;
-
 /** What the form sends. */
 export const sampleBatchSchema = z.object({
   count: z.enum(SAMPLE_BATCH_SIZES).transform(Number),

@@ -1,7 +1,6 @@
-# Fly.io configuration for the real site, the app `proofdesk`, with GitHub sign-in. The demo
-# is `fly.toml`. Deploy this one with: fly deploy --config fly.proofdesk.toml Nothing in the repository runs it: the owner
-# deploys by hand (see docs/DEPLOY.md) or with the manual workflow in
-# .github/workflows/deploy.yml.
+# Fly.io configuration for the real site, the app `proofdesk`, with GitHub sign-in (the demo
+# is fly.toml). Deploy it by hand with: fly deploy --config fly.proofdesk.toml (see
+# docs/DEPLOY.md). The Deploy workflow deploys only the demo.
 
 app = "proofdesk"
 # Where the disk and the machine are. Fly no longer offers "sea".
@@ -21,7 +20,7 @@ kill_timeout = 10
   # Where Fly's proxy puts the visitor's address. Used for rate limits. See docs/DEPLOY.md:
   # this must be checked on the first deploy.
   CLIENT_IP_HEADER = "fly-client-ip"
-  # The public copy of the source, linked from the welcome page as "Source and setup".
+  # The public copy of the source, linked from the sign-in page (/sign-in) as "Source and setup".
   SOURCE_URL = "https://github.com/yylerbrown/proofdesk"
   # The demo, linked from this site's sign-in page so a visitor can try it without signing in.
   DEMO_URL = "https://support-desk-demo.fly.dev"

@@ -243,8 +243,11 @@ export function createFiling(shared: Shared) {
         repository.deleteTicketForever(db, row.id, actor.id, new Date().toISOString());
       })();
       // The ticket is gone from the database now. Whether its old text has also left the
-      // files on disk depends on the checkpoint, which reports it.
-      return { filesCleaned: repository.flushDeletedContent(db) };
+      // files on disk depends on the checkpoint, which reports it. A checkpoint cannot run
+      // inside an open transaction, and a write sent with an idempotency key runs inside
+      // one, so then the files are left for the next checkpoint and the answer says so.
+      const filesCleaned = db.inTransaction ? false : repository.flushDeletedContent(db);
+      return { filesCleaned };
     },
   };
 }

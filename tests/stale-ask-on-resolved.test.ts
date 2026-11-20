@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { as, buildTestApp, customerOne, refusedBackToTicket, teamActor } from "./helpers.js";
 
-// A tab opened before the ticket was resolved still shows "Ask the customer to verify". Pressing
+// A tab opened before the ticket was resolved still shows "Ask the customer". Pressing
 // it then sends nothing, and the refusal is worded from the ticket as it is now: resolved, not
 // waiting to be moved to In Progress.
 

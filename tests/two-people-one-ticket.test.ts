@@ -862,7 +862,7 @@ describe("the ticket page's own forms", () => {
     expect((await read(app)).status).toBe("new");
   });
 
-  it("answer Ask the customer to verify pressed twice with the saved line, and no refusal", async () => {
+  it("answer Ask the customer pressed twice with the saved line, and no refusal", async () => {
     const { app } = buildTestApp();
     await filed(app);
     await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
