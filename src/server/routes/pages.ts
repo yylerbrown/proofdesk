@@ -46,6 +46,7 @@ import {
 } from "../pages/list-query.js";
 import { sameText, type ListSort } from "../tickets/schemas.js";
 import { rememberBulkOutcome, takeBulkOutcome } from "../pages/bulk-outcome.js";
+import { lastPage, listPages } from "../pages/list-pages.js";
 import {
   addToBox,
   firstInBox,
@@ -68,7 +69,7 @@ import {
 } from "../pages/saved.js";
 import { RESOLVE_REASON_LABELS, TICKET_STATUSES } from "../tickets/schemas.js";
 import type { SimilarTicket } from "../tickets/reads.js";
-import { LIST_PAGE_SIZE, type Ticket, type TicketService } from "../tickets/service.js";
+import type { Ticket, TicketService } from "../tickets/service.js";
 
 // The pages. Like the JSON routes, they only read the request, call the ticket service and
 // send the answer. The answer is HTML built from a template in views/.
@@ -956,14 +957,38 @@ export function pagesRouter(
     return { status, owner, q: query.q, sort: query.sort, page: query.page, resolved };
   }
 
+  /**
+   * How many tickets this view of the list holds across all its pages. Under "Resolved" with
+   * its filter by age, only the resolved tickets of that age count.
+   */
+  function listTotal(view: ListView, actor: Actor): number {
+    const { status, owner, q } = view;
+    const cutoff = recentResolvedCutoff(status, q, new Date());
+    if (cutoff === undefined || view.resolved === undefined) {
+      return service.countListed(status, actor, { owner, q });
+    }
+    const older = service.countResolvedBefore(actor, { owner, q }, cutoff);
+    if (view.resolved === "older") return older;
+    return service.countTickets(actor, { owner, q }).resolved - older;
+  }
+
   router.get("/tickets", (req, res) => {
     const actor = signedIn(req);
-    const { q } = listView(req, actor);
+    const view = listView(req, actor);
+    const { q } = view;
     // A ticket key typed into the search, such as "sup-3", opens that ticket when this viewer
     // may see it. Any other text, another customer's key included, is an ordinary search.
     const typedKey = q === undefined ? null : service.visibleKey(q, actor);
     if (typedKey !== null) {
       res.redirect(`/tickets/${typedKey}`);
+      return;
+    }
+    // A page past the end, from an old link or after a change emptied the last page, goes to
+    // the last page with the same filters. It comes before the line about a change to many
+    // tickets is read, so the page the browser lands on still says it.
+    const last = lastPage(listTotal(view, actor));
+    if (view.page > last) {
+      res.redirect(listHref(view, last > 1 ? last : undefined));
       return;
     }
     // Just after a change to many tickets, the list says what it did.
@@ -1084,8 +1109,10 @@ export function pagesRouter(
         return { ...ticket, tag, tagHref };
       }),
       viewerRole: actor.role,
-      // A full page means there may be older tickets on the next one.
-      nextPage: tickets.length === LIST_PAGE_SIZE ? listHref(filters, pageNumber + 1) : null,
+      // Under a list of more than one page: the page before, where this one sits, the page after.
+      pages: listPages(pageNumber, listTotal(view, actor), (page) =>
+        listHref(filters, page > 1 ? page : undefined),
+      ),
       filters,
       href: (change: Partial<ListFilters>) => listHref({ ...filters, ...change }),
       // Who owns a ticket is the team's question; a customer's list is their own tickets.
