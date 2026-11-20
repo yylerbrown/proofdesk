@@ -150,6 +150,7 @@ const READ_ONLY_ACTIONS: Action[] = [
   "read",
   "read_notes",
   "list_people",
+  "read_activity",
 ];
 
 /**
