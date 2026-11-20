@@ -49,7 +49,7 @@ describe("the docs", () => {
     const docs = ["README.md", ...fs.readdirSync("docs").filter((f) => f.endsWith(".md"))];
     for (const file of docs) {
       const text = fs.readFileSync(file === "README.md" ? file : `docs/${file}`, "utf8");
-      expect(text, file).not.toMatch(/\b(grader|rubric)s?\b/i);
+      expect(text, file).not.toMatch(/\b(grader|rubric|bonus)s?\b/i);
       expect(text, file).not.toContain("The brief asks");
     }
   });

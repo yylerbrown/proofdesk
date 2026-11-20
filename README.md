@@ -77,12 +77,12 @@ off until its three settings are set. Proofdesk reads your name, email address a
 never your files, mail or code, and keeps no GitHub token. The menu under each person's name links
 their account page, with a switch for email notices. Who may do what is one table in the code
 ([`permissions.ts`](src/server/permissions.ts)). The page **Who may do what** (`/roles`), open to
-anyone, is computed from the same check the server runs on every request, so the page and the rules
-cannot disagree. An admin chooses who is on the team on the **People** page. Before a change is
-made, **Check this change** shows what it will do: what the person will see, which assistant
-connections end, and which tickets must be handed on first. The change applies on their next page,
-and every change is kept in a log that cannot be edited. People named in the server settings keep
-that role and show as locked on **People**. A refusal names who may and links **Who may do what**.
+anyone, is computed from the same check the server runs on every request. An admin chooses who
+is on the team on the **People** page. Before a change is made, **Check this change** shows what it
+will do: what the person will see, which assistant connections end, and which tickets must be
+handed on first. The change applies on their next page, and every change is kept in a log that
+cannot be edited. People named in the server settings keep that role and show as locked on
+**People**. A ticket action refused for the role names who may and links **Who may do what**.
 
 | Role        | How someone gets it                                       | What they do                                                                                                                                                                                                                                                                                                                                                            |
 | ----------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

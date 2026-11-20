@@ -23,10 +23,17 @@ describe("roles, in the README", () => {
     expect(fs.readFileSync("src/server/permissions.ts", "utf8")).toContain("export function can(");
     expect(roles).toContain("**Who may do what** (`/roles`), open to anyone");
     expect(roles).toContain("computed from the same check the server runs on every request");
-    expect(fs.readFileSync("src/server/routes/roles.ts", "utf8")).toContain('router.get("/roles"');
-    expect(flat("views/roles.ejs")).toContain(
-      "This page is computed from the same check the server runs on every request, so the page and the rules cannot disagree.",
-    );
+    const route = fs.readFileSync("src/server/routes/roles.ts", "utf8");
+    expect(route).toContain('router.get("/roles"');
+    expect(route).toContain("groups: rolesTable(");
+    expect(fs.readFileSync("src/server/roles-table.ts", "utf8")).toContain("can(person, action,");
+  });
+
+  it("do not promise the page and the rules can never disagree", () => {
+    // The table adds who must own a ticket by hand, so the docs say only where it comes from.
+    for (const file of ["README.md", "docs/SPEC.md", "docs/TOUR.md"]) {
+      expect(flat(file), file).not.toContain("cannot disagree");
+    }
   });
 
   it("say Check this change shows a role change before it is made, and changes are logged", () => {

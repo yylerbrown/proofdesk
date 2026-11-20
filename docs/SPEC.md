@@ -256,6 +256,6 @@ The owner's change to the proof step; the rules, the JSON API, the assistant too
 
 The owner asked for roles to be done more thoroughly. No new role, and the rules themselves are unchanged.
 
-- **Who may do what.** A page at `/roles`, open to anyone, shows every action in one table with a column for the customer, the team member, the admin and an AI assistant. It is computed from the same check the server runs on every request, so the page and the rules cannot disagree. The viewer's column is marked "(you)". The person menu, People, Account and About this demo link it.
+- **Who may do what.** A page at `/roles`, open to anyone, shows every action in one table with a column for the customer, the team member, the admin and an AI assistant. It is computed from the same check the server runs on every request. The viewer's column is marked "(you)". The person menu, People, Account and About this demo link it.
 - **Check this change.** On People, choosing a role opens a check that says what the change will do before it is made: what the person will see, which of their assistant connections end, and which open tickets must be handed on first, when those block it. On the demo the check only reads, so it works for the read-only admin and changes nothing.
 - **Where roles come from.** Roles are chosen on People; the server settings `ADMIN_GITHUB_IDS` and `TEAM_GITHUB_IDS` lock a person's role. Every change is kept in a log that cannot be edited.
