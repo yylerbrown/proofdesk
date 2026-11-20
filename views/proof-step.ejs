@@ -1,0 +1,32 @@
+<%# The customer's step after filing, in the place their check takes once saved: one box for what
+    would prove it is fixed, Save and a quiet Skip. Suggested ways, when there are some, are
+    pick-one choices above the box: picking one fills the box, and the box is what is saved.
+    With scripts off the choice picked is posted with the form and fills an empty box. The
+    proof-step script also asks a listening assistant, and adds its button, only when the
+    form says a page may ask. %>
+<% const refused = locals.problem?.form === "verify"; %>
+<form method="post" action="/tickets/<%= ticket.key %>/check" id="verify-form" class="step-form proof-step"<% if (proof.canAsk) { %> data-proof-read="/tickets/<%= ticket.key %>/check-suggestions" data-proof-ask="/tickets/<%= ticket.key %>/check-suggestions/request"<% } %>>
+  <%- versionField %>
+  <div class="proof-label-row">
+    <label for="proof-words" class="proof-label">What would prove it is fixed?</label>
+  </div>
+  <p id="proof-hint" class="hint">One thing you can check yourself when the team says it is fixed.</p>
+  <%# The choices' place. While an assistant is asked it holds "Asking..." and keeps the room the
+      choices take, so nothing under it moves when they arrive. %>
+  <div class="proof-choices" aria-live="polite"<% if (proof.choices.length === 0) { %> hidden<% } %>>
+    <% if (proof.choices.length > 0) { %>
+    <fieldset>
+      <legend class="hint"><%= proof.sample ? "Sample suggestions. On a real site the team's own AI assistant writes these." : "Suggested by the team's AI assistant. Pick one to fill the box, then edit it if you like." %></legend>
+      <% for (const choice of proof.choices) { %>
+      <label><input type="radio" name="<%= choice.name %>" value="<%= choice.value %>" data-words="<%= choice.words %>" <% if (choice.checked) { %>checked<% } %> /> <span class="user-text"><%= choice.words %></span></label>
+      <% } %>
+    </fieldset>
+    <% } %>
+  </div>
+  <textarea id="proof-words" name="words" rows="3" maxlength="500" aria-describedby="proof-hint<% if (refused) { %> proof-error<% } %>" <% if (refused) { %>aria-invalid="true" autofocus<% } %>><%= proof.words %></textarea>
+  <% if (refused) { %><small id="proof-error" role="alert"><%= problem.message %></small><% } %>
+  <div class="form-actions">
+    <button type="submit">Save</button>
+    <a href="/tickets/<%= ticket.key %>"><%= ticket.fix_check ? "Cancel" : "Skip for now" %></a>
+  </div>
+</form>

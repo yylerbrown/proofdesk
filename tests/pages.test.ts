@@ -79,7 +79,8 @@ describe("new ticket form", () => {
     expect(res.text).toContain(
       '<form method="post" action="/tickets" enctype="multipart/form-data">',
     );
-    expect(res.text).toContain("What would prove it is fixed?");
+    // What would prove it is fixed is the step after filing, not a box on this form.
+    expect(res.text).not.toContain("What would prove it is fixed?");
   });
 
   it("files a ticket, redirects to its page, and the JSON API returns the same ticket", async () => {

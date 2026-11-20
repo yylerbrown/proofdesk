@@ -28,7 +28,7 @@ test("More options and Edit work from the keyboard, and text fields show a real 
     await expect(title).toHaveCSS("outline-width", "2px");
     await title.fill("Menus close from the keyboard");
     await page.getByRole("button", { name: "File ticket" }).click();
-    await expect(page).toHaveURL(/\/tickets\/SUP-\d+$/);
+    await expect(page).toHaveURL(/\/tickets\/SUP-\d+\?step=verify$/);
   });
 
   await test.step("Edit ticket and More options open from the keyboard", async () => {

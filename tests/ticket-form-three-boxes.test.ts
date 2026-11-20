@@ -2,9 +2,10 @@ import { parse } from "node-html-parser";
 import { describe, expect, it } from "vitest";
 import { admin, as, buildTestApp, customerOne } from "./helpers.js";
 
-// The new ticket form and the edit form are three boxes: Title, Description and "What would prove
-// it is fixed? (optional)". The page link is no longer asked for, but a ticket that has one keeps
-// it through an edit, and the API still takes it.
+// The new ticket form and the edit form are two boxes: Title and Description, and the new form's
+// pictures. What would prove it is fixed is the step after filing, on the ticket. The page link
+// is no longer asked for, but a ticket that has one keeps it through an edit, and the API still
+// takes it. A check the ticket has is kept through an edit too.
 
 const valid = { title: "Printer jams", description: "It jams on page two." };
 
@@ -16,13 +17,14 @@ function boxesOf(html: ReturnType<typeof parse>) {
 }
 
 describe("the new ticket form", () => {
-  it("is the heading, three boxes, File ticket and Cancel", async () => {
+  it("is the heading, two boxes and pictures, File ticket and Cancel", async () => {
     const { app } = buildTestApp();
     const html = parse((await as(app, customerOne).get("/tickets/new").redirects(1)).text);
     const main = html.querySelector("main")!;
     expect(main.querySelectorAll("h1").map((h) => h.text)).toEqual(["New ticket"]);
     // The picture picker goes with the description.
-    expect(boxesOf(html)).toEqual(["title", "description", "pictures", "fix_check"]);
+    expect(boxesOf(html)).toEqual(["title", "description", "pictures"]);
+    expect(main.text).not.toContain("What would prove it is fixed?");
     expect(main.querySelector("nav")).toBeNull();
     expect(main.text).not.toContain("Page where it happened");
     expect(main.text).not.toContain("Initial status");
@@ -32,21 +34,21 @@ describe("the new ticket form", () => {
 });
 
 describe("the edit form", () => {
-  it("has the same three boxes and no breadcrumb", async () => {
+  it("has the same two boxes and no breadcrumb", async () => {
     const { app } = buildTestApp();
     await admin(app).post("/api/tickets").send(valid);
     const html = parse((await admin(app).get("/tickets/SUP-1/edit")).text);
     expect(html.querySelector("main h1")?.text).toBe("Edit ticket");
     expect(html.querySelector("main nav")).toBeNull();
-    expect(boxesOf(html)).toEqual(["title", "description", "fix_check"]);
+    expect(boxesOf(html)).toEqual(["title", "description"]);
   });
 
-  it("keeps a page link the ticket already has when it is saved", async () => {
+  it("keeps a page link and a check the ticket already has when it is saved", async () => {
     const { app } = buildTestApp();
     const link = "https://example.com/printer";
-    await admin(app)
+    await as(app, customerOne)
       .post("/api/tickets")
-      .send({ ...valid, where_url: link });
+      .send({ ...valid, where_url: link, fix_check: "Ten pages print." });
     const html = parse((await admin(app).get("/tickets/SUP-1/edit")).text);
     const hidden = html.querySelector("main form input[type=hidden][name=where_url]");
     expect(hidden?.getAttribute("value")).toBe(link);
@@ -59,12 +61,12 @@ describe("the edit form", () => {
     }
     fields.title = "Printer jams on every page";
     fields.description = form.querySelector("textarea[name=description]")!.text;
-    fields.fix_check = form.querySelector("textarea[name=fix_check]")!.text;
     const saved = await admin(app).post("/tickets/SUP-1/edit").type("form").send(fields);
     expect(saved.status).toBe(303);
     const ticket = (await admin(app).get("/api/tickets/SUP-1")).body;
     expect(ticket.title).toBe("Printer jams on every page");
     expect(ticket.where_url).toBe(link);
+    expect(ticket.fix_check).toBe("Ten pages print.");
   });
 
   it("leaves no link field on a ticket that has none", async () => {

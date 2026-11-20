@@ -12,7 +12,9 @@
   // scripts off; a refused form comes back open with what was chosen and typed.
   const resolveForm = choices.some((c) => c.kind === "resolve") && (step === "resolve" || problem?.form === "resolve");
   const reopenForm = staff && choices.some((c) => c.kind === "reopen") && (step === "reopen" || problem?.form === "reopen");
-  const stepForm = resolveForm || reopenForm;
+  // The customer's step after filing, what would prove it is fixed, shows in the check's place.
+  const proofStep = proof.step;
+  const stepForm = resolveForm || reopenForm || proofStep;
 %>
 <%# One column of reading width, the same for every ticket, role and width: the way back, the
     title, status and owner on one line, the ticket's own words, the customer's check, where it
@@ -149,7 +151,9 @@
   // The customer's way back in, except while the question's own No does that.
   const reopening = allowed.reopen && !staff && !confirming;
   const hasStep = Boolean(locals.nextStep || locals.demoNext || restoring || reopening || stepForm);
-  const showCard = question || ticket.fix_check || ticket.agreed_check || card.line || card.asked || hasStep;
+  // Its filer's one quiet link on a ticket that does not say yet what would prove it is fixed.
+  const addProof = proof.canChange && !ticket.fix_check;
+  const showCard = question || ticket.fix_check || ticket.agreed_check || card.line || card.asked || hasStep || addProof || proof.waiting;
 %>
 <%# A code change linked to the ticket is the first line of the evidence, for the team. %>
 <% const changeUrl = staff ? ticket.change_url : null; %>
@@ -164,12 +168,22 @@
 <article class="ticket-card" <% if (question) { %>id="did-this-fix-it"<% } %>>
   <% if (question) { %>
   <h2>Did this fix it?</h2>
+  <% } else if (proofStep) { %>
+  <%- include("proof-step", { proof, versionField }) %>
   <% } else if (ticket.fix_check) { %>
-  <p class="card-label">What would prove it is fixed?</p>
+  <%# Its filer may change it in the same step, from one quiet link beside its label. %>
+  <p class="card-label">What would prove it is fixed?<% if (proof.canChange) { %> <a href="/tickets/<%= ticket.key %>?step=verify#verify-form" class="card-label-link" aria-label="Change what would prove it is fixed">Change</a><% } %></p>
   <% } %>
-  <% if (ticket.fix_check) { %>
+  <% if (ticket.fix_check && !proofStep) { %>
   <blockquote class="user-text"><%= ticket.fix_check %></blockquote>
+  <%# Just after saving, once, under the words saved. %>
+  <% if (proof.saved) { %><p class="card-saved" role="status"><%= proof.saved %></p><% } %>
   <% } %>
+  <% if (addProof && !proofStep) { %>
+  <p class="card-proof-add"><a href="/tickets/<%= ticket.key %>?step=verify#verify-form">Add what would prove it</a></p>
+  <% } %>
+  <%# For the team, until the customer saves: only that suggestions wait, never the suggestions. %>
+  <% if (proof.waiting) { %><p class="card-detail card-waiting"><%= proof.waiting %></p><% } %>
   <% if (ticket.agreed_check) { %>
   <p class="card-team-check"><small>Team's check: <span class="user-text"><%= ticket.agreed_check %></span></small></p>
   <% } %>
@@ -312,7 +326,7 @@
       <a href="/tickets/<%= ticket.key %>">Cancel</a>
     </div>
   </form>
-  <% } else { %>
+  <% } else if (!proofStep) { %>
   <%# The viewer's one step: filled when it is the page's next step, outlined while an
       assistant's request for review comes first. %>
   <% if (locals.nextStep) { %>

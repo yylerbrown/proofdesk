@@ -374,11 +374,17 @@ export function describeEvent(event: TicketEvent): string {
   if (event.type === "check_adopted")
     return "The customer adopted the team's wording as their check";
   if (event.type === "check_chosen") {
-    const chosen = z.object({ suggested_by: z.string().nullable() }).safeParse(event.data);
+    const chosen = z
+      .object({ from: z.string().nullable().optional(), suggested_by: z.string().nullable() })
+      .safeParse(event.data);
     if (chosen.success) {
-      return chosen.data.suggested_by === null
-        ? "Customer wrote what would prove it is fixed"
-        : `Customer chose what would prove it is fixed, suggested by ${chosen.data.suggested_by}`;
+      if (chosen.data.suggested_by !== null) {
+        return `Customer chose what would prove it is fixed, suggested by ${chosen.data.suggested_by}`;
+      }
+      // Written over earlier words, from the "Change" beside them.
+      return chosen.data.from
+        ? "Customer changed what would prove it is fixed"
+        : "Customer wrote what would prove it is fixed";
     }
   }
   if (event.type === "archived") return "Archived";

@@ -86,7 +86,7 @@ test("the strip shows, removes, stops at four, and takes a paste and a drop", as
 
   // Filed, the four show under the description as squares that open the full picture.
   await page.getByRole("button", { name: "File ticket" }).click();
-  await expect(page).toHaveURL(/\/tickets\/SUP-\d+$/);
+  await expect(page).toHaveURL(/\/tickets\/SUP-\d+\?step=verify$/);
   const thumbs = page.locator(".pictures img");
   await expect(thumbs).toHaveCount(4);
   await expect(thumbs.first()).toHaveAttribute("alt", "Picture 1 of 4 from Customer Two");
@@ -106,7 +106,7 @@ test("a reply's pictures show under it, and four fit on one line at phone width"
   await page.getByLabel("Title").fill("Four pictures on a phone");
   await page.getByLabel("Description").fill("A ticket to answer with pictures.");
   await page.getByRole("button", { name: "File ticket" }).click();
-  await expect(page).toHaveURL(/\/tickets\/SUP-\d+$/);
+  await expect(page).toHaveURL(/\/tickets\/SUP-\d+\?step=verify$/);
 
   await page.locator("summary", { hasText: "Write a message" }).click();
   await page.getByRole("textbox", { name: "Your message" }).fill("Here is what I see.");

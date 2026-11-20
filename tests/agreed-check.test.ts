@@ -94,7 +94,9 @@ describe("the agreed check", () => {
     expect(customer.text).toContain(`${tighter} &lt;b&gt;now&lt;/b&gt;`);
     // The customer's own words are the card's check; the team's is one quiet line under them.
     const card = parse(customer.text).querySelector(".ticket-card")!;
-    expect(card.querySelector(".card-label")?.text).toBe("What would prove it is fixed?");
+    expect(card.querySelector(".card-label")?.childNodes[0]?.text.trim()).toBe(
+      "What would prove it is fixed?",
+    );
     expect(card.querySelector("blockquote")?.text).toBe(words);
     expect(card.querySelector("blockquote + .card-team-check")?.text).toContain("Team's check:");
     expect(customer.text).not.toContain("In your words");

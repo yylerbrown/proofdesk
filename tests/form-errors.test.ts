@@ -105,13 +105,19 @@ describe("the Title box", () => {
   });
 });
 
-describe("the check box", () => {
+describe("the box for what would prove it is fixed", () => {
   it("is named by its label words alone, so its hint is read once", async () => {
     const { app } = buildTestApp();
-    const res = await admin(app).get("/tickets/new").redirects(1);
+    await as(app, customerOne)
+      .post("/api/tickets")
+      .send({ title: valid.title, description: valid.description });
+    const res = await as(app, customerOne).get("/tickets/SUP-1?step=verify");
     const html = parse(res.text);
-    const check = html.querySelector("[name=fix_check]");
-    expect(nameOf(html, check)).toBe("What would prove it is fixed? (optional)");
+    const check = html.querySelector("textarea[name=words]");
+    const id = check?.getAttribute("id") ?? "";
+    expect(html.querySelector(`label[for=${id}]`)?.text.trim()).toBe(
+      "What would prove it is fixed?",
+    );
     expect(descriptionOf(html, check)).toHaveLength(1);
     expect(descriptionOf(html, check)[0]).toMatch(/^One thing you can check yourself/);
   });

@@ -2,7 +2,6 @@
 <%
   // The same form files a ticket and edits one. When editing, it posts to /tickets/KEY/edit.
   const editKey = action.endsWith("/edit") ? action.split("/")[2] : null;
-  const fixCheckDescribedBy = errors.fix_check ? "fix_check-error fix_check-hint" : "fix_check-hint";
   // After a refused submit, focus goes to the first box with a message, in form order, so a
   // keyboard or screen reader user lands on what to fix.
   const firstError = ["title", "description", "pictures", "fix_check", "where_url"].find((name) => errors[name]);
@@ -49,11 +48,16 @@
       API still takes it. A link the ticket already has rides along unseen, so editing never
       drops it. Only a link the server refused gets its box back, with the reason under it. %>
   <% if (values.where_url && !errors.where_url) { %><input type="hidden" name="where_url" value="<%= values.where_url %>" /><% } %>
+  <%# What would prove it is fixed is not asked here: on a new ticket it is the step after
+      filing, and on a filed one its filer changes it there. A hand-made form may still send it:
+      it rides along unseen on the new form, and only a refused one gets its box back. %>
+  <% if (!editKey && values.fix_check && !errors.fix_check) { %><input type="hidden" name="fix_check" value="<%= values.fix_check %>" /><% } %>
   <%# Each box's minlength and maxlength are the server's limits for it, so the browser stops at the
       same length and says when a title is too short. The description is the one exception, below. %>
-  <%# The three boxes follow the shape of a good prompt: the problem, the context, and what would
-      prove it is fixed. Each says its part in one grey hint inside its label, so the box is
-      named by the label words alone and the hint is read once, as its description. %>
+  <%# The boxes follow the shape of a good prompt: the problem and the context here, and what
+      would prove it is fixed in the next step. Each says its part in one grey hint inside its
+      label, so the box is named by the label words alone and the hint is read once, as its
+      description. %>
   <label>
     <span id="title-label">Title</span>
     <small id="title-hint" class="hint">The problem, in a few words.</small>
@@ -79,19 +83,13 @@
   <%- include("add-pictures", { limit: pictureLimits.perMessage, strip: "ticket-picture-strip", box: "description", line: locals.pictureLine, focus: firstError === "pictures" }) %>
   <% } %>
 
+  <% if (!editKey && errors.fix_check) { %>
   <label>
-    <% if (locals.checkLocked) { %>
-    <%# Greyed for the team: only its label and whose words they are. %>
-    <span id="fix_check-label">What would prove it is fixed?</span>
-    <textarea rows="3" readonly aria-labelledby="fix_check-label" aria-describedby="fix_check-locked"><%= values.fix_check %></textarea>
-    <small id="fix_check-locked">The customer's own words. Only they can change them.</small>
-    <% } else { %>
-    <span id="fix_check-label">What would prove it is fixed? (optional)</span>
-    <small id="fix_check-hint" class="hint">One thing you can check yourself, like "I can sign in on my phone".</small>
-    <textarea name="fix_check" rows="3" maxlength="500" aria-labelledby="fix_check-label" aria-describedby="<%= fixCheckDescribedBy %>" <% if (errors.fix_check) { %>aria-invalid="true"<% } %> <%= focusIf("fix_check") %>><%= values.fix_check %></textarea>
-    <% } %>
+    What would prove it is fixed? (optional)
+    <textarea name="fix_check" rows="3" maxlength="500" aria-invalid="true" aria-describedby="fix_check-error" <%= focusIf("fix_check") %>><%= values.fix_check %></textarea>
   </label>
-  <% if (errors.fix_check) { %><small id="fix_check-error"><%= errors.fix_check.join(" ") %></small><% } %>
+  <small id="fix_check-error"><%= errors.fix_check.join(" ") %></small>
+  <% } %>
 
   <% if (errors.where_url) { %>
   <label>

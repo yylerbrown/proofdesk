@@ -23,7 +23,7 @@ test("a team member searches, ticks every row shown and resolves them with one r
     await page.getByLabel("Title").fill(title);
     await page.getByLabel("Description").fill("It happens every time.");
     await page.getByRole("button", { name: "File ticket" }).click();
-    await expect(page).toHaveURL(/\/tickets\/SUP-\d+$/);
+    await expect(page).toHaveURL(/\/tickets\/SUP-\d+\?step=verify$/);
   }
 
   await page.context().clearCookies();
@@ -97,7 +97,7 @@ test("the bar covers the filter row at desktop and phone width, Tab skips the fi
     await page.getByLabel("Title").fill(`${marker} report ${n} is late`);
     await page.getByLabel("Description").fill("It happens every time.");
     await page.getByRole("button", { name: "File ticket" }).click();
-    await expect(page).toHaveURL(/\/tickets\/SUP-\d+$/);
+    await expect(page).toHaveURL(/\/tickets\/SUP-\d+\?step=verify$/);
   }
   await page.context().clearCookies();
   await page.goto("/sign-in");

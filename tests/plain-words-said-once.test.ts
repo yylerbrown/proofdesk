@@ -74,24 +74,15 @@ describe("the list's bar for ticked tickets", () => {
   });
 });
 
-describe("the team's edit form", () => {
-  it("shows the customer's greyed check with its label and one line only", async () => {
+describe("the edit form", () => {
+  it("has no box or locked hint for the check, for the team or the customer", async () => {
     const { app } = await inProgress();
-    const form = parse((await as(app, teamActor).get("/tickets/SUP-1/edit")).text);
-    const box = form.querySelector("textarea[readonly]")!;
-    const label = box.parentNode!;
-    expect(label.querySelector("#fix_check-label")?.text).toBe("What would prove it is fixed?");
-    expect(label.querySelector("#fix_check-hint")).toBeNull();
-    expect(label.querySelector("#fix_check-locked")?.text).toBe(
-      "The customer's own words. Only they can change them.",
-    );
-    expect(label.querySelectorAll("small")).toHaveLength(1);
-    // The customer's own form still offers it as optional, with its hint.
-    const own = parse((await as(app, customerOne).get("/tickets/SUP-1/edit")).text);
-    expect(own.querySelector("#fix_check-label")?.text).toBe(
-      "What would prove it is fixed? (optional)",
-    );
-    expect(own.querySelector("#fix_check-hint")).not.toBeNull();
+    for (const person of [teamActor, customerOne]) {
+      const form = parse((await as(app, person).get("/tickets/SUP-1/edit")).text);
+      expect(form.querySelector("main textarea[readonly]")).toBeNull();
+      expect(form.querySelector("main [name=fix_check]")).toBeNull();
+      expect(form.querySelector("main")!.text).not.toContain("Only they can change them");
+    }
   });
 });
 

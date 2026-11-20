@@ -14,6 +14,7 @@ test("an open ticket page says when the ticket changed elsewhere", async ({ brow
   await customer.getByLabel("Title").fill("Receipts print twice");
   await customer.getByLabel("Description").fill("Every receipt comes out two times.");
   await customer.getByRole("button", { name: "File ticket" }).click();
+  await expect(customer).toHaveURL(/\?step=verify$/);
   const key = /\/tickets\/([A-Z]{2,6}-\d+)$/.exec(new URL(customer.url()).pathname)![1]!;
 
   const team = await (await browser.newContext()).newPage();

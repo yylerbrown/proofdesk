@@ -40,6 +40,7 @@ import {
 } from "../pages/list-query.js";
 import { sameText, type ListSort, type TicketListFilter } from "../tickets/schemas.js";
 import { rememberBulkOutcome, takeBulkOutcome } from "../pages/bulk-outcome.js";
+import { proofChoices, SAMPLE_PROOFS, sampleWords, waitingLine } from "../pages/proof-step.js";
 import { customerStanding } from "../pages/standing.js";
 import { statusControl } from "../pages/status-control.js";
 import { DESCRIPTION_LIMIT, withHowFarOver } from "../pages/text-limit.js";
@@ -83,7 +84,8 @@ type Problem = {
     | "reopen"
     | "handOff"
     | "resolve"
-    | "markFixed";
+    | "markFixed"
+    | "verify";
   message: string;
   comment: string;
   /** What was typed in the form, so it can be shown again. */
@@ -107,6 +109,8 @@ const FORM_FIELDS: Record<Problem["form"], string[]> = {
   resolve: ["reason", "duplicate_of", "note", "fixed_in"],
   // The next step "Mark fixed and tell the customer" is one button with no box.
   markFixed: [],
+  // The step after filing: what would prove it is fixed.
+  verify: ["words"],
 };
 
 // The forms on the ticket page that carry the ticket's version and show what was typed again
@@ -122,13 +126,14 @@ function focusField(form: Problem["form"], fieldErrors: Record<string, string[] 
 /**
  * The sample a demo visitor files when they start the ticket workflow. Made up, like the demo.
  * The page address stays empty: a made-up address would be filed as if it were the visitor's.
+ * What would prove it is fixed is the next step, after filing, where three sample ways wait.
  */
 const WALKTHROUGH_SAMPLE = {
   title: "The export button downloads an empty file",
   description:
     "When I export this month's report as CSV, the file has the header row and nothing else.",
   where_url: "",
-  fix_check: "I export this month's report and the file has every row.",
+  fix_check: "",
 };
 
 /**
@@ -310,6 +315,7 @@ const FORM_SAVED: Record<Problem["form"], (input: unknown, actor: Actor) => Save
       ? "markedFixed"
       : "resolvedByTeam",
   markFixed: () => "markedFixed",
+  verify: () => "checkChosen",
   answer: (input) =>
     (input as Record<string, unknown> | undefined)?.fixed === "yes" ? "fixed" : "notFixed",
 };
@@ -438,8 +444,11 @@ function differingBoxes(ticket: Ticket, values: typeof emptyForm): string[] {
 /** How many email notices of a ticket this viewer may see, by the ticket's key. */
 export type NoticeCounter = (key: string, actor: Actor) => number;
 
-/** The form the Status menu asked to show in the next step's place, from the page's address. */
-const stepQuery = z.enum(["resolve", "reopen"]);
+/**
+ * The small form to show from the page's address: resolve or reopen, which the Status menu asks
+ * for in the next step's place, or verify, the customer's step after filing, in the check's place.
+ */
+const stepQuery = z.enum(["resolve", "reopen", "verify"]);
 
 /** The address of one picture: its ticket's key and its own id. */
 type PictureParams = { key: string; id: string };
@@ -669,8 +678,45 @@ export function pagesRouter(
       asked: res.locals.saved === SAVED_MESSAGES.ready ? SAVED_MESSAGES.ready : null,
     };
     if (card.asked !== null) res.locals.saved = null;
-    // Resolved or Reopen, chosen from the Status menu, asks for its form in the address.
+    // Resolved, Reopen or the customer's step after filing asks for its form in the address.
     const step = stepQuery.safeParse(req.query.step);
+    // What would prove it is fixed. Its filer sets or changes it in a small step of its own,
+    // until the ticket is resolved or the team asks them; nobody else can.
+    const canProve =
+      ticket.archived_at === null &&
+      ticket.status !== "resolved" &&
+      !allowed.answer &&
+      can(actor, "choose_check", ticket);
+    const proofStep =
+      canProve &&
+      (problem?.form === "verify" ||
+        (req.method === "GET" && step.success && step.data === "verify"));
+    const sample = isWalkthroughSample(ticket, actor);
+    const offered = service
+      .listCheckSuggestions(ticket.key, actor)
+      .filter((suggestion) => suggestion.state === "offered");
+    const boxWords =
+      problem?.form === "verify"
+        ? (problem.values?.words ?? "")
+        : (ticket.fix_check ?? (sample ? SAMPLE_PROOFS[0] : ""));
+    const proof = {
+      step: proofStep,
+      words: boxWords,
+      // The choices are for a ticket that does not say yet what would prove it.
+      choices:
+        proofStep && ticket.fix_check === null ? proofChoices(sample, offered, boxWords) : [],
+      sample,
+      // A page may ask a listening assistant only on a New ticket with no check, off the demo.
+      canAsk:
+        proofStep && actor.demo !== true && ticket.status === "new" && ticket.fix_check === null,
+      // The filer's quiet links, "Change" beside the check or "Add what would prove it".
+      canChange: canProve && !proofStep,
+      // The team's one grey line while suggestions wait for the customer.
+      waiting: staff && ticket.fix_check === null ? waitingLine(offered.length) : null,
+      // Just after saving, the card says so once, under the check.
+      saved: res.locals.saved === SAVED_MESSAGES.checkChosen ? SAVED_MESSAGES.checkChosen : null,
+    };
+    if (proof.saved !== null) res.locals.saved = null;
     res.status(status).render("ticket-show", {
       ...helpers,
       title: `${ticket.key}: ${ticket.title}`,
@@ -691,6 +737,7 @@ export function pagesRouter(
       standing: customerStanding(ticket, confirmed),
       // That form shows in the next step's place.
       step: req.method === "GET" && step.success ? step.data : null,
+      proof,
       noticeCount: countNotices(ticket.key, actor),
       assistantSampleKey: service.assistantSampleKey(),
       recordedSampleKey: RECORDED_SAMPLE_KEY,
@@ -1006,8 +1053,19 @@ export function pagesRouter(
         keepUploaderToken(req, res, token, options.secureCookies);
         // 303 makes the browser fetch the ticket page with GET, so a refresh cannot file it twice.
         rememberSaved(res, "filed");
-        res.redirect(303, `/tickets/${ticket.key}`);
-      } else if (formMatchesTicket(ticket, values)) {
+        // Filing is the first part. A ticket that does not say what would prove it is fixed
+        // opens on the second part, the step that asks for it.
+        const next = ticket.fix_check === null ? "?step=verify" : "";
+        res.redirect(303, `/tickets/${ticket.key}${next}`);
+      } else if (
+        // The form has no check box: a check saved since in the step is not a change to it.
+        formMatchesTicket(
+          ticket,
+          typeof req.body?.fix_check === "string"
+            ? values
+            : { ...values, fix_check: ticket.fix_check ?? "" },
+        )
+      ) {
         // The same form sent twice, for example after Back: open the ticket it filed.
         rememberSaved(res, "alreadyFiled");
         res.redirect(303, `/tickets/${ticket.key}`);
@@ -1107,14 +1165,20 @@ export function pagesRouter(
       // What the form was opened with, so a refused save can say what someone else changed.
       loaded: ticketFingerprints(ticket),
       errors: {},
-      checkLocked: ticket.created_by !== actor.id,
       version: ticket.version,
     });
   });
 
   router.post("/tickets/:key/edit", (req, res) => {
     const actor = signedIn(req);
-    const values = readTicketForm(req.body);
+    // The edit form has no box for what would prove it is fixed: its filer changes that in its
+    // own step on the ticket. A form that sends no such box keeps the check as it is.
+    const before = service.getTicket(req.params.key, actor);
+    const read = readTicketForm(req.body);
+    const values =
+      typeof req.body?.fix_check === "string"
+        ? read
+        : { ...read, fix_check: before.fix_check ?? "" };
     const loaded = readLoaded(req.body);
     const expectedVersion = asText(req.body?.expected_version);
     try {
@@ -1134,9 +1198,8 @@ export function pagesRouter(
       if (!(err instanceof ValidationError) && !changed) throw err;
       // The ticket as it is now. Its key is checked before it is put in the form's address.
       const current = service.getTicket(req.params.key, actor);
-      const checkLocked = current.created_by !== actor.id;
-      // What the person typed stays. A check they may not change shows as it is now.
-      const shown = checkLocked ? { ...values, fix_check: current.fix_check ?? "" } : values;
+      // What the person typed stays.
+      const shown = values;
       const errors =
         err instanceof ValidationError ? withHowFarOver(err.fieldErrors, values.description) : {};
       res.status(changed ? 409 : 400).render("ticket-form", {
@@ -1152,7 +1215,6 @@ export function pagesRouter(
         loaded: changed ? ticketFingerprints(current) : loaded,
         // The hidden version has no box of its own, so a problem with it is said at the top.
         versionUnreadable: errors.expected_version !== undefined,
-        checkLocked,
         // After a refusal for a newer version, the form carries that version, so saving again
         // is a choice made with the change in view. After a mistake in a box, it keeps its own.
         version: changed ? current.version : expectedVersion,
@@ -1247,15 +1309,44 @@ export function pagesRouter(
   // own words. A refusal goes back to the ticket with the reason, as every other refusal does.
   router.post("/tickets/:key/check", (req, res) => {
     const actor = signedIn(req);
+    const words = asText(req.body?.words);
     try {
-      const ticket = service.chooseCheck(req.params.key, req.body, actor);
+      // On the demo's sample a choice is a sample, not a stored suggestion. With scripts off
+      // and the box left empty, the choice picked gives the words.
+      const sent = { ...req.body };
+      delete sent.sample_choice;
+      const sampleChoice = sampleWords(req.body?.sample_choice);
+      if (words.trim() === "" && sampleChoice !== undefined) {
+        const before = service.getTicket(req.params.key, actor);
+        if (isWalkthroughSample(before, actor)) sent.words = sampleChoice;
+      }
+      const ticket = service.chooseCheck(req.params.key, sent, actor);
       rememberSaved(res, "checkChosen");
       res.redirect(303, `/tickets/${ticket.key}`);
     } catch (err) {
-      if (!(err instanceof ValidationError)) throw err;
+      // The ticket changed while the box was being filled, for example when the team took it:
+      // the step shows again on the ticket as it is now, with the words kept.
+      if (err instanceof HttpError && err.code === "ticket_changed" && words.trim() !== "") {
+        res.locals.refused = onTicketPage(err);
+        showTicket(req, res, 409, emptyEntry, {
+          form: "verify",
+          message: "What you wrote is kept here. Look at the ticket as it is now, then save again.",
+          comment: "",
+          values: { words },
+          focus: "words",
+        });
+        return;
+      }
+      if (!(err instanceof HttpError)) throw err;
+      if (!(err instanceof ValidationError) && err.code !== "suggestion_gone") throw err;
       const ticket = service.getTicket(req.params.key, actor);
-      rememberProblem(res, Object.values(err.fieldErrors).flat()[0] ?? err.message);
-      res.redirect(303, `/tickets/${ticket.key}`);
+      const message =
+        err instanceof ValidationError
+          ? (Object.values(err.fieldErrors).flat()[0] ?? err.message)
+          : err.message;
+      rememberProblem(res, message);
+      // Back to the step, where the box is.
+      res.redirect(303, `/tickets/${ticket.key}?step=verify#verify-form`);
     }
   });
   router.post("/tickets/:key/withdraw-question", (req, res) => {

@@ -84,7 +84,8 @@ describe("the demo's first landing", () => {
     expect(form.querySelector("input[name=title]")?.getAttribute("value")).toBe(
       "The export button downloads an empty file",
     );
-    expect(form.querySelector("textarea[name=fix_check]")?.text).toMatch(/every row/);
+    // What would prove it is fixed is the step after filing, where the sample's choices wait.
+    expect(form.querySelector("[name=fix_check]")).toBeNull();
   });
 
   it("fills nothing in outside the demo", async () => {

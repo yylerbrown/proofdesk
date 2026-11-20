@@ -16,8 +16,8 @@ test("the send button follows the tab, and the box grows as text is typed", asyn
   await page.getByLabel("Title").fill("The send button follows the tab");
   await page.getByLabel("Description").fill("A ticket for the team to answer.");
   await page.getByRole("button", { name: "File ticket" }).click();
-  await expect(page).toHaveURL(/\/tickets\/SUP-\d+$/);
-  const ticketUrl = page.url();
+  await expect(page).toHaveURL(/\/tickets\/SUP-\d+\?step=verify$/);
+  const ticketUrl = new URL(page.url()).pathname;
   await signIn(page, "Team Member");
   await page.goto(ticketUrl);
   // The box is closed until wanted.
