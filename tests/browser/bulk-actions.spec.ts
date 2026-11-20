@@ -201,24 +201,15 @@ test("without scripts the bar sits above the table, always shown", async ({ brow
 test("the bar's controls have round corners, and a row reached by the keyboard is never under the bar", async ({
   page,
 }) => {
-  const marker = "Padmark";
-  await page.goto("/sign-in");
-  await page.getByRole("button", { name: "View as Customer One" }).click();
-  for (let count = 1; count <= 6; count += 1) {
-    await page.goto("/tickets/new");
-    await page.getByLabel("Title").fill(`${marker} report ${count} is late`);
-    await page.getByLabel("Description").fill("It happens every time.");
-    await page.getByRole("button", { name: "File ticket" }).click();
-    await expect(page).toHaveURL(/\/tickets\/SUP-\d+\?step=verify$/);
-  }
-  await page.context().clearCookies();
+  // The tickets already on the list will do: this file's first test files two, and nothing
+  // more is filed here, since the whole browser run shares one address's filing limit.
   await page.goto("/sign-in");
   await page.getByRole("button", { name: "View as Team Member" }).click();
-  // A short window, so the list scrolls under the bar.
-  await page.setViewportSize({ width: 1280, height: 420 });
-  await page.goto(`/tickets?q=${marker}`);
+  // A very short window, so even two rows scroll under the bar.
+  await page.setViewportSize({ width: 1280, height: 300 });
+  await page.goto("/tickets?status=all");
   const rows = page.locator('input[name="keys"]');
-  await expect(rows).toHaveCount(6);
+  expect(await rows.count()).toBeGreaterThanOrEqual(2);
   await rows.first().check();
   const bar = page.locator("[data-bulk-bar]");
   await expect(bar).toBeVisible();

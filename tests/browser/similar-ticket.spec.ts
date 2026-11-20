@@ -79,21 +79,27 @@ test("names the earlier ticket soon after the title rests, without moving focus"
   await expect(line(page)).toBeHidden({ timeout: 2000 });
 });
 
-test("stays one line tall at phone width with a 120-character title", async ({ page }) => {
+test("wraps the whole title at phone width with a 120-character title, never sideways", async ({
+  page,
+}) => {
   const long = `Kettle whistles ${"loudly ".repeat(15)}`.slice(0, 120).trim();
   await file(page, long);
   await page.setViewportSize({ width: 390, height: 800 });
   await page.goto("/tickets/new");
   await page.getByLabel("Title").fill("Kettle whistles loudly");
   await expect(line(page)).toBeVisible({ timeout: 2000 });
-  const { height, lineHeight, scrollWidth, clientWidth } = await line(page).evaluate((element) => ({
-    height: element.getBoundingClientRect().height,
-    lineHeight: parseFloat(getComputedStyle(element).lineHeight),
-    scrollWidth: document.documentElement.scrollWidth,
-    clientWidth: document.documentElement.clientWidth,
-  }));
-  expect(height).toBeCloseTo(lineHeight, 0);
-  // The cut title never makes the page scroll sideways.
+  const { titleCut, scrollWidth, clientWidth } = await line(page).evaluate((element) => {
+    const link = element.querySelector("a")!;
+    return {
+      titleCut: link.scrollWidth > link.clientWidth + 1,
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    };
+  });
+  // The words at the end tell a visitor whether it is their problem, so none is cut off.
+  expect(titleCut).toBe(false);
+  await expect(line(page)).toContainText(long);
+  // The wrapped title never makes the page scroll sideways.
   expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
 });
 

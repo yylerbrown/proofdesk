@@ -32,9 +32,11 @@ async function signInAs(browser: Browser, person: string): Promise<Page> {
   return page;
 }
 
-/** The row of the ticket list that holds this ticket. */
+/** The row of the ticket list that holds this ticket, found by its key, which is plain text. */
 function listRow(page: Page, key: string) {
-  return page.getByRole("row").filter({ has: page.getByRole("link", { name: key, exact: true }) });
+  return page
+    .locator("table.tickets tbody tr")
+    .filter({ has: page.locator(".ticket-key", { hasText: new RegExp(`^${key}$`) }) });
 }
 
 /**
@@ -179,7 +181,8 @@ test("the long path: a check, a change link and evidence, a No, then the custome
     await team.goto("/tickets");
     await expect(listRow(team, key)).toContainText(ticket.title);
     await expect(listRow(team, key)).toContainText("Unassigned");
-    await listRow(team, key).getByRole("link", { name: key, exact: true }).click();
+    // The title is the row's link.
+    await listRow(team, key).locator("td.title-cell a").click();
 
     // One action owns the ticket and starts work.
     await team.getByRole("button", { name: "Take ticket and start work" }).click();
@@ -260,10 +263,10 @@ test("the long path: a check, a change link and evidence, a No, then the custome
   await test.step("the ticket is back with the team member, with the customer's words", async () => {
     await team.goto(`/tickets/${key}`);
     await expectTicketStatus(team, key, "In Progress");
-    // The card says the customer said no, with a quiet link to their words in the conversation.
+    // The card says the customer said no, quoting their words, which are also in the conversation.
     const saidNo = team.locator(".ticket-card .card-line");
     await expect(saidNo).toContainText("The customer said it is not fixed on");
-    await saidNo.getByRole("link").click();
+    await expect(saidNo).toContainText(`"${notFixedComment}"`);
     await expect(team.locator("article.entry", { hasText: notFixedComment })).toBeVisible();
     await expect(team.locator(".ticket-facts .owner-menu summary")).toContainText("Team Member");
     await team.goto("/tickets");

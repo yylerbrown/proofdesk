@@ -2,9 +2,10 @@ import { expect, test, type Page } from "@playwright/test";
 
 // On the ticket page, opening and closing the Status menu, the Owner menu, History and More
 // options moves nothing above them, and does not move their own lines. Status and Owner open as a
-// small list floating under their button, so the description under them stays put too. History
-// and More options show their content under their row, and neither line slides when the other is
-// pressed, so a second press always lands on the line it was aimed at.
+// small list floating under their button, so the description under them stays put too. On a wide
+// screen History and More options show their content under their row, and neither line slides
+// when the other is pressed, so a second press always lands on the line it was aimed at. On a
+// phone they stack, and each opens directly under its own line.
 
 /** Files a ticket as a customer, then takes it as a team member, with one reply on it. */
 async function ticketInProgress(page: Page): Promise<string> {
@@ -75,7 +76,14 @@ test("opening and closing each menu moves nothing above it or its own line", asy
         const summary = page.locator(MEASURED[line]);
         await summary.click();
         await expect(page.locator(details), name).toHaveJSProperty("open", true);
-        expect(await boxes(page), `${name} open`).toEqual(before);
+        // On a phone the two last lines stack and each opens under its own line, so an open
+        // History moves More options down, and only that.
+        const opened = await boxes(page);
+        if (width < 640 && line === "history") {
+          expect(opened.more.y, `${name} open`).toBeGreaterThan(before.more.y);
+          opened.more = before.more;
+        }
+        expect(opened, `${name} open`).toEqual(before);
         await summary.click();
         await expect(page.locator(details), name).toHaveJSProperty("open", false);
         expect(await boxes(page), `${name} closed`).toEqual(before);

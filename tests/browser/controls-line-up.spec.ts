@@ -190,7 +190,7 @@ test("the customer's No stays beside Yes when pressed, and opens its box under b
   await customer.context().close();
 });
 
-test("on a phone, the new ticket form's picture mark is a circle and the similar line shortens only the title", async ({
+test("on a phone, the new ticket form's picture says Remove under it and the similar line wraps the title", async ({
   browser,
 }) => {
   const customer = await signInAs(browser, "Customer Two", PHONE);
@@ -198,9 +198,12 @@ test("on a phone, the new ticket form's picture mark is a circle and the similar
   await customer
     .locator('input[name="pictures"]')
     .setInputFiles({ name: "screen.png", mimeType: "image/png", buffer: samplePicture() });
+  // A visible word under the picture, 40 pixels tall to press, as wide as the picture.
   const remove = await boxOf(customer, ".picture-strip button.picture-remove");
-  expect(remove.width).toBe(24);
-  expect(remove.bottom - remove.top).toBe(24);
+  const picture = await boxOf(customer, ".picture-strip img");
+  expect(remove.width).toBe(56);
+  expect(remove.bottom - remove.top).toBeGreaterThanOrEqual(40);
+  expect(remove.top).toBeGreaterThanOrEqual(picture.bottom);
 
   await customer.getByLabel("Title").fill(SIMILAR);
   const line = customer.locator("#title-similar");
@@ -220,7 +223,7 @@ test("on a phone, the new ticket form's picture mark is a circle and the similar
   expect(shown.status).toMatch(/^ \((New|In Progress|Resolved)\)$/);
   expect(shown.statusRight).toBeLessThanOrEqual(shown.lineRight + 0.5);
   expect(shown.statusCut).toBe(false);
-  expect(shown.titleCut).toBe(true);
+  expect(shown.titleCut).toBe(false);
   await customer.context().close();
 });
 

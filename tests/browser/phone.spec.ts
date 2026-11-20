@@ -218,12 +218,14 @@ test("on a phone each ticket row puts the key and status on one line over the ti
     await page.goto("/tickets");
     const rows = await page.locator("table.tickets tbody tr").evaluateAll((all) =>
       all.map((row) => {
-        const [key, title, status] = [...row.querySelectorAll("td")].map((cell) =>
+        // The status cell gives up its own box on a phone, so its status word is measured.
+        const [key, title] = [...row.querySelectorAll("td")].map((cell) =>
           cell.getBoundingClientRect(),
         );
+        const status = row.querySelector("td.status-cell .badge")!.getBoundingClientRect();
         const box = row.getBoundingClientRect();
         return {
-          sameLine: Math.abs(key!.top - status!.top) < 4,
+          sameLine: Math.abs(key!.top - status.top) < 6,
           titleBelow: title!.top >= key!.bottom - 1,
           titleShare: title!.width / box.width,
         };
@@ -508,6 +510,8 @@ test("on a phone Add pictures is a small outlined button, and a chosen picture s
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
+  // A first visit starts on the list, as the customer.
+  await page.goto("/tickets");
   await page.goto("/tickets/new");
   const words = page.locator("label.add-pictures .add-pictures-words");
   await expect(words).toHaveCSS("border-top-style", "solid");
@@ -532,6 +536,8 @@ test("on a phone the similar ticket's title wraps in full, with its status after
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
+  // A first visit starts on the list, as the customer.
+  await page.goto("/tickets");
   await page.goto("/tickets/new");
   await page.getByLabel("Title").pressSequentially("Can't sign in from my phone", { delay: 10 });
   const line = page.locator("small.similar-ticket");
