@@ -88,7 +88,7 @@ describe("the demo", () => {
     ]);
   });
 
-  it("says beside Ask the customer to verify that the sample skips the fix, on the sample only", async () => {
+  it("says beside Ask the customer that the sample skips the fix, on the sample only", async () => {
     const { app } = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
     const sample = await sampleValues(app);
     expect(await askNote(app, sample)).toBe("The sample skips the fix.");

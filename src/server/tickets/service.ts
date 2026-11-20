@@ -86,8 +86,9 @@ export function createTicketService(
   const conversation = createConversation(shared);
 
   return {
-    // reads.ts: listTickets, countTickets, visibleKey, getTicket, ticketStamp, listEvents,
-    // reopenedByCustomer, peopleRoles, peopleNames, hasNoTickets
+    // reads.ts: listTickets, countTickets, countResolvedBefore, visibleKey, similarTicket,
+    // possibleDuplicate, getTicket, ticketStamp, listEvents, reopenedByCustomer, peopleRoles,
+    // peopleNames, hasNoTickets
     ...reads,
     // filing.ts: createTicket, editTicket, adoptCheck, agreeCheck, linkChange, archiveTicket,
     // restoreTicket, deleteTicket

@@ -33,8 +33,9 @@ export function safeNext(value: unknown): string {
 }
 
 /**
- * The ticket a sign-in will open, such as "SUP-8" for "/tickets/SUP-8", so the welcome page
- * can name it. Any other address, including a ticket page with more after it, gives null.
+ * The ticket a sign-in will open, such as "SUP-8" for "/tickets/SUP-8", so the sign-in page
+ * (/sign-in) can name it. Any other address, including a ticket page with more after it,
+ * gives null.
  */
 export function ticketFromNext(next: string, prefix: string): string | null {
   const start = "/tickets/";

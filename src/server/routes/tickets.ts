@@ -56,7 +56,7 @@ export function ticketsRouter(service: TicketService, connections: ConnectionSer
       }
       record("done", null);
       if (action.paged && Array.isArray(result)) {
-        const next = nextCursor(req.query, result);
+        const next = nextCursor(req.query, result, service, actor);
         if (next !== null) {
           // The next page keeps the same filters.
           const params = new URLSearchParams();

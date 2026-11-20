@@ -16,8 +16,9 @@ export function runCommand(summary: string): string | null {
 }
 
 /**
- * Where a visitor can connect an assistant of their own: on the demo, the welcome page's connect
- * section, open to anyone; elsewhere an admin's connections page. Null for anyone else.
+ * Where a visitor can connect an assistant of their own: on the demo, the connect section of
+ * the About page (/sign-in), open to anyone; elsewhere an admin's connections page. Null for
+ * anyone else.
  */
 export function tryItUrl(demo: boolean, actor: Actor | null): string | null {
   if (demo) return "/sign-in#connect";

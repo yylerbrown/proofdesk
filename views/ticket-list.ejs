@@ -127,7 +127,7 @@
   <button type="button" class="link bulk-clear" hidden data-bulk-clear>Clear</button>
   <% if (bulk.message) { %><p class="bulk-error" role="alert" data-bulk-error><small><%= bulk.message %></small></p><% } %>
 </div>
-<p class="bulk-all-phone" hidden data-bulk-phone><label><input type="checkbox" class="bulk-tick" data-bulk-all /> Tick all shown</label></p>
+<p class="bulk-all-phone" hidden data-bulk-phone><label><input type="checkbox" class="bulk-tick" data-bulk-all /> <%= pages ? "Tick all on this page" : "Tick all shown" %></label></p>
 <% } %>
 <div class="overflow-auto">
   <table class="tickets">
@@ -135,7 +135,7 @@
       <tr>
         <% sortHeaders.forEach((header, index) => { %>
         <%# The plain name stands in for the link on a phone, where the header row is not drawn, so no keyboard stop hides there. %>
-        <th scope="col" <% if (header.ariaSort) { %>aria-sort="<%= header.ariaSort %>"<% } %>><% if (bulk && index === 0) { %><input type="checkbox" class="bulk-tick" aria-label="Tick every ticket shown" hidden data-bulk-all /><% } %><a href="<%= header.href %>" class="sort-link" aria-label="<%= header.name %>"><%= header.label %><span class="sort-arrow" aria-hidden="true"><%= arrow(header) %></span></a><span class="sort-label"><%= header.label %></span></th>
+        <th scope="col" <% if (header.ariaSort) { %>aria-sort="<%= header.ariaSort %>"<% } %>><% if (bulk && index === 0) { %><input type="checkbox" class="bulk-tick" <% if (pages) { %>aria-label="Tick all on this page" title="Tick all on this page"<% } else { %>aria-label="Tick every ticket shown"<% } %> hidden data-bulk-all /><% } %><a href="<%= header.href %>" class="sort-link" aria-label="<%= header.name %>"><%= header.label %><span class="sort-arrow" aria-hidden="true"><%= arrow(header) %></span></a><span class="sort-label"><%= header.label %></span></th>
         <%# Right after Status, a narrow column that sorts nothing: the ticket's proof mark. %>
         <% if (header.column === "status") { %><th scope="col" class="proof-cell">Proof</th><% } %>
         <% }) %>
@@ -160,8 +160,13 @@
   </table>
 </div>
 <% if (bulk) { %></form><% } %>
-<% if (nextPage) { %>
-<p><a href="<%= nextPage %>">Next page</a></p>
+<%# A list of more than one page: one quiet line of plain links that keep the filters, search and sort. %>
+<% if (pages) { %>
+<nav aria-label="Pages" class="list-pages">
+  <% if (pages.previous) { %><a href="<%= pages.previous %>">Previous page</a><% } %>
+  <span>Page <%= pages.page %> of <%= pages.last %></span>
+  <% if (pages.next) { %><a href="<%= pages.next %>">Next page</a><% } %>
+</nav>
 <% } %>
 <%# What the Proof column's two marks mean, once a row shows one: the marks drawn as in the column, with their words. A phone's list has no header row, so this is where it says so. %>
 <% if (tickets.some((t) => (t.resolution && t.resolution.by === "customer") || t.fix_check)) { %>

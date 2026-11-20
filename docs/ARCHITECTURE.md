@@ -42,7 +42,7 @@ once work has started.
 
 - `src/server/app.ts` builds the app; `src/server/index.ts` starts it; `src/server/start.ts`
   opens and migrates the database, refusing one labelled for the other purpose first.
-- `src/server/routes/` holds the thin routes: `pages.ts` for the pages, `tickets.ts` for the JSON
+- `src/server/routes/` holds the routes: `pages.ts` for the pages, `tickets.ts` for the JSON
   API, `connections.ts`, `sign-in.ts`.
 - `src/server/tickets/` holds the ticket service, its repository and schemas. `service.ts`
   builds the service from one file per concern: `reads.ts`, `filing.ts`, `workflow.ts`,
@@ -90,3 +90,43 @@ Shortcuts in the code that were kept for now, each with the plan for it.
 - **Test setup is copied between files.** Several files build their own ask-the-customer setup,
   agent keys are issued by reading the admin page, and the people side of the permission rules
   is picked by hand rather than generated from the table.
+- **One file holds every page route.** `src/server/routes/pages.ts` is the largest file in the
+  code, and `showTicket` builds the whole ticket page's model inline. The plan is one router per
+  page and a ticket-page model that can be tested without a request.
+- **Demo rules branch inside the core.** `can()` and the ticket service check for the demo in
+  place. The plan is a `src/server/demo/` folder and a visibility policy that is passed in.
+- **One repository file for most tables.** `src/server/tickets/repository.ts` holds the SQL for
+  about a dozen tables. The plan is one file per table behind a barrel file, so its importers do
+  not change.
+
+### Planned after this
+
+Besides the debt above, these are planned for after the first release:
+
+- Cut `views/ticket-show.ejs` into partials and move its computed flags into the ticket-page
+  model; split `public/site.css` along its comment seams.
+- Typed history payloads, written in `src/server/tickets/history.ts` and read by the email
+  notices, instead of ad-hoc schemas and casts.
+- Remove the second sign-in provider, which is off on both deployments, and make the ticket
+  prefix a constant.
+- One flash-cookie helper, Secure in production, for the hand-rolled cookies.
+- Give `listTickets` an options object instead of seven positional parameters, and batch the
+  list's few queries per row.
+- Put connection revoke and demo-key issue in transactions, drop `tickets.agent_id` by
+  migration, and look up `based_on` with one query.
+- Tests that find buttons by role and read JSON rather than scraped HTML, label text in one
+  module, and fewer, broader docs tests.
+- Backups: a continuous copy of the database to object storage and one restore drill. This is
+  the item a production launch needs first.
+
+## Names in the code
+
+Some names in the code are older than the words on the page.
+
+| On the page                     | In the code                                                  |
+| ------------------------------- | ------------------------------------------------------------ |
+| The proof                       | `fix_check` when filed, `done_when.customer_check` when read |
+| The team's version of the proof | `agreed_check`                                               |
+| Ask before resolving            | `mark_ready` and the `ready_*` fields                        |
+| Marked fixed                    | the resolved reason `fixed_no_reply`                         |
+| The proof step                  | the form key `verify`                                        |
