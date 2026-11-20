@@ -33,6 +33,33 @@ describe("the README's first screen", () => {
       "(status = 'new' AND fix_check IS NOT NULL) DESC",
     );
   });
+
+  it("keeps the plain description within 100 columns, like the rest of the README", () => {
+    const start = readme.indexOf("Proofdesk is a support desk for filing");
+    const description = readme.slice(start, readme.indexOf("\n\n", start));
+    for (const line of description.split("\n")) {
+      expect(line.length, line).toBeLessThanOrEqual(100);
+    }
+  });
+});
+
+describe("the demo's read-only admin", () => {
+  it("says why the admin changes nothing: every visitor shares the demo's data", () => {
+    // Where the tour first names the read-only admin, it says why.
+    const tour = flat("docs/TOUR.md");
+    const first = tour.slice(tour.indexOf("Demo Admin (read-only)"));
+    expect(first).toMatch(
+      /^Demo Admin \(read-only\), who changes nothing because every visitor shares the demo's data\./,
+    );
+  });
+
+  it("has a roadmap line for a private copy of the samples for each visitor", () => {
+    const roadmap = flat("docs/ROADMAP.md");
+    const walking = roadmap.slice(roadmap.indexOf("## Smaller ideas from walking the demo"));
+    expect(walking).toContain(
+      "- A private copy of the samples for each demo visitor, so the demo's admin can really change roles and delete, and a reset touches only that visitor's data.",
+    );
+  });
 });
 
 describe("what it is built with", () => {

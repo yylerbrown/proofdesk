@@ -69,7 +69,8 @@ describe("the guides' shape", () => {
 
   it.each([
     // The stack table, What it is built with, added its 17 lines and replaced a prose line.
-    ["README.md", 192],
+    // The plain description under the pitch line takes one more, to stay within 100 columns.
+    ["README.md", 193],
     // The customer's confirm of a ticket marked fixed added its row, and suggested ways to
     // verify added two: the assistant's suggestion and the customer's pick. Listening for
     // requests and answering one added two more.

@@ -26,8 +26,9 @@ describe("the README", () => {
 
   it("is short enough to read in five minutes", () => {
     // 175 lines, plus the 17 of "What it is built with": the stack table that replaced the
-    // prose line listing the stack, its heading, and the line linking the diagram.
-    expect(readme.split("\n").length).toBeLessThanOrEqual(192);
+    // prose line listing the stack, its heading, and the line linking the diagram. One more for
+    // the plain description under the pitch line, wrapped to stay within 100 columns.
+    expect(readme.split("\n").length).toBeLessThanOrEqual(193);
   });
 
   it("walks one ticket from filing to the customer's Yes", () => {

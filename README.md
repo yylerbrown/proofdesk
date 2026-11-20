@@ -8,7 +8,8 @@ or an assistant, can tell when it is done.
 Say what would prove it is fixed, and your ticket is listed first and checked against your own words.
 
 Proofdesk is a support desk for filing, filtering and tracking tickets through New, In Progress and
-Resolved. The team marks a ticket fixed, and the customer can confirm it against the proof they wrote.
+Resolved. The team marks a ticket fixed, and the customer can confirm it against the proof they
+wrote.
 
 - **The demo, no account needed: <https://support-desk-demo.fly.dev>.** Sample data, shared with
   everyone who visits, so do not type anything private. It returns to its samples by itself when

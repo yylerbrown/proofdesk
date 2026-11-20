@@ -71,7 +71,7 @@ Each one takes under a minute on the demo, which opens on the ticket list as the
 
 - Start as: The production site, <https://proofdesk.fly.dev>
 - Press: **Sign in with GitHub**
-- You should see: Signed in as a customer, a team member or an admin, as [Sign-in and roles](../README.md#sign-in-and-roles) explains. Microsoft sign-in for one organization sits beside it once its settings are set. On the demo the three roles are in the menu at the top right, the admin as Demo Admin (read-only).
+- You should see: Signed in as a customer, a team member or an admin, as [Sign-in and roles](../README.md#sign-in-and-roles) explains. Microsoft sign-in for one organization sits beside it once its settings are set. On the demo the three roles are in the menu at the top right, the admin as Demo Admin (read-only), who changes nothing because every visitor shares the demo's data.
 
 **Who may do what**
 
