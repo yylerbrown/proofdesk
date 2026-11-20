@@ -32,7 +32,7 @@ describe("the page about the demo", () => {
       }).app,
     );
     expect(html.querySelector(".real-site")?.text).toBe(
-      "On the real site, people sign in with GitHub. Here you switch between three made-up people with the menu at the top right. How sign-in and roles work",
+      "On the real site, people sign in with GitHub and start as customers. Here you switch between three made-up people with the menu at the top right. How sign-in and roles work",
     );
     expect(
       html.querySelectorAll(".real-site a").map((a) => [a.text, a.getAttribute("href")]),
@@ -43,7 +43,7 @@ describe("the page about the demo", () => {
     // Without a source address there is no README to point at, so the line ends there.
     const noSource = await welcome(demo({ REAL_SITE_URL: "https://real.example.com" }).app);
     expect(noSource.querySelector(".real-site")?.text).toBe(
-      "On the real site, people sign in with GitHub. Here you switch between three made-up people with the menu at the top right.",
+      "On the real site, people sign in with GitHub and start as customers. Here you switch between three made-up people with the menu at the top right.",
     );
     // The real site itself does not point at itself.
     const real = buildTestApp({ ...SIGN_IN_ENV, REAL_SITE_URL: "https://real.example.com" });

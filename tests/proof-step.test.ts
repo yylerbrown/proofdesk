@@ -317,7 +317,7 @@ describe("suggested ways", () => {
     const choices = html.querySelector("form#verify-form .proof-choices")!;
     expect(choices.getAttribute("hidden")).toBeUndefined();
     expect(choices.querySelector("#proof-adds-line")?.text).toBe(
-      "Suggested by the team's AI assistant. Press one or more to add them to the box, then edit as you like.",
+      "Suggested by the team's AI assistant. Press one or more to add them to the box. Edit or remove added text in the box.",
     );
     const adds = choices.querySelectorAll("button.proof-add");
     // Each is a submit button of the step's form, named by its words, never a black button.
@@ -516,7 +516,7 @@ describe("the demo's sample", () => {
     const html = parse((await browser.get(landed)).text);
     const step = html.querySelector("form#verify-form")!;
     expect(step.querySelector("#proof-adds-line")?.text).toBe(
-      "Sample suggestions. Press one or more to add them to the box. On a real site the team's own AI assistant writes these.",
+      "Sample suggestions. Press one or more to add them to the box. On a real site the team's own AI assistant writes these. Edit or remove added text in the box.",
     );
     const adds = step.querySelectorAll("button.proof-add");
     expect(adds.map((button) => button.getAttribute("value"))).toEqual([...SAMPLE_PROOFS]);

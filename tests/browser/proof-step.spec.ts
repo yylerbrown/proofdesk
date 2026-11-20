@@ -173,7 +173,7 @@ test("When asked: one quiet button, then + buttons add to the box, and the box n
   expect(sent).toEqual(["pressed=true"]);
   await expect(
     step.getByText(
-      "Suggested by the team's AI assistant. Press one or more to add them to the box, then edit as you like.",
+      "Suggested by the team's AI assistant. Press one or more to add them to the box. Edit or remove added text in the box.",
     ),
   ).toBeVisible();
   // Focus stayed on the button, and the words typed were kept until a press.
@@ -335,3 +335,71 @@ for (const width of [390, 1280]) {
     });
   }
 }
+
+/** The box's height in lines of its text, and whether all its text shows without scrolling. */
+async function boxLines(page: Page) {
+  return page.locator("#proof-words").evaluate((box) => {
+    const style = getComputedStyle(box as HTMLTextAreaElement);
+    const edges =
+      parseFloat(style.paddingTop) +
+      parseFloat(style.paddingBottom) +
+      parseFloat(style.borderTopWidth) +
+      parseFloat(style.borderBottomWidth);
+    const height = box.getBoundingClientRect().height;
+    return {
+      lines: Math.round((height - edges) / parseFloat(style.lineHeight)),
+      allShown: box.scrollHeight <= box.clientHeight + 1,
+    };
+  });
+}
+
+/** Types more lines into the box, as a person would. */
+async function addLines(page: Page, count: number) {
+  await page.locator("#proof-words").focus();
+  await page.keyboard.press("ControlOrMeta+End");
+  for (let line = 1; line <= count; line += 1) {
+    await page.keyboard.press("Enter");
+    await page.keyboard.type(`Line ${line} of what would prove it.`);
+  }
+}
+
+test("at 390 wide the box grows with its words up to about ten lines, by stylesheet or by script", async ({
+  browser,
+}) => {
+  const customer = await signInAs(browser, "Customer One", 390);
+  await fileTicket(customer, "The box grows with what would prove it");
+  const stepUrl = customer.url();
+  expect(await boxLines(customer)).toEqual({ lines: 3, allShown: true });
+  await addLines(customer, 4);
+  expect(await boxLines(customer)).toEqual({ lines: 5, allShown: true });
+  await addLines(customer, 10);
+  expect(await boxLines(customer)).toEqual({ lines: 10, allShown: false });
+
+  // A browser whose stylesheet cannot size the box: the step's script does the same.
+  // The page's content policy refuses a style added in the page, so this test sets it aside.
+  const fallback = await browser.newContext({
+    bypassCSP: true,
+    viewport: { width: 390, height: 900 },
+    storageState: await customer.context().storageState(),
+  });
+  await fallback.addInitScript(() => {
+    const supports = CSS.supports.bind(CSS);
+    CSS.supports = ((...args: [string, string?]) =>
+      args[0] === "field-sizing"
+        ? false
+        : supports(...(args as [string, string]))) as typeof CSS.supports;
+    document.addEventListener("DOMContentLoaded", () => {
+      const style = document.createElement("style");
+      style.textContent = ".proof-step textarea { field-sizing: fixed !important; }";
+      document.head.append(style);
+    });
+  });
+  const page = await fallback.newPage();
+  await page.goto(stepUrl);
+  expect(await boxLines(page)).toEqual({ lines: 3, allShown: true });
+  await addLines(page, 4);
+  expect(await boxLines(page)).toEqual({ lines: 5, allShown: true });
+  await addLines(page, 10);
+  expect(await boxLines(page)).toEqual({ lines: 10, allShown: false });
+  await fallback.close();
+});
