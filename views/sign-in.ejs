@@ -10,6 +10,7 @@
 <% if (viewer) { %>
 <%# Who the visitor is and how to change it, said once, with how the real site differs. %>
 <p class="signed-in">You are <strong><%- include("demo-name", { person: viewer }) %></strong>, one of three made-up people. Switch with the menu at the top right.<% if (locals.realSiteUrl) { %> On <a href="<%= realSiteUrl %>">the real site</a>, people sign in with GitHub and start as customers.<% if (locals.sourceUrl) { %> <a href="<%= sourceUrl %>#sign-in-and-roles" class="keep-together">How sign-in and roles work</a><% } %><% } %></p>
+<p class="roles-link">Every request is checked against one table of who may do what, and you can read it: <a href="/roles">Who may do what</a>. Switch person and the column marked (you) moves.</p>
 <% } else if (nextTicket) { %>
 <%# A link to one ticket: whose view opens it is the visitor's choice, since a customer sees only their own. %>
 <p class="next-ticket" id="next-ticket">Pick a role to open <strong><%= nextTicket %></strong>.</p>
