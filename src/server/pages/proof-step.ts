@@ -25,11 +25,16 @@ export type ProofChoice = {
   checked: boolean;
 };
 
-/** The choices above the box: the sample's three on the demo's sample, or else those offered. */
+/**
+ * The choices above the box: the sample's three on the demo's sample, or else those offered.
+ * A choice is picked when the box holds its words, or when it is the one picked in a form that
+ * came back refused (picked, by the form's field names).
+ */
 export function proofChoices(
   sample: boolean,
   offered: CheckSuggestion[],
   boxWords: string,
+  picked: Record<string, string | undefined> = {},
 ): ProofChoice[] {
   const choices: Omit<ProofChoice, "checked">[] = sample
     ? SAMPLE_PROOFS.map((words, index) => ({
@@ -47,7 +52,10 @@ export function proofChoices(
         }));
   return choices.map((choice) => ({
     ...choice,
-    checked: boxWords.trim() !== "" && sameText(choice.words, boxWords.trim()),
+    checked:
+      boxWords.trim() === ""
+        ? picked[choice.name] === choice.value
+        : sameText(choice.words, boxWords.trim()),
   }));
 }
 

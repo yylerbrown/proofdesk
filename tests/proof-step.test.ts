@@ -275,12 +275,36 @@ describe("Save, Skip, Change and Add", () => {
     expect(again.status).toBe(303);
   });
 
-  it("sends an empty box back to the step with the reason", async () => {
+  it("shows an empty Save its reason under the box, which is marked and focused", async () => {
     const { app } = buildTestApp();
     const { browser } = await fileOnPage(app);
-    const refused = await browser.post("/tickets/SUP-1/check").type("form").send({ words: "" });
-    expect(refused.status).toBe(303);
-    expect(refused.headers.location).toBe("/tickets/SUP-1?step=verify#verify-form");
+    const refused = await browser
+      .post("/tickets/SUP-1/check")
+      .type("form")
+      .send({ words: "", expected_version: "1" });
+    expect(refused.status).toBe(400);
+    const box = parse(refused.text).querySelector("form#verify-form textarea")!;
+    expect(box.getAttribute("aria-invalid")).toBe("true");
+    expect(box.hasAttribute("autofocus")).toBe(true);
+    expect(box.getAttribute("aria-describedby")).toContain("proof-error");
+    expect(parse(refused.text).querySelector("#proof-error")?.text).toBe(
+      "Pick one of the suggestions, or write how you will know it is fixed.",
+    );
+  });
+
+  it("keeps words over the limit in the box when it refuses them", async () => {
+    const { app } = buildTestApp();
+    const { browser } = await fileOnPage(app);
+    const long = "Every row is there. ".repeat(30);
+    const refused = await browser
+      .post("/tickets/SUP-1/check")
+      .type("form")
+      .send({ words: long, expected_version: "1" });
+    expect(refused.status).toBe(400);
+    const step = parse(refused.text).querySelector("form#verify-form")!;
+    expect(step.querySelector("textarea")?.text).toBe(long);
+    expect(step.querySelector("#proof-error")?.text).toBe("Must be at most 500 characters.");
+    expect((await browser.get("/api/tickets/SUP-1")).body.fix_check).toBeNull();
   });
 });
 
@@ -334,6 +358,22 @@ describe("suggested ways", () => {
     const ticket = (await browser.get("/api/tickets/SUP-1")).body;
     expect(ticket.fix_check).toBe("The file opens");
     expect(ticket.check_suggestions[1].state).toBe("chosen");
+  });
+
+  it("keep the choice picked with scripts off when the ticket changed meanwhile", async () => {
+    const { app } = buildTestApp();
+    const { browser } = await fileOnPage(app);
+    const offered = await offer(app, ["Every row is there", "The file opens"]);
+    await as(app, teamActor).post("/api/tickets/SUP-1/take-and-start");
+    const refused = await browser
+      .post("/tickets/SUP-1/check")
+      .type("form")
+      .send({ suggestion_id: String(offered[1]!.id), words: "", expected_version: "1" });
+    expect(refused.status).toBe(409);
+    const step = parse(refused.text).querySelector("form#verify-form")!;
+    const radios = step.querySelectorAll("input[type=radio]");
+    expect(radios.map((radio) => radio.hasAttribute("checked"))).toEqual([false, true]);
+    expect(step.querySelector("#proof-error")?.text).toContain("What you wrote is kept here.");
   });
 
   it("post by id with the box's own words, which are what is saved", async () => {
@@ -453,6 +493,27 @@ describe("the demo's sample", () => {
       .type("form")
       .send({ sample_choice: "2", words: "", expected_version: "1" });
     expect((await browser.get(`/api/tickets/${key}`)).body.fix_check).toBe(SAMPLE_PROOFS[2]);
+  });
+
+  it("keeps the sample choice picked when the ticket changed meanwhile", async () => {
+    const { app, browser } = demo();
+    const landed = await fileSample(browser);
+    const key = /SUP-\d+/.exec(landed)![0];
+    const html = parse((await browser.get(landed)).text);
+    const version = html.querySelector("input[name=expected_version]")!.getAttribute("value");
+    // The team takes the ticket while the visitor picks.
+    const taken = await visitor(app)
+      .set("Cookie", `${DEV_COOKIE}=demo-team`)
+      .post(`/api/tickets/${key}/take-and-start`);
+    expect(taken.status, taken.text).toBe(200);
+    const refused = await browser
+      .post(`/tickets/${key}/check`)
+      .type("form")
+      .send({ sample_choice: "2", words: "", expected_version: version });
+    expect(refused.status).toBe(409);
+    const step = parse(refused.text).querySelector("form#verify-form")!;
+    const radios = step.querySelectorAll("input[type=radio]");
+    expect(radios.map((radio) => radio.hasAttribute("checked"))).toEqual([false, false, true]);
   });
 
   it("offers no sample choices on a ticket that is not the sample", async () => {

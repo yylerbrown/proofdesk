@@ -704,7 +704,14 @@ export function pagesRouter(
       words: boxWords,
       // The choices are for a ticket that does not say yet what would prove it.
       choices:
-        proofStep && ticket.fix_check === null ? proofChoices(sample, offered, boxWords) : [],
+        proofStep && ticket.fix_check === null
+          ? proofChoices(
+              sample,
+              offered,
+              boxWords,
+              problem?.form === "verify" ? problem.values : {},
+            )
+          : [],
       sample,
       // A page may ask a listening assistant only on a New ticket with no check, off the demo.
       canAsk:
@@ -1057,15 +1064,7 @@ export function pagesRouter(
         // opens on the second part, the step that asks for it.
         const next = ticket.fix_check === null ? "?step=verify" : "";
         res.redirect(303, `/tickets/${ticket.key}${next}`);
-      } else if (
-        // The form has no check box: a check saved since in the step is not a change to it.
-        formMatchesTicket(
-          ticket,
-          typeof req.body?.fix_check === "string"
-            ? values
-            : { ...values, fix_check: ticket.fix_check ?? "" },
-        )
-      ) {
+      } else if (formMatchesTicket(ticket, values)) {
         // The same form sent twice, for example after Back: open the ticket it filed.
         rememberSaved(res, "alreadyFiled");
         res.redirect(303, `/tickets/${ticket.key}`);
@@ -1324,29 +1323,41 @@ export function pagesRouter(
       rememberSaved(res, "checkChosen");
       res.redirect(303, `/tickets/${ticket.key}`);
     } catch (err) {
+      // What was sent, so the step can show it again: the words and the choice picked.
+      const kept = {
+        words,
+        suggestion_id: asText(req.body?.suggestion_id),
+        sample_choice: asText(req.body?.sample_choice),
+      };
+      const sentSomething = Object.values(kept).some((value) => value.trim() !== "");
       // The ticket changed while the box was being filled, for example when the team took it:
-      // the step shows again on the ticket as it is now, with the words kept.
-      if (err instanceof HttpError && err.code === "ticket_changed" && words.trim() !== "") {
+      // the step shows again on the ticket as it is now, with what was sent kept.
+      if (err instanceof HttpError && err.code === "ticket_changed" && sentSomething) {
         res.locals.refused = onTicketPage(err);
         showTicket(req, res, 409, emptyEntry, {
           form: "verify",
           message: "What you wrote is kept here. Look at the ticket as it is now, then save again.",
           comment: "",
-          values: { words },
+          values: kept,
           focus: "words",
         });
         return;
       }
       if (!(err instanceof HttpError)) throw err;
       if (!(err instanceof ValidationError) && err.code !== "suggestion_gone") throw err;
-      const ticket = service.getTicket(req.params.key, actor);
+      // A mistake in the step, such as an empty box: the step shows again with the reason under
+      // the box and what was sent kept.
       const message =
         err instanceof ValidationError
           ? (Object.values(err.fieldErrors).flat()[0] ?? err.message)
           : err.message;
-      rememberProblem(res, message);
-      // Back to the step, where the box is.
-      res.redirect(303, `/tickets/${ticket.key}?step=verify#verify-form`);
+      showTicket(req, res, err.status, emptyEntry, {
+        form: "verify",
+        message,
+        comment: "",
+        values: kept,
+        focus: "words",
+      });
     }
   });
   router.post("/tickets/:key/withdraw-question", (req, res) => {
