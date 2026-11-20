@@ -48,7 +48,9 @@ async function stateOnList(app: Express, cookie: string, id: number): Promise<st
   expect(page.status).toBe(200);
   const link = parse(page.text).querySelector(`a[href="/connections/${id}"]`);
   const row = link!.closest("tr")!;
-  return row.querySelectorAll("td").at(-1)!.text.replace(/\s+/g, " ").trim();
+  const state = row.querySelectorAll("td").at(-1)!.text.replace(/\s+/g, " ").trim();
+  // A revoked row says when: the time is written here as <time>.
+  return state.replace(/^Revoked \d{1,2} [A-Z][a-z]{2} \d{4}, \d{2}:\d{2} UTC/, "Revoked <time>");
 }
 
 /** The text of one connection's own page. */
@@ -86,7 +88,7 @@ describe("a connection whose issuer the server settings stop naming as an admin"
     expect(row.revoked_at).not.toBeNull();
     expect(row.revoked_reason).toBe(SAM_ENDED);
 
-    expect(await stateOnList(second.app, ada.cookie, samsId)).toBe(`Revoked ${SAM_ENDED}`);
+    expect(await stateOnList(second.app, ada.cookie, samsId)).toBe(`Revoked <time> ${SAM_ENDED}`);
     expect(await ownPage(second.app, ada.cookie, samsId)).toContain(SAM_ENDED);
     // A connection whose issuer is still an admin is left alone.
     expect(await stateOnList(second.app, ada.cookie, adasId)).toBe("Revoke");
@@ -129,7 +131,7 @@ describe("the reason a connection ended", () => {
       .send({ person: sam.id, role: "team" });
     expect(lowered.status).toBe(303);
 
-    expect(await stateOnList(app, ada.cookie, id)).toBe(`Revoked ${SAM_ENDED}`);
+    expect(await stateOnList(app, ada.cookie, id)).toBe(`Revoked <time> ${SAM_ENDED}`);
     expect(await ownPage(app, ada.cookie, id)).toContain(SAM_ENDED);
   });
 
@@ -141,7 +143,7 @@ describe("the reason a connection ended", () => {
     const revoked = await browserOf(app, ada.cookie).post(`/connections/${id}/revoke`);
     expect(revoked.status).toBe(303);
 
-    expect(await stateOnList(app, ada.cookie, id)).toBe("Revoked");
+    expect(await stateOnList(app, ada.cookie, id)).toBe("Revoked <time>");
     expect(await ownPage(app, ada.cookie, id)).not.toContain("Ended when");
   });
 });

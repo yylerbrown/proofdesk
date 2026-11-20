@@ -43,10 +43,10 @@
       <tr>
         <td class="user-text"><a href="/connections/<%= c.id %>"><%= c.name %></a></td>
         <td><code>pd_<%= c.key_prefix %></code></td>
-        <td><%= c.scopes.map((s) => scopeLabels[s]).join("; ") %></td>
+        <td>Suggestions: <%= c.suggestionWords %>.<% if (c.otherScopes.length > 0) { %> <%= c.otherScopes.map((s) => scopeLabels[s]).join("; ") %>.<% } %></td>
         <td><% if (c.last_used_at) { %><%- include("time", { iso: c.last_used_at }) %><% } else { %>Never<% } %></td>
         <td>
-          <% if (c.revoked_at) { %>Revoked<% if (c.revoked_reason) { %><br /><small><%= c.revoked_reason %></small><% } %><% } else if (!canManage) { %>Active<% } else { %>
+          <% if (c.revoked_at) { %>Revoked <%- include("time", { iso: c.revoked_at }) %><% if (c.revoked_reason) { %><br /><small><%= c.revoked_reason %></small><% } %><% } else if (!canManage) { %>Active<% } else { %>
           <form method="post" action="/connections/<%= c.id %>/revoke" class="inline">
             <button type="submit" class="danger">Revoke</button>
           </form>
