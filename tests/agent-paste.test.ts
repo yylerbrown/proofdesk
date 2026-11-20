@@ -15,7 +15,7 @@ describe("the message for an AI agent", () => {
         "1. Read https://desk.example/llms.txt first. It explains the API and the rules.",
         `2. Send this header on every request to https://desk.example/api: Authorization: Bearer ${key}`,
         "3. List the tickets handed to you with GET https://desk.example/api/tickets, and tell me what each one needs. Change nothing yet.",
-        '4. If no ticket has been handed to you yet, say so, and tell me how to hand one over: "Open a ticket you own, then More options, Hand to an AI assistant."',
+        '4. If no ticket has been handed to you yet, say so, and tell me how to hand one over: "Open a ticket, set its Status to In Progress, then More options, Hand to an AI assistant."',
         "5. Your Suggestions setting is Off.",
       ].join("\n"),
     );

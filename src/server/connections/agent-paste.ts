@@ -6,7 +6,8 @@
 import type { SuggestionChoice } from "./service.js";
 
 /** How a person hands a ticket to an assistant, in the ticket page's own words. */
-export const HAND_OVER = "Open a ticket you own, then More options, Hand to an AI assistant.";
+export const HAND_OVER =
+  "Open a ticket, set its Status to In Progress, then More options, Hand to an AI assistant.";
 
 /** The suggestion setting in the words the pages use. */
 export const SUGGESTION_WORDS: Record<SuggestionChoice, string> = {

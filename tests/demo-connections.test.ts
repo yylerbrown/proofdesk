@@ -323,7 +323,7 @@ describe("the demo key page", () => {
     const next = column.querySelector(".connection-next")!;
     expect(next.querySelector(".next-label")?.text).toBe("Next");
     expect(next.querySelectorAll("p:not(.next-label)").map((p) => p.text)).toEqual([
-      `Its ticket is ${sample}, the sample ticket for assistants, already handed to it.`,
+      `Its ticket is ${sample}, the sample ticket for assistants, already handed to it. View as Demo Team Member with the menu at the top right to open it.`,
     ]);
     expect(next.querySelector("a")?.getAttribute("href")).toBe(`/tickets/${sample}`);
     expect(column.querySelector(".connection-facts")).toBeNull();

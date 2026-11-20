@@ -19,7 +19,7 @@
 <% if (!connection.demo) { %>
 <div class="connection-next">
   <p class="next-label">Next</p>
-  <p>Hand it a ticket: open <a href="/tickets?owner=me">a ticket you own</a>, then More options, Hand to an AI assistant.</p>
+  <p>Hand it a ticket: open <a href="/tickets">a ticket</a>, set its Status to In Progress, then More options, Hand to an AI assistant.</p>
   <% if (suggestions !== "off") { %>
   <p>Or let it suggest proofs: while your assistant is listening, <a href="/tickets/new">file a ticket</a><%= suggestions === "when_asked" ? " and press Suggest ways to prove it" : "" %>.</p>
   <% } %>
@@ -27,7 +27,7 @@
 <% } else if (locals.sampleKey) { %>
 <div class="connection-next">
   <p class="next-label">Next</p>
-  <p>Its ticket is <a href="/tickets/<%= sampleKey %>"><%= sampleKey %></a>, the sample ticket for assistants, already handed to it.</p>
+  <p>Its ticket is <a href="/tickets/<%= sampleKey %>"><%= sampleKey %></a>, the sample ticket for assistants, already handed to it. View as Demo Team Member with the menu at the top right to open it.</p>
 </div>
 <% } %>
 

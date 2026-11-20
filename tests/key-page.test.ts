@@ -28,21 +28,53 @@ async function nextPart(suggestions: string) {
 }
 
 const HAND_IT =
-  "Hand it a ticket: open a ticket you own, then More options, Hand to an AI assistant.";
+  "Hand it a ticket: open a ticket, set its Status to In Progress, then More options, Hand to an AI assistant.";
 
 describe("what to do next, on the page that shows a new key", () => {
+  it("names the step that makes Hand to an AI assistant appear on a ticket", async () => {
+    const { app } = buildTestApp();
+    await admin(app)
+      .post("/connections")
+      .type("form")
+      .send({ name: "Helper", scopes: ["read_tickets"] });
+    await admin(app).post("/api/tickets").send({ title: "Printer jams", description: "Jams." });
+    const offersHandOver = async () =>
+      parse((await admin(app).get("/tickets/SUP-1")).text)
+        .querySelectorAll("details.more-options summary")
+        .some((summary) => summary.text.trim() === "Hand to an AI assistant");
+    // A ticket that is still New does not offer it, even to its owner.
+    await admin(app).post("/api/tickets/SUP-1/take");
+    expect(await offersHandOver()).toBe(false);
+    // Setting its Status to In Progress, as the words say, does.
+    const page = parse((await admin(app).get("/tickets/SUP-1")).text);
+    const inProgress = page
+      .querySelectorAll(".status-menu form")
+      .find((form) => form.querySelector("button")!.text.trim().startsWith("In Progress"))!;
+    const fields = Object.fromEntries(
+      inProgress
+        .querySelectorAll("input[type=hidden]")
+        .map((input) => [input.getAttribute("name")!, input.getAttribute("value")!]),
+    );
+    const moved = await admin(app)
+      .post(inProgress.getAttribute("action")!)
+      .type("form")
+      .send(fields);
+    expect(moved.status).toBeLessThan(400);
+    expect(await offersHandOver()).toBe(true);
+  });
+
   it("with Suggestions Off, says the setting and only how to hand it a ticket", async () => {
     const next = await nextPart("off");
     expect(next.facts).toBe("Helper. Suggestions: Off.");
     expect(next.label).toBe("Next");
     expect(next.lines).toEqual([HAND_IT]);
-    expect(next.links).toEqual(["/tickets?owner=me"]);
+    expect(next.links).toEqual(["/tickets"]);
     expect(next.blackButtons).toBe(0);
     // The message tells the assistant the same words for an empty list.
     expect(next.message).toContain(`"${HAND_IT.replace("Hand it a ticket: open", "Open")}"`);
     expect(next.message).toContain("Your Suggestions setting is Off.");
-    // The link opens the owner's own tickets.
-    expect((await admin(next.app).get("/tickets?owner=me")).status).toBe(200);
+    // The link opens the ticket list.
+    expect((await admin(next.app).get("/tickets")).status).toBe(200);
   });
 
   it("with Suggestions When asked, also says to file a ticket and press the proof step's button", async () => {
@@ -52,7 +84,7 @@ describe("what to do next, on the page that shows a new key", () => {
       HAND_IT,
       `Or let it suggest proofs: while your assistant is listening, file a ticket and press ${BUTTON_WORDS}.`,
     ]);
-    expect(next.links).toEqual(["/tickets?owner=me", "/tickets/new"]);
+    expect(next.links).toEqual(["/tickets", "/tickets/new"]);
     expect(next.message).toContain("Your Suggestions setting is When asked.");
     // The new ticket form gives itself a one-time id first.
     const form = await admin(next.app).get("/tickets/new").redirects(1);
