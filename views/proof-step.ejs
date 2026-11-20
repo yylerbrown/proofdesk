@@ -10,7 +10,9 @@
   <div class="proof-label-row">
     <label for="proof-words" class="proof-label">What would prove it is fixed?</label>
   </div>
-  <p id="proof-hint" class="hint">One thing you can check yourself when the team says it is fixed.</p>
+  <%# The second sentence is true by the list's default order: New tickets that say what would
+      prove it is fixed come first. %>
+  <p id="proof-hint" class="hint">One thing you can check yourself when the team says it is fixed. Tickets that say what would prove it is fixed are listed first for the team.</p>
   <%# The choices' place. While an assistant is asked it holds "Asking..." and keeps the room the
       choices take, so nothing under it moves when they arrive. %>
   <div class="proof-choices" aria-live="polite"<% if (proof.choices.length === 0) { %> hidden<% } %>>

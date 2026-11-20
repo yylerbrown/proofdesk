@@ -119,11 +119,10 @@ describe("the step", () => {
     expect(step.getAttribute("action")).toBe("/tickets/SUP-1/check");
     expect(step.querySelector("input[name=expected_version]")?.getAttribute("value")).toBe("1");
     expect(step.querySelector("label")?.text).toBe("What would prove it is fixed?");
+    // The second sentence is made true by the list's default order.
     expect(step.querySelectorAll("p.hint").map((line) => line.text)).toEqual([
-      "One thing you can check yourself when the team says it is fixed.",
+      "One thing you can check yourself when the team says it is fixed. Tickets that say what would prove it is fixed are listed first for the team.",
     ]);
-    // The order rule is not in this build, so the page makes no promise about the order.
-    expect(step.text).not.toContain("listed first");
     expect(stepControls(html)).toEqual(["words", "Save", "Skip for now"]);
     // The box stops where the server does.
     expect(Number(step.querySelector("textarea")?.getAttribute("maxlength"))).toBe(
@@ -169,6 +168,19 @@ describe("the step", () => {
     const html = await page(app, customerOne, "/tickets/SUP-1?step=verify");
     expect(html.querySelector("form#verify-form")).toBeNull();
     expect(html.querySelector("main")!.text).not.toContain("Add what would prove it");
+  });
+});
+
+describe("the promise in the step's grey line", () => {
+  it("holds: a ticket saved with what would prove it comes first in the team's list", async () => {
+    const { app } = buildTestApp();
+    const { browser } = await fileOnPage(app);
+    await browser.post("/tickets").type("form").send({ title: "Fax is slow", description: "x" });
+    await browser.post("/tickets/SUP-1/check").type("form").send({ words: "Every row" });
+    const keys = (await as(app, teamActor).get("/api/tickets")).body.map(
+      (ticket: { key: string }) => ticket.key,
+    );
+    expect(keys.indexOf("SUP-1")).toBeLessThan(keys.indexOf("SUP-2"));
   });
 });
 

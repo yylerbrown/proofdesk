@@ -47,7 +47,7 @@ describe("the ticket forms", () => {
     const step = html.querySelector("form#verify-form")!;
     expect(step.querySelector("label")?.text).toBe("What would prove it is fixed?");
     expect(step.querySelector("#proof-hint")?.text).toBe(
-      "One thing you can check yourself when the team says it is fixed.",
+      "One thing you can check yourself when the team says it is fixed. Tickets that say what would prove it is fixed are listed first for the team.",
     );
   });
 
