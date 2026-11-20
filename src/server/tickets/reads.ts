@@ -116,6 +116,26 @@ export function createReads(shared: Shared, options: ServiceOptions) {
     },
 
     /**
+     * How many tickets listTickets pages through for this filter, owner filter and search, so a
+     * list knows its last page. It uses the same scope as listTickets, archived tickets included
+     * only under "archived".
+     */
+    countListed(
+      filter: TicketListFilter | "open",
+      actor: Actor,
+      narrowing: ListNarrowing = {},
+    ): number {
+      if (filter === "archived") requirePermission(actor, "list_archived");
+      const scope = filter === "archived" ? ARCHIVED : visibleScope(actor);
+      const counts = repository.countTicketsByStatus(db, scope, narrowed(narrowing, actor));
+      if (filter === "all" || filter === "archived") {
+        return counts.new + counts.in_progress + counts.resolved;
+      }
+      if (filter === "open") return counts.new + counts.in_progress;
+      return counts[filter];
+    },
+
+    /**
      * How many resolved tickets this viewer's list holds, with the same owner filter and search,
      * that moved to Resolved before this time: the ones a list cut at that time leaves out. A
      * customer's count covers only their own tickets.
