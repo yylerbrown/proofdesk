@@ -8,13 +8,24 @@ const log = fs.readFileSync("docs/BUILD_LOG.md", "utf8");
 
 describe("the build log", () => {
   it("has a row for each pull request merged on the afternoon of 20 November", () => {
-    for (const pr of ["#214", "#215", "#216", "#217", "#218", "#220", "#221", "#224", "#222"]) {
+    for (const pr of [
+      "#214",
+      "#215",
+      "#216",
+      "#217",
+      "#218",
+      "#220",
+      "#221",
+      "#224",
+      "#222",
+      "#225",
+    ]) {
       expect(log).toMatch(new RegExp(`\\| ${pr} +\\|`));
     }
   });
 
   it("lists the last rows in merge order, each with its own step number", () => {
-    const rows = log.split("\n").filter((line) => /^\| 20[0-9]\. /.test(line));
+    const rows = log.split("\n").filter((line) => /^\| 2[01][0-9]\. /.test(line));
     const order = rows.map((line) => [/^\| (\d+)\./.exec(line)![1], /(#\d+) +\|$/.exec(line)![1]]);
     expect(order).toEqual([
       ["200", "#214"],
@@ -26,7 +37,8 @@ describe("the build log", () => {
       ["206", "#221"],
       ["207", "#224"],
       ["208", "#222"],
-      ["209", "#219"],
+      ["209", "#225"],
+      ["210", "#219"],
     ]);
   });
 

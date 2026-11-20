@@ -101,9 +101,8 @@ Shortcuts in the code that were kept for now, each with the plan for it.
   columns (`ticket_evidence.spec_id` and `connection_id`, `ticket_specs.connection_id`,
   `ticket_entries.based_on`) have no `REFERENCES` clause and are checked in code only.
 - **Event types and error codes are plain strings.** The tests check them; the compiler does not.
-- **Two compatibility branches have no test:** the lookup for a No recorded before comments were
-  kept, and a demo seed recorded before the sample for assistants was named. They stay until the
-  live databases are checked, then go or get a test.
+- **One compatibility branch has no test:** a demo seed recorded before the sample for
+  assistants was named. It stays until the live databases are checked, then goes or gets a test.
 - **Test setup is copied between files.** Several files build their own ask-the-customer setup,
   and agent keys are issued by reading the admin page. The people side of the permission matrix
   test is written by hand on purpose, as an answer key independent of the table it checks.
