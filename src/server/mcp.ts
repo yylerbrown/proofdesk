@@ -53,11 +53,54 @@ function text(value: unknown) {
   return [{ type: "text" as const, text: JSON.stringify(value, null, 2) }];
 }
 
+/**
+ * The tool calls still running, so a client's notifications/cancelled can end one. Each HTTP
+ * request gets its own MCP server, so the notification arrives at a server that never saw the
+ * call it names. This list is shared by every request to the endpoint, and a call is found by
+ * its connection and its JSON-RPC id, so one connection can only cancel its own calls.
+ */
+function createRunningCalls() {
+  const running = new Map<string, AbortController>();
+  const nameOf = (connectionId: string, requestId: unknown) =>
+    `${connectionId} ${JSON.stringify(requestId)}`;
+
+  return {
+    /**
+     * Notes a call as running. Its signal is aborted when the SDK aborts the call's own
+     * signal (the caller closed the request) or when the caller cancels it by its id.
+     */
+    start(connectionId: string, requestId: unknown, callerSignal: AbortSignal) {
+      const name = nameOf(connectionId, requestId);
+      const controller = new AbortController();
+      const abort = () => controller.abort();
+      if (callerSignal.aborted) abort();
+      callerSignal.addEventListener("abort", abort, { once: true });
+      running.set(name, controller);
+      return {
+        signal: controller.signal,
+        /** Forgets the call once it has answered. */
+        finish(): void {
+          callerSignal.removeEventListener("abort", abort);
+          if (running.get(name) === controller) running.delete(name);
+        },
+      };
+    },
+
+    /** Ends the call this connection sent with this id, if it is still running. */
+    cancel(connectionId: string, requestId: unknown): void {
+      running.get(nameOf(connectionId, requestId))?.abort();
+    },
+  };
+}
+
+type RunningCalls = ReturnType<typeof createRunningCalls>;
+
 /** Builds the MCP server for one request, acting as the agent the key belongs to. */
 function buildServer(
   service: TicketService,
   connections: ConnectionService,
   actor: Actor,
+  runningCalls: RunningCalls,
 ): McpServer {
   const server = new McpServer(
     { name: "proofdesk", version: "1.0.0" },
@@ -86,6 +129,11 @@ function buildServer(
             outcome,
             code,
           });
+        const running = runningCalls.start(
+          String(actor.connection?.id),
+          ctx.mcpReq.id,
+          ctx.mcpReq.signal,
+        );
         try {
           const call = () =>
             row.run({
@@ -95,7 +143,7 @@ function buildServer(
               query: row.query ? fields : {},
               body: row.body ? fields : {},
               // Aborted when the caller cancels or goes away, which ends a held call at once.
-              signal: ctx.mcpReq.signal,
+              signal: running.signal,
             });
           // A read may answer later, as listening for requests does, so it is awaited.
           const ran =
@@ -124,6 +172,8 @@ function buildServer(
           }
           record(err.status < 500 ? "refused" : "failed", err.code);
           return { isError: true, content: text(errorBody(err).body) };
+        } finally {
+          running.finish();
         }
       },
     );
@@ -141,7 +191,7 @@ function actorOf(authInfo: AuthInfo | undefined): Actor {
 /**
  * The middleware for POST /mcp, in order: refuse a browser page from another site, read the
  * JSON body, check the connection key with the SDK's bearer check, refuse a body the JSON
- * parser did not read and a batch, apply the write allowance to tool calls that change
+ * parser did not read and a batch, end a call the client cancelled, apply the write allowance to tool calls that change
  * something, then hand the request to the SDK's handler.
  */
 export function mcpEndpoint(
@@ -169,8 +219,9 @@ export function mcpEndpoint(
       };
     },
   };
+  const runningCalls = createRunningCalls();
   const handler = createMcpHandler(({ authInfo }) =>
-    buildServer(service, connections, actorOf(authInfo)),
+    buildServer(service, connections, actorOf(authInfo), runningCalls),
   );
   const node = toNodeHandler(handler);
   const writing = new Set(TOOL_ACTIONS.filter((row) => row.method !== "get").map((r) => r.name));
@@ -206,6 +257,16 @@ export function mcpEndpoint(
           id: null,
         });
         return;
+      }
+      next();
+    },
+    (req, _res, next) => {
+      // A client that cancels a call sends notifications/cancelled in a request of its own.
+      // The SDK still answers it below; this ends the call it names, if that call is running.
+      const body = req.body as { method?: unknown; params?: { requestId?: unknown } } | undefined;
+      if (body?.method === "notifications/cancelled" && body.params?.requestId !== undefined) {
+        const actor = actorOf((req as { auth?: AuthInfo }).auth);
+        runningCalls.cancel(String(actor.connection?.id), body.params.requestId);
       }
       next();
     },

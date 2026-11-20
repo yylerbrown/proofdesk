@@ -623,4 +623,111 @@ describe("a caller that goes away", () => {
     const handed = JSON.parse(content[0]!.text).result.requests as { key: string }[];
     expect(handed.map((r) => r.key)).toEqual(["SUP-1"]);
   });
+
+  it("over MCP, a call cancelled with notifications/cancelled frees its place at once", async () => {
+    const { app } = buildTestApp();
+    await fileNoCheck(app);
+    const keys = [];
+    for (let n = 0; n <= MOST_HELD_CALLS; n += 1) {
+      keys.push(await issue(app, "when_asked", `Helper ${n}`));
+    }
+    const server = await listenLocally(app);
+    servers.push(server);
+    const { port } = server.address() as AddressInfo;
+    const url = `http://127.0.0.1:${port}/mcp`;
+
+    /** Sends one JSON-RPC message to /mcp with this key. */
+    function send(key: string, message: object, signal?: AbortSignal) {
+      return fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", ...message }),
+        signal,
+      });
+    }
+    /** A wait_for_requests call, as request 7 of this key. */
+    const waitCall = {
+      id: 7,
+      method: "tools/call",
+      params: { name: "wait_for_requests", arguments: { wait_seconds: 20 } },
+    };
+
+    // Four assistants listen, each holding one call over MCP.
+    const stop = new AbortController();
+    const held = keys
+      .slice(0, MOST_HELD_CALLS)
+      .map((key) => send(key, waitCall, stop.signal).catch(() => "stopped"));
+    await untilListening(app);
+    const fifth = agent(app, keys[MOST_HELD_CALLS]!);
+    let tried = await fifth.wait(1);
+    for (let tries = 0; tries < 100 && tried.status === 200; tries += 1)
+      tried = await fifth.wait(1);
+    expect(tried.status).toBe(429);
+
+    // The first cancels its call the way an MCP client does, keeping its connection open.
+    const cancelled = await send(keys[0]!, {
+      method: "notifications/cancelled",
+      params: { requestId: 7, reason: "The user stopped it." },
+    });
+    expect(cancelled.status).toBe(202);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    // Half a second later the fifth is let in.
+    const client = new Client({ name: "fifth-assistant", version: "1.0.0" });
+    await client.connect(
+      new StreamableHTTPClientTransport(new URL(url), {
+        requestInit: { headers: { Authorization: `Bearer ${keys[MOST_HELD_CALLS]}` } },
+      }),
+    );
+    clients.push(client);
+    const letIn = await client.callTool({
+      name: "wait_for_requests",
+      arguments: { wait_seconds: 1 },
+    });
+    expect(letIn.isError, JSON.stringify(letIn.content)).not.toBe(true);
+    stop.abort();
+    await Promise.all(held);
+  });
+
+  it("over MCP, a cancel names only the caller's own call", async () => {
+    const { app } = buildTestApp();
+    await fileNoCheck(app);
+    const mine = await issue(app, "when_asked", "Mine");
+    const other = await issue(app, "when_asked", "Other");
+    const server = await listenLocally(app);
+    servers.push(server);
+    const { port } = server.address() as AddressInfo;
+    const url = `http://127.0.0.1:${port}/mcp`;
+    const post = (key: string, message: object, signal?: AbortSignal) =>
+      fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", ...message }),
+        signal,
+      });
+    const stop = new AbortController();
+    const held = post(
+      mine,
+      {
+        id: 3,
+        method: "tools/call",
+        params: { name: "wait_for_requests", arguments: { wait_seconds: 2 } },
+      },
+      stop.signal,
+    ).then((res) => res.text());
+    await untilListening(app);
+    const started = Date.now();
+    // Another connection names the same request id: the held call is not its call.
+    await post(other, { method: "notifications/cancelled", params: { requestId: 3 } });
+    await held;
+    expect(Date.now() - started).toBeGreaterThan(1500);
+  });
 });
