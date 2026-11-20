@@ -41,7 +41,7 @@ export function createCustomerQuestion(shared: Shared) {
           throw new HttpError(
             403,
             "not_owner",
-            `Only ${before.owner_name}, who owns ticket ${key}, can ask the customer to verify.`,
+            `Only ${before.owner_name}, who owns ticket ${key}, can ask the customer.`,
           );
         }
         // Worded from the ticket as it is now, which a page opened earlier may not show.
