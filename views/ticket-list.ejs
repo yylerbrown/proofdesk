@@ -74,7 +74,7 @@
   <% if (filters.owner) { %><input type="hidden" name="owner" value="<%= filters.owner %>" /><% } %>
   <% if (filters.sort !== "open_first") { %><input type="hidden" name="sort" value="<%= filters.sort.by %>" /><input type="hidden" name="direction" value="<%= filters.sort.direction %>" /><% } %>
   <%# One box and no button: pressing Enter sends a form with one text box. %>
-  <input type="search" name="q" autocomplete="off" value="<%= filters.q ?? "" %>" placeholder="Search, then press Enter" aria-label="Search titles and descriptions, or open a ticket by its key" maxlength="100" />
+  <input type="search" name="q" autocomplete="off" value="<%= filters.q ?? "" %>" placeholder="Search words or a key, then press Enter" aria-label="Search titles, descriptions and ticket keys" maxlength="100" />
 </form>
 </div>
 
