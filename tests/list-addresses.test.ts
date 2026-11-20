@@ -26,7 +26,9 @@ async function listPage(app: Express, who: Actor, query: string) {
   return {
     status: res.status,
     text: res.text,
-    keys: html.querySelectorAll("table.tickets tbody tr td:first-child a").map((a) => a.text),
+    keys: html
+      .querySelectorAll("table.tickets tbody tr td:first-child .ticket-key")
+      .map((a) => a.text),
     current: html.querySelectorAll('[aria-current="page"]').map((a) => a.text.trim()),
   };
 }
@@ -109,16 +111,15 @@ describe("a hand-edited address", () => {
 });
 
 describe("each ticket row", () => {
-  it("is one stop for the keyboard: the title link, with the key link out of the Tab order", async () => {
+  it("is one stop for the keyboard: the title link, with the key as plain text", async () => {
     const { app } = await setup();
     const html = parse((await as(app, teamActor).get("/tickets")).text);
     const row = html.querySelector("table.tickets tbody tr")!;
+    // The title is the row's one link and keyboard stop, so a keyboard or screen reader user
+    // hears what it is. The key is plain text: nothing that looks pressable is skipped.
     const links = row.querySelectorAll("a");
-    expect(links).toHaveLength(2);
-    // The one stop is named by the title, so a keyboard or screen reader user hears what it is.
-    const stops = links.filter((a) => a.getAttribute("tabindex") !== "-1");
-    expect(stops.map((a) => a.closest("td")!.classList.contains("title-cell"))).toEqual([true]);
-    // The key stays a link for the mouse.
-    expect(row.querySelector("td:first-child a")!.getAttribute("tabindex")).toBe("-1");
+    expect(links.map((a) => a.closest("td")!.classList.contains("title-cell"))).toEqual([true]);
+    expect(row.querySelectorAll("[tabindex]")).toHaveLength(0);
+    expect(row.querySelector("td:first-child .ticket-key")!.text).toMatch(/^SUP-\d+$/);
   });
 });

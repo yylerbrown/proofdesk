@@ -254,3 +254,28 @@ test("the line after sending a message is quiet text: focused for a screen reade
   await expect(sent).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   await customer.context().close();
 });
+
+test("between 1100 and 1250 wide the Proof column takes its room from Status, not the title", async ({
+  page,
+}) => {
+  await page.goto("/sign-in");
+  await page.getByRole("button", { name: "View as Team Member" }).click();
+  for (const width of [1100, 1180, 1250]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/tickets");
+    const columns = await page
+      .locator("table.tickets thead th")
+      .evaluateAll((cells) => cells.map((cell) => cell.getBoundingClientRect().width));
+    const rem = await page.evaluate(() =>
+      parseFloat(getComputedStyle(document.documentElement).fontSize),
+    );
+    // Status keeps only the room its longest tag needs and Proof is as wide as its header, so
+    // together they are 21.25rem, down from 23rem, and the title has that room back.
+    expect(columns[2]! + columns[3]!, `at ${width}px`).toBeLessThanOrEqual(21.25 * rem + 1);
+    // Every status word and its tag still fit on their line, uncut.
+    const cut = await page
+      .locator("table.tickets td.status-cell")
+      .evaluateAll((cells) => cells.filter((cell) => cell.scrollWidth > cell.clientWidth).length);
+    expect(cut, `at ${width}px`).toBe(0);
+  }
+});

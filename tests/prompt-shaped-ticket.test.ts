@@ -121,17 +121,19 @@ describe("the list's Proof column", () => {
     }
   });
 
-  it("draws the two marks the same size, and only the confirmed one filled", async () => {
+  it("draws the two marks the same size: a pale bare check, and the solid circle once confirmed", async () => {
     const said = fs.readFileSync("public/proof-said.svg", "utf8");
     const confirmed = fs.readFileSync("public/proof-confirmed.svg", "utf8");
     const viewBox = (svg: string) => /viewBox="([^"]+)"/.exec(svg)?.[1];
     expect(viewBox(said)).toBe(viewBox(confirmed));
-    expect(said).toMatch(/<circle [^>]*fill="none"/);
+    // Writing down a check is not passing it: no circle, at half strength.
+    expect(said).not.toContain("<circle");
     expect(confirmed).toMatch(/<circle [^>]*fill="#000"/);
     // The style sheet draws each mark through its own file, at one size for both.
     const css = fs.readFileSync("public/site.css", "utf8");
     expect(css).toContain('mask: url("/assets/proof-said.svg")');
     expect(css).toContain('mask-image: url("/assets/proof-confirmed.svg")');
+    expect(css).toMatch(/table\.tickets \.proof-said \{\s*opacity: 0\.5;\s*\}/);
   });
 });
 

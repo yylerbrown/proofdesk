@@ -78,9 +78,34 @@ export function focusBoxWhenOpened(fold: Fold, button: FoldButton, box: Box): vo
   });
 }
 
+/** The parts of a box this code scrolls to and focuses. */
+export type InPlaceBox = {
+  focus(options: { preventScroll: boolean }): void;
+  scrollIntoView(options: { block: "nearest" }): void;
+};
+
+/**
+ * The box as a Box that, when focused, scrolls the page only as far as needed to show it, and
+ * not at all when it is already in view, so the buttons above it stay under the thumb.
+ */
+export function inPlace(box: InPlaceBox): Box {
+  return {
+    focus: () => {
+      box.focus({ preventScroll: true });
+      box.scrollIntoView({ block: "nearest" });
+    },
+  };
+}
+
 if (typeof document !== "undefined") {
   const fold = document.querySelector<HTMLDetailsElement>("details.reply-fold");
   const button = fold?.querySelector("summary");
   const box = fold?.querySelector("textarea");
   if (fold && button && box) focusBoxWhenOpened(fold, button, box);
+
+  // The customer's "No, it is not fixed" opens its box under both answers in the same way.
+  const no = document.querySelector<HTMLDetailsElement>("details.answer-no");
+  const noButton = no?.querySelector("summary");
+  const noBox = no?.querySelector("textarea");
+  if (no && noButton && noBox) focusBoxWhenOpened(no, noButton, inPlace(noBox));
 }

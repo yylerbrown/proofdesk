@@ -9,17 +9,20 @@ test("skip link, Space on button links, and the filter row's focus ring", async 
   await page.getByRole("button", { name: "View as Customer One" }).click();
   await expect(page).toHaveURL(/\/tickets$/);
 
-  await test.step("the first Tab shows the skip link, and after Enter the next Tab is in main", async () => {
+  await test.step("the first Tab shows the skip link; Enter focuses main, and the next Tab is its first filter", async () => {
     await page.keyboard.press("Tab");
     const skip = page.getByRole("link", { name: "Skip to main content" });
     await expect(skip).toBeFocused();
     await expect(skip).toBeInViewport();
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/#main$/);
-    // main does not take focus itself; the link moves where the next Tab starts from.
+    // Focus is on main, not lost, and main shows no ring: it is not a control.
+    await expect(page.locator("main#main")).toBeFocused();
+    await expect(page.locator("main#main")).toHaveCSS("outline-style", "none");
     await page.keyboard.press("Tab");
-    const inMain = await page.evaluate(() => document.activeElement?.closest("main#main") !== null);
-    expect(inMain).toBe(true);
+    await expect(page.locator('nav[aria-label="Filter by status"] a').first()).toBeFocused();
+    // main takes focus only for that moment.
+    await expect(page.locator("main#main")).not.toHaveAttribute("tabindex");
   });
 
   await test.step("the filter row leaves room for the ring around each segment", async () => {

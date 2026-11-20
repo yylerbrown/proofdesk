@@ -38,7 +38,7 @@ async function keys(app: Express, who: Actor, address: string) {
   const html = parse((await as(app, who).get(address)).text);
   return html
     .querySelectorAll("table.tickets tbody tr")
-    .map((row) => row.querySelector("td a")!.text);
+    .map((row) => row.querySelector("td .ticket-key")!.text);
 }
 
 /** The line under the list about older resolved tickets, or null when there is none. */

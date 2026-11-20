@@ -29,7 +29,8 @@
           <%# Outlined, since a page's one black button is its own next step. The read-only admin
               preview cannot file a ticket, and the new ticket form is that page already, so
               neither shows it. %>
-          <% if (!viewer.readOnly && !locals.onNewTicketForm) { %><li><a href="/tickets/new" role="button" class="outline">New ticket</a></li><% } %>
+          <%# On a phone it reads "New", so the person's name fits; its name stays "New ticket". %>
+          <% if (!viewer.readOnly && !locals.onNewTicketForm) { %><li><a href="/tickets/new" role="button" class="outline new-ticket">New<span class="new-ticket-rest"> ticket</span></a></li><% } %>
           <li class="viewer">
             <%# A native details element, so it opens and closes with scripts off. menus.js adds Escape and closing when focus leaves. %>
             <%# A demo name already says the role, so only a real name has its role word after it. %>

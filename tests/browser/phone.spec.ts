@@ -419,3 +419,205 @@ test("the keyboard reaches the status and the owner before the card's step, at 1
     await expect(step).toBeFocused();
   }
 });
+
+test("on a phone each row ends in one grey line with its tag and who has it", async ({ page }) => {
+  await signInAsTeam(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/tickets");
+  const rows = await page.locator("table.tickets tbody tr").evaluateAll((all) =>
+    all.map((row) => {
+      const top = (element: Element | null) => element?.getBoundingClientRect().top ?? null;
+      const status = row.querySelector("td.status-cell .badge")!;
+      const tag = row.querySelector(".turn-tag");
+      const owner = row.querySelector("td:nth-child(5)")!;
+      return {
+        key: row.querySelector(".ticket-key")!.textContent,
+        statusLine: Math.abs(top(status)! - top(row.querySelector(".ticket-key"))!) < 6,
+        ownerBelowTitle:
+          top(owner)! >= row.querySelector("td.title-cell")!.getBoundingClientRect().bottom - 1,
+        tagWithOwner: tag === null || Math.abs(top(tag)! - top(owner)!) < 4,
+        owner: owner.textContent?.trim(),
+        ownerGrey:
+          getComputedStyle(owner).color !==
+          getComputedStyle(row.querySelector("td.title-cell")!).color,
+      };
+    }),
+  );
+  expect(rows.length).toBeGreaterThan(0);
+  for (const row of rows) {
+    expect(row.statusLine, row.key!).toBe(true);
+    expect(row.ownerBelowTitle, row.key!).toBe(true);
+    expect(row.tagWithOwner, row.key!).toBe(true);
+    expect(row.owner, row.key!).toMatch(/^(Unassigned|Demo Team Member)$/);
+    expect(row.ownerGrey, row.key!).toBe(true);
+  }
+  // A long tag no longer wraps under the status word: it is on the owner's line.
+  const review = page.locator("table.tickets tbody tr", { hasText: "Assistant asks for review" });
+  await expect(review.locator("td:nth-child(5)")).toHaveText("Demo Team Member");
+  expect(await sidewaysScroll(page)).toBe(0);
+});
+
+/** The width and height a press can land on, for each visible element the selector finds. */
+async function pressAreas(page: Page, selector: string) {
+  return page.locator(selector).evaluateAll((elements) =>
+    elements
+      .filter((element) => element.getClientRects().length > 0)
+      .map((element) => {
+        const box = element.getBoundingClientRect();
+        return { words: element.textContent?.trim(), width: box.width, height: box.height };
+      }),
+  );
+}
+
+async function expectPressable(page: Page, selector: string) {
+  const found = await pressAreas(page, selector);
+  expect(found.length, selector).toBeGreaterThan(0);
+  for (const area of found) {
+    expect(Math.max(area.width, area.height), `${selector}: ${area.words}`).toBeGreaterThanOrEqual(
+      40,
+    );
+  }
+}
+
+test("on a phone the small links and Add pictures are 40 pixels or more to press", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  // A first visit is the customer, with the welcome card's Hide.
+  await page.goto("/tickets");
+  await expectPressable(page, ".demo-welcome-hide button");
+  await expectPressable(page, 'nav[aria-label="Sort by"] a');
+  // The whole row opens its ticket: a press on the row's key lands on the title's link.
+  const row = page.locator("table.tickets tbody tr").first();
+  const key = (await row.locator(".ticket-key").boundingBox())!;
+  const landed = await page.evaluate(
+    ([x, y]) => document.elementFromPoint(x!, y!)?.closest("td.title-cell a") !== null,
+    [key.x + key.width / 2, key.y + key.height / 2],
+  );
+  expect(landed).toBe(true);
+  expect((await row.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  // Change beside the customer's own check, and Add pictures on the form.
+  await page.goto("/tickets/SUP-5");
+  await expectPressable(page, ".card-label-link");
+  await expect(page.locator(".card-label-link")).toHaveCSS("padding-top", "12px");
+  await page.goto("/tickets/new");
+  await expectPressable(page, "label.add-pictures .add-pictures-words");
+});
+
+test("on a phone Add pictures is a small outlined button, and a chosen picture says Remove", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/tickets/new");
+  const words = page.locator("label.add-pictures .add-pictures-words");
+  await expect(words).toHaveCSS("border-top-style", "solid");
+  await expect(words).toHaveCSS("text-decoration-line", "none");
+  // A one-pixel picture, chosen as a file.
+  const png = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+    "base64",
+  );
+  await page
+    .getByLabel("Add pictures")
+    .setInputFiles({ name: "receipt.png", mimeType: "image/png", buffer: png });
+  const remove = page.getByRole("button", { name: "Remove receipt.png" });
+  await expect(remove).toBeVisible();
+  const drawn = await remove.evaluate((button) => getComputedStyle(button, "::before").content);
+  expect(drawn).toContain("Remove");
+  expect((await remove.boundingBox())!.height).toBeGreaterThanOrEqual(40);
+  expect(await sidewaysScroll(page)).toBe(0);
+});
+
+test("on a phone the similar ticket's title wraps in full, with its status after it", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/tickets/new");
+  await page.getByLabel("Title").pressSequentially("Can't sign in from my phone", { delay: 10 });
+  const line = page.locator("small.similar-ticket");
+  await expect(line).toBeVisible();
+  const link = line.locator("a");
+  // Nothing of the title is cut off.
+  expect(await link.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(
+    true,
+  );
+  await expect(link).toContainText("SUP-3 Cannot sign in on my phone");
+  await expect(line).toContainText("(In Progress)");
+  expect(await sidewaysScroll(page)).toBe(0);
+});
+
+test("on a phone the header says New, so the person's name is not cut", async ({ page }) => {
+  await signInAsTeam(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/tickets");
+  const name = page.locator("details.person-menu > summary strong");
+  await expect(name).toHaveText("Demo Team Member");
+  expect(await name.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  // It reads New on the screen, and its name is still New ticket.
+  const newTicket = page.getByRole("button", { name: "New ticket", exact: true });
+  await expect(newTicket).toBeVisible();
+  expect((await newTicket.boundingBox())!.width).toBeLessThan(60);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  expect((await newTicket.boundingBox())!.width).toBeGreaterThan(60);
+});
+
+test("on a phone History and More options each open directly under their own line", async ({
+  page,
+}) => {
+  await signInAsTeam(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/tickets/SUP-7");
+  await page.locator("details.history > summary").click();
+  await page.locator("details.more-options > summary").click();
+  const top = (selector: string) =>
+    page.locator(selector).evaluate((element) => element.getBoundingClientRect().top);
+  const history = await top("details.history > summary");
+  const table = await top("details.history table");
+  const more = await top("details.more-options > summary");
+  const list = await top("details.more-options .more-list");
+  // History's own entries come right under it, then More options, then its own entries.
+  expect(table).toBeGreaterThan(history);
+  expect(more).toBeGreaterThan(table);
+  expect(list).toBeGreaterThan(more);
+  expect(list - more).toBeLessThan(80);
+});
+
+test("on a phone the customer's No opens its box in place, scrolling only to show it", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  // The guided path, from the customer's welcome to the question "Did this fix it?".
+  await page.goto("/tickets");
+  await page.getByRole("button", { name: "File a sample ticket" }).click();
+  await page.getByRole("button", { name: "File ticket" }).click();
+  await expect(page).toHaveURL(/step=verify/);
+  const proof = page.locator("form textarea").first();
+  if ((await proof.inputValue()) === "") await proof.fill("Every row is in the file.");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page.getByRole("button", { name: "View this ticket as a team member" }).click();
+  await page.getByRole("button", { name: "Take ticket and start work" }).click();
+  await page.getByRole("button", { name: "Mark fixed and tell the customer" }).click();
+  await page.getByRole("button", { name: "View this ticket as the customer who filed it" }).click();
+
+  const no = page.locator("details.answer-no > summary");
+  const yes = page.getByRole("button", { name: "Yes, it is fixed" });
+  // The No button sits low on the screen, where its box would open below the fold.
+  const at = await no.evaluate((element) => element.getBoundingClientRect().top + window.scrollY);
+  await page.evaluate((y) => window.scrollTo(0, y), Math.max(0, at - 780));
+  const before = await page.evaluate(() => window.scrollY);
+  const yesTop = await yes.evaluate(
+    (element) => element.getBoundingClientRect().top + window.scrollY,
+  );
+  await no.click();
+  const box = page.locator("details.answer-no textarea");
+  await expect(box).toBeFocused();
+  const after = await page.evaluate(() => window.scrollY);
+  const boxBottom = await box.evaluate((element) => element.getBoundingClientRect().bottom);
+  // The box is in sight, and the page moved no further than it took to show it.
+  expect(boxBottom).toBeLessThanOrEqual(844 + 1);
+  expect(after - before).toBeLessThanOrEqual(Math.max(0, boxBottom + (after - before) - 844) + 2);
+  // The two buttons stay where they are in the page.
+  expect(
+    await yes.evaluate((element) => element.getBoundingClientRect().top + window.scrollY),
+  ).toBe(yesTop);
+});

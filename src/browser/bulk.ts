@@ -100,6 +100,13 @@ if (typeof document !== "undefined") {
       };
       matchRow();
       new ResizeObserver(matchRow).observe(filters);
+      // The page's scroll padding makes room for the bar while it shows, so a row reached with
+      // the keyboard is never under it.
+      const matchBar = () => {
+        const height = bar.getBoundingClientRect().height;
+        document.documentElement.style.setProperty("--pd-bulk-bar", `${height}px`);
+      };
+      new ResizeObserver(matchBar).observe(bar);
     }
     const update = wireBulk({
       rows,

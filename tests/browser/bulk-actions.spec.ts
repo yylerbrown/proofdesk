@@ -197,3 +197,51 @@ test("without scripts the bar sits above the table, always shown", async ({ brow
   await expect(bar.getByRole("button", { name: "Clear" })).toBeHidden();
   await context.close();
 });
+
+test("the bar's controls have round corners, and a row reached by the keyboard is never under the bar", async ({
+  page,
+}) => {
+  const marker = "Padmark";
+  await page.goto("/sign-in");
+  await page.getByRole("button", { name: "View as Customer One" }).click();
+  for (let count = 1; count <= 6; count += 1) {
+    await page.goto("/tickets/new");
+    await page.getByLabel("Title").fill(`${marker} report ${count} is late`);
+    await page.getByLabel("Description").fill("It happens every time.");
+    await page.getByRole("button", { name: "File ticket" }).click();
+    await expect(page).toHaveURL(/\/tickets\/SUP-\d+\?step=verify$/);
+  }
+  await page.context().clearCookies();
+  await page.goto("/sign-in");
+  await page.getByRole("button", { name: "View as Team Member" }).click();
+  // A short window, so the list scrolls under the bar.
+  await page.setViewportSize({ width: 1280, height: 420 });
+  await page.goto(`/tickets?q=${marker}`);
+  const rows = page.locator('input[name="keys"]');
+  await expect(rows).toHaveCount(6);
+  await rows.first().check();
+  const bar = page.locator("[data-bulk-bar]");
+  await expect(bar).toBeVisible();
+
+  // Each select and Apply keeps the page's small-control corners inside the round bar.
+  const corners = await bar
+    .locator("select, button[type=submit]")
+    .evaluateAll((controls) =>
+      controls.map((control) => getComputedStyle(control).borderTopLeftRadius),
+    );
+  expect(corners.length).toBeGreaterThan(0);
+  for (const corner of corners) expect(corner).toBe("6px");
+
+  // From the last row, Shift+Tab back up the list: every stop lands below the stuck bar.
+  await rows.last().focus();
+  for (let press = 0; press < 10; press += 1) {
+    await page.keyboard.press("Shift+Tab");
+    const inList = await page.evaluate(
+      () => document.activeElement?.closest("table.tickets tbody") != null,
+    );
+    if (!inList) break;
+    const barBottom = (await bar.boundingBox())!;
+    const focused = await page.evaluate(() => document.activeElement!.getBoundingClientRect().top);
+    expect(focused, `stop ${press}`).toBeGreaterThanOrEqual(barBottom.y + barBottom.height - 1);
+  }
+});
