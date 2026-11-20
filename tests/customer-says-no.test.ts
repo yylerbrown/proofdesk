@@ -40,20 +40,17 @@ async function saidNo(app: Express) {
 }
 
 describe("after the customer says No", () => {
-  it("tells the owner on the card, linked to the customer's words, with Mark fixed again", async () => {
+  it("tells the owner on the card, quoting the customer's words, with Mark fixed again", async () => {
     const { app } = buildTestApp();
     await saidNo(app);
     const html = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     const card = html.querySelector(".ticket-card")!;
     const line = card.querySelector(".card-line")!;
     expect(line.querySelector("span")!.text.trim()).toMatch(
-      /^The customer said it is not fixed on \d{1,2} [A-Z][a-z]{2} \d{4}\.$/,
+      /^The customer said it is not fixed on \d{1,2} [A-Z][a-z]{2} \d{4}: "Still jams on page two when I print double-sided\."$/,
     );
-    // Their words stand once, in the conversation, and the line links to that message.
-    expect(card.text).not.toContain(comment);
-    const message = html.querySelector(line.querySelector("a")!.getAttribute("href")!)!;
-    expect(message.classList.contains("entry")).toBe(true);
-    expect(message.text).toContain(comment);
+    // The quote is the team's next task, so no separate link leads to the same words.
+    expect(line.querySelector("a")).toBeNull();
     // The card's step is to mark it fixed again, after the line. No red block of its own.
     expect(line.nextElementSibling?.querySelector("button")?.text).toBe(
       "Mark fixed and tell the customer",

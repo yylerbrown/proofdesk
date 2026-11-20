@@ -188,13 +188,29 @@ export type CardLine = {
   tick: boolean;
   /** When the customer's own message about it was written, so the line can link to it. */
   messageAt: string | null;
+  /** The customer's own words, quoted after the line, shortened when long; or null. */
+  quote: string | null;
 };
+
+/** About how long a quote on the card may be before it is cut at a word and ends in an ellipsis. */
+const QUOTE_LENGTH = 140;
+
+/** The customer's words for a quote on one line: whole when short, cut at a word when long. */
+export function shortQuote(words: string): string {
+  const flat = words.replace(/\s+/g, " ").trim();
+  if (flat.length <= QUOTE_LENGTH) return flat;
+  const cut = flat.slice(0, QUOTE_LENGTH);
+  const lastSpace = cut.lastIndexOf(" ");
+  const whole = lastSpace > 0 ? cut.slice(0, lastSpace) : cut;
+  return `${whole.replace(/[\s.,;:]+$/, "")}\u2026`;
+}
 
 /**
  * The line the card at the top of the ticket page shows under the customer's check: where the
  * ticket stands, for this viewer. Null when there is nothing to say, which is most of the time:
- * a ticket that is simply with the team needs no sentence. The customer's own words are never
- * repeated here: they stand in the conversation, and the line links to them.
+ * a ticket that is simply with the team needs no sentence. After the customer's No, the team's
+ * line quotes their words, since they are the team's next task; the customer's own line links to
+ * their message instead.
  */
 export function cardLine(ticket: Ticket, viewer: Role, facts: CardFacts): CardLine | null {
   const team = viewer !== "customer";
@@ -204,7 +220,7 @@ export function cardLine(ticket: Ticket, viewer: Role, facts: CardFacts): CardLi
     day: string | null = null,
     after = "",
     messageAt: string | null = null,
-  ): CardLine => ({ text, day, after, tick: false, messageAt });
+  ): CardLine => ({ text, day, after, tick: false, messageAt, quote: null });
 
   if (ticket.archived_at !== null) {
     if (!team) return null;
@@ -260,10 +276,12 @@ export function cardLine(ticket: Ticket, viewer: Role, facts: CardFacts): CardLi
 
   if (facts.notFixed !== null) {
     const at = facts.notFixed.at;
-    // A No and a reopening read the same: the customer's word that it is not fixed.
-    return team
-      ? line("The customer said it is not fixed on ", at, ".", at)
-      : line("You said it is not fixed on ", at, ".", at);
+    // A No and a reopening read the same: the customer's word that it is not fixed. The team
+    // reads what they said right in the line.
+    if (!team) return line("You said it is not fixed on ", at, ".", at);
+    const words = facts.notFixed.words?.trim() ?? "";
+    if (words === "") return line("The customer said it is not fixed on ", at, ".");
+    return { ...line("The customer said it is not fixed on ", at, ":"), quote: shortQuote(words) };
   }
 
   if (team && facts.reviewBy !== null) return line(`${facts.reviewBy} asks for your review.`);

@@ -51,6 +51,7 @@ describe("the card's line", () => {
       after: "",
       tick: false,
       messageAt: null,
+      quote: null,
     });
     expect(cardLine(ticket(mine), "customer", facts)).toBeNull();
   });
@@ -66,15 +67,25 @@ describe("the card's line", () => {
     expect(cardLine(ticket({ ...mine, ready_at: at }), "customer", nothing)).toBeNull();
   });
 
-  it("tells the team the customer says it is not fixed, linked to their message", () => {
+  it("tells the team the customer says it is not fixed, quoting their words", () => {
     const facts = { ...nothing, notFixed: { reopened: false, words: "Still jams.", at } };
     expect(cardLine(ticket(mine), "team", facts)).toEqual({
       text: "The customer said it is not fixed on ",
       day: at,
-      after: ".",
+      after: ":",
       tick: false,
-      messageAt: at,
+      messageAt: null,
+      quote: "Still jams.",
     });
+  });
+
+  it("shortens a long No at a word, with an ellipsis, past about 140 characters", () => {
+    const long = `${"The export still fails ".repeat(10)}at the end.`;
+    const facts = { ...nothing, notFixed: { reopened: false, words: long, at } };
+    const quote = cardLine(ticket(mine), "team", facts)!.quote!;
+    expect(quote.length).toBeLessThanOrEqual(141);
+    expect(quote.endsWith("fails\u2026")).toBe(true);
+    expect(long.startsWith(quote.slice(0, -1))).toBe(true);
   });
 
   it("tells the customer who said no what they said, without their words", () => {
@@ -84,14 +95,15 @@ describe("the card's line", () => {
     expect(words(line)).not.toContain("Still jams.");
   });
 
-  it("says a reopening with the same words as a No, linked to their message", () => {
+  it("says a reopening with the same words as a No, quoting their reason", () => {
     const facts = { ...nothing, notFixed: { reopened: true, words: "Again.", at } };
     expect(cardLine(ticket(mine), "team", facts)).toEqual({
       text: "The customer said it is not fixed on ",
       day: at,
-      after: ".",
+      after: ":",
       tick: false,
-      messageAt: at,
+      messageAt: null,
+      quote: "Again.",
     });
     expect(words(cardLine(ticket(mine), "customer", facts))).toBe(
       "You said it is not fixed on 19 Nov 2026.",
@@ -110,6 +122,7 @@ describe("the card's line", () => {
         after: ".",
         tick: true,
         messageAt: null,
+        quote: null,
       });
     }
   });

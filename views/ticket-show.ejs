@@ -209,9 +209,9 @@
     <% if (card.line.tick && staff) { %><img src="/assets/mark.svg" alt="" width="20" height="20" class="tick" /><% } %>
     <%# The day is a <time>, so the visitor's browser writes it in their own time zone. The span
         keeps the words and the day one sentence inside the line's row. %>
-    <span><%= card.line.text %><% if (card.line.day) { %><time datetime="<%= card.line.day %>" data-day><%= formatDay(card.line.day) %></time><% } %><%= card.line.after %></span>
-    <%# The customer's own message about it, when there is one: a quiet link after the line. %>
-    <% if (card.lineHref) { %><a href="<%= card.lineHref %>" class="card-line-link"><%= staff ? "Read their message" : "Read your message" %></a><% } %>
+    <span><%= card.line.text %><% if (card.line.day) { %><time datetime="<%= card.line.day %>" data-day><%= formatDay(card.line.day) %></time><% } %><%= card.line.after %><% if (card.line.quote) { %> "<span class="user-text"><%= card.line.quote %></span>"<% } %></span>
+    <%# The customer's own message about it, when there is one: a quiet link after their line. %>
+    <% if (card.lineHref) { %><a href="<%= card.lineHref %>" class="card-line-link">Read your message</a><% } %>
     <% if (card.otherHref) { %><a href="<%= card.otherHref %>">Open <%= ticket.resolution.duplicate_of %></a><% } %>
   </p>
   <% } %>
