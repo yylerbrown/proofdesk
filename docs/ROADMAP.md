@@ -59,7 +59,7 @@ Each is one idea to weigh after sending, in no order.
 Each is one line, raised while the demo was walked before sending, to weigh after sending.
 
 - An SLA clock beside a ticket's due time.
-- Each ticket's real age on the list, beside the age of its last reply.
+- Each ticket's real age on the list.
 - Saved views, such as "needs my reply".
 - Canned replies.
 - Tags, and merging a duplicate into the ticket it repeats.
