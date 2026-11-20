@@ -98,6 +98,36 @@ describe("an assistant that is blocked", () => {
     expect(await listTag(app)).not.toBe("Assistant is blocked");
   });
 
+  it("is still shown when the assistant's evidence came before the blocked note", async () => {
+    const { app, note, write } = await handed();
+    const attached = await write("evidence", {
+      kind: "test",
+      summary: "Ran it",
+      result: "1 failed",
+    });
+    expect(attached.status).toBe(201);
+    // Timestamps are in milliseconds, so wait a little to make the note clearly later.
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await note({ body: "Blocked on access to the print server.", blocked: true });
+    expect(await blockedLine(app, teamActor)).toBe(
+      "Assistant blocked: Blocked on access to the print server.",
+    );
+    expect(await listTag(app)).toBe("Assistant is blocked");
+  });
+
+  it("is still shown when a team member attaches evidence after the blocked note", async () => {
+    const { app, note } = await handed();
+    await note({ body: "Blocked on access to the print server.", blocked: true });
+    const attached = await as(app, teamActor)
+      .post("/api/tickets/SUP-1/evidence")
+      .send({ kind: "test", summary: "Ran it myself", result: "3 passed" });
+    expect(attached.status).toBe(201);
+    expect(await blockedLine(app, teamActor)).toBe(
+      "Assistant blocked: Blocked on access to the print server.",
+    );
+    expect(await listTag(app)).toBe("Assistant is blocked");
+  });
+
   it("is a mark only an assistant can make", async () => {
     const { app } = await handed();
     const res = await as(app, teamActor)
