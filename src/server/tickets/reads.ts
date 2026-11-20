@@ -146,6 +146,25 @@ export function createReads(shared: Shared, options: ServiceOptions) {
       return { key: buildKey(prefix, row.id), title: row.title, status: row.status };
     },
 
+    /**
+     * The one other ticket that may report the same problem as this open ticket, found by the
+     * same word matching as the new ticket form's similar ticket, with this ticket's title in
+     * place of a typed one. Only the team asks, and only about a New or In Progress ticket that
+     * is not archived. The answer is never this ticket, an archived ticket, or a ticket already
+     * resolved as a duplicate. Null when nothing matches.
+     */
+    possibleDuplicate(key: string, actor: Actor): SimilarTicket | null {
+      if (!can(actor, "list_all")) return null;
+      const ticket = requireRow(key, actor);
+      if (ticket.archived_at !== null || ticket.status === "resolved") return null;
+      const words = titleWords(ticket.title);
+      if (words.length < 2) return null;
+      const need = Math.max(2, Math.ceil(words.length / 2));
+      const row = repository.similarTitle(db, visibleScope(actor), words, need, ticket.id);
+      if (row === undefined) return null;
+      return { key: buildKey(prefix, row.id), title: row.title, status: row.status };
+    },
+
     getTicket(key: string, actor: Actor): Ticket {
       return toTicket(requireRow(key, actor), actor);
     },

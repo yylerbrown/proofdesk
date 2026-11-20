@@ -54,6 +54,7 @@ import {
   type SavedKey,
 } from "../pages/saved.js";
 import { RESOLVE_REASON_LABELS, TICKET_STATUSES } from "../tickets/schemas.js";
+import type { SimilarTicket } from "../tickets/reads.js";
 import { LIST_PAGE_SIZE, type Ticket, type TicketService } from "../tickets/service.js";
 
 // The pages. Like the JSON routes, they only read the request, call the ticket service and
@@ -671,9 +672,16 @@ export function pagesRouter(
         : entries.find(
             (item) => item.author_role === "customer" && item.created_at === line.messageAt,
           );
+    // A ticket resolved as a duplicate links to the other ticket for anyone who may open it:
+    // the team, or a customer who filed that one too. Otherwise the line names it only.
+    const duplicateOf = ticket.resolution?.duplicate_of ?? null;
     const card = {
       line,
       lineHref: message === undefined ? null : `#entry-${message.id}`,
+      otherHref:
+        duplicateOf !== null && service.visibleKey(duplicateOf, actor) !== null
+          ? `/tickets/${duplicateOf}`
+          : null,
       // Just after asking, the card says so once, in place of its line.
       asked: res.locals.saved === SAVED_MESSAGES.ready ? SAVED_MESSAGES.ready : null,
     };
@@ -757,12 +765,28 @@ export function pagesRouter(
       history,
       evidence,
       allowed,
+      possibleDuplicate: possibleDuplicate(ticket, actor),
       resolveReasons: RESOLVE_FORM_LABELS,
       entry: shownEntry,
       problem,
       // What the page's watcher compares with the server's cheap read.
       stamp: service.ticketStamp(ticket.key, actor),
     });
+  }
+
+  /**
+   * For the team, one other ticket that may report the same problem as this one, or null. The
+   * demo's own samples are walked through on their own, so the line never shows on one of them
+   * and never names one: the visitor's sample ticket, the assistant's sample ticket and the
+   * recorded assistant run, which share words on purpose.
+   */
+  function possibleDuplicate(ticket: Ticket, actor: Actor): SimilarTicket | null {
+    if (isWalkthroughSample(ticket, actor)) return null;
+    const samples = [service.assistantSampleKey(), service.recordedRunKey()];
+    if (samples.includes(ticket.key)) return null;
+    const found = service.possibleDuplicate(ticket.key, actor);
+    if (found === null || samples.includes(found.key)) return null;
+    return found;
   }
 
   /**
