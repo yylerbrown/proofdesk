@@ -6,6 +6,7 @@ import {
   type TicketStatus,
 } from "../tickets/schemas.js";
 import type { Role } from "../actor.js";
+import { ROLE_LABELS } from "../people/words.js";
 import type { Ticket, TicketEvent } from "../tickets/service.js";
 
 // Small functions that turn stored values into the words shown on a page.
@@ -453,15 +454,18 @@ export function firstParagraph(text: string): { first: string; rest: string | nu
 }
 
 /**
- * A person's role word to print after their name. On the demo, whose made-up people cannot
- * choose their names, it is left out when the name already ends with it, as "Demo Customer"
- * does, so a byline never reads "Demo Customer customer". Elsewhere it is always printed, so a
- * name a person chose, such as "Bo Team", can never stand in for the role.
+ * A person's role to print after their name, in the words every page uses: "Customer", "Team
+ * member" or "Admin". On the demo, whose made-up people cannot choose their names, it is left out
+ * when the name already ends with it, as "Demo Team Member" does, so a byline never reads "Demo
+ * Team Member Team member". Elsewhere it is always printed, so a name a person chose, such as
+ * "Bo Team", can never stand in for the role.
  */
-export function roleAfterName(name: string, role: string | null, onDemo: boolean): string | null {
-  if (role === null || !onDemo) return role;
-  const lastWord = name.trim().split(/\s+/).pop() ?? "";
-  return lastWord.toLowerCase() === role.toLowerCase() ? null : role;
+export function roleAfterName(name: string, role: Role | null, onDemo: boolean): string | null {
+  if (role === null) return null;
+  const label = ROLE_LABELS[role];
+  if (!onDemo) return label;
+  const endsWithLabel = ` ${name.trim()}`.toLowerCase().endsWith(` ${label.toLowerCase()}`);
+  return endsWithLabel ? null : label;
 }
 
 /**

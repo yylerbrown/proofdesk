@@ -1419,7 +1419,7 @@ export function pagesRouter(
       return;
     }
     if (!service.allowedActions(ticket, actor).archive) {
-      throw forbidden(actor);
+      throw forbidden(actor, "archive");
     }
     res.render("ticket-archive", {
       title: `Archive ${ticket.key}`,
@@ -1441,7 +1441,7 @@ export function pagesRouter(
     const actor = signedIn(req);
     const ticket = service.getTicket(req.params.key, actor);
     if (!service.allowedActions(ticket, actor).delete) {
-      throw forbidden(actor);
+      throw forbidden(actor, "delete");
     }
     res.render("ticket-delete", { title: `Delete ${ticket.key}`, ticket, error: null });
   });

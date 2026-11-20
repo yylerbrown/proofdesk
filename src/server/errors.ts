@@ -1,5 +1,7 @@
 import type { ErrorRequestHandler, RequestHandler } from "express";
 import { rememberProblem } from "./pages/saved.js";
+import type { Actor } from "./actor.js";
+import { CAPABILITIES, DEMO_NEVER, type Action } from "./permissions.js";
 
 /** An error that carries an HTTP status and a stable machine-readable code. */
 export class HttpError extends Error {
@@ -31,13 +33,57 @@ export class ValidationError extends HttpError {
 export const READ_ONLY_REFUSAL =
   "The admin preview is read-only. Use the menu at the top right to act as the customer or the team.";
 
+/** The refusal when nothing more can be said about who may act. */
+const NOT_ALLOWED = "You are not allowed to do that.";
+
+/** What anyone on the demo is told when they try to archive, restore or delete a ticket. */
+export const DEMO_KEEPS_SAMPLE =
+  "The demo never archives, restores or deletes tickets, so the sample stays the same for every visitor.";
+
 /**
- * The 403 for an action this person may not do. The demo's read-only admin preview is told
- * why, and how to try the action, instead of a bare refusal.
+ * The last sentence of a refusal that says who may. A page shows it as a link to that page,
+ * and the API keeps it as words.
  */
-export function forbidden(actor: { readOnly?: boolean }): HttpError {
-  const message = actor.readOnly === true ? READ_ONLY_REFUSAL : "You are not allowed to do that.";
-  return new HttpError(403, "forbidden", message);
+export const SEE_WHO_MAY = " See who may do what at /roles.";
+
+/**
+ * The 403 for an action this actor may not do. It says who may only when the role is the
+ * reason. The demo's read-only admin preview is told why, and how to try the action. Anyone on
+ * the demo who tries to archive, restore or delete is told the demo never does. An assistant
+ * is told which scope its connection lacks, or that only a person may act. Anyone else
+ * is told who may, in the words of the table the page Who may do what shows.
+ */
+export function forbidden(
+  actor: Partial<Pick<Actor, "readOnly" | "demo" | "kind" | "scopes">>,
+  action?: Action,
+): HttpError {
+  if (actor.readOnly === true) return new HttpError(403, "forbidden", READ_ONLY_REFUSAL);
+  if (action === undefined) return new HttpError(403, "forbidden", NOT_ALLOWED);
+  if (actor.demo === true && DEMO_NEVER.includes(action)) {
+    return new HttpError(403, "forbidden", DEMO_KEEPS_SAMPLE);
+  }
+  if (actor.kind === "agent") return new HttpError(403, "forbidden", agentRefusal(actor, action));
+  const whoMay = CAPABILITIES[action].people;
+  return new HttpError(403, "forbidden", `${NOT_ALLOWED} Who may: ${whoMay}${SEE_WHO_MAY}`);
+}
+
+/** Why an assistant was refused: the scope its connection lacks, if that is the reason. */
+function agentRefusal(actor: Pick<Actor, "scopes">, action: Action): string {
+  const needs = CAPABILITIES[action].agent;
+  if (needs === "people_only") return `${NOT_ALLOWED} Only a person may do this.`;
+  if (!(actor.scopes ?? []).includes(needs)) {
+    return `${NOT_ALLOWED} This connection needs the ${needs} scope.`;
+  }
+  return NOT_ALLOWED;
+}
+
+/**
+ * A refusal as a page shows it: its words, and whether it ends with the way to Who may do
+ * what, which the page then shows as a link.
+ */
+export function refusalForPage(message: string): { text: string; seeWhoMay: boolean } {
+  if (!message.endsWith(SEE_WHO_MAY)) return { text: message, seeWhoMay: false };
+  return { text: message.slice(0, -SEE_WHO_MAY.length), seeWhoMay: true };
 }
 
 /** The demo was not seeded with its assistant sample, so assistant connections are off. */
@@ -66,7 +112,7 @@ export const HINTS: Record<string, string> = {
     "The key is wrong, revoked or expired. Keys are shown once: ask an admin to revoke this connection and issue a new one.",
   cross_site_request:
     "Send the request from a page on this site. A program signs in with a connection key instead.",
-  forbidden: "Your role may not do this. GET /api lists who may call each action.",
+  forbidden: "GET /api lists who may call each action.",
   not_found: "Check the address. GET /api is a guide to every action.",
   ticket_not_found: "Check the key. GET /api/tickets lists the tickets you may see.",
   ticket_deleted: "This ticket was deleted permanently. Its number is never used again.",

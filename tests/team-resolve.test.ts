@@ -159,7 +159,7 @@ describe("how a team resolution shows", () => {
       .map((row) => row.querySelectorAll("td").map((td) => td.text.trim()));
     expect(history.at(-1)!.slice(1)).toEqual([
       "Resolved by the team: Won't fix (Works as designed.)",
-      "Team Member team",
+      "Team Member Team member",
     ]);
   });
 

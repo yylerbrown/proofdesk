@@ -556,7 +556,7 @@ describe("the ticket's history", () => {
       cell.text.replace(cell.querySelector(".role-label")?.text ?? "", "").trim(),
       cell.querySelector(".role-label")?.text,
     ]);
-    expect(who).toContainEqual(["Proofdesk Support", "customer"]);
-    expect(who).toContainEqual(["Bo Team", "team"]);
+    expect(who).toContainEqual(["Proofdesk Support", "Customer"]);
+    expect(who).toContainEqual(["Bo Team", "Team member"]);
   });
 });
