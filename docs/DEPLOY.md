@@ -212,8 +212,8 @@ Only addresses GitHub verified are mailed, and only to the people the notice rul
 By hand, from the project folder:
 
 ```sh
-fly deploy --app support-desk-demo
-fly deploy --config fly.proofdesk.toml
+fly deploy --app support-desk-demo --build-arg GIT_COMMIT=$(git rev-parse HEAD)
+fly deploy --config fly.proofdesk.toml --build-arg GIT_COMMIT=$(git rev-parse HEAD)
 ```
 
 Or from GitHub: create a deploy token with `fly tokens create deploy --app support-desk-demo`,

@@ -18,7 +18,8 @@ named).
 - Rate limits: 20 new tickets per ten minutes per person, 10 sign-in starts a minute per
   address, and 120 writes per ten minutes across pages, API and tools, per person or connection
   (per address on the demo). The demo also has a hard row budget.
-- Answers to signed-in people are never cached. A request body over 100 KB is refused.
+- Answers to signed-in people are never cached. A request body over 100 KB is refused, except
+  the two picture forms (2 MB each, at most 4).
 - The permission rules are tested on the real routes (`tests/roles.test.ts`,
   `tests/capabilities.test.ts`, `tests/connections.test.ts`).
 
