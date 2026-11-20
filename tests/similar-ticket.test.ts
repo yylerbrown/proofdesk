@@ -148,6 +148,21 @@ describe("what high overlap means", () => {
     expect(await similarTitle(app, teamActor, "Printer jams again")).toBeNull();
   });
 
+  it("leaves out a ticket resolved as a duplicate of another", async () => {
+    const { app } = buildTestApp();
+    const first = await file(app, customerOne, "Printer jams");
+    const second = await file(app, customerOne, "Printer jams on thick paper");
+    expect(await similarTitle(app, teamActor, "Printer jams on thick paper")).toBe(
+      "Printer jams on thick paper",
+    );
+    // Resolved as a duplicate, it is no longer named, though it holds more of the words.
+    const resolved = await admin(app)
+      .post(`/api/tickets/${second}/resolve`)
+      .send({ reason: "duplicate", duplicate_of: first });
+    expect(resolved.status).toBe(200);
+    expect(await similarTitle(app, teamActor, "Printer jams on thick paper")).toBe("Printer jams");
+  });
+
   it("names nothing for a title over 120 characters", async () => {
     const { app } = buildTestApp();
     await file(app, customerOne, "Printer jams on the second page");

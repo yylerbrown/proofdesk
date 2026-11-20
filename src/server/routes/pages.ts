@@ -775,18 +775,20 @@ export function pagesRouter(
   }
 
   /**
-   * For the team, one other ticket that may report the same problem as this one, or null. The
-   * demo's own samples are walked through on their own, so the line never shows on one of them
-   * and never names one: the visitor's sample ticket, the assistant's sample ticket and the
-   * recorded assistant run, which share words on purpose.
+   * For the team, one older ticket that may report the same problem as this one, or null. The
+   * demo's own samples are walked through on their own and share words on purpose: the line
+   * never shows on a visitor's sample ticket, the assistant's sample ticket or the recorded
+   * assistant run, and never names the last two. A visitor's sample ticket can still be named
+   * on a later ticket of theirs that shares its words.
    */
   function possibleDuplicate(ticket: Ticket, actor: Actor): SimilarTicket | null {
     if (isWalkthroughSample(ticket, actor)) return null;
-    const samples = [service.assistantSampleKey(), service.recordedRunKey()];
+    const samples: string[] = [];
+    for (const key of [service.assistantSampleKey(), service.recordedRunKey()]) {
+      if (key !== null) samples.push(key);
+    }
     if (samples.includes(ticket.key)) return null;
-    const found = service.possibleDuplicate(ticket.key, actor);
-    if (found === null || samples.includes(found.key)) return null;
-    return found;
+    return service.possibleDuplicate(ticket.key, actor, samples);
   }
 
   /**

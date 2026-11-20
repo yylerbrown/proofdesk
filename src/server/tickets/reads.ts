@@ -58,6 +58,23 @@ const CUSTOMER_EVENT_TYPES = new Set([
 export function createReads(shared: Shared, options: ServiceOptions) {
   const { db, prefix, requireRow, visibleScope, toTicket, toEvent } = shared;
 
+  /**
+   * The one ticket this person's list holds whose title holds at least two of this title's
+   * words and at least half of them, within these limits, or null.
+   */
+  function sharingWords(
+    actor: Actor,
+    title: string,
+    limits?: repository.SimilarLimits,
+  ): SimilarTicket | null {
+    const words = titleWords(title);
+    if (words.length < 2) return null;
+    const need = Math.max(2, Math.ceil(words.length / 2));
+    const row = repository.similarTitle(db, visibleScope(actor), words, need, limits);
+    if (row === undefined) return null;
+    return { key: buildKey(prefix, row.id), title: row.title, status: row.status };
+  }
+
   return {
     /**
      * One page of the list. A team member or admin gets every ticket, an assistant only its
@@ -138,31 +155,28 @@ export function createReads(shared: Shared, options: ServiceOptions) {
     similarTicket(actor: Actor, title: string): SimilarTicket | null {
       requirePermission(actor, "create");
       if (title.length > SIMILAR_TITLE_MAX) return null;
-      const words = titleWords(title);
-      if (words.length < 2) return null;
-      const need = Math.max(2, Math.ceil(words.length / 2));
-      const row = repository.similarTitle(db, visibleScope(actor), words, need);
-      if (row === undefined) return null;
-      return { key: buildKey(prefix, row.id), title: row.title, status: row.status };
+      return sharingWords(actor, title);
     },
 
     /**
-     * The one other ticket that may report the same problem as this open ticket, found by the
+     * The one older ticket that may report the same problem as this open ticket, found by the
      * same word matching as the new ticket form's similar ticket, with this ticket's title in
-     * place of a typed one. Only the team asks, and only about a New or In Progress ticket that
-     * is not archived. The answer is never this ticket, an archived ticket, or a ticket already
-     * resolved as a duplicate. Null when nothing matches.
+     * place of a typed one. Only an older ticket is named, so the newer of two alike tickets is
+     * the one offered for closing, and the original keeps its work and history. Only the team
+     * asks, and only about a New or In Progress ticket that is not archived. The answer is never
+     * this ticket, an archived ticket, a ticket already resolved as a duplicate, or one of the
+     * tickets `skipKeys` names. Null when nothing matches.
      */
-    possibleDuplicate(key: string, actor: Actor): SimilarTicket | null {
+    possibleDuplicate(key: string, actor: Actor, skipKeys: string[] = []): SimilarTicket | null {
       if (!can(actor, "list_all")) return null;
       const ticket = requireRow(key, actor);
       if (ticket.archived_at !== null || ticket.status === "resolved") return null;
-      const words = titleWords(ticket.title);
-      if (words.length < 2) return null;
-      const need = Math.max(2, Math.ceil(words.length / 2));
-      const row = repository.similarTitle(db, visibleScope(actor), words, need, ticket.id);
-      if (row === undefined) return null;
-      return { key: buildKey(prefix, row.id), title: row.title, status: row.status };
+      const skipIds: number[] = [];
+      for (const skipKey of skipKeys) {
+        const id = parseKey(prefix, skipKey);
+        if (id !== null) skipIds.push(id);
+      }
+      return sharingWords(actor, ticket.title, { beforeId: ticket.id, skipIds });
     },
 
     getTicket(key: string, actor: Actor): Ticket {

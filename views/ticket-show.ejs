@@ -145,7 +145,7 @@
   <%- versionField %>
   <input type="hidden" name="reason" value="duplicate" />
   <input type="hidden" name="duplicate_of" value="<%= possibleDuplicate.key %>" />
-  <p>Possible duplicate: <a href="/tickets/<%= possibleDuplicate.key %>"><%= possibleDuplicate.key %> <span class="user-text"><%= possibleDuplicate.title %></span></a><% if (allowed.resolveWithReason) { %> <button type="submit" class="link">Close as a duplicate of <%= possibleDuplicate.key %></button><% } %></p>
+  <p><span>Possible duplicate: <a href="/tickets/<%= possibleDuplicate.key %>"><%= possibleDuplicate.key %> <span class="user-text"><%= possibleDuplicate.title %></span></a></span><% if (allowed.resolveWithReason) { %> <button type="submit" class="link">Close as a duplicate of <%= possibleDuplicate.key %></button><% } %></p>
 </form>
 <% } %>
 

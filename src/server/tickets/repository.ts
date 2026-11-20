@@ -307,26 +307,34 @@ export function countResolvedBefore(
 export type SimilarRow = { id: number; title: string; status: TicketStatus };
 
 /**
+ * Where a similar title may be looked for: only among tickets older than `beforeId` when it is
+ * set, and never among the tickets `skipIds` names.
+ */
+export type SimilarLimits = { beforeId: number | null; skipIds: number[] };
+
+/**
  * The one ticket in this scope whose title holds at least `need` of these words, in any form:
  * the one holding the most, then an open one before a resolved one, then the newest. Each word
  * is looked for in the title only, inside double quotes, so it is never read as query syntax.
  * The words hold only letters and digits. Only the count of matched words decides, never a
  * score from the index, so the answer depends on the tickets in this scope alone. A ticket
- * already resolved as a duplicate is never the answer, nor the ticket `exceptId` names.
+ * already resolved as a duplicate is never the answer. With `limits`, the answer is also older
+ * than the ticket `beforeId` names, and is none of the tickets `skipIds` names.
  */
 export function similarTitle(
   db: Db,
   scope: ListScope,
   words: string[],
   need: number,
-  exceptId: number | null = null,
+  limits: SimilarLimits = { beforeId: null, skipIds: [] },
 ): SimilarRow | undefined {
   return db
     .prepare(
       `WITH seen AS (
          SELECT id, title, status FROM tickets
          WHERE ${SCOPE_SQL[scope.kind]}
-         AND (@exceptId IS NULL OR id <> @exceptId)
+         AND (@beforeId IS NULL OR id < @beforeId)
+         AND id NOT IN (SELECT value FROM json_each(@skipIds))
          AND NOT (status = 'resolved' AND resolved_reason IS 'duplicate')
        )
        SELECT seen.id AS id, seen.title AS title, seen.status AS status
@@ -338,8 +346,13 @@ export function similarTitle(
        ORDER BY COUNT(*) DESC, seen.status = 'resolved', seen.id DESC
        LIMIT 1`,
     )
-    .get({ ...scopeValues(scope), words: JSON.stringify(words), need, exceptId }) as
-    SimilarRow | undefined;
+    .get({
+      ...scopeValues(scope),
+      words: JSON.stringify(words),
+      need,
+      beforeId: limits.beforeId,
+      skipIds: JSON.stringify(limits.skipIds),
+    }) as SimilarRow | undefined;
 }
 
 export type TicketText = {

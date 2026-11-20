@@ -39,6 +39,24 @@ function fieldsOf(form: HTMLElement): Record<string, string> {
   return fields;
 }
 
+/** The filled buttons a person can press in the page's main area. */
+function filledButtons(doc: HTMLElement): string[] {
+  const quiet = ["secondary", "outline", "link", "danger"];
+  return doc
+    .querySelectorAll("main :is(button, [role=button])")
+    .filter((button) => !button.hasAttribute("disabled"))
+    .filter((button) => !quiet.some((name) => button.classList.contains(name)))
+    .map((button) => button.text.trim());
+}
+
+/** The visible headings in the page's main area. */
+function visibleHeadings(doc: HTMLElement): string[] {
+  return doc
+    .querySelectorAll("main :is(h1, h2, h3)")
+    .filter((heading) => !heading.classList.contains("visually-hidden"))
+    .map((heading) => heading.text.trim());
+}
+
 describe("the possible duplicate line", () => {
   it("names the other ticket for the team, with one quiet press, and never for the customer", async () => {
     const { app } = buildTestApp();
@@ -55,10 +73,29 @@ describe("the possible duplicate line", () => {
     expect(found!.querySelector("button")!.classList.contains("link")).toBe(true);
     expect(fieldsOf(found!)).toMatchObject({ reason: "duplicate", duplicate_of: "SUP-1" });
 
+    // The page keeps its one black button, the next step, and its one visible heading.
+    const shown = await page(app, teamActor, second);
+    expect(filledButtons(shown)).toEqual(["Take ticket and start work"]);
+    expect(visibleHeadings(shown)).toEqual(["Signing in fails on my phone"]);
+
     // The customer filed both, and still sees no line.
     const theirs = await page(app, customerOne, second);
     expect(line(theirs)).toBeNull();
     expect(theirs.text).not.toContain("Possible duplicate");
+  });
+
+  it("names only an older ticket, so the original is never offered for closing", async () => {
+    const { app } = buildTestApp();
+    const original = await file(app, customerOne, "Cannot sign in on my phone");
+    expect((await admin(app).post(`/api/tickets/${original}/take`)).status).toBe(200);
+    const newer = await file(app, customerOne, "Cannot sign in on my phone after update");
+
+    // The newer ticket names the original.
+    expect(fieldsOf(line(await page(app, teamActor, newer))!).duplicate_of).toBe(original);
+    // The original, already being worked on, shows no line naming the newer one.
+    const originalPage = await page(app, teamActor, original);
+    expect(line(originalPage)).toBeNull();
+    expect(originalPage.querySelector(`main a[href="/tickets/${newer}"]`)).toBeNull();
   });
 
   it("shows nothing without a match, on a resolved ticket, or for the ticket alone", async () => {
@@ -84,7 +121,7 @@ describe("the possible duplicate line", () => {
     const first = await file(app, customerOne, "Cannot sign in on my phone");
     const closed = await file(app, customerOne, "Cannot sign in on my phone today");
     const open = await file(app, customerOne, "Signing in fails on my phone");
-    // The newest match comes first, so before anything changes the open ticket names SUP-2.
+    // The newest older match comes first, so before anything changes the open ticket names SUP-2.
     expect(fieldsOf(line(await page(app, teamActor, open))!).duplicate_of).toBe(closed);
 
     await admin(app)
@@ -216,5 +253,15 @@ describe("the possible duplicate line on the demo", () => {
     // A ticket of the visitor's own words still gets the line.
     const typed = await file(app, demoCustomer, "Export button gives an empty file");
     expect(line(await page(app, demoTeam, typed))).not.toBeNull();
+  });
+
+  it("names a real match even when a sample shares more words", async () => {
+    const built = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
+    seedDemo(createTicketService(built.db, built.config.ticketPrefix));
+    const { app } = built;
+    const real = await file(app, demoCustomer, "Checkout total wrong after tax");
+    // Both samples share more of this title's words than the real ticket does.
+    const typed = await file(app, demoCustomer, "Checkout total adds tax twice again");
+    expect(fieldsOf(line(await page(app, demoTeam, typed))!).duplicate_of).toBe(real);
   });
 });
