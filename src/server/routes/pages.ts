@@ -655,10 +655,9 @@ export function pagesRouter(
     const reviewBy = signal?.label === "Review requested by" ? signal.text : null;
     const notFixed = notFixedCard(ticket, events);
     const confirmed = confirmedAt(ticket, events);
-    // While the assistant's card waits for a decision, it sits directly under the line and is
-    // the request itself, so the line does not say it again.
-    const reviewOnCard =
-      assistantCard !== null && assistantCard.canDecide && assistantCard.spec?.state === "proposed";
+    // While the assistant's card shows an open suggestion, it is the request itself, so the line
+    // does not say it again, for any viewer, the read-only admin included.
+    const reviewOnCard = assistantCard !== null && assistantCard.spec?.state === "proposed";
     const line = cardLine(ticket, actor.role, {
       confirmed,
       notFixed,

@@ -118,12 +118,12 @@ describe("a ticket key typed into the search", () => {
     expect((await as(app, teamActor).get("/tickets?q=SUP-03")).status).toBe(200);
   });
 
-  it("is named in the search box's hint", async () => {
+  it("says in the search box's hint that Enter searches, with the full sentence as its name", async () => {
     const { app } = await setup();
     const box = parse((await as(app, teamActor).get("/tickets")).text).querySelector(
       "form.list-search input[name=q]",
     )!;
-    expect(box.getAttribute("placeholder")).toBe("Search titles, descriptions or a key");
+    expect(box.getAttribute("placeholder")).toBe("Search, then press Enter");
     expect(box.getAttribute("aria-label")).toBe(
       "Search titles and descriptions, or open a ticket by its key",
     );

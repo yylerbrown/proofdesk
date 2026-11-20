@@ -56,7 +56,7 @@
   <% if (filters.owner) { %><input type="hidden" name="owner" value="<%= filters.owner %>" /><% } %>
   <% if (filters.sort !== "open_first") { %><input type="hidden" name="sort" value="<%= filters.sort.by %>" /><input type="hidden" name="direction" value="<%= filters.sort.direction %>" /><% } %>
   <%# One box and no button: pressing Enter sends a form with one text box. %>
-  <input type="search" name="q" value="<%= filters.q ?? "" %>" placeholder="Search titles, descriptions or a key" aria-label="Search titles and descriptions, or open a ticket by its key" maxlength="100" />
+  <input type="search" name="q" value="<%= filters.q ?? "" %>" placeholder="Search, then press Enter" aria-label="Search titles and descriptions, or open a ticket by its key" maxlength="100" />
 </form>
 </div>
 
@@ -126,8 +126,9 @@
     <tbody>
       <% for (const ticket of tickets) { %>
       <tr>
-        <%# The title is the row's one keyboard stop; the key stays a link for the mouse. %>
-        <td><% if (bulk) { %><input type="checkbox" class="bulk-tick" name="keys" value="<%= ticket.key %>" aria-label="Tick <%= ticket.key %>" <% if (bulk.ticked.has(ticket.key)) { %>checked<% } %> /><% } %><a href="/tickets/<%= ticket.key %>" tabindex="-1"><%= ticket.key %></a></td>
+        <%# The title is the row's one link and keyboard stop, and the whole row opens it. The key
+            is plain text, so nothing that looks pressable is skipped by the keyboard. %>
+        <td><% if (bulk) { %><input type="checkbox" class="bulk-tick" name="keys" value="<%= ticket.key %>" aria-label="Tick <%= ticket.key %>" <% if (bulk.ticked.has(ticket.key)) { %>checked<% } %> /><% } %><span class="ticket-key"><%= ticket.key %></span></td>
         <td class="user-text title-cell" title="<%= ticket.title %>"><a href="/tickets/<%= ticket.key %>"><%= ticket.title %></a></td>
         <%# One line: the status word, and a quiet tag only when it is not simply the team's turn. How the team resolved a ticket is on its own page. %>
         <td class="status-cell"><%- include("status-badge", { status: ticket.status }) %><% if (ticket.tagHref) { %> <a class="turn-tag" href="<%= ticket.tagHref %>"><%= ticket.tag %></a><% } else if (ticket.tag) { %> <span class="turn-tag"><%= ticket.tag %></span><% } %></td>

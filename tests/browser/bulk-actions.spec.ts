@@ -197,3 +197,42 @@ test("without scripts the bar sits above the table, always shown", async ({ brow
   await expect(bar.getByRole("button", { name: "Clear" })).toBeHidden();
   await context.close();
 });
+
+test("the bar's controls have round corners, and a row reached by the keyboard is never under the bar", async ({
+  page,
+}) => {
+  // The tickets already on the list will do: this file's first test files two, and nothing
+  // more is filed here, since the whole browser run shares one address's filing limit.
+  await page.goto("/sign-in");
+  await page.getByRole("button", { name: "View as Team Member" }).click();
+  // A very short window, so even two rows scroll under the bar.
+  await page.setViewportSize({ width: 1280, height: 300 });
+  await page.goto("/tickets?status=all");
+  const rows = page.locator('input[name="keys"]');
+  expect(await rows.count()).toBeGreaterThanOrEqual(2);
+  await rows.first().check();
+  const bar = page.locator("[data-bulk-bar]");
+  await expect(bar).toBeVisible();
+
+  // Each select and Apply keeps the page's small-control corners inside the round bar.
+  const corners = await bar
+    .locator("select, button[type=submit]")
+    .evaluateAll((controls) =>
+      controls.map((control) => getComputedStyle(control).borderTopLeftRadius),
+    );
+  expect(corners.length).toBeGreaterThan(0);
+  for (const corner of corners) expect(corner).toBe("6px");
+
+  // From the last row, Shift+Tab back up the list: every stop lands below the stuck bar.
+  await rows.last().focus();
+  for (let press = 0; press < 10; press += 1) {
+    await page.keyboard.press("Shift+Tab");
+    const inList = await page.evaluate(
+      () => document.activeElement?.closest("table.tickets tbody") != null,
+    );
+    if (!inList) break;
+    const barBottom = (await bar.boundingBox())!;
+    const focused = await page.evaluate(() => document.activeElement!.getBoundingClientRect().top);
+    expect(focused, `stop ${press}`).toBeGreaterThanOrEqual(barBottom.y + barBottom.height - 1);
+  }
+});

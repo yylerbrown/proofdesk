@@ -174,7 +174,7 @@ describe("a resolved ticket", () => {
 });
 
 describe("the card's line after the customer reopens", () => {
-  it("says it is not fixed, linked to the reopening, and never repeats their words", async () => {
+  it("says it is not fixed, quoting the reopening to the team only, never an older No", async () => {
     const { app } = await setup();
     await customerSaysNo(app, "Still jams on page two.");
     const line = async (who = teamActor) =>
@@ -190,11 +190,14 @@ describe("the card's line after the customer reopens", () => {
     // A reopening reads as a No does: one phrase for the customer's word that it is not fixed.
     expect(await line()).toMatch(/^The customer said it is not fixed on /);
     expect(await line(customerOne)).toMatch(/^You said it is not fixed on /);
+    // The team reads the reopening's words, the latest; the customer has their own message.
+    expect(await line()).toContain('"It jams again since Monday."');
     for (const who of [teamActor, customerOne]) {
       const card = (await ticketPage(app, who)).querySelector(".ticket-card")!;
-      expect(card.text).not.toContain("It jams again since Monday.");
       expect(card.text).not.toContain("Still jams on page two.");
     }
+    const mine = (await ticketPage(app, customerOne)).querySelector(".ticket-card")!;
+    expect(mine.text).not.toContain("It jams again since Monday.");
   });
 });
 

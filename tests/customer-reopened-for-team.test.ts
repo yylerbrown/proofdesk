@@ -29,7 +29,7 @@ async function savedAfter(app: Express, who: Actor, path: string, fields: object
 }
 
 describe("a ticket the customer reopened", () => {
-  it("tells the team on the card, linked to their reason, and the list says it is not fixed", async () => {
+  it("tells the team on the card, quoting their reason, and the list says it is not fixed", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
     await resolveTicket(app, "SUP-1", customerOne);
@@ -38,14 +38,13 @@ describe("a ticket the customer reopened", () => {
     );
 
     const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
-    // The card says so in one line, linked to their words, which stand once, in the conversation.
+    // The card says so in one line, quoting their reason, the team's next task.
     const line = page.querySelector(".ticket-card .card-line")!;
     expect(line.querySelector("span")!.text.trim()).toMatch(
-      /^The customer said it is not fixed on \d{1,2} [A-Z][a-z]{2} \d{4}\.$/,
+      /^The customer said it is not fixed on \d{1,2} [A-Z][a-z]{2} \d{4}: "/,
     );
-    expect(page.querySelector(".ticket-card")!.text).not.toContain(reason);
-    const href = line.querySelector("a")!.getAttribute("href")!;
-    expect(page.querySelector(href)?.text).toContain(reason);
+    expect(line.querySelector(".user-text")?.text).toBe(reason);
+    expect(line.querySelector("a")).toBeNull();
     expect(await listTag(app, teamActor)).toBe("Customer says not fixed");
     expect(await listTag(app, customerOne)).toBeNull();
     // The history keeps their reason too.

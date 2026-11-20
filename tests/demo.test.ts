@@ -98,13 +98,14 @@ describe("the sample data", () => {
     const { app } = buildDemo();
     const list = await asDemo(app, demoTeam.id).get("/api/tickets");
     // Open tickets newest first, the New ones that say how to verify ahead of the others, then
-    // the resolved one. The two samples for AI assistants were filed first, so they are the
-    // oldest and sit under the plain support samples.
+    // the resolved one. SUP-4 is the one sample that does not say yet, so it comes after them.
+    // The two samples for AI assistants were filed first, so they are the oldest and sit under
+    // the plain support samples.
     expect(list.body.map((t: { key: string }) => t.key)).toEqual([
       "SUP-8",
       "SUP-5",
-      "SUP-4",
       "SUP-7",
+      "SUP-4",
       "SUP-3",
       "SUP-2",
       "SUP-1",
@@ -121,6 +122,15 @@ describe("the sample data", () => {
     expect(first.body).toMatchObject({ status: "in_progress", owner_name: "Demo Team Member" });
     const history = await asDemo(app, demoTeam.id).get("/api/tickets/SUP-3/events");
     expect(history.body.map((e: { type: string }) => e.type)).toContain("owner_changed");
+  });
+
+  it("leaves one New sample without what would prove it, so the Proof column shows a blank", async () => {
+    const { app } = buildDemo();
+    const list = await asDemo(app, demoTeam.id).get("/api/tickets");
+    const without = list.body.filter((t: { fix_check: string | null }) => t.fix_check === null);
+    expect(without.map((t: { title: string; status: string }) => [t.title, t.status])).toEqual([
+      ["Invoice shows the wrong date", "new"],
+    ]);
   });
 
   it("is added only to an empty database", () => {

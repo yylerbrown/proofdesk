@@ -123,3 +123,29 @@ if (typeof document !== "undefined") {
       : null,
   });
 }
+
+// "Skip to main content" moves focus to the page's main part, so the next Tab goes to its first
+// control in every browser, and the focus is not lost. main can take focus only for that moment:
+// its tabindex goes again once focus leaves it, because in WebKit a main that can always take
+// focus takes it from a mouse press inside it and closes an open menu before the press lands.
+
+/** The parts of the page's main element this code changes. */
+export type MainPart = {
+  setAttribute(name: string, value: string): void;
+  removeAttribute(name: string): void;
+  focus(): void;
+  addEventListener(type: "blur", listener: () => void, options: { once: true }): void;
+};
+
+/** Focuses the main part for one moment, until focus moves on. */
+export function focusMain(main: MainPart): void {
+  main.setAttribute("tabindex", "-1");
+  main.focus();
+  main.addEventListener("blur", () => main.removeAttribute("tabindex"), { once: true });
+}
+
+if (typeof document !== "undefined") {
+  const skip = document.querySelector<HTMLAnchorElement>("a.skip-link");
+  const main = document.getElementById("main");
+  if (skip && main) skip.addEventListener("click", () => focusMain(main));
+}

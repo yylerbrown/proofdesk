@@ -25,7 +25,8 @@ export const SAVED_MESSAGES = {
   agentGiven: "Handed to the assistant. It can work on this ticket only.",
   agentEnded: "The assistant has stopped working on this ticket.",
   reopenedByTeam: "Reopened, with your reason.",
-  resolvedByTeam: "Resolved, with your reason. The customer sees it and can reopen it.",
+  // The line under it already says the customer can reopen it.
+  resolvedByTeam: "Resolved, with your reason.",
   markedFixed: "Marked fixed. The customer was asked: Did this fix it?",
   released: "Unassigned. Anyone on the team can take it.",
   restored: "Ticket restored.",

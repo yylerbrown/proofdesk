@@ -28,19 +28,17 @@ describe("the day on the card's line", () => {
     expect(line.text.trim()).toBe(`Customer confirmed on ${formatDay(iso)}.`);
   });
 
-  it("is a time element in the line about the customer's No, with a quiet link to their message", async () => {
+  it("is a time element in the line about the customer's No, which quotes their words", async () => {
     const page = await pageOf("demo-team", "SUP-7");
     const line = page.querySelector(".ticket-card .card-line")!;
     const day = line.querySelector("time[data-day]")!;
     expect(line.querySelector("span")!.text.trim()).toBe(
-      `The customer said it is not fixed on ${formatDay(day.getAttribute("datetime")!)}.`,
+      `The customer said it is not fixed on ${formatDay(day.getAttribute("datetime")!)}: "Still nothing when the title has a comma in it."`,
     );
-    // The words are not a link; one quiet link after them opens the message, written at the
-    // same instant the card names.
-    expect(day.closest("a")).toBeNull();
-    const link = line.querySelector("a.card-line-link")!;
-    expect(link.text).toBe("Read their message");
-    const message = page.querySelector(`${link.getAttribute("href")} time[datetime]`);
-    expect(message?.getAttribute("datetime")).toBe(day.getAttribute("datetime"));
+    // Their words are the quote, so no second link leads to the same message.
+    expect(line.querySelector("a")).toBeNull();
+    expect(line.querySelector(".user-text")?.text).toBe(
+      "Still nothing when the title has a comma in it.",
+    );
   });
 });

@@ -31,8 +31,13 @@
         <button type="submit">Save</button>
       </form>
       <% } else { %>
-      <%# Where it cannot be changed, such as on the demo, the setting is words, not a switch. %>
+      <%# Where it cannot be changed, the setting is words, not a switch. The demo sends no
+          email at all, so there it says only that. %>
+      <% if (viewer.demo) { %>
+      <p class="email-me email-me-fixed"><span class="email-me-state">Off on this demo</span></p>
+      <% } else { %>
       <p class="email-me email-me-fixed"><span class="email-me-state"><%= emailMe ? "On" : "Off" %></span><% if (mailLine) { %> <small class="mail-line account-quiet"><%= mailLine %></small><% } %></p>
+      <% } %>
       <% } %>
     </dd>
   </div>

@@ -18,7 +18,7 @@ function buildDemo() {
 const asDemo = (app: Express, id: string) => visitor(app).set("Cookie", `${DEV_COOKIE}=${id}`);
 const keysOn = async (agent: ReturnType<typeof asDemo>, path: string) =>
   parse((await agent.get(path)).text)
-    .querySelectorAll("table.tickets tbody tr td:first-child a")
+    .querySelectorAll("table.tickets tbody tr td:first-child .ticket-key")
     .map((a) => a.text);
 
 describe("the ticket list", () => {

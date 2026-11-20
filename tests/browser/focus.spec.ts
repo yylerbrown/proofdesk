@@ -49,7 +49,7 @@ test("focus starts from the saved line, the sent line or the search box", async 
     await page.setViewportSize({ width: 1280, height: 480 });
     await page.locator("summary", { hasText: "Write a message" }).click();
     await page.locator("#entry-body").fill("A reply that lands on the conversation.");
-    await page.getByRole("button", { name: "Send", exact: true }).click();
+    await page.getByRole("button", { name: "Send to the team", exact: true }).click();
     await expect(page).toHaveURL(/#sent$/);
     const sent = page.locator('p#sent[role="status"]');
     await expect(sent).toHaveText("Reply sent.");

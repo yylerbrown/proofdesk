@@ -29,9 +29,9 @@ describe("the message button on the page", () => {
     expect(button.getAttribute("data-label-note")).toBe("Save internal note");
   });
 
-  it("stays a plain Send for the customer, who has no choice of audience", async () => {
+  it("says Send to the team for the customer, whose one audience is the team", async () => {
     const button = await sendButton(customerOne);
-    expect(button.text).toBe("Send");
+    expect(button.text).toBe("Send to the team");
     expect(button.hasAttribute("data-label-reply")).toBe(false);
   });
 });

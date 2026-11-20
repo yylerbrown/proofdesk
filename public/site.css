@@ -461,6 +461,15 @@ header nav .viewer summary strong {
     padding-inline: 10px;
     white-space: nowrap;
   }
+  /* "New ticket" reads "New", so the person's name fits; the hidden word keeps its full name. */
+  .site-header .new-ticket-rest {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
   header nav ul.account .viewer {
     min-width: 0;
     font-size: var(--pd-text-xs);
@@ -526,6 +535,11 @@ header nav .viewer summary strong {
 }
 .skip-link:focus {
   transform: none;
+}
+/* The main part takes focus only from the skip link, for a moment; it is not a control, so it
+   shows no ring. */
+main#main:focus {
+  outline: none;
 }
 
 /* ---------- 3. Demo strip ---------- */
@@ -1056,8 +1070,9 @@ table.tickets .turn-tag {
   white-space: nowrap;
 }
 /*
- * The Proof column: one mark the size of a status icon, or nothing. The outlined mark is the
- * muted grey; the solid one is the resolved green, the one tick for "Customer confirmed".
+ * The Proof column: one mark the size of a status icon, or nothing. "Says what would prove it"
+ * is a bare check with no circle, pale grey at half strength; "Customer confirmed" is the solid
+ * green circle with its check, the one tick. Both fill the same box, so rows line up.
  */
 table.tickets .proof-mark {
   display: inline-block;
@@ -1067,6 +1082,9 @@ table.tickets .proof-mark {
   background-color: var(--pd-muted);
   -webkit-mask: url("/assets/proof-said.svg") center / contain no-repeat;
   mask: url("/assets/proof-said.svg") center / contain no-repeat;
+}
+table.tickets .proof-said {
+  opacity: 0.5;
 }
 table.tickets .confirmed-mark {
   background-color: var(--pd-status-resolved);
@@ -1087,16 +1105,11 @@ table.tickets td.user-text {
   letter-spacing: -0.011em;
   white-space: pre-wrap;
 }
-table.tickets td:first-child a {
+table.tickets .ticket-key {
   color: var(--pd-muted);
   font-weight: var(--pd-weight-medium);
-  text-decoration: none;
 }
-table.tickets td:first-child a:hover {
-  color: var(--pd-text);
-  text-decoration: underline;
-}
-/* The whole row opens the ticket; where a browser ignores this, the key link still does. */
+/* The whole row opens the ticket; where a browser ignores this, the title link still does. */
 table.tickets tbody tr {
   position: relative;
   transition: background-color var(--pd-ease);
@@ -1104,7 +1117,7 @@ table.tickets tbody tr {
 table.tickets tbody tr:hover {
   background-color: var(--pd-subtle);
 }
-table.tickets td:first-child a::after {
+table.tickets td.title-cell a::after {
   position: absolute;
   inset: 0;
   content: "";
@@ -1142,7 +1155,9 @@ table.tickets td:first-child a::after {
 /*
  * Wide windows: every column but the title has a set width, so the columns hold their places
  * instead of drifting apart, and the title takes what is left. The status column has room for
- * the status word and its longest tag on one line.
+ * the status word and its longest tag, "In Progress" and "Assistant asks for review", on one
+ * line and no more, and the Proof column is only as wide as its header: their room comes out
+ * of each other, never out of the title.
  */
 @media (min-width: 1100px) {
   table.tickets {
@@ -1152,11 +1167,11 @@ table.tickets td:first-child a::after {
     width: 6.5rem;
   }
   table.tickets th:nth-child(3) {
-    width: 18.5rem;
+    width: 17.75rem;
   }
   /* The Proof column holds one mark under its short header. */
   table.tickets th:nth-child(4) {
-    width: 4.5rem;
+    width: 3.5rem;
   }
   table.tickets th:nth-child(5) {
     width: 11.5rem;
@@ -1272,7 +1287,8 @@ label small.hint {
  */
 /*
  * "Similar ticket:", the ticket, and its status on one line. Only the ticket's key and title
- * shorten, with an ellipsis; the words before it and the status always show whole.
+ * shorten, with an ellipsis; the words before it and the status always show whole. On a phone
+ * the title wraps in full instead, with the status after it.
  */
 small.similar-ticket {
   position: relative;
@@ -1297,10 +1313,20 @@ small.similar-ticket > span {
 small.similar-ticket[hidden] {
   display: none;
 }
+@media (max-width: 639px) {
+  small.similar-ticket {
+    display: block;
+    white-space: normal;
+  }
+  small.similar-ticket > a {
+    overflow: visible;
+    overflow-wrap: anywhere;
+  }
+}
 /*
- * "Add pictures": a quiet small control, never a button-shaped block. With scripts off the
- * browser's own picker sits after the words. With scripts on (.enhanced) the picker is hidden
- * but still takes focus, and the words are the control, ringed when it has the keyboard.
+ * "Add pictures": a small outlined button, like the page's other quiet buttons. With scripts off
+ * the browser's own picker sits after the words. With scripts on (.enhanced) the picker is hidden
+ * but still takes focus, and the words are the button, ringed when it has the keyboard.
  */
 label.add-pictures {
   display: inline-flex;
@@ -1336,12 +1362,24 @@ label.add-pictures.enhanced input[type="file"] {
   opacity: 0;
 }
 label.add-pictures.enhanced .add-pictures-words {
-  text-decoration: underline;
-  text-decoration-color: var(--pd-border-strong);
-  text-underline-offset: 3px;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border: 1px solid var(--pd-control-border);
+  border-radius: var(--pd-radius);
+  background-color: var(--pd-surface);
+  color: var(--pd-text);
+  font-weight: var(--pd-weight-medium);
+  line-height: 1.45;
+  transition: background-color var(--pd-ease);
 }
 label.add-pictures.enhanced:hover .add-pictures-words {
-  color: var(--pd-text);
+  background-color: var(--pd-subtle);
+}
+@media (max-width: 639px) {
+  label.add-pictures.enhanced .add-pictures-words {
+    min-height: 40px;
+  }
 }
 label.add-pictures.enhanced:has(input:focus-visible) {
   border-radius: var(--pd-radius);
@@ -1353,7 +1391,9 @@ label.add-pictures.full {
   cursor: default;
 }
 label.add-pictures.full .add-pictures-words {
-  text-decoration: none;
+  border-color: var(--pd-border);
+  background-color: var(--pd-subtle);
+  color: var(--pd-muted);
 }
 /* On the new ticket form the control sits directly under the Description box. */
 .ticket-form label.add-pictures {
@@ -1405,6 +1445,32 @@ label.add-pictures.full .add-pictures-words {
   color: var(--pd-text);
   font-size: var(--pd-text-sm);
   line-height: 1;
+}
+/*
+ * On a phone the remove mark is easy to miss, so it becomes a small "Remove" under its picture.
+ * The word is drawn by the style sheet; the button's name stays "Remove" and the file's name.
+ */
+@media (max-width: 639px) {
+  .picture-strip .picture-chosen {
+    height: auto;
+  }
+  .picture-strip button.picture-remove {
+    position: static;
+    width: 56px;
+    height: auto;
+    min-height: 40px;
+    margin-top: 2px;
+    border: 0;
+    border-radius: var(--pd-radius);
+    background: none;
+    color: var(--pd-muted);
+    font-size: 0;
+  }
+  .picture-strip button.picture-remove::before {
+    font-size: var(--pd-text-xs);
+    text-decoration: underline;
+    content: "Remove" / "";
+  }
 }
 /* A message under a box: red, 13px. */
 :where(input, select, textarea) + small {
@@ -2339,6 +2405,14 @@ details.history td:first-child {
   margin-inline-start: var(--pd-space-2);
   color: var(--pd-muted);
 }
+/* On a phone, Change keeps a 44-pixel tap area without making its line taller. */
+@media (max-width: 639px) {
+  .ticket-card .card-label a.card-label-link {
+    display: inline-block;
+    margin-block: -12px;
+    padding-block: 12px;
+  }
+}
 .ticket-card .card-proof-add a {
   color: var(--pd-muted);
   font-size: var(--pd-text-sm);
@@ -2467,6 +2541,21 @@ form.reply-box:not(:has(input[value="note"]:checked)) .note-hint {
 .ticket-more-row > details[open] > :not(summary) {
   flex-basis: 100%;
   order: 1;
+}
+/*
+ * On a phone the two lines stack, and each opens its content directly under its own line, so a
+ * long History never stands between More options and its entries.
+ */
+@media (max-width: 639px) {
+  .ticket-more-row {
+    display: block;
+  }
+  .ticket-more-row > details[open] {
+    display: block;
+  }
+  .ticket-more-row > details + details {
+    margin-top: var(--pd-space-3);
+  }
 }
 
 /*
@@ -3255,9 +3344,39 @@ pre.paste.command {
     font-size: var(--pd-text-sm);
     text-align: left;
   }
-  /* The status takes the rest of the first line, so the proof marks line up at its end. */
+  /*
+   * The status word stays on the first line, and its tag moves to a grey third line with the
+   * owner's name: the cell gives up its own box, so its parts take their places in the row.
+   */
   table.tickets tbody td.status-cell {
-    flex: 1 1 0;
+    display: contents;
+  }
+  /*
+   * The proof mark ends the first line, so the marks line up. Its mask lifts it above the
+   * title's press area, so a press on it is passed through to the row; a phone has no hover
+   * for its title anyway.
+   */
+  table.tickets tbody td.proof-cell {
+    margin-inline-start: auto;
+  }
+  table.tickets tbody .proof-mark {
+    pointer-events: none;
+  }
+  table.tickets tbody .turn-tag {
+    order: 2;
+    margin: 0;
+  }
+  table.tickets tbody .turn-tag::after {
+    margin-inline-start: var(--pd-space-3);
+    content: "\00B7" / "";
+  }
+  /* The owner, shown again on a phone, and its column name for a screen reader. */
+  table.tickets tbody td:nth-child(5) {
+    display: block;
+    order: 2;
+  }
+  table.tickets thead th:nth-child(5) {
+    display: table-cell;
   }
   /* The title takes a line of its own, under the key, the status and the proof mark. */
   table.tickets tbody td.title-cell {
@@ -3305,6 +3424,11 @@ main > form.bulk {
   margin: 0;
   font-size: var(--pd-text-sm);
 }
+/* Pico squares the inner corners of a group's controls; these stand apart, so each keeps the
+   round corners of the page's other small controls. */
+.bulk-bar[role="group"] > :is(select, input, button) {
+  border-radius: var(--pd-radius);
+}
 .bulk-count {
   margin: 0;
   color: var(--pd-text);
@@ -3338,6 +3462,15 @@ main > form.bulk {
   align-content: center;
   margin: 0;
   padding-block: 2px;
+}
+/*
+ * While the bar shows, it sticks over the top of the list, so whatever the keyboard reaches next
+ * lands below it, not under it. The script keeps --pd-bulk-bar at the bar's height.
+ */
+html:has(.bulk-dock .bulk-bar:not([hidden])) {
+  scroll-padding-top: calc(
+    var(--pd-header-stuck, 0px) + var(--pd-bulk-bar, 0px) + var(--pd-space-4)
+  );
 }
 /* The filters under the bar: out of sight, and the script makes them inert, out of reach. */
 .list-filters[inert] {

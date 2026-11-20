@@ -44,8 +44,9 @@
           <% for (const [name, value] of Object.entries(choice.fields)) { %>
           <input type="hidden" name="<%= name %>" value="<%= value %>" />
           <% } %>
-          <%# Taking a ticket nobody owns is part of starting work on it, so the choice says so. %>
-          <button type="submit" class="link"><span class="menu-words"><%- include("status-badge", { status: choice.status }) %><% if (choice.action.endsWith("/take-and-start")) { %> (assigns it to you)<% } %></span></button>
+          <%# Taking a ticket nobody owns is part of starting work on it, and going back to New
+              leaves it with nobody, so each choice says so. %>
+          <button type="submit" class="link"><span class="menu-words"><%- include("status-badge", { status: choice.status }) %><% if (choice.action.endsWith("/take-and-start")) { %> (assigns it to you)<% } else if (choice.status === "new" && ticket.owner_id) { %> (unassigns it)<% } %></span></button>
         </form>
         <% } else if (choice.kind === "resolve") { %>
         <a href="/tickets/<%= ticket.key %>?step=resolve#resolve-form"><%- include("status-badge", { status: choice.status }) %></a>
@@ -209,9 +210,9 @@
     <% if (card.line.tick && staff) { %><img src="/assets/mark.svg" alt="" width="20" height="20" class="tick" /><% } %>
     <%# The day is a <time>, so the visitor's browser writes it in their own time zone. The span
         keeps the words and the day one sentence inside the line's row. %>
-    <span><%= card.line.text %><% if (card.line.day) { %><time datetime="<%= card.line.day %>" data-day><%= formatDay(card.line.day) %></time><% } %><%= card.line.after %></span>
-    <%# The customer's own message about it, when there is one: a quiet link after the line. %>
-    <% if (card.lineHref) { %><a href="<%= card.lineHref %>" class="card-line-link"><%= staff ? "Read their message" : "Read your message" %></a><% } %>
+    <span><%= card.line.text %><% if (card.line.day) { %><time datetime="<%= card.line.day %>" data-day><%= formatDay(card.line.day) %></time><% } %><%= card.line.after %><% if (card.line.quote) { %> "<span class="user-text"><%= card.line.quote %></span>"<% } %></span>
+    <%# The customer's own message about it, when there is one: a quiet link after their line. %>
+    <% if (card.lineHref) { %><a href="<%= card.lineHref %>" class="card-line-link">Read your message</a><% } %>
     <% if (card.otherHref) { %><a href="<%= card.otherHref %>">Open <%= ticket.resolution.duplicate_of %></a><% } %>
   </p>
   <% } %>
@@ -303,9 +304,10 @@
       <% }) %>
     </fieldset>
     <%# The stylesheet shows each of these only for the reason that needs it. %>
+    <%# Its example is never this ticket's own key. %>
     <label class="resolve-duplicate">
       Duplicate of
-      <input type="text" name="duplicate_of" placeholder="SUP-3" maxlength="20" value="<%= resolving.duplicate_of ?? possibleDuplicate?.key ?? "" %>" <%= focusIf("resolve", "duplicate_of") %> />
+      <input type="text" name="duplicate_of" placeholder="A ticket key, like <%= ticket.key === "SUP-12" ? "SUP-11" : "SUP-12" %>" maxlength="20" value="<%= resolving.duplicate_of ?? possibleDuplicate?.key ?? "" %>" <%= focusIf("resolve", "duplicate_of") %> />
     </label>
     <%# One box for a note: "Why?" for Other, which needs it, and an optional note for the
         customer with Won't fix or Cannot reproduce. Only the label for the chosen reason shows. %>
@@ -481,7 +483,8 @@
   <div class="picture-strip" id="reply-picture-strip" hidden></div>
   <div class="reply-actions">
     <%# With a choice of who sees it, a small script makes the button name that audience. %>
-    <button type="submit" class="secondary compact" <% if (allowed.note) { %>data-label-reply="Send reply to customer" data-label-note="Save internal note"<% } %>>Send</button>
+    <%# The customer's one audience is the team, and the button says so. %>
+    <button type="submit" class="secondary compact" <% if (allowed.note) { %>data-label-reply="Send reply to customer" data-label-note="Save internal note"<% } %>><%= allowed.note ? "Send" : "Send to the team" %></button>
     <%- include("add-pictures", { limit: pictureLimits.perMessage, strip: "reply-picture-strip", box: "body", line: null }) %>
     <%# Shown only while Internal note is chosen, at the row's right end. %>
     <% if (allowed.note) { %><small class="note-hint">Only the team can see this.</small><% } %>
@@ -531,7 +534,7 @@
 <% if (staff && allowed.attachEvidence) { %>
 <li>
 <details name="more-option" <% if (problem?.form === "evidence") { %>open<% } %>>
-  <summary>Add evidence</summary>
+  <summary>Add evidence of the fix</summary>
   <%# The page picks the kind: a change when a link is given, otherwise "I checked it". %>
   <form method="post" action="/tickets/<%= ticket.key %>/evidence">
     <label>
@@ -596,7 +599,7 @@
 </li>
 <% } %>
 <% if (noticeCount > 0) { %>
-<li><a href="/tickets/<%= ticket.key %>/notices">Email notices</a></li>
+<li><a href="/tickets/<%= ticket.key %>/notices">Emails sent about this ticket</a></li>
 <% } %>
 <% if (allowed.archive) { %>
 <li><a href="/tickets/<%= ticket.key %>/archive">Archive ticket</a></li>

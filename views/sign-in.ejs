@@ -68,7 +68,8 @@
 <hgroup>
   <%# The real site's sign-in says what the page is for. A signed-in visitor gets a welcome. %>
   <h1><%= github && !viewer ? "Sign in to Proofdesk" : "Proofdesk" %></h1>
-  <p>Proofdesk is a support desk where a ticket is shaped like a good prompt: the problem, the context, and what would prove it is fixed.</p>
+  <%# The real site speaks to a customer, so it says what they will do here, plainly. %>
+  <p>Tell us what went wrong and what would prove it is fixed.</p>
 </hgroup>
 
 <% if (viewer) { %>

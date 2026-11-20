@@ -113,12 +113,11 @@ describe("the recorded run on the demo", () => {
     // The title and the description are the customer's problem alone, so this one line in the
     // assistant's card is the one place on the ticket that says a recorded run is shown, and
     // under which key the assistant knew the sample.
-    // The day is in the page's own style, and SUP-4 is named as the key on an earlier copy, so
-    // nobody takes it for today's SUP-4.
-    const day = note.querySelector("time[data-day]")!;
-    expect(day.text).toBe(formatDay(day.getAttribute("datetime")!));
+    // The day is a fixed day in the past, printed as written, and SUP-4 is named as the key on
+    // an earlier copy, so nobody takes it for today's SUP-4.
+    expect(note.querySelector("time")).toBeNull();
     expect(note.text).toBe(
-      `Recorded on ${day.text} on an earlier copy of this demo, where this ticket was SUP-4. How this was run`,
+      `Recorded on ${formatDay("2026-11-18T12:00:00.000Z")} on an earlier copy of this demo, where this ticket was SUP-4. How this was run`,
     );
     expect(html.querySelectorAll(".card-recorded")).toHaveLength(1);
     expect(html.querySelector(".recorded-run")).toBeNull();
