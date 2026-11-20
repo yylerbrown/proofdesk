@@ -3,11 +3,12 @@
   // What an empty list says, for each filter. A customer is told about their own tickets.
   const mine = viewerRole === "customer";
   const empty = {
-    // With older resolved tickets left out, the list is not empty: its filter by age leads to them.
-    all: ageFilter && ageFilter.age === "older" ? "No tickets were resolved more than 14 days ago." : ageFilter ? "No open tickets." : mine ? "You have not filed any tickets yet." : "There are no tickets yet.",
+    all: mine ? "You have not filed any tickets yet." : "There are no tickets yet.",
+    open: "No open tickets.",
     new: "No new tickets.",
     in_progress: "Nothing is in progress.",
-    resolved: "No resolved tickets yet.",
+    // With one age chosen, the other age may still hold resolved tickets.
+    resolved: age === "older" ? "No tickets were resolved more than 14 days ago." : age === "recent" ? "No tickets were resolved in the last 14 days." : "No resolved tickets yet.",
     // On the demo nobody archives, so the Archived tab is always empty there. Say why.
     archived: viewer && viewer.demo ? "Nothing is archived. Archiving is off on this demo for everyone." : "Nothing is archived.",
   };
@@ -28,6 +29,10 @@
   <ul>
     <li>
       <a href="<%= href({ status: "all" }) %>" <% if (current === "all") { %>aria-current="page"<% } %>>All</a>
+    </li>
+    <%# Every ticket that is not resolved: New and In Progress together. %>
+    <li>
+      <a href="<%= href({ status: current === "open" ? "all" : "open" }) %>" <% if (current === "open") { %>aria-current="page"<% } %>>Open <span class="filter-count"><%= counts.new + counts.in_progress %></span></a>
     </li>
     <% for (const status of statuses) { %>
     <li>
@@ -52,12 +57,11 @@
 </nav>
 <% } %>
 <% if (ageFilter) { %>
-<%# On "All" with nothing searched: which resolved tickets it shows. The last 14 days is the default and writes nothing in the address. %>
+<%# On "Resolved" with nothing searched: which resolved tickets it shows. Any age is the default and writes nothing in the address. %>
 <nav aria-label="Resolved tickets by age">
   <ul>
-    <li class="filter-label" aria-hidden="true">Resolved:</li>
-    <% for (const [age, label] of [["recent", "Last 14 days"], ["older", "Older"], ["any", "Any age"]]) { %>
-    <li><a href="<%= href({ resolved: age === "recent" ? undefined : age }) %>" <% if (ageFilter.age === age) { %>aria-current="page"<% } %>><%= label %><% if (age === "older") { %> <span class="filter-count"><%= ageFilter.olderCount %></span><% } %></a></li>
+    <% for (const [choice, label] of [["any", "Any age"], ["recent", "Last 14 days"], ["older", "Older"]]) { %>
+    <li><a href="<%= href({ resolved: choice === "any" ? undefined : choice }) %>" <% if (age === choice) { %>aria-current="page"<% } %>><%= label %><% if (choice === "older") { %> <span class="filter-count"><%= ageFilter.olderCount %></span><% } %></a></li>
     <% } %>
   </ul>
 </nav>

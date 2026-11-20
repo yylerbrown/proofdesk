@@ -68,7 +68,7 @@ describe("the tick", () => {
     expect(standing.querySelector(".tick")).not.toBeNull();
     // That line carries the day, so the card under the check does not say it again.
     expect(standing.text.trim()).toMatch(
-      /^Resolved, customer confirmed on \d{1,2} [A-Z][a-z]{2} \d{4}$/,
+      /^Resolved, customer confirmed on \d{1,2} [A-Z][a-z]{2} \d{4} Edit$/,
     );
     expect(main.querySelector(".ticket-card .card-line")).toBeNull();
     // For the team, the tick is on the card's line.

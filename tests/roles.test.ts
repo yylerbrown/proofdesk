@@ -255,7 +255,7 @@ describe("archiving asks first", () => {
     const { app } = await twoCustomers();
     const mine = await as(app, customerOne).get("/tickets/SUP-1/archive");
     expect(mine.status).toBe(200);
-    expect(mine.text).toContain("you will not be able to open it again");
+    expect(mine.text).toContain("You will not be able to open it again.");
     expect(mine.text).toContain('<form method="post" action="/tickets/SUP-1/archive">');
     expect(mine.text).toContain('href="/tickets/SUP-1"');
 

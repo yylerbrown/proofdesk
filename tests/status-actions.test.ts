@@ -249,8 +249,10 @@ describe("the customer's page", () => {
     const before = parse((await as(app, customerOne).get("/tickets/SUP-1")).text);
     expect(before.querySelector(".ticket-facts")).toBeNull();
     const standing = before.querySelector(".ticket-standing")!;
-    expect(standing.text).toBe("New, not yet taken by the team");
-    expect(standing.querySelector("form, button, details, a")).toBeNull();
+    expect(standing.querySelector(".standing-rest")?.text).toBe(", not yet taken by the team");
+    // Only the two quiet links, Edit and Archive, follow the words.
+    expect(standing.querySelectorAll("a").map((a) => a.text)).toEqual(["Edit", "Archive"]);
+    expect(standing.querySelector("form, button, details")).toBeNull();
     await resolveTicket(app, "SUP-1", customerOne);
     const html = parse((await as(app, customerOne).get("/tickets/SUP-1")).text);
     expect(html.querySelector(".ticket-standing")!.text).not.toMatch(/Start work|Reopen/);

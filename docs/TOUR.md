@@ -29,7 +29,7 @@ Each one takes under a minute on the demo, which opens on the ticket list as the
 
 - Start as: Demo Team Member, on All tickets
 - Press: Nothing at first; then a column header, to sort by it instead
-- You should see: A narrow **Proof** column after Status. A pale grey check says the ticket states what would prove it is fixed, a solid green circle with a check says the customer confirmed it, and a ticket with neither has no mark. One quiet line under the list names both marks: "Says what would prove it is fixed" and "Customer confirmed". With no header pressed, New tickets that say what would prove them fixed come first, newest first, then the other open tickets, then resolved ones. On All, with nothing searched, once a ticket was resolved more than 14 days ago, a "Resolved:" filter reads **Last 14 days**, **Older** with its count, and **Any age**. Last 14 days is the default; the other two add `?resolved=older` or `?resolved=any` to the address. The demo has two samples resolved more than 14 days ago, SUP-9 and SUP-10, under Older.
+- You should see: A narrow **Proof** column after Status. A pale grey check says the ticket states what would prove it is fixed, a solid green circle with a check says the customer confirmed it, and a ticket with neither has no mark. One quiet line under the list names both marks: "Says what would prove it is fixed" and "Customer confirmed". With no header pressed, New tickets that say what would prove them fixed come first, newest first, then the other open tickets, then resolved ones. **All** shows every ticket, and **Open**, between All and New, every ticket that is not resolved. Under **Resolved**, with nothing searched, a small group reads **Any age**, **Last 14 days** and **Older** with its count. Any age is the default; the other two add `?resolved=recent` or `?resolved=older` to the address. The demo has two samples resolved more than 14 days ago, SUP-9 and SUP-10, under Older.
 
 **Update status: New to In Progress**
 
@@ -64,7 +64,7 @@ Each one takes under a minute on the demo, which opens on the ticket list as the
 **Two people on one ticket**
 
 - Start as: Demo Team Member, with the ticket you filed open in two tabs
-- Press: **More options**, then **Edit ticket** in both tabs, save a change in one, then save in the other
+- Press: **Edit**, at the end of the line under the title, in both tabs, save a change in one, then save in the other
 - You should see: The second save is refused and keeps what you typed, naming only what the other person changed, such as `They changed: Title, now "..."`. A tab left open on a ticket someone else changed says what changed when it can, such as "This ticket is now In Progress. Refresh to see it." or "This ticket has a new message. Refresh to see it.", and otherwise "This ticket changed. Refresh to see it."
 
 **GitHub sign-in with roles**

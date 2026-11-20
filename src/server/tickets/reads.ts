@@ -82,10 +82,11 @@ export function createReads(shared: Shared, options: ServiceOptions) {
      * a team member or admin. Every other filter leaves archived tickets out. With
      * `resolvedSince`, a resolved ticket is listed only when it moved to Resolved at that time or
      * later; with `resolvedBefore`, only resolved tickets that moved to Resolved before it are.
-     * The list page uses them, and the JSON API leaves them out.
+     * The list page uses them, and the JSON API leaves them out. So is "open", which the list
+     * page offers: every ticket that is not resolved.
      */
     listTickets(
-      filter: TicketListFilter,
+      filter: TicketListFilter | "open",
       actor: Actor,
       pageNumber = 1,
       narrowing: ListNarrowing = {},

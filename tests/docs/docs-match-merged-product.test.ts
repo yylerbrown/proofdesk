@@ -81,7 +81,7 @@ describe("the demo, as the README describes it", () => {
   it("captions the ticket list without the Archived tab the demo no longer shows", () => {
     const tag = /<img src="docs\/img\/ticket-list.png"[^>]*>/.exec(readme)![0];
     expect(tag).not.toContain("Archived");
-    expect(tag).toContain("All, New, In Progress and Resolved");
+    expect(tag).toContain("All, Open, New, In Progress and Resolved");
   });
 
   it("states the recorded run's scope the way the assistant page does", () => {

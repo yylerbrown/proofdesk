@@ -13,7 +13,7 @@ Say what would prove it is fixed, and your ticket is listed first and checked ag
 - **The production site, with GitHub sign-in: <https://proofdesk.fly.dev>.**
 - **The source: <https://github.com/yylerbrown/proofdesk>.**
 
-<img src="docs/img/ticket-list.png" width="720" alt="The team member's ticket list on the demo, which has no welcome card: status filters All, New, In Progress and Resolved with a count beside each status, the Mine and Unassigned toggles, a &quot;Resolved:&quot; filter reading Last 14 days, Older 2 and Any age, a search box reading &quot;Search, then press Enter&quot;, and the sample tickets with their key, title, status, owner and when each was filed, under column headers that sort the list. In the Proof column a pale check marks a ticket that says what would prove it fixed, a solid green check marks one its customer confirmed, and one New ticket has neither; a line under the list names the two marks">
+<img src="docs/img/ticket-list.png" width="720" alt="The team member's ticket list on the demo, which has no welcome card: status filters All, Open, New, In Progress and Resolved with a count beside each but All, the Mine and Unassigned toggles, a search box reading &quot;Search, then press Enter&quot;, and every sample ticket, open ones first, with its key, title, status, owner and when it was filed, under column headers that sort the list. In the Proof column a pale check marks a ticket that says what would prove it fixed, a solid green check marks one its customer confirmed, and one New ticket has neither; a line under the list names the two marks">
 
 ## Run it yourself
 
@@ -41,7 +41,7 @@ On the demo, in about two minutes, with eight presses:
 2. The filed ticket asks "What would prove it is fixed?", with three sample suggestions and the
    first in the box. Press **Save**: the ticket is **New**, with your words under that label.
 
-<img src="docs/img/what-would-prove-it.png" width="560" alt="The step after filing, in a bordered card: under &quot;What would prove it is fixed?&quot; two grey lines, a hint and a note that these are sample suggestions, then three sample suggestions to pick from, a box holding the first one, and the buttons &quot;Save&quot; and &quot;Skip for now&quot;">
+<img src="docs/img/what-would-prove-it.png" width="560" alt="The step after filing, under the title's line &quot;New, not yet taken by the team&quot; and its quiet &quot;Edit&quot; link, in a bordered card: under &quot;What would prove it is fixed?&quot; two grey lines, a hint and a note that these are sample suggestions, then three sample suggestions to pick from, a box holding the first one, and the buttons &quot;Save&quot; and &quot;Skip for now&quot;">
 
 3. Press **View this ticket as a team member**, then **Take ticket and start work**. The ticket
    is **In Progress**, and you own it.
@@ -50,7 +50,7 @@ On the demo, in about two minutes, with eight presses:
    this fix it?": the ticket reads "Resolved, customer confirmed", with a solid green check in
    the list's Proof column.
 
-<img src="docs/img/did-this-fix-it.png" width="560" alt="The customer's view of a ticket the team marked fixed: &quot;Resolved, the team says it is fixed&quot; under the title, then a bordered card with &quot;Did this fix it?&quot; over their own words, then the button &quot;Yes, it is fixed&quot; and the fold-open &quot;No, it is not fixed&quot;">
+<img src="docs/img/did-this-fix-it.png" width="560" alt="The customer's view of a ticket the team marked fixed: &quot;Resolved, the team says it is fixed&quot; under the title with a quiet &quot;Edit&quot; link, then a bordered card with &quot;Did this fix it?&quot; over their own words, then the button &quot;Yes, it is fixed&quot; and the fold-open &quot;No, it is not fixed&quot;">
 
 The customer's Yes is optional, and their "No, it is not fixed" sends the ticket back to the
 team with their words. The team's Status menu, under the title, moves a ticket between New and

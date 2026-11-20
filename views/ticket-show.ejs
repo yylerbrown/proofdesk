@@ -15,6 +15,9 @@
   // The customer's step after filing, what would prove it is fixed, shows in the check's place.
   const proofStep = proof.step;
   const stepForm = resolveForm || reopenForm || proofStep;
+  // The customer who filed a ticket that is not resolved can take it off the lists from the line
+  // under the title. The team's own Archive stays under More options.
+  const archiveOnLine = !staff && allowed.archive && ticket.status !== "resolved";
 %>
 <%# One column of reading width, the same for every ticket, role and width: the way back, the
     title, status and owner on one line, the ticket's own words, the customer's check, where it
@@ -123,12 +126,13 @@
   <% } else { %>
   <span class="fact"><span class="fact-label">Owner</span> <span class="fact-value"><%= ownerName %></span></span>
   <% } %>
+  <% if (allowed.edit) { %><a href="/tickets/<%= ticket.key %>/edit" class="ticket-line-link">Edit</a><% } %>
 </div>
 <% } else { %>
 <%# For the customer: where the ticket stands and whose turn it is, in plain words, in the small
     type of the team's line: the status mark and word, then the rest in grey. The tick takes the
     mark's place only after their own Yes. %>
-<p class="ticket-standing"><% if (standing.tick) { %><span class="tick" aria-hidden="true"></span><span class="standing-word"><%= statusLabels[ticket.status] %></span><% } else { %><%- include("status-badge", { status: ticket.status }) %><% } %><span class="standing-rest"><%= standing.rest %><% if (standing.day) { %><time datetime="<%= standing.day %>" data-day><%= formatDay(standing.day) %></time><% } %></span></p>
+<p class="ticket-standing"><% if (standing.tick) { %><span class="tick" aria-hidden="true"></span><span class="standing-word"><%= statusLabels[ticket.status] %></span><% } else { %><%- include("status-badge", { status: ticket.status }) %><% } %><span class="standing-rest"><%= standing.rest %><% if (standing.day) { %><time datetime="<%= standing.day %>" data-day><%= formatDay(standing.day) %></time><% } %></span><% if (allowed.edit) { %> <a href="/tickets/<%= ticket.key %>/edit" class="ticket-line-link">Edit</a><% } %><% if (archiveOnLine) { %> <a href="/tickets/<%= ticket.key %>/archive" class="ticket-line-link">Archive</a><% } %></p>
 <% } %>
 
 <h2 class="visually-hidden">Description</h2>
@@ -546,14 +550,12 @@
     opens on that form and its message. %>
 <% const moreForms = ["ready"]; %>
 <% const giveToAgent = staff && allowed.giveToAgent && !agentHelp.current && agentHelp.candidates.length > 0; %>
-<% const hasMore = allowed.edit || (staff && (allowed.markReady || allowed.withdrawQuestion)) || giveToAgent || noticeCount > 0 || allowed.archive || allowed.delete; %>
+<% const archiveInMore = allowed.archive && !archiveOnLine; %>
+<% const hasMore = (staff && (allowed.markReady || allowed.withdrawQuestion)) || giveToAgent || noticeCount > 0 || archiveInMore || allowed.delete; %>
 <% if (hasMore) { %>
 <details class="more-options" id="more-options" <% if (moreForms.includes(problem?.form)) { %>open<% } %>>
 <summary>More options</summary>
 <ul class="more-list">
-<% if (allowed.edit) { %>
-<li><a href="/tickets/<%= ticket.key %>/edit">Edit ticket</a></li>
-<% } %>
 <% if (staff && allowed.markReady) { %>
 <% const asked = problem?.form === "ready" ? (problem.values ?? {}) : {}; %>
 <%# The old way: ask the customer and wait for their answer before resolving. Its one box is
@@ -604,7 +606,7 @@
 <% if (noticeCount > 0) { %>
 <li><a href="/tickets/<%= ticket.key %>/notices">Emails sent about this ticket</a></li>
 <% } %>
-<% if (allowed.archive) { %>
+<% if (archiveInMore) { %>
 <li><a href="/tickets/<%= ticket.key %>/archive">Archive ticket</a></li>
 <% } %>
 <% if (allowed.delete) { %>

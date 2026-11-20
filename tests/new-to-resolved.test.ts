@@ -50,9 +50,9 @@ describe("a new ticket", () => {
       .type("form")
       .send({ title: "Printer jams", description: "It jams on page two.", fix_check: "" });
     expect(res.status).toBe(303);
-    expect((await page(app, customerOne)).querySelector(".ticket-standing")?.text).toBe(
-      "New, not yet taken by the team",
-    );
+    expect(
+      (await page(app, customerOne)).querySelector(".ticket-standing .standing-rest")?.text,
+    ).toBe(", not yet taken by the team");
     // Editing an existing ticket says nothing about how it starts.
     const edit = parse((await as(app, customerOne).get("/tickets/SUP-1/edit")).text);
     expect(edit.querySelector(".initial-status")).toBeNull();
@@ -161,7 +161,9 @@ describe("where Resolved comes from", () => {
     expect(rule(team)).toBeUndefined();
 
     const customer = await page(app, customerOne);
-    expect(customer.querySelector(".ticket-standing")?.text).toBe("In Progress, with Team Member");
+    expect(customer.querySelector(".ticket-standing .standing-rest")?.text).toBe(
+      ", with Team Member",
+    );
     // The question itself is on the page, in place of a line saying it is waiting.
     expect(customer.querySelector("#did-this-fix-it")).not.toBeNull();
     expect(customer.querySelector("main")!.text).not.toContain("Waiting for the customer");

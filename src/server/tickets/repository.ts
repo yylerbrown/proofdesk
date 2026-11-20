@@ -253,11 +253,14 @@ function scopeValues(scope: ListScope): Record<string, unknown> {
   return {};
 }
 
-/** One page of the tickets in this scope, of one status or of every status, sorted this way. */
+/**
+ * One page of the tickets in this scope, of one status, of every open status ("open": New and
+ * In Progress) or of every status (null), sorted this way.
+ */
 export function listTickets(
   db: Db,
   scope: ListScope,
-  status: TicketStatus | null,
+  status: TicketStatus | "open" | null,
   sort: ListSort,
   page: Page,
   narrow: Narrowing = NO_NARROWING,
@@ -268,7 +271,8 @@ export function listTickets(
   return db
     .prepare(
       `SELECT * FROM tickets
-       WHERE ${SCOPE_SQL[scope.kind]} AND (@status IS NULL OR status = @status)
+       WHERE ${SCOPE_SQL[scope.kind]}
+       AND (@status IS NULL OR status = @status OR (@status = 'open' AND status <> 'resolved'))
        ${NARROWED} ${olderOnly}
        ORDER BY ${orderBy(sort, scope)} LIMIT @limit OFFSET @offset`,
     )

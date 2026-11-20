@@ -142,7 +142,7 @@ describe("how a team resolution shows", () => {
     );
     expect(teamPage.querySelector(".ticket-facts")!.text).not.toContain("Won't fix");
     // The customer's line under the title says who resolved it, in plain words.
-    expect(page.querySelector(".ticket-standing")?.text).toBe("Resolved by the team");
+    expect(page.querySelector(".ticket-standing")?.text).toBe("Resolved by the team Edit");
     // Never the tick or "Customer confirmed": the customer did not say so.
     expect(page.querySelector(".ticket-card .tick")).toBeNull();
     expect(page.querySelector("main")!.text).not.toContain("Customer confirmed");

@@ -41,9 +41,10 @@ import {
   readListPageQuery,
   recentResolvedCutoff,
   sortHeaders,
+  type ListPageFilter,
   type ResolvedAge,
 } from "../pages/list-query.js";
-import { sameText, type ListSort, type TicketListFilter } from "../tickets/schemas.js";
+import { sameText, type ListSort } from "../tickets/schemas.js";
 import { rememberBulkOutcome, takeBulkOutcome } from "../pages/bulk-outcome.js";
 import { proofChoices, SAMPLE_PROOFS, sampleWords, waitingLine } from "../pages/proof-step.js";
 import { customerStanding } from "../pages/standing.js";
@@ -190,19 +191,19 @@ function demoNext(ticket: Ticket, actor: Actor) {
 }
 
 /**
- * The ticket list's filters and sort, as they stand in its address. Which resolved tickets "All"
- * shows by age is left out at its default, the last 14 days.
+ * The ticket list's filters and sort, as they stand in its address. Which resolved tickets
+ * "Resolved" shows by age is left out at its default, any age.
  */
 type ListFilters = {
   status: string;
   owner?: "me" | "none";
   q?: string;
   sort: ListSort;
-  resolved?: Exclude<ResolvedAge, "recent">;
+  resolved?: Exclude<ResolvedAge, "any">;
 };
 
 /** The list's filters as read from its address, with the page. */
-type ListView = ListFilters & { status: TicketListFilter; page: number };
+type ListView = ListFilters & { status: ListPageFilter; page: number };
 
 /** What the list's bar for changing ticked tickets shows: after a refusal, what was chosen. */
 type BulkForm = { ticked: Set<string>; values: Record<string, string>; message: string | null };
@@ -214,8 +215,8 @@ function listHref(filters: ListFilters, page?: number): string {
   if (filters.status !== "all") params.set("status", filters.status);
   if (filters.owner) params.set("owner", filters.owner);
   if (filters.q) params.set("q", filters.q);
-  // The filter by age is only on "All" with nothing searched.
-  if (filters.resolved && filters.status === "all" && !filters.q) {
+  // The filter by age is only on "Resolved" with nothing searched.
+  if (filters.resolved && filters.status === "resolved" && !filters.q) {
     params.set("resolved", filters.resolved);
   }
   if (filters.sort !== "open_first") {
@@ -377,7 +378,7 @@ function editForm(key: string) {
 }
 
 // The heading of each list, for the page title.
-const FILTER_TITLES = { ...STATUS_LABELS, all: "All", archived: "Archived" };
+const FILTER_TITLES = { ...STATUS_LABELS, all: "All", open: "Open", archived: "Archived" };
 
 // The reasons on the ticket page's resolve form. Fixed says on the form what it does, that the
 // customer is told; the saved outcome keeps the reason's full words.
@@ -947,7 +948,7 @@ export function pagesRouter(
     const status =
       query.status === "archived" && !can(actor, "list_archived") ? "all" : query.status;
     const owner = actor.role === "customer" ? undefined : query.owner;
-    const resolved = query.resolved === "recent" ? undefined : query.resolved;
+    const resolved = query.resolved === "any" ? undefined : query.resolved;
     return { status, owner, q: query.q, sort: query.sort, page: query.page, resolved };
   }
 
@@ -1021,10 +1022,11 @@ export function pagesRouter(
     const current = view.status;
     const { owner, q, sort } = view;
     const pageNumber = view.page;
-    // "All" shows the open tickets and the ones resolved in the last 14 days, or with its filter
-    // by age, only the ones resolved before that, or every ticket. A search finds every age.
+    // "Resolved" shows every resolved ticket, or with its filter by age, only the ones resolved
+    // in the last 14 days or only the ones before that. Every other link and a search show every
+    // age.
     const cutoff = recentResolvedCutoff(current, q, new Date());
-    const age: ResolvedAge = cutoff === undefined ? "any" : (view.resolved ?? "recent");
+    const age: ResolvedAge = cutoff === undefined ? "any" : (view.resolved ?? "any");
     const tickets = service.listTickets(
       current,
       actor,
@@ -1087,12 +1089,10 @@ export function pagesRouter(
       narrowed: owner !== undefined || q !== undefined,
       noMatch: noMatchWords(current, owner, q, age),
       counts,
-      // On "All" with nothing searched: which resolved tickets it shows by age. It shows once
-      // there is an older resolved ticket, or a choice other than the default is in the address.
-      ageFilter:
-        cutoff !== undefined && (olderResolved > 0 || view.resolved !== undefined)
-          ? { age, olderCount: olderResolved }
-          : null,
+      // On "Resolved" with nothing searched: which resolved tickets it shows by age. It shows
+      // whenever there is a resolved ticket.
+      ageFilter: cutoff !== undefined && counts.resolved > 0 ? { olderCount: olderResolved } : null,
+      age,
       // Each header that sorts, with the address a press opens. A new sort starts on page one.
       sortHeaders: sortHeaders(sort).map((header) => ({
         ...header,

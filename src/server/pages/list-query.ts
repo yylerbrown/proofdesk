@@ -10,13 +10,19 @@ import {
   type ListSort,
   type ListSortColumn,
   type SortDirection,
-  type TicketListFilter,
 } from "../tickets/schemas.js";
 
 // How the ticket list page reads its address. The JSON API refuses a bad filter with a 400,
 // which is right for a program. A person reaches the page from a bookmark, a shared link, a
 // role switch or by editing the address, so the page reads what it can and shows the list.
 // Anything it cannot read falls back to the plain list instead of an error page.
+
+/**
+ * The status links the list page offers: the API's filters and "open", every ticket that is not
+ * resolved. The JSON API does not take "open".
+ */
+export const LIST_PAGE_FILTERS = [...TICKET_LIST_FILTERS, "open"] as const;
+export type ListPageFilter = (typeof LIST_PAGE_FILTERS)[number];
 
 /** Reads "NEW", " Resolved " and "in-progress" as the filter names the list uses. */
 function filterName(value: unknown): unknown {
@@ -29,7 +35,7 @@ function filterName(value: unknown): unknown {
 }
 
 const listPageSchema = z.object({
-  status: z.preprocess(filterName, z.enum(TICKET_LIST_FILTERS)).catch("all"),
+  status: z.preprocess(filterName, z.enum(LIST_PAGE_FILTERS)).catch("all"),
   owner: z.preprocess(filterName, z.enum(["me", "none"]).optional()).catch(undefined),
   q: listQuerySchema.shape.q.catch(undefined),
   // The orders the list offered before it sorted by its headers, so old links still work.
@@ -37,19 +43,19 @@ const listPageSchema = z.object({
   sort: z.preprocess(filterName, z.enum(LIST_SORTS).optional()).catch(undefined),
   direction: z.preprocess(filterName, z.enum(SORT_DIRECTIONS).optional()).catch(undefined),
   page: z.coerce.number().int().min(1).max(100000).catch(1),
-  // Which resolved tickets "All" shows. Left out, the ones resolved in the last 14 days.
-  resolved: z.preprocess(filterName, z.enum(["older", "any"]).optional()).catch(undefined),
+  // Which resolved tickets "Resolved" shows by age. Left out, or anything else, any age.
+  resolved: z.preprocess(filterName, z.enum(["recent", "older"]).optional()).catch(undefined),
 });
 
 /**
- * Which resolved tickets "All" shows besides the open ones: those resolved in the last 14 days
- * (the default), only those resolved before that, or any.
+ * Which resolved tickets "Resolved" shows: any age (the default), those resolved in the last 14
+ * days, or only those resolved before that.
  */
-export type ResolvedAge = "recent" | "older" | "any";
+export type ResolvedAge = "any" | "recent" | "older";
 
 /** The list page's filters and sort, as the route uses them. */
 export type ListPageQuery = {
-  status: TicketListFilter;
+  status: ListPageFilter;
   owner: "me" | "none" | undefined;
   q: string | undefined;
   sort: ListSort;
@@ -68,31 +74,32 @@ export function readListPageQuery(query: unknown): ListPageQuery {
     q: read.q,
     sort,
     page: read.page,
-    resolved: read.resolved ?? "recent",
+    resolved: read.resolved ?? "any",
   };
 }
 
-/** How many days a resolved ticket stays on "All" after it was resolved. */
+/** How many days a resolved ticket counts as recent after it was resolved. */
 export const RECENT_RESOLVED_DAYS = 14;
 
 /**
- * The time that splits recent resolved tickets from older ones on "All": 14 days before now.
- * Only "All" with nothing searched has the filter by age. "Resolved" lists every resolved ticket,
- * and a search finds a ticket whatever its age, so both give undefined.
+ * The time that splits recent resolved tickets from older ones under "Resolved": 14 days before
+ * now. Only "Resolved" with nothing searched has the filter by age. Every other status link, and
+ * a search, finds a ticket whatever its age, so they give undefined.
  */
 export function recentResolvedCutoff(
-  status: TicketListFilter,
+  status: ListPageFilter,
   q: string | undefined,
   now: Date,
 ): string | undefined {
-  if (status !== "all" || q !== undefined) return undefined;
+  if (status !== "resolved" || q !== undefined) return undefined;
   const days = RECENT_RESOLVED_DAYS * 24 * 60 * 60 * 1000;
   return new Date(now.getTime() - days).toISOString();
 }
 
 /** The status tab in the empty-result sentence: "No resolved tickets ...". */
-const TAB_WORDS: Record<TicketListFilter, string> = {
+const TAB_WORDS: Record<ListPageFilter, string> = {
   all: "tickets",
+  open: "open tickets",
   new: "new tickets",
   in_progress: "tickets in progress",
   resolved: "resolved tickets",
@@ -101,25 +108,27 @@ const TAB_WORDS: Record<TicketListFilter, string> = {
 
 /**
  * What the list says when the owner filter or the search leaves nothing on this tab, built from
- * what is actually set, and the words of the link that clears it. With "All" showing only older
- * resolved tickets, the sentence says so, since open tickets may still match.
+ * what is actually set, and the words of the link that clears it. With "Resolved" showing one
+ * age only, the sentence names that age, since tickets of the other age may still match.
  */
 export function noMatchWords(
-  current: TicketListFilter,
+  current: ListPageFilter,
   owner: "me" | "none" | undefined,
   q: string | undefined,
-  age: ResolvedAge = "recent",
+  age: ResolvedAge = "any",
 ): { sentence: string; clear: string } {
   const whose = owner === "me" ? " that you own" : owner === "none" ? " that nobody owns" : "";
   const found = q === undefined ? "" : ` match "${q}"`;
   // With both set: No new tickets that you own and match "export".
   const joined = whose !== "" && found !== "" ? `${whose} and${found}` : `${whose}${found}`;
   const tickets = TAB_WORDS[current];
-  // Only older resolved tickets: No tickets that nobody owns were resolved more than 14 days ago.
+  // One age only: No tickets that nobody owns were resolved more than 14 days ago.
   const sentence =
     age === "older"
-      ? `No ${tickets}${joined} were resolved more than ${RECENT_RESOLVED_DAYS} days ago.`
-      : `No ${tickets}${joined}.`;
+      ? `No tickets${joined} were resolved more than ${RECENT_RESOLVED_DAYS} days ago.`
+      : age === "recent"
+        ? `No tickets${joined} were resolved in the last ${RECENT_RESOLVED_DAYS} days.`
+        : `No ${tickets}${joined}.`;
   const clear =
     owner && q !== undefined
       ? "Clear the owner filter and the search"

@@ -71,6 +71,8 @@ Each is one line, raised while the demo was walked before sending, to weigh afte
 - Shorter role names in the demo's menu, so the header does not shift when switching.
 - Web addresses in a description shown as links, and a box on the form for the page it happened on.
 - A live replay of the recorded assistant run, with its real times.
+- A customer withdrawing their own ticket with a reason (a mistake, a duplicate, no longer needed),
+  shown as Resolved and labelled as withdrawn by the customer.
 
 ## Already built
 

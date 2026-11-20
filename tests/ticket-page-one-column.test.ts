@@ -127,7 +127,8 @@ describe("the customer's line under the title", () => {
     const { app } = await filed();
     await resolveTicket(app, "SUP-1", customerOne);
     const standing = (await page(app, customerOne)).querySelector(".ticket-standing")!;
-    expect(standing.text).toMatch(/^Resolved, customer confirmed on \d{1,2} \w{3} \d{4}$/);
+    // Their Edit follows; a resolved ticket's Archive stays under More options.
+    expect(standing.text).toMatch(/^Resolved, customer confirmed on \d{1,2} \w{3} \d{4} Edit$/);
     expect(standing.querySelector("time")).not.toBeNull();
     expect(standing.querySelector("span.tick")?.getAttribute("aria-hidden")).toBe("true");
   });
@@ -226,15 +227,16 @@ describe("resolving from the Status menu", () => {
 describe("the last row", () => {
   it("holds the closed message box alone, then History and More options on their own row", async () => {
     const { app } = await filed();
-    for (const [who, words] of [
-      [teamActor, "Reply or add a note"],
-      [customerOne, "Write a message"],
+    // The customer's Edit and Archive sit under the title, so their More options has nothing.
+    for (const [who, words, folds] of [
+      [teamActor, "Reply or add a note", ["History (1)", "More options"]],
+      [customerOne, "Write a message", ["History (1)"]],
     ] as const) {
       const row = (await page(app, who)).querySelector(".ticket-page > .ticket-last-row")!;
       const message = row.querySelectorAll(":scope > details > summary").map((s) => s.text.trim());
       expect(message).toEqual([words]);
       const second = row.querySelectorAll(":scope > .ticket-more-row > details > summary");
-      expect(second.map((s) => s.text.trim())).toEqual(["History (1)", "More options"]);
+      expect(second.map((s) => s.text.trim())).toEqual(folds);
       const box = row.querySelector("details.reply-fold")!;
       expect(box.hasAttribute("open")).toBe(false);
       expect(box.querySelector("textarea#entry-body")).not.toBeNull();
@@ -283,7 +285,6 @@ describe("More options", () => {
       .send({ name: "Helper", scopes: [...AGENT_SCOPES] });
     await admin(app).post("/api/tickets/SUP-1/take-and-start");
     expect(lines(await page(app, adminActor))).toEqual([
-      "Edit ticket",
       "Ask before resolving",
       "Hand to an AI assistant",
       "Archive ticket",
@@ -301,7 +302,6 @@ describe("More options", () => {
     };
     collectNotices(db, settings);
     expect(lines(await page(app, adminActor))).toEqual([
-      "Edit ticket",
       "Withdraw the question",
       "Emails sent about this ticket",
       "Archive ticket",
