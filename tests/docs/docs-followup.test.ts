@@ -19,7 +19,18 @@ describe("the labels the finishing pass renamed", () => {
     expect(read("views/header.ejs")).toContain('class="outline new-ticket">New<span');
 
     expect(tour).toContain("the customer's button reads **Send to the team**");
-    expect(tour).toContain("**Add evidence of the fix**");
+    // Marking fixed is the team member's agreement that the customer's proof was met; the page
+    // has no form for a person's evidence, so no guide sends a reader to one.
+    expect(show).toContain("By marking it fixed, you agree this is met:");
+    expect(show).not.toContain("Add evidence of the fix");
+    expect(tour).toContain('`By marking it fixed, you agree this is met: "<their words>"`');
+    for (const file of [
+      "README.md",
+      "docs/TOUR.md",
+      "docs/AGENTS_GUIDE.md",
+      "docs/ARCHITECTURE.md",
+    ])
+      expect(read(file), file).not.toContain("Add evidence of the fix");
     expect(tour).toContain("linked as **Emails sent about this ticket** under More options");
     expect(tour).toContain('in the box that reads "Search, then press Enter"');
     expect(tour).toContain("on a phone the header's button reads **New**");

@@ -21,15 +21,15 @@ Each one takes under a minute on the demo, which opens on the ticket list as the
 
 **Ticket list with filters**
 
-- Start as: The menu at the top right, then **Demo Team Member**
+- Start as: The menu at the top right, then **Demo Team Member**; the next page says once "You are now Demo Team Member."
 - Press: **New**, **In Progress**, **Resolved**; **Mine** and **Unassigned**; type words, or a ticket's key such as SUP-3, in the box that reads "Search, then press Enter", and press Enter; a column header such as **Title** or **Filed**, then the same header again
-- You should see: "All tickets", with a count beside each status, and each filter changes the list; a lit filter pressed again clears it. A typed key opens that ticket. Words match in any order and form, so "sign in phone" finds "Cannot sign in on my phone". A header sorts the list by its column, with an arrow on it, and a second press reverses it. Filters, search and sort combine in the address, so a view can be shared. On a phone the same sorts sit in a "Sort by" line above the list. A short grey tag follows the status when it is not simply the team's turn, such as "Customer says not fixed" or "Assistant asks for review". A customer's list is "My tickets": only their own, with the search, and "Did this fix it?" on a ticket waiting for their answer.
+- You should see: "All tickets", with a count beside each status, and each filter changes the list; a lit filter pressed again clears it. A typed key opens that ticket. Words match in any order and form, so "sign in phone" finds "Cannot sign in on my phone". A header sorts the list by its column, with an arrow on it, and a second press reverses it. Filters, search and sort combine in the address, so a view can be shared. On a phone the same sorts sit in a "Sort by" line above the list. A short grey tag follows the status when it is not simply the team's turn, such as "Customer says not fixed" or "Assistant asks for review". A customer's list is "My tickets": only their own, with the search. A ticket the team marked fixed comes first there, tagged "Needs your answer", which links to "Did this fix it?".
 
 **The Proof column and the list's order**
 
 - Start as: Demo Team Member, on All tickets
 - Press: Nothing at first; then a column header, to sort by it instead
-- You should see: A narrow **Proof** column after Status. A pale grey check says the ticket states what would prove it is fixed, a solid green circle with a check says the customer confirmed it, and a ticket with neither has no mark. With no header pressed, New tickets that say what would prove them fixed come first, newest first, then the other open tickets, then resolved ones. All shows open tickets and those resolved in the last 14 days; a line under the list says how many older resolved tickets are under Resolved.
+- You should see: A narrow **Proof** column after Status. A pale grey check says the ticket states what would prove it is fixed, a solid green circle with a check says the customer confirmed it, and a ticket with neither has no mark. One quiet line under the list names both marks: "Says what would prove it is fixed" and "Customer confirmed". With no header pressed, New tickets that say what would prove them fixed come first, newest first, then the other open tickets, then resolved ones. On All, with nothing searched, a "Resolved:" filter reads **Last 14 days**, **Older** with its count, and **Any age**. Last 14 days is the default; the other two add `?resolved=older` or `?resolved=any` to the address. The demo has two samples resolved more than 14 days ago, SUP-9 and SUP-10, under Older.
 
 **Update status: New to In Progress**
 
@@ -41,7 +41,7 @@ Each one takes under a minute on the demo, which opens on the ticket list as the
 
 - Start as: Demo Team Member, owning the ticket you filed
 - Press: **Mark fixed and tell the customer**, then **View this ticket as the customer who filed it** and **Yes, it is fixed**
-- You should see: The ticket is resolved at once: "Resolved by the team: Fixed. Demo Team Member, <day>. The customer has not confirmed it." The customer reads "Did this fix it?" over their own words. Their Yes is optional and shows "Resolved, customer confirmed" with the solid check in the list. "No, it is not fixed" asks "What is still wrong?", and "No, send it back" reopens the ticket with their words. The Status menu's Resolved opens "Why are you resolving this ticket?" with five reasons, from "Fixed (the customer is told)" to "Other", and the ticket shows `Resolved by the team: <reason>` to everyone. To ask the customer before resolving, use **Ask before resolving** under **More options**.
+- You should see: Above the button, one grey line quotes the customer: `By marking it fixed, you agree this is met: "<their words>"`. Marking it fixed is your agreement that their proof was met, and History records "Resolved by the team: Fixed. Agreed that what would prove it is fixed was met. Not customer-confirmed." Anything else you want to show the customer goes in the conversation. The ticket is resolved at once: "Resolved by the team: Fixed. Demo Team Member, <day>. The customer has not confirmed it." The customer reads "Did this fix it?" over their own words. Their Yes is optional and shows "Resolved, customer confirmed" with the solid check in the list. "No, it is not fixed" asks "What is still wrong?", and "No, send it back" reopens the ticket with their words. The Status menu's Resolved opens "Why are you resolving this ticket?" with five reasons, from "Fixed (the customer is told)" to "Other", and the ticket shows `Resolved by the team: <reason>` to everyone. To ask the customer before resolving, use **Ask before resolving** under **More options**.
 
 **Possible duplicates**
 
@@ -59,7 +59,7 @@ Each one takes under a minute on the demo, which opens on the ticket list as the
 
 - Start as: Demo Team Member, on All tickets
 - Press: The tick box before two keys, then **Set status** or **Assign to**, and **Apply**
-- You should see: A bar over the filter row, "2 selected", with Set status, Assign to, Apply and Clear; it stays in view while scrolling. Resolved there offers three reasons. One line after Apply says what moved and why the rest did not, such as "1 moved to Resolved. 1 was not changed:" with each key left as it was and its reason. Each ticket goes through the same rules as on its own page.
+- You should see: A bar over the filter row, "2 selected", with Set status, Assign to, Apply and Clear; it stays in view while scrolling. Resolved there offers two reasons, Won't fix and Cannot reproduce; marking a ticket fixed is done on its own page, where its proof is shown. One line after Apply says what moved and why the rest did not, such as "1 moved to Resolved. 1 was not changed:" with each key left as it was and its reason. Each ticket goes through the same rules as on its own page.
 
 **Two people on one ticket**
 
@@ -88,5 +88,5 @@ Each one takes under a minute on the demo, which opens on the ticket list as the
 **Evidence, history and email notices**
 
 - Start as: Any ticket, as the team
-- Press: **History**, and **More options**, then **Add evidence of the fix**
-- You should see: Evidence is labelled as reported, never as verified, and the history cannot be changed. Proofdesk writes an email notice to the customer or the owner when the ticket needs them; marking a ticket fixed sends "Did this fix it?" with the customer's own words. A ticket's notices page (`/tickets/<key>/notices`, such as the ticket you filed), linked as **Emails sent about this ticket** under More options once there is one, shows each notice in its exact words. **Add evidence of the fix** asks what it shows, with an optional link.
+- Press: **History**, and **More options**
+- You should see: Evidence comes from an AI assistant, through the API or the MCP tools, and shows on the ticket labelled as reported, never as verified. A person shows anything else in the conversation. The history cannot be changed. Proofdesk writes an email notice to the customer or the owner when the ticket needs them; marking a ticket fixed sends "Did this fix it?" with the customer's own words. A ticket's notices page (`/tickets/<key>/notices`, such as the ticket you filed), linked as **Emails sent about this ticket** under More options once there is one, shows each notice in its exact words.
