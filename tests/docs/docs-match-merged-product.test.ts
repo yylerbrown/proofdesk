@@ -2,8 +2,8 @@ import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 
 // The words in the README and the docs must be the words the product shows after the last
-// changes of 18 November. Each check ties a quote in the docs to the file the product reads it
-// from, so a quote cannot fall behind the page again.
+// changes, of 18 November and then of 19 November. Each check ties a quote in the docs to the
+// file the product reads it from, so a quote cannot fall behind the page again.
 
 const flat = (file: string) => fs.readFileSync(file, "utf8").replace(/\s+/g, " ");
 const readme = flat("README.md");
@@ -17,23 +17,24 @@ function section(text: string, heading: string): string {
 }
 
 describe("quotes of the ticket page", () => {
-  it("name the status row's third control as the page does", () => {
-    expect(flat("views/ticket-show.ejs")).toContain('?step=resolve#resolve-form">');
+  it("name the Status menu's resolve form as the page does", () => {
+    const page = flat("views/ticket-show.ejs");
+    expect(page).toContain('?step=resolve#resolve-form">');
+    expect(page).toContain("Why are you resolving this ticket?");
+    expect(tour).toContain('"Why are you resolving this ticket?" with five reasons');
     for (const text of [readme, tour]) {
-      expect(text).toContain('press "Resolve with a reason…" under Status');
+      expect(text).not.toContain("Resolve with a reason");
       expect(text).not.toContain('press "Resolved" under Status');
     }
   });
 
-  it("list the status row's controls as the page draws them, not three one-press statuses", () => {
+  it("describe Status and Owner as two menus under the title, not a row of buttons", () => {
     for (const text of [readme, tour]) {
-      expect(text).not.toContain("Status row with New, In Progress and Resolved");
-      expect(text).not.toContain("Status row shows New, In Progress and Resolved");
-      expect(text).not.toContain("each other status is one press");
+      expect(text).not.toMatch(/status row/i);
+      expect(text).not.toContain("side panel");
     }
-    expect(readme).toContain('Status row: New, In Progress, and "Resolve with a reason…"');
-    expect(tour).toContain('The Status row shows New, In Progress and "Resolve with a reason…"');
-    expect(tour).toContain('"Resolve with a reason…" opens a short form');
+    expect(readme).toContain("The team's Status menu, under the title");
+    expect(tour).toContain("Status and Owner are two small menus under the title");
   });
 
   it("quote the filing receipt with its key and what happens next", () => {
@@ -44,12 +45,12 @@ describe("quotes of the ticket page", () => {
     expect(tour).toContain(receipt);
   });
 
-  it("give the team's fixed reason and the team's name under Waiting on", () => {
-    expect(fs.readFileSync("src/server/tickets/schemas.ts", "utf8")).toContain(
-      '"Fixed. Not customer-confirmed."',
+  it("give the resolve form's Fixed reason, and no Waiting on column", () => {
+    expect(fs.readFileSync("src/server/routes/pages.ts", "utf8")).toContain(
+      '"Fixed (the customer is told)"',
     );
-    expect(tour).toContain('"Fixed. Not customer-confirmed."');
-    expect(tour).toContain('"Support team" under Waiting on');
+    expect(tour).toContain('"Fixed (the customer is told)"');
+    expect(tour).not.toContain("Waiting on");
   });
 
   it("say a stale edit names the other person's change, and the notice says what changed", () => {

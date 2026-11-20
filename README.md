@@ -1,9 +1,11 @@
 # Proofdesk
 
-A customer support ticketing system. Customers file tickets with a title and a description, the
-team works them through New, In Progress and Resolved, and everyone can filter and search the
-list. The twist: the customer writes how they will know it is fixed, and the ticket asks them
-"Did this fix it?" before it counts as confirmed.
+AI assistants do their best work when a prompt gives the problem, the context and a way to check
+the result, and people do too. A Proofdesk ticket has that shape: a title for the problem, a
+description for the context, and what would prove it is fixed. So whoever picks it up, a person
+or an assistant, can tell when it is done.
+
+Say what would prove it is fixed, and your ticket is listed first and checked against your own words.
 
 - **The demo, no account needed: <https://support-desk-demo.fly.dev>.** Sample data, shared with
   everyone who visits, so do not type anything private. It returns to its samples by itself when
@@ -11,7 +13,7 @@ list. The twist: the customer writes how they will know it is fixed, and the tic
 - **The production site, with GitHub sign-in: <https://proofdesk.fly.dev>.**
 - **The source: <https://github.com/yylerbrown/proofdesk>.**
 
-<img src="docs/img/ticket-list.png" width="720" alt="The team member's ticket list on the demo, which has no welcome card: status filters All, New, In Progress and Resolved with a count beside each status, owner filters Everyone, Mine and Unassigned, a search box, eight sample tickets with their key, title, status, owner, who each one waits on and when it was filed, under column headers that sort the list">
+<img src="docs/img/ticket-list.png" width="720" alt="The team member's ticket list on the demo, which has no welcome card: status filters All, New, In Progress and Resolved with a count beside each status, the Mine and Unassigned toggles, a search box, and the sample tickets with their key, title, status, a Proof column marking the tickets that say what would prove them fixed, owner and when each was filed, under column headers that sort the list">
 
 ## Run it yourself
 
@@ -26,32 +28,37 @@ npm ci
 DEV_SIGN_IN=on npm run dev
 ```
 
-Open <http://localhost:3000> and pick one of four made-up people. No keys are needed. Demo mode,
-a production build, Docker, GitHub sign-in and every setting are in
-[More ways to run](docs/DEPLOY.md#more-ways-to-run).
+Open <http://localhost:3000> and pick one of four made-up people: two customers, a team member
+and an admin. No keys are needed. Demo mode, a production build, Docker, GitHub sign-in and every
+setting are in [More ways to run](docs/DEPLOY.md#more-ways-to-run).
 
 ## One ticket, start to finish
 
-On the demo, in about two minutes:
+On the demo, in about two minutes, with eight presses:
 
 1. The demo opens on your ticket list as the Demo Customer. On the welcome card above the list,
-   press **File a sample ticket**, then **File ticket**. The form is filled with a sample you can
-   change, and the filed ticket shows **New**.
-2. Press **View this ticket as a team member**, then **Take ticket and start work**. The ticket
+   press **File a sample ticket**, then **File ticket**. The form holds a sample you can change.
+2. The filed ticket asks "What would prove it is fixed?", with three sample suggestions and the
+   first in the box. Press **Save**: the ticket is **New**, with your words under that label.
+
+<img src="docs/img/what-would-prove-it.png" width="560" alt="The step after filing: under &quot;What would prove it is fixed?&quot; one grey line, three sample suggestions to pick from, a box holding the first one, and the buttons &quot;Save&quot; and &quot;Skip for now&quot;">
+
+3. Press **View this ticket as a team member**, then **Take ticket and start work**. The ticket
    is **In Progress**, and you own it.
-3. Press **Ask the customer to verify**, then **View this ticket as the customer who filed it**.
-4. The customer meets their own check, in their words. Press **Yes, resolve ticket**: the ticket
-   is **Resolved**, and says "Customer confirmed it is fixed."
+4. Press **Mark fixed and tell the customer**: the ticket is **Resolved** at once.
+5. Press **View this ticket as the customer who filed it**, then **Yes, it is fixed** under "Did
+   this fix it?": the ticket reads "Resolved, customer confirmed", with a solid green check in
+   the list's Proof column.
 
-<img src="docs/img/did-this-fix-it.png" width="560" alt="The customer's view of a ticket the team says is fixed: the box &quot;Did this fix it?&quot; quotes the customer's own check in their words, with &quot;Yes, resolve ticket&quot;, a box to say what is still wrong with &quot;No, send it back&quot;, and three quick No answers">
+<img src="docs/img/did-this-fix-it.png" width="560" alt="The customer's view of a ticket the team marked fixed: &quot;Resolved, the team says it is fixed&quot; under the title, then &quot;Did this fix it?&quot; over their own words, then the button &quot;Yes, it is fixed&quot; and the fold-open &quot;No, it is not fixed&quot;">
 
-The team also has a plain Status row: New, In Progress, and "Resolve with a reason…". Moving to
-New or In Progress is one press. To resolve without the customer, press "Resolve with a reason…"
-under Status and choose a reason; the ticket then shows `Resolved by the team: <reason>` to
-everyone.
+The customer's Yes is optional, and their "No, it is not fixed" sends the ticket back to the
+team with their words. The team's Status menu, under the title, moves a ticket between New and
+In Progress in one press. Its Resolved opens a short form with five reasons, and the ticket then
+shows `Resolved by the team: <reason>` to everyone.
 
-[`docs/TOUR.md`](docs/TOUR.md) goes feature by feature: filters and search, two people on one
-ticket, email notices and the rest.
+[`docs/TOUR.md`](docs/TOUR.md) goes feature by feature: the proof step, filters and search,
+pictures, possible duplicates, changing many tickets at once, email notices and the rest.
 
 ## Tests
 
@@ -66,22 +73,22 @@ the checks every merge passes.
 
 ## Sign-in and roles
 
-The production site signs people in with GitHub. Proofdesk reads your name, picture and email
-address, never your code, and keeps no GitHub token after sign-in. An admin chooses who is on the
-team on the **People** page, and the change applies on that person's next page. People named in
-the server settings keep that role and show as locked on **People**. Each person's name in the
-header opens their account page, with a switch for email notices.
+The production site signs people in with GitHub; Microsoft sign-in for one organization is
+built and off until its three settings are set. Proofdesk reads your name and email address, and
+your picture from GitHub, never your files, mail or code, and keeps no GitHub token. An admin
+chooses who is on the team on the **People** page, and the change applies on that person's next
+page. People named in the server settings keep that role and show as locked on **People**. The
+menu under each person's name links their account page, with a switch for email notices.
 
-| Role        | How someone gets it                                       | What they do                                                                                                                                                                                                                                                                                      |
-| ----------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Customer    | Everyone, at first sign-in.                               | Files tickets. Reads, edits, replies on and archives their own, answers "Did this fix it?", and reopens a resolved ticket that is still broken. Never sees internal notes.                                                                                                                        |
-| Team member | An admin chooses it on **People**, or `TEAM_GITHUB_IDS`.  | Sees every ticket, takes one and starts work, replies, writes internal notes, attaches evidence, asks the customer to verify, archives and restores. Hands on a ticket they own, resolves with a reason a ticket they own or a New ticket nobody owns, and can reopen it if the team resolved it. |
-| Admin       | An admin chooses it on **People**, or `ADMIN_GITHUB_IDS`. | Everything a team member does. Hands on or resolves any open ticket, can reopen any ticket the team resolved, chooses who is on the team, issues AI assistant connections on **Connections**, and deletes a ticket permanently.                                                                   |
+| Role        | How someone gets it                                       | What they do                                                                                                                                                                                                                                                                                                                                                  |
+| ----------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Customer    | Everyone, at first sign-in.                               | Files tickets and says what would prove each one fixed. Reads, edits, replies on and archives their own, answers "Did this fix it?", and reopens a resolved ticket that is still broken. Never sees internal notes.                                                                                                                                           |
+| Team member | An admin chooses it on **People**, or `TEAM_GITHUB_IDS`.  | Sees every ticket, takes one and starts work, replies, writes internal notes, attaches evidence, marks a ticket fixed and tells the customer, archives and restores. Hands on a ticket they own, resolves with a reason a ticket they own or a New ticket nobody owns, and can reopen it if the team resolved it. Changes many tickets at once from the list. |
+| Admin       | An admin chooses it on **People**, or `ADMIN_GITHUB_IDS`. | Everything a team member does. Hands on or resolves any open ticket, can reopen any ticket the team resolved, chooses who is on the team, issues AI assistant connections on **Connections**, and deletes a ticket permanently.                                                                                                                               |
 
-On the demo there is no sign-in: you start as Demo Customer, and **Switch role** in the header
-changes to Demo Team Member or Admin preview (read-only) on the same ticket. The admin preview
-sees everything and changes nothing, and nobody archives or deletes there. **About this demo**,
-in every page's footer, says how the demo works.
+On the demo there is no sign-in: you start as Demo Customer, and the menu at the top right
+switches to Demo Team Member or Demo Admin (read-only), who sees everything and changes nothing.
+**About this demo**, in every page's footer, says how the demo works.
 
 ## The AI assistant
 
@@ -90,15 +97,15 @@ endpoint, with only the permissions its connection allows. **See an assistant's 
 (<https://support-desk-demo.fly.dev/assistant-run>) shows one recorded run. The assistant worked
 in a scratch file from the ticket's text, because it had no access to the product's code. There
 it reproduced the arithmetic problem and tested a fix, then proposed a test, attached the run as
-evidence and asked the owner to review it. It resolved nothing, because only the customer's Yes
-confirms a fix: a test can pass while the customer is still stuck.
+evidence and asked the owner to review it. It resolved nothing: a test can pass while the
+customer is still stuck, so only the customer's Yes counts as confirmed.
 
 To try it, open **About this demo** from the demo's footer, then **Connect your own AI
-assistant** and **Get a demo connection**, for a key that lasts a day at most and the command to
-paste. On the production site an admin issues connections, and a
-ticket's owner hands the ticket to one. [`docs/AGENTS_GUIDE.md`](docs/AGENTS_GUIDE.md) has the
-setup, the tools and the limits. An assistant can read everything it needs in one fetch:
-<https://support-desk-demo.fly.dev/llms.txt>.
+assistant** and **Get a demo connection**, for a key that lasts a day at most and a message to
+paste into your assistant. On the production site an admin issues connections, and a ticket's
+owner hands the ticket to one; an admin can also let it suggest ways to prove a new ticket fixed.
+[`docs/AGENTS_GUIDE.md`](docs/AGENTS_GUIDE.md) has the setup, the tools and the limits. An
+assistant can read everything it needs in one fetch: <https://support-desk-demo.fly.dev/llms.txt>.
 
 ## Read first
 
@@ -107,10 +114,9 @@ For someone reading the code, in this order:
 1. [`src/server/permissions.ts`](src/server/permissions.ts): the capability table and `can()`,
    who may take each action.
 2. [`src/server/tickets/workflow.ts`](src/server/tickets/workflow.ts): taking a ticket and
-   changing its status. Then
-   [`customer-question.ts`](src/server/tickets/customer-question.ts): `markReady` (the owner asks
-   "Did this fix it?") and `answer` (the customer's Yes or No), and
-   [`resolve-and-reopen.ts`](src/server/tickets/resolve-and-reopen.ts): `resolveWithReason`.
+   changing its status. Then [`resolve-and-reopen.ts`](src/server/tickets/resolve-and-reopen.ts):
+   `resolveWithReason`, which marking fixed calls, and
+   [`customer-question.ts`](src/server/tickets/customer-question.ts): `confirmFix`, the customer's Yes.
 3. [`tests/confirmation.test.ts`](tests/confirmation.test.ts): the confirmation workflow on the
    real routes.
 4. [`tests/capabilities.test.ts`](tests/capabilities.test.ts): every action, tested for agents
@@ -143,9 +149,9 @@ code. The specification ([`docs/SPEC.md`](docs/SPEC.md)), the history of every s
 - **Evidence is reported, not verified.** Proofdesk shows who reported it and checks none of it.
 - **One machine.** SQLite on one disk; rate-limit counts are in memory and reset on a restart.
 - **Roles in the server settings win** over the People page until the settings change.
-- **Demo visitors share identities.** Everyone who views as Demo Customer is the same customer.
-- **The dev login's cookie is unsigned.** It is safe only because production refuses the dev
-  login.
+- **Demo visitors share identities.** Everyone who views as Demo Customer is the same customer,
+  so a visitor's picture on the demo is shown only to the browser that added it.
+- **The dev login's cookie is unsigned**, safe only because production refuses the dev login.
 - **`ops/prove` is not a sandbox.** It runs the candidate code on the machine with only the
   environment cleaned.
 - **No bulk handover when someone leaves the team.** The People page will not make someone a
@@ -161,11 +167,8 @@ code. The specification ([`docs/SPEC.md`](docs/SPEC.md)), the history of every s
 - [`docs/TOUR.md`](docs/TOUR.md): every feature, and where to find it on the demo.
 - [`docs/API.md`](docs/API.md): every JSON route, errors, retries, and trying it with `curl`.
 - [`docs/AGENTS_GUIDE.md`](docs/AGENTS_GUIDE.md): connecting an AI assistant over MCP.
-- [`docs/SECURITY.md`](docs/SECURITY.md): the security measures and their tests, and permanent
-  deletion.
-- [`docs/DEPLOY.md`](docs/DEPLOY.md): other ways to run, every setting, Docker and the Fly.io
-  hosting.
+- [`docs/SECURITY.md`](docs/SECURITY.md): the security measures, their tests, and deletion.
+- [`docs/DEPLOY.md`](docs/DEPLOY.md): other ways to run, every setting, Docker and Fly.io.
 - [`docs/ROADMAP.md`](docs/ROADMAP.md): what comes next.
 - [`docs/SPEC.md`](docs/SPEC.md): what was decided, and when it changed.
-- [`docs/BUILD_LOG.md`](docs/BUILD_LOG.md): how each step was asked for, what came back and what
-  was found.
+- [`docs/BUILD_LOG.md`](docs/BUILD_LOG.md): how each step was asked for, and what was found.

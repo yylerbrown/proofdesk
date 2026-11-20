@@ -90,7 +90,8 @@ variables, with an https `BETTER_AUTH_URL` and its own `DATABASE_PATH`, such as
 
 ### Microsoft sign-in, beside GitHub
 
-Optional, for the people of one organization. It needs the four GitHub settings too.
+Optional, for one organization, and off until all three Microsoft settings are set: until then
+there is no button and no Microsoft route. It needs the four GitHub settings too.
 
 1. In the Microsoft Entra admin center, **App registrations → New registration**, single
    tenant, with the redirect URI (platform **Web**) your address followed by
@@ -170,8 +171,9 @@ deployed with it, the real site refuses to start, as designed.
 
 ## Email notices
 
-Off until two settings are set; the real site has neither today. Without them every notice is
-kept as not sent, with the reason, and nothing is emailed. The demo never sends, whatever is set.
+Off until `SMTP_URL` and `MAIL_FROM` are both set; the real site has neither today. Without them
+every notice is kept as not sent, with the reason, and nothing is emailed. The demo never sends,
+whatever is set.
 
 1. **A mail provider account** that sends over SMTP, with a sending domain it has checked. The
    site's owner creates it; it is not part of this repository.
@@ -196,7 +198,8 @@ kept as not sent, with the reason, and nothing is emailed. The demo never sends,
    and without the secrets they are kept as not sent rather than mailed late.
 
 3. **Check it.** The log says "Email notices are sent through the mail server that is set." at
-   start. Ask a customer "Did this fix it?" on a test ticket: their email arrives within seconds.
+   start. Mark a test ticket fixed: the customer's "Did this fix it?" email arrives within
+   seconds.
    A notice that could not be sent is tried five times, waiting longer each time, and then kept
    as failed with a short reason in the `email_outbox` table.
 

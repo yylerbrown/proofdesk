@@ -20,7 +20,7 @@ desk and the product apart: the repository owns its tests, and the desk keeps wh
 | --- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | Regression tests                 | As above: permanent scenario ids, carried in the test's name; the desk keeps "Reported passing at commit <sha>".                                                                                                                                          |
 | 2   | Agent comments at three moments  | When the assistant is blocked, when it needs a decision, and when its evidence is ready. Blocked notes and review requests already show beside the check and in the list; a decision with recognisable answers comes next.                                |
-| 3   | Photos and video                 | A screenshot can make a bug reproducible. On the public demo, a few bundled sample screenshots and clips to pick from, so strangers never upload anything; real uploads bring storage, access and permanent-deletion work.                                |
+| 3   | Video                            | Pictures are built. A short clip can make a bug reproducible too; it brings larger storage, so it would live outside the database.                                                                                                                        |
 | 4   | Search in the conversation       | The list already searches titles, descriptions and keys. Next: replies, and internal notes for the team, with the match shown. Permissions are checked before anything can match, so a customer's search never matches internal-note text.                |
 | 5   | Agent descriptions with versions | A version and a few words on each connection, worth adding when the team has two versions to tell apart in the history.                                                                                                                                   |
 | 6   | Reports                          | Compare versions on: reached the customer's check within 7 days; the customer replied within 7 days of the first ask; Yes on the first answer; reported broken within 30 days. Each is shown out of how many tickets it applies to.                       |
@@ -29,7 +29,22 @@ desk and the product apart: the repository owns its tests, and the desk keeps wh
 | 9   | Personal assistant connections   | Each team member connects their own assistant. It can do no more than that person can, and the history labels it with their name and marks it as an assistant. Admins can see and revoke every connection. This is the pattern of personal access tokens. |
 | 10  | Customers' own assistants        | A customer can get a key that reaches only their own tickets, so their assistant can file a ticket and follow it. Like every assistant, it cannot answer for the customer or resolve a ticket.                                                            |
 | 11  | How long a ticket has waited     | A "waiting on" filter that shows how long each ticket has waited on that person, with a "longest waiting" order, so the oldest wait is answered first. Asked for by testers walking the demo.                                                             |
-| 12  | A filter by a named owner        | Beside Everyone, Mine and Unassigned, a choice of one team member, for handing work over when someone is away or leaving. Asked for by testers walking the demo.                                                                                          |
+| 12  | A filter by a named owner        | Beside Mine and Unassigned, a choice of one team member, for handing work over when someone is away or leaving. Asked for by testers walking the demo.                                                                                                    |
+
+## Ideas, not promises
+
+Each is one idea to weigh after sending, in no order.
+
+- Several desks in one site, each with its own key prefix.
+- The assistant leaving search words on a ticket, so the next person finds it.
+- Forking a ticket that lists many problems into one ticket for each.
+- A customer's own assistant checking a fix against their words.
+- Releases the team tracks, so a fix's "Fixed in" names one of them.
+- A "duplicates" view of the tickets closed as duplicates and what they point to.
+- The customer's name in the queue, and a view of everything one customer filed.
+- A priority and a due time on a ticket.
+- The age of the last reply, and whose turn it is, on each row of the list.
+- Keeping the selection after a bulk Apply, for a second change to the same tickets.
 
 ## Dropped
 
@@ -52,11 +67,15 @@ desk and the product apart: the repository owns its tests, and the desk keeps wh
 - **Test specs:** an assistant proposes given / when / then scenarios, a person accepts one, and
   evidence can name the scenario it proves.
 - **The blocked flag and review requests**, shown to the team beside the check and in the list.
-- **Quick answers:** plain words that fill the customer's No or the team's reply.
 - **One recorded assistant run**, with its transcript, on the page "An assistant's work".
-- **Search** of titles, descriptions and ticket keys, with a count beside each status and three
-  orders.
+- **Search** of titles, descriptions and ticket keys, by words in any order and form, with a
+  count beside each status and a sort on each column header.
 - **Email notices** written from the ticket history, with a page of each ticket's notices.
 - **The People page**, where an admin chooses who is on the team.
 - **Two people on one ticket:** a save or a press from an old copy is refused, and the typed text
   is kept.
+- **Pictures** on tickets and messages, shown only to who may see what they are attached to.
+- **The proof step:** "What would prove it is fixed?" after filing, the Proof column, and New
+  tickets with a proof listed first.
+- **Marking fixed resolves**, and the customer's "Did this fix it?" Yes is optional.
+- **Changing many tickets at once** from the list, and **possible duplicates** closed in one press.

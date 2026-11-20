@@ -22,10 +22,10 @@ A customer support desk where the customer says how they will know it is fixed, 
 
 ## The customer's side
 
-- Sign in and file a ticket: a title, a description, and two optional fields, "Where did this happen?" (a link) and "How will we know it's fixed?" (plain words).
+- Sign in and file a ticket: a title, a description, and two optional fields, "Where did this happen?" (a link) and "How will we know it's fixed?" (plain words). (Since 19 Nov the form asks for the title, the description and pictures, and a second step asks "What would prove it is fixed?"; the link stays in the API. See that day's entry.)
 - Status is one of New, In Progress, Resolved, with a filter on the list.
 - The customer sees only their own tickets and the public replies on them.
-- At the end the customer sees their own check quoted back with "Did this fix it?" Yes resolves the ticket. No reopens it with their comment, and it goes back to its human owner.
+- At the end the customer sees their own check quoted back with "Did this fix it?" Yes resolves the ticket. No reopens it with their comment, and it goes back to its human owner. (Since 19 Nov the team's "Mark fixed and tell the customer" resolves the ticket and asks; the customer's Yes is optional and marks it confirmed.)
 
 ## The team's side
 
@@ -39,7 +39,7 @@ A customer support desk where the customer says how they will know it is fixed, 
 ## From merged to confirmed
 
 - A team member pastes the change link on the ticket. A link is evidence, not proof that the ticket is fixed.
-- After the change is merged and deployed, a team member checks the live site, records the link to try, and marks the ticket ready for the customer. Only then is the customer asked "Did this fix it?"
+- After the change is merged and deployed, a team member checks the live site, records the link to try, and marks the ticket ready for the customer. Only then is the customer asked "Did this fix it?" (Since 19 Nov marking it fixed resolves it and asks in one press.)
 - A status control must not bypass the customer's confirmation.
 
 ## Getting in
@@ -74,7 +74,7 @@ A customer support desk where the customer says how they will know it is fixed, 
 
 ## Left out on purpose
 
-Other sign-in providers, screens for managing keys, AI-drafted replies, automatic agent start, automatic discovery of linked changes, a preview copy of the app per branch. (Text search was first left out here; it came in on 18 Nov with the owner filters. Screens for managing people and email were left out too; both came in that afternoon, see its entry below.)
+Other sign-in providers (Microsoft, for one organization, came in on 19 Nov), screens for managing keys, AI-drafted replies, automatic agent start, automatic discovery of linked changes, a preview copy of the app per branch. (Text search was first left out here; it came in on 18 Nov with the owner filters. Screens for managing people and email were left out too; both came in that afternoon, see its entry below.)
 
 ## Build order
 
@@ -215,3 +215,18 @@ Fixes and smaller calls the same evening, under the owner's call that ticketing 
 
 - **A first visit to the demo opens the product.** A visitor with no sign-in who opens the demo starts on the ticket list as the Demo Customer, under one welcome card: **File a sample ticket**, **See the team's side**, **See a ticket an AI assistant worked** and **Hide**. The roles sit in the **Switch role** menu. The old first page of choices is now **About this demo**, linked from every demo page's footer, with the privacy note, the source link and the folded assistant setup. This replaces the welcome page and its "Try the ticket workflow" above. The real site's sign-in page is unchanged.
 - **The list sorts by its column headers.** Key, Title, Status, Owner and Filed sort the list, and a second press reverses it; a phone gets the same choices in a "Sort by" line. The sort is kept in the address as `sort` and `direction`, and the API takes the same two, with `updated` as well. This replaces the order choice under the table in the evening's entry; old `order` links still open the matching sort.
+
+### 2026-11-19: a ticket shaped like a good prompt
+
+The owner's reason for the product, in his words: "AIs do best when the prompts are basically broken into context, the problem, and testing so that they can verify whether the stated problem is complete." A ticket now has that shape: the title is the problem, the description the context, and "What would prove it is fixed?" the proof. Fixes and his explicit asks of the day; the three statuses are unchanged.
+
+- **The proof is a second step.** The form asks for the title, the description and pictures; the filed ticket then asks "What would prove it is fixed?" with one box, Save and Skip for now. The customer can change it later. The edit form no longer holds it.
+- **The list leads with proof.** A Proof column marks a ticket that says what would prove it is fixed, and the customer's Yes with a solid green check. By default, New tickets with a proof come first. All leaves out tickets resolved more than 14 days ago and says how many are under Resolved.
+- **Marking fixed resolves.** The team's step is "Mark fixed and tell the customer": the ticket is resolved at once as "Fixed. Not customer-confirmed." and the customer is told. Their "Yes, it is fixed" is optional and marks it confirmed; their No reopens it with their words. The old ask stays under More options as "Ask before resolving". This replaces "Yes resolves the ticket" under the customer's side.
+- **The ticket page is one centred column.** Status and Owner are two small menus under the title; the side panel, its row of three status buttons and the card are gone. Resolving from the Status menu opens one short form with five reasons.
+- **The list.** The "Waiting on" column became a short tag after the status, shown only when it is not the team's turn. The search finds words in any order and form. The team can tick rows and change their status or owner together, from a bar over the filter row, by the same rules as one ticket.
+- **Pictures** on a ticket and its messages, shown only to who may see what they are attached to; on the shared demo, only to the browser that added them.
+- **Similar and duplicate tickets.** The form names one similar ticket while the title is typed, and the team's page names an older possible duplicate, with one press to close the ticket as its duplicate.
+- **Sign-in.** Microsoft sign-in for one organization sits beside GitHub once its three settings are set. This replaces "other sign-in providers" in the list of things left out, for Microsoft only.
+- **Suggested ways to prove a fix.** An admin sets each connection's Suggestions to Off, When asked or Automatic. A listening assistant answers a customer's request with up to three ways, which fill the step's box; the customer saves their own words. Never on a demo connection, and Proofdesk itself makes no AI calls.
+- **Smaller.** The header is two groups with one person menu; the page after a key is one message to paste; one-job pages sit in a centred column; emails read like emails.
