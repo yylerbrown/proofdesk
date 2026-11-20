@@ -1,8 +1,8 @@
 # Build log
 
 An honest record of each step: what was asked, what came back wrong or was changed, and the
-pull request that carried it. Pull request numbers refer to the private working repository; the
-public copy's `docs/PULL_REQUESTS.md` holds each one's title and description. The notes under the
+pull request that carried it. Pull request numbers refer to the private working repository, whose
+pull requests are not published; each row here says what its pull request did. The notes under the
 table explain the gaps, and [How changes reached main](#how-changes-reached-main) says who merged
 them and which checks ran.
 
@@ -227,8 +227,8 @@ them and which checks ran.
 
 - **The private working repository.** The build happened in a private repository, and every pull
   request number in this log is one of its pull requests. The public repository is a clean copy
-  of it, and the public copy's `docs/PULL_REQUESTS.md` holds each pull request's number, title
-  and description.
+  of it. The pull requests' own titles and descriptions are not published; this log is the
+  record of them.
 - **Who merged.** The project skeleton, seven commits on 17 November, went straight to `main`.
   Every later change came through a pull request. The assistant that built a change never merged
   it or deployed it. Under the owner's standing instruction, a separate coordinating assistant

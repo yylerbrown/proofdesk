@@ -30,7 +30,9 @@ describe("the merge record in AGENTS.md", () => {
     const history = log.slice(start, log.indexOf("\n## ", start + 1)).replace(/\s+/g, " ");
     for (const exception of ["#1", "#96"]) expect(history).toContain(exception);
     expect(history).toContain("private repository");
-    expect(history).toContain("`docs/PULL_REQUESTS.md`");
+    // The private pull requests are not published, and the log must not point at a copy of them.
+    expect(log).not.toContain("PULL_REQUESTS.md");
+    expect(history).toContain("not published");
     expect(history).toContain("coordinating assistant");
     expect(history).toContain("no human reviewer");
     const spec = fs.readFileSync("docs/SPEC.md", "utf8");
