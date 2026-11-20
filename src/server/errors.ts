@@ -104,6 +104,7 @@ export const HINTS: Record<string, string> = {
   request_not_found: "Answer only the requests wait_for_requests handed you.",
   request_closed: "Nothing to do for this request. Call wait_for_requests for the next one.",
   question_changed: "Get the ticket again and answer with its current ready_token.",
+  spec_changed: "Get the ticket's current suggested test and decide on its id.",
   idempotency_key_reused:
     "Use a new idempotency key for a new request. Reuse a key only to retry the very same request.",
   budget_full: "The demo has no room for more of these. Nothing to retry.",

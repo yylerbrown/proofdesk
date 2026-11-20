@@ -1,7 +1,7 @@
 import { parse } from "node-html-parser";
 import { describe, expect, it } from "vitest";
 import { createTicketService } from "../src/server/tickets/service.js";
-import { as, buildTestApp, customerOne, teamActor } from "./helpers.js";
+import { as, buildTestApp, customerOne, refusedBackToTicket, teamActor } from "./helpers.js";
 
 // The Accept and Discard forms name the suggested test they were shown with. A decision made on
 // a page opened before a newer suggestion arrived is refused, so it never lands on a test the
@@ -54,6 +54,18 @@ describe("deciding on a suggested test", () => {
     expect(() =>
       service.decideSpec("SUP-1", { decision: "accept", spec_id: first.body.id }, teamActor),
     ).toThrow(/changed/);
+    // A program is told what to do next, and the page sends the person back to the ticket.
+    const refused = await as(app, teamActor)
+      .post("/api/tickets/SUP-1/spec/decision")
+      .send({ decision: "discard", spec_id: first.body.id });
+    expect(refused.status).toBe(409);
+    expect(refused.body.error).toMatchObject({ code: "spec_changed" });
+    expect(refused.body.error.hint).toMatch(/current suggested test/);
+    const reason = await refusedBackToTicket(as(app, teamActor), "/tickets/SUP-1/spec/decision", {
+      decision: "accept",
+      spec_id: String(first.body.id),
+    });
+    expect(reason).toMatch(/has changed/);
     const current = service.getSpec("SUP-1", teamActor);
     expect(current).toMatchObject({ id: second.body.id, state: "proposed" });
 

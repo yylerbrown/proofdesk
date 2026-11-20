@@ -49,3 +49,45 @@ describe("a keyed retry after access is lost", () => {
     expect(retry.body).toEqual(unkeyed.body);
   });
 });
+
+describe("a keyed retry the caller may still make", () => {
+  it("gives an assistant's suggestions on a ticket not handed to it the first answer", async () => {
+    const { app } = buildTestApp();
+    await as(app, customerOne)
+      .post("/api/tickets")
+      .send({ title: "Printer jams", description: "It jams." });
+    const issued = await admin(app)
+      .post("/connections")
+      .type("form")
+      .send({
+        name: "Helper",
+        scopes: ["read_tickets", "suggest_when_asked", "suggest_automatic"],
+      });
+    const key = keyOnPage(issued.text);
+    const suggest = () =>
+      request(app)
+        .post("/api/tickets/SUP-1/check-suggestions")
+        .set("Authorization", `Bearer ${key}`)
+        .set("Idempotency-Key", "s1")
+        .send({ options: ["Twenty pages print with no jam"] });
+    const first = await suggest();
+    expect(first.status, first.text).toBe(201);
+    const again = await suggest();
+    expect(again.status, again.text).toBe(201);
+    expect(again.body).toEqual(first.body);
+  });
+
+  it("gives a customer's archive of their own ticket the first answer", async () => {
+    const { app } = buildTestApp();
+    await as(app, customerOne)
+      .post("/api/tickets")
+      .send({ title: "Printer jams", description: "It jams." });
+    const archive = () =>
+      as(app, customerOne).post("/api/tickets/SUP-1/archive").set("Idempotency-Key", "a1");
+    const first = await archive();
+    expect(first.status, first.text).toBe(200);
+    const again = await archive();
+    expect(again.status, again.text).toBe(200);
+    expect(again.body).toEqual(first.body);
+  });
+});

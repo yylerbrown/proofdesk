@@ -134,6 +134,30 @@ export function createAccess(db: Db, prefix: string) {
   }
 
   /**
+   * Whether a keyed retry may be given its saved answer: the caller must still reach the ticket
+   * by the door the action itself uses. Most actions read the ticket as usual. Suggesting ways
+   * to verify also reaches a New ticket with no check. A customer who archived their own ticket
+   * no longer reads it, but the saved answer was made for them, so their retry still gets it.
+   * Otherwise this throws the refusal the same write without a key would get.
+   */
+  function requireRowForRetry(key: string, actor: Actor, action: string): void {
+    try {
+      requireRow(key, actor);
+      return;
+    } catch (err) {
+      if (action === "suggest_checks") {
+        requireRowWantingCheck(key, actor);
+        return;
+      }
+      if (action === "archive_ticket") {
+        const row = repository.findTicket(db, idFromKey(key));
+        if (row !== undefined && row.archived_at !== null && row.created_by === actor.id) return;
+      }
+      throw err;
+    }
+  }
+
+  /**
    * Whose tickets this viewer's lists hold, decided once for both the rows and the counts. The
    * team gets everyone's. An assistant gets only its own: the ones handed to its connection, or
    * on the demo the sample made for assistants. They are picked in SQL before the page is cut,
@@ -152,5 +176,5 @@ export function createAccess(db: Db, prefix: string) {
     return { kind: "everyone" };
   }
 
-  return { idFromKey, requireRow, requireRowWantingCheck, visibleScope };
+  return { idFromKey, requireRow, requireRowWantingCheck, requireRowForRetry, visibleScope };
 }

@@ -7,17 +7,19 @@ import * as repository from "./repository.js";
 
 /**
  * The retry-safe wrapper around a write, for the JSON API, the MCP tools and the new-ticket form.
- * requireRow is the ticket service's own check that an actor may read a ticket.
+ * mayRetry is the ticket service's own check that an actor may still reach a ticket by the
+ * door the action uses; it throws the refusal the same write without a key would get.
  */
 export function createOnce(
   db: Db,
   prefix: string,
-  requireRow: (key: string, actor: Actor) => repository.TicketRow,
+  mayRetry: (key: string, actor: Actor, action: string) => void,
 ) {
   return {
     /**
-     * Runs a write once per idempotency key. A retry with the same key and the same request
-     * gets the first answer back and changes nothing; the same key with a different request is
+     * Runs a write once per idempotency key. A retry with the same key and the same request,
+     * while the caller may still reach the ticket, gets the first answer back and changes
+     * nothing; the same key with a different request is
      * refused. A refused write stores nothing, so it can be retried with the same key. Without
      * a key, the write simply runs.
      */
@@ -48,13 +50,14 @@ export function createOnce(
               "That idempotency key was already used for a different request.",
             );
           }
-          // The saved answer is given back only to a caller who may still read the ticket.
+          // The saved answer is given back only to a caller who may still reach the ticket by
+          // the door this action uses.
           // Anyone else gets the refusal the same write without a key would get. A ticket
           // deleted permanently (410, told only to the team) still answers the retry of its
           // own delete with the saved answer.
           if (ticketKey !== "") {
             try {
-              requireRow(ticketKey, actor);
+              mayRetry(ticketKey, actor, action);
             } catch (err) {
               if (!(err instanceof HttpError && err.status === 410)) throw err;
             }
