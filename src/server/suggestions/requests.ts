@@ -126,10 +126,7 @@ export function createSuggestionRequests(shared: Shared) {
     const waiting = repository.waitingRequests(db, openSince(), !automatic);
     const found: HandedRequest[] = [];
     for (const request of waiting) {
-      const already = handed.get(request.id) ?? new Set<number>();
-      if (already.has(connectionId)) continue;
-      already.add(connectionId);
-      handed.set(request.id, already);
+      if (handed.get(request.id)?.has(connectionId)) continue;
       found.push({
         id: request.id,
         key: buildKey(prefix, request.ticket_id),
@@ -138,6 +135,15 @@ export function createSuggestionRequests(shared: Shared) {
       });
     }
     return found;
+  }
+
+  /** Remembers that these requests were handed to this connection, so it is not handed them again. */
+  function markHanded(connectionId: number, requests: HandedRequest[]): void {
+    for (const request of requests) {
+      const already = handed.get(request.id) ?? new Set<number>();
+      already.add(connectionId);
+      handed.set(request.id, already);
+    }
   }
 
   /** The connection's setting, refusing a connection set to Off. */
@@ -223,20 +229,34 @@ export function createSuggestionRequests(shared: Shared) {
      * may answer, with the request's id and the ticket's key, title and description, or with
      * an empty list once wait_seconds have passed. Each request is handed to a connection
      * once. It is the only thing that marks a connection as listening.
+     *
+     * signal says when the caller went away. The call then ends at once, and a request it
+     * did not deliver waits for the connection's next call.
      */
-    async waitForRequests(actor: Actor, query: unknown): Promise<{ requests: HandedRequest[] }> {
+    async waitForRequests(
+      actor: Actor,
+      query: unknown,
+      signal?: AbortSignal,
+    ): Promise<{ requests: HandedRequest[] }> {
       requirePermission(actor, "wait_for_requests");
       const setting = requireSetting(actor);
       const { wait_seconds = LONGEST_WAIT_SECONDS } = parse(waitForRequestsQuery, query ?? {});
       const deadline = Date.now() + wait_seconds * 1000;
-      const call = listening.begin(actor.connection!.id, setting === "automatic");
+      const connectionId = actor.connection!.id;
+      const call = listening.begin(connectionId, setting === "automatic", signal);
       try {
         for (;;) {
-          const found = forConnection(actor.connection!.id, setting === "automatic");
-          if (found.length > 0) return { requests: found };
+          if (!call.live()) return { requests: [] };
+          const found = forConnection(connectionId, setting === "automatic");
+          if (found.length > 0) {
+            // Handed only now, to a caller still there to be answered.
+            markHanded(connectionId, found);
+            return { requests: found };
+          }
           const left = deadline - Date.now();
           if (left <= 0) return { requests: [] };
-          if ((await call.sleep(left)) === "replaced") return { requests: [] };
+          const why = await call.sleep(left);
+          if (why === "replaced" || why === "gone") return { requests: [] };
         }
       } finally {
         call.end();
