@@ -179,7 +179,7 @@ describe("the one path: read, evidence, ask the owner", () => {
       .send({ status: "resolved" });
     expect(refused.body.error.code).toBe("needs_customer");
     expect(refused.body.error.hint).toMatch(
-      /A status change does not resolve a ticket\. The customer confirms a fix with Yes/,
+      /^A status change does not resolve a ticket\. Its owner or an admin resolves it/,
     );
     // A people-only action is not a tool at all: the SDK refuses the call as unknown.
     await expect(

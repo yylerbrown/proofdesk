@@ -93,7 +93,7 @@ export const ACTIONS: ApiAction[] = [
     method: "get",
     path: "/tickets",
     summary:
-      "List tickets: open ones newest first, then resolved ones, unless sort or order says otherwise. A customer sees only their own. An assistant gets a short row per ticket handed to it; get_ticket reads one in full. An assistant allowed to suggest ways to verify also gets the key, title, description and filed time of each New ticket with no check.",
+      "List tickets: New ones that say how to verify the fix first, then the other open ones, then resolved ones, each newest first, unless sort or order says otherwise. A customer sees only their own. An assistant gets a short row per ticket handed to it; get_ticket reads one in full. An assistant allowed to suggest ways to verify also gets the key, title, description and filed time of each New ticket with no check.",
     needs: "read",
     query: listQuerySchema,
     paged: true,

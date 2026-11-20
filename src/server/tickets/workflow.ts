@@ -16,7 +16,7 @@ function needsCustomer(key: string): HttpError {
   return new HttpError(
     409,
     "needs_customer",
-    `A status change does not resolve ticket ${key}. The customer confirms a fix by answering "Did this fix it?", which its owner asks with "Ask the customer to verify"; the team can also resolve it with a reason.`,
+    `A status change does not resolve ticket ${key}. "Mark fixed and tell the customer" resolves it as fixed at once and tells the customer. To ask the customer "Did this fix it?" first, use "Ask before resolving" under More options; the team can also resolve it with a reason.`,
   );
 }
 

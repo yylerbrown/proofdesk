@@ -45,9 +45,7 @@ describe("the status control never resolves a ticket", () => {
     const reason = await refusedBackToTicket(admin(app), "/tickets/SUP-1/status", {
       status: "resolved",
     });
-    expect(reason).toMatch(
-      /A status change does not resolve ticket SUP-1\. The customer confirms a fix/,
-    );
+    expect(reason).toMatch(/^A status change does not resolve ticket SUP-1\./);
     expect((await admin(app).get("/api/tickets/SUP-1")).body.status).toBe("in_progress");
   });
 });

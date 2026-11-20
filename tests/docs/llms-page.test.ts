@@ -83,6 +83,15 @@ describe("the page for assistants", () => {
     for (const code of Object.keys(HINTS)) expect(page).toContain(`| \`${code}\` |`);
   });
 
+  it("names the buttons the team has today in the needs_customer row", async () => {
+    const page = await fetchPage({});
+    const row = page.split("\n").find((line) => line.startsWith("| `needs_customer` |"))!;
+    expect(row).toBeDefined();
+    expect(row).not.toContain("Ask the customer to verify");
+    expect(row).toContain("Mark fixed and tell the customer resolves it as fixed at once");
+    expect(row).toContain("Ask before resolving under More options");
+  });
+
   it("uses the server's own address, and the open addresses it names answer without sign-in", async () => {
     const { app } = buildTestApp({ NODE_ENV: "production" });
     const page = (await request(app).get("/llms.txt")).text;
