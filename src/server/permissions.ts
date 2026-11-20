@@ -33,7 +33,10 @@ export type Action =
   | "list_people"
   | "change_role"
   | "suggest_checks"
-  | "choose_check";
+  | "choose_check"
+  | "wait_for_requests"
+  | "answer_request"
+  | "request_suggestions";
 
 /**
  * What an AI agent may be allowed to do, each named by the operation it permits. A connection
@@ -48,9 +51,13 @@ export const AGENT_SCOPES = [
   "attach_evidence",
   "propose_specs",
   "link_changes",
-  // Suggesting ways to verify new tickets is off unless an admin ticks it. With it, the
-  // connection also reads the title and description of New tickets that have no check yet.
-  "suggest_checks",
+  // Suggesting ways to verify is off unless an admin chooses otherwise, as one setting with
+  // three choices: Off (neither scope), When asked (suggest_when_asked) and Automatic (both).
+  // When asked answers the requests a person presses for. Automatic also answers the requests a
+  // page sends by itself, and reads the title and description of New tickets that have no
+  // check yet, to suggest on them unasked.
+  "suggest_when_asked",
+  "suggest_automatic",
 ] as const;
 export type AgentScope = (typeof AGENT_SCOPES)[number];
 
@@ -116,9 +123,18 @@ export const CAPABILITIES: Record<Action, Capability> = {
   suggest_checks: {
     people:
       "Nobody: an assistant suggests, for a New ticket with no check, and the customer chooses.",
-    agent: "suggest_checks",
+    agent: "suggest_automatic",
   },
   choose_check: { people: "Only the customer who filed it.", agent: "people_only" },
+  wait_for_requests: {
+    people: "Nobody: an assistant listens for people asking it for ways to verify their ticket.",
+    agent: "suggest_when_asked",
+  },
+  answer_request: {
+    people: "Nobody: an assistant answers a person who asked for ways to verify their ticket.",
+    agent: "suggest_when_asked",
+  },
+  request_suggestions: { people: "Only the customer who filed it.", agent: "people_only" },
 };
 
 /** The two facts about a ticket that permissions depend on. */
@@ -183,6 +199,8 @@ export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean
   // the demo takes no text from strangers into a customer's page. The ticket service decides
   // which tickets: New ones with no check.
   if (action === "suggest_checks") return actor.kind === "agent" && actor.demo !== true;
+  if (action === "wait_for_requests") return actor.kind === "agent" && actor.demo !== true;
+  if (action === "answer_request") return actor.kind === "agent" && actor.demo !== true;
 
   // Every other action is about one ticket.
   if (ticket === undefined) return false;
@@ -221,5 +239,7 @@ export function can(actor: Actor, action: Action, ticket?: TicketFacts): boolean
   // The customer picks a suggested way to verify, or writes their own. Only a person, never an
   // assistant, and never the team for them.
   if (action === "choose_check") return isOwn && actor.kind === "person";
+  // Asking a listening assistant for ways to verify: the customer who filed it, for themselves.
+  if (action === "request_suggestions") return isOwn && actor.kind === "person";
   return false;
 }

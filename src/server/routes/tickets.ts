@@ -13,7 +13,8 @@ import type { TicketService } from "../tickets/service.js";
 export function ticketsRouter(service: TicketService, connections: ConnectionService): Router {
   const router = Router();
   for (const action of ACTIONS) {
-    router[action.method](action.path, (req, res) => {
+    // async, because listening for requests answers later: its row's run gives a promise.
+    router[action.method](action.path, async (req, res) => {
       const actor = signedIn(req);
       const key = typeof req.params.key === "string" ? req.params.key : "";
       const call = () => action.run({ service, actor, key, query: req.query, body: req.body });
@@ -30,10 +31,9 @@ export function ticketsRouter(service: TicketService, connections: ConnectionSer
         });
       let result: unknown;
       try {
-        result =
-          action.method === "get"
-            ? call()
-            : service.once(actor, idempotencyKey, action.name, key, req.body, call);
+        result = await (action.method === "get"
+          ? call()
+          : service.once(actor, idempotencyKey, action.name, key, req.body, call));
       } catch (err) {
         record(
           err instanceof HttpError && err.status < 500 ? "refused" : "failed",

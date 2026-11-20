@@ -204,7 +204,7 @@ describe("real answers", () => {
     await as(app, customerOne)
       .post("/api/tickets")
       .send({ title: "Scanner stalls", description: "It stops halfway." });
-    const suggester = await issue(app, ["read_tickets", "suggest_checks"]);
+    const suggester = await issue(app, ["read_tickets", "suggest_when_asked", "suggest_automatic"]);
     const byAssistant = (path: string) =>
       request(app).get(path).set("Authorization", `Bearer ${suggester}`);
     expectShape(
@@ -223,6 +223,31 @@ describe("real answers", () => {
       await as(app, customerOne)
         .post("/api/tickets/SUP-4/check")
         .send({ suggestion_id: read.body.check_suggestions[0].id }),
+    );
+    // The customer asks a listening assistant for ways to verify another new ticket, and the
+    // assistant answers.
+    await as(app, customerOne)
+      .post("/api/tickets")
+      .send({ title: "Fax stalls", description: "It stops halfway." });
+    const listening = byAssistant("/api/suggestion-requests?wait_seconds=5").then((res) => res);
+    for (let tries = 0; tries < 100; tries += 1) {
+      const read = await as(app, customerOne).get("/tickets/SUP-5/check-suggestions");
+      if (read.body.available?.listening === true) break;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    await as(app, customerOne)
+      .post("/tickets/SUP-5/check-suggestions/request")
+      .accept("json")
+      .type("form")
+      .send({ pressed: "true" });
+    const handed = await listening;
+    expectShape("wait_for_requests", handed);
+    expectShape(
+      "answer_request",
+      await request(app)
+        .post("/api/suggestion-requests/answer")
+        .set("Authorization", `Bearer ${suggester}`)
+        .send({ id: handed.body.requests[0].id, options: ["I send a fax and it arrives"] }),
     );
     expectShape("archive_ticket", await admin(app).post(`${t}/archive`));
     expectShape("restore_ticket", await admin(app).post(`${t}/restore`));
