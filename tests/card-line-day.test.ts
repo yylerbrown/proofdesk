@@ -28,15 +28,18 @@ describe("the day on the card's line", () => {
     expect(line.text.trim()).toBe(`Customer confirmed on ${formatDay(iso)}.`);
   });
 
-  it("is a time element inside the link to the customer's No, with the same instant", async () => {
+  it("is a time element in the line about the customer's No, with a quiet link to their message", async () => {
     const page = await pageOf("demo-team", "SUP-7");
     const line = page.querySelector(".ticket-card .card-line")!;
-    const link = line.querySelector("a")!;
-    const day = link.querySelector("time[data-day]")!;
-    expect(link.text.trim()).toBe(
-      `The customer says it is not fixed, since ${formatDay(day.getAttribute("datetime")!)}.`,
+    const day = line.querySelector("time[data-day]")!;
+    expect(line.querySelector("span")!.text.trim()).toBe(
+      `The customer said it is not fixed on ${formatDay(day.getAttribute("datetime")!)}.`,
     );
-    // The message the line links to was written at the same instant the card names.
+    // The words are not a link; one quiet link after them opens the message, written at the
+    // same instant the card names.
+    expect(day.closest("a")).toBeNull();
+    const link = line.querySelector("a.card-line-link")!;
+    expect(link.text).toBe("Read their message");
     const message = page.querySelector(`${link.getAttribute("href")} time[datetime]`);
     expect(message?.getAttribute("datetime")).toBe(day.getAttribute("datetime"));
   });

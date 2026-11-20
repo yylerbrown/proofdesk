@@ -336,7 +336,7 @@ describe("the demo key page", () => {
       "curl-command",
     ]);
     expect(help.querySelector(".see-what-it-wrote")?.text).toBe(
-      `To see what it wrote, view as Demo Team Member with Switch role at the top and open ${sample}.`,
+      `To see what it wrote, view as Demo Team Member with the menu at the top right and open ${sample}.`,
     );
     // Nothing else: no numbered steps, no scope list, no links away.
     expect(page.querySelector("ol")).toBeNull();

@@ -33,22 +33,20 @@ async function demoInProgress() {
 }
 
 describe("who resolves", () => {
-  it("is said exactly where the team looks for Resolved: the status and the edit page", async () => {
+  it("is the Status menu's Resolved, and the edit page adds no help line about it", async () => {
     const { app } = buildTestApp();
     await as(app, customerOne).post("/api/tickets").send(valid);
-    const sentence =
-      "The customer confirms a fix with Yes; the team can also resolve with a reason.";
     const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     // On the ticket, Resolved is in the Status menu for those who may, and opens the reasons.
     const menu = page.querySelector(".ticket-facts details.status-menu")!;
     expect(menu.querySelector("a[href$='?step=resolve#resolve-form']")?.text).toBe("Resolved");
     const shown = parse((await as(app, teamActor).get("/tickets/SUP-1?step=resolve")).text);
     expect(shown.querySelector("form.resolve input[name=reason]")).not.toBeNull();
-    const edit = parse((await as(app, teamActor).get("/tickets/SUP-1/edit")).text);
-    expect(edit.querySelector(".status-rule")?.text).toBe(sentence);
-    // The customer who filed it is not told they cannot.
-    const own = parse((await as(app, customerOne).get("/tickets/SUP-1/edit")).text);
-    expect(own.querySelector(".status-rule")).toBeNull();
+    // The edit form is for the ticket's words; how a ticket is resolved is said on the ticket.
+    for (const who of [teamActor, customerOne]) {
+      const edit = parse((await as(app, who).get("/tickets/SUP-1/edit")).text);
+      expect(edit.querySelector("main")!.text, who.id).not.toContain("resolve with a reason");
+    }
   });
 });
 

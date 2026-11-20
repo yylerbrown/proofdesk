@@ -70,7 +70,13 @@ export function showSimilar(line: SimilarLine, similar: Similar | null, make: Ma
   newTab.className = "visually-hidden";
   newTab.textContent = " (opens in a new tab)";
   link.append(newTab);
-  line.replaceChildren("Similar ticket: ", link, ` (${similar.status})`);
+  // The words before and the status after are their own pieces, so only the title shortens.
+  // Their spaces stay in the text for copying and screen readers; the line draws the gaps.
+  const before = make.createElement("span");
+  before.textContent = "Similar ticket: ";
+  const status = make.createElement("span");
+  status.textContent = ` (${similar.status})`;
+  line.replaceChildren(before, link, status);
   line.hidden = false;
 }
 

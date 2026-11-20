@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
 
-// The resolve form shows "Duplicate of" only for a duplicate, and the note box only for Other,
-// the one reason that needs it. A box that is hidden still sends what was typed in it, so the
-// page's route drops a note sent with any other reason, and no hidden words reach the customer.
+// The resolve form shows "Duplicate of" only for a duplicate, and the note box for Other, which
+// needs it, and for Won't fix and Cannot reproduce, as an optional note for the customer. A box
+// that is hidden still sends what was typed in it, so the page's route drops a note sent with a
+// duplicate, and no hidden words reach the customer.
 
 test("the resolve form shows each box only for the reason that needs it", async ({ page }) => {
   await page.goto("/sign-in");
@@ -48,10 +49,14 @@ test("the resolve form shows each box only for the reason that needs it", async 
   await expect(duplicateOf).toBeVisible();
   await expect(note).toBeHidden();
 
-  // Resolving with another reason leaves the hidden note behind.
+  // Won't fix shows the same box as an optional note for the customer, with what is in it.
   await reason("Won't fix").check();
+  const customerNote = resolve.getByRole("textbox", { name: "Note for the customer (optional)" });
+  await expect(customerNote).toBeVisible();
+  await expect(customerNote).toHaveValue("Typed under Other.");
+  await customerNote.fill("Works as designed.");
   await resolve.getByRole("button", { name: "Resolve ticket" }).click();
   const line = page.locator(".ticket-card .card-line");
-  await expect(line).toContainText("Resolved by the team: Won't fix.");
+  await expect(line).toContainText("Resolved by the team: Won't fix (Works as designed).");
   await expect(line).not.toContainText("Typed under Other.");
 });

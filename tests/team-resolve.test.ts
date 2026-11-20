@@ -138,7 +138,7 @@ describe("how a team resolution shows", () => {
     // The team reads the same reason on its card, with who and when, and not again by the status.
     const teamPage = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     expect(teamPage.querySelector(".ticket-card .card-line")?.text.trim()).toMatch(
-      /^Resolved by the team: Won't fix \(Works as designed\)\. Team Member, \d{1,2} [A-Z][a-z]{2} \d{4}\. Not confirmed by the customer\.$/,
+      /^Resolved by the team: Won't fix \(Works as designed\)\. Team Member, \d{1,2} [A-Z][a-z]{2} \d{4}\. The customer can reopen it\.$/,
     );
     expect(teamPage.querySelector(".ticket-facts")!.text).not.toContain("Won't fix");
     // The customer's line under the title says who resolved it, in plain words.

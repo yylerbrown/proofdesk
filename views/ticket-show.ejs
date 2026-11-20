@@ -43,7 +43,7 @@
           <input type="hidden" name="<%= name %>" value="<%= value %>" />
           <% } %>
           <%# Taking a ticket nobody owns is part of starting work on it, so the choice says so. %>
-          <button type="submit" class="link"><%- include("status-badge", { status: choice.status }) %><% if (choice.action.endsWith("/take-and-start")) { %> (assigns it to you)<% } %></button>
+          <button type="submit" class="link"><span class="menu-words"><%- include("status-badge", { status: choice.status }) %><% if (choice.action.endsWith("/take-and-start")) { %> (assigns it to you)<% } %></span></button>
         </form>
         <% } else if (choice.kind === "resolve") { %>
         <a href="/tickets/<%= ticket.key %>?step=resolve#resolve-form"><%- include("status-badge", { status: choice.status }) %></a>
@@ -58,8 +58,9 @@
     </ul>
   </details>
   <% } else { %>
-  <%# Nothing this viewer can choose: the status in plain words, with the reason as its title. %>
-  <span class="fact" <% if (statusRow.why) { %>title="<%= statusRow.why %>"<% } %>><span class="fact-label">Status</span> <%- include("status-badge", { status: ticket.status }) %><% if (statusRow.why) { %><span class="visually-hidden">. <%= statusRow.why %></span><% } %></span>
+  <%# Nothing this viewer can choose: the status in plain words, with the reason as its title,
+      and for a screen reader as a sentence of its own after them. %>
+  <span class="fact" <% if (statusRow.why) { %>title="<%= statusRow.why %>"<% } %>><span class="fact-label">Status</span> <%- include("status-badge", { status: ticket.status }) %></span><% if (statusRow.why) { %><span class="visually-hidden"><%= statusRow.why %></span><% } %>
   <% } %>
 
   <% const ownerName = ticket.owner_name ?? "Unassigned"; %>
@@ -183,7 +184,9 @@
     <% if (card.line.tick && staff) { %><img src="/assets/mark.svg" alt="" width="20" height="20" class="tick" /><% } %>
     <%# The day is a <time>, so the visitor's browser writes it in their own time zone. The span
         keeps the words and the day one sentence inside the line's row. %>
-    <span><% if (card.lineHref) { %><a href="<%= card.lineHref %>"><% } %><%= card.line.text %><% if (card.line.day) { %><time datetime="<%= card.line.day %>" data-day><%= formatDay(card.line.day) %></time><% } %><%= card.line.after %><% if (card.lineHref) { %></a><% } %></span>
+    <span><%= card.line.text %><% if (card.line.day) { %><time datetime="<%= card.line.day %>" data-day><%= formatDay(card.line.day) %></time><% } %><%= card.line.after %></span>
+    <%# The customer's own message about it, when there is one: a quiet link after the line. %>
+    <% if (card.lineHref) { %><a href="<%= card.lineHref %>" class="card-line-link"><%= staff ? "Read their message" : "Read your message" %></a><% } %>
     <% if (staff && ticket.resolution?.duplicate_of) { %><a href="/tickets/<%= ticket.resolution.duplicate_of %>">Open <%= ticket.resolution.duplicate_of %></a><% } %>
   </p>
   <% } %>
@@ -279,8 +282,11 @@
       Duplicate of
       <input type="text" name="duplicate_of" placeholder="SUP-3" maxlength="20" value="<%= resolving.duplicate_of ?? "" %>" <%= focusIf("resolve", "duplicate_of") %> />
     </label>
+    <%# One box for a note: "Why?" for Other, which needs it, and an optional note for the
+        customer with Won't fix or Cannot reproduce. Only the label for the chosen reason shows. %>
     <label class="resolve-note">
-      Why?
+      <span class="resolve-note-why">Why?</span>
+      <span class="resolve-note-customer">Note for the customer (optional)</span>
       <textarea name="note" rows="2" maxlength="500" <%= focusIf("resolve", "note") %>><%= resolving.note ?? "" %></textarea>
     </label>
     <label class="resolve-fixed-in">

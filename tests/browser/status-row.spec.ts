@@ -58,9 +58,9 @@ test("Resolved shows its form in the next step's place, and a reason must be cho
   await form.getByRole("radio", { name: "Fixed (the customer is told)" }).check();
   await form.getByRole("button", { name: "Resolve ticket" }).click();
   await expect(page.locator(".ticket-card .card-line")).toContainText(
-    "Resolved by the team: Fixed. Not customer-confirmed.",
+    "Resolved by the team: Fixed.",
   );
   await expect(page.locator(".ticket-card .card-line")).toContainText(
-    "The customer did not confirm it, and can reopen it.",
+    "The customer has not confirmed it.",
   );
 });

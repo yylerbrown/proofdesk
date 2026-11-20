@@ -29,7 +29,7 @@ export class ValidationError extends HttpError {
 
 /** What the demo's read-only admin preview is told when it tries to change something. */
 export const READ_ONLY_REFUSAL =
-  "The admin preview is read-only. Use Switch role at the top of the page to act as the customer or the team.";
+  "The admin preview is read-only. Use the menu at the top right to act as the customer or the team.";
 
 /**
  * The 403 for an action this person may not do. The demo's read-only admin preview is told

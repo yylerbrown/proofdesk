@@ -26,7 +26,7 @@ export const SAVED_MESSAGES = {
   agentEnded: "The assistant has stopped working on this ticket.",
   reopenedByTeam: "Reopened, with your reason.",
   resolvedByTeam: "Resolved, with your reason. The customer sees it and can reopen it.",
-  markedFixed: "Marked fixed. The customer has been told.",
+  markedFixed: "Marked fixed. The customer was asked: Did this fix it?",
   released: "Unassigned. Anyone on the team can take it.",
   restored: "Ticket restored.",
   archived: "Ticket archived.",

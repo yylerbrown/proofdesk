@@ -96,7 +96,7 @@ describe("the resolve form", () => {
     expect(css).toContain(
       'form.resolve:not(:has(input[value="duplicate"]:checked)) .resolve-duplicate',
     );
-    expect(css).toContain('form.resolve:not(:has(input[value="other"]:checked)) .resolve-note');
+    expect(css).toContain('[value="cannot_reproduce"]):checked)\n  )\n  .resolve-note,');
   });
 });
 
@@ -179,7 +179,7 @@ describe("the card's line after the customer reopens", () => {
     await customerSaysNo(app, "Still jams on page two.");
     const line = async (who = teamActor) =>
       (await ticketPage(app, who)).querySelector(".ticket-card .card-line")?.text.trim() ?? null;
-    expect(await line()).toMatch(/^The customer says it is not fixed, since /);
+    expect(await line()).toMatch(/^The customer said it is not fixed on /);
     await as(app, teamActor)
       .post("/api/tickets/SUP-1/resolve")
       .send({ reason: "cannot_reproduce" });
@@ -188,7 +188,7 @@ describe("the card's line after the customer reopens", () => {
       .send({ reason: "It jams again since Monday." });
     expect(reopened.status).toBe(200);
     // A reopening reads as a No does: one phrase for the customer's word that it is not fixed.
-    expect(await line()).toMatch(/^The customer says it is not fixed, since /);
+    expect(await line()).toMatch(/^The customer said it is not fixed on /);
     expect(await line(customerOne)).toMatch(/^You said it is not fixed on /);
     for (const who of [teamActor, customerOne]) {
       const card = (await ticketPage(app, who)).querySelector(".ticket-card")!;
@@ -206,10 +206,10 @@ describe("a refusal the read-only admin preview meets", () => {
   }
   const preview = (app: Express) => visitor(app).set("Cookie", `${DEV_COOKIE}=demo-admin`);
 
-  it("says the preview is read-only and points to Switch role, on the ticket", async () => {
+  it("says the preview is read-only and points to the menu at the top right, on the ticket", async () => {
     const { app } = buildDemo();
     expect(await refusedBackToTicket(preview(app), "/tickets/SUP-1/take")).toBe(READ_ONLY_REFUSAL);
-    expect(READ_ONLY_REFUSAL).toContain("Use Switch role");
+    expect(READ_ONLY_REFUSAL).toContain("Use the menu at the top right");
   });
 
   it("says the same in the API", async () => {

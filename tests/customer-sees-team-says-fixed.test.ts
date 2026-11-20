@@ -70,7 +70,7 @@ describe("a ticket the team resolved as fixed, for its customer", () => {
     const team = await page(teamActor, "/tickets/SUP-1");
     expect(team.querySelector("#did-this-fix-it")).toBeNull();
     expect(team.querySelector(".ticket-card .card-line")?.text.trim()).toMatch(
-      /^Resolved by the team: Fixed\. Not customer-confirmed\. .+, \d{1,2} [A-Z][a-z]{2} \d{4}\. The customer did not confirm it, and can reopen it\.$/,
+      /^Resolved by the team: Fixed\. .+, \d{1,2} [A-Z][a-z]{2} \d{4}\. The customer has not confirmed it\.$/,
     );
   });
 
@@ -82,7 +82,7 @@ describe("a ticket the team resolved as fixed, for its customer", () => {
     ]);
     const team = await page(teamActor, "/tickets/SUP-1");
     expect(team.querySelector(".ticket-card .card-line")?.text.trim()).toMatch(
-      /^Resolved by the team: Fixed\. Not customer-confirmed\. Fixed in: version 4\.2\.1\. /,
+      /^Resolved by the team: Fixed\. Fixed in: version 4\.2\.1\. /,
     );
     const history = team.querySelectorAll("details.history tbody tr").map((row) => row.text);
     expect(

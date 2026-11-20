@@ -39,9 +39,9 @@
   <% if (!viewer) { %>
   <%# Signed out, the paragraph above has not said how roles work, so this one does. %>
   <% if (locals.realSiteUrl) { %>
-  <p class="real-site">On <a href="<%= realSiteUrl %>">the real site</a>, people sign in with GitHub. Here you switch between three made-up people with Switch role at the top.<% if (locals.sourceUrl) { %> <a href="<%= sourceUrl %>#sign-in-and-roles">How sign-in and roles work</a><% } %></p>
+  <p class="real-site">On <a href="<%= realSiteUrl %>">the real site</a>, people sign in with GitHub. Here you switch between three made-up people with the menu at the top right.<% if (locals.sourceUrl) { %> <a href="<%= sourceUrl %>#sign-in-and-roles">How sign-in and roles work</a><% } %></p>
   <% } else { %>
-  <p class="roles-note">Here you switch between three made-up people with Switch role at the top.</p>
+  <p class="roles-note">Here you switch between three made-up people with the menu at the top right.</p>
   <% } %>
   <% } %>
   <% if (viewer || locals.sourceUrl) { %>

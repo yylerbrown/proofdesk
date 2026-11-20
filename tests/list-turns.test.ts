@@ -84,7 +84,7 @@ describe("the bar for ticked tickets", () => {
       bar.querySelectorAll(`select[name=${name}] option`).map((option) => option.text);
     expect(options("reason")).toEqual([
       "Reason",
-      "Fixed. Not customer-confirmed.",
+      "Fixed (the customer is told)",
       "Won't fix",
       "Cannot reproduce",
     ]);

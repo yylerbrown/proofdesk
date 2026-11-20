@@ -40,8 +40,8 @@ describe("a ticket the customer reopened", () => {
     const page = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     // The card says so in one line, linked to their words, which stand once, in the conversation.
     const line = page.querySelector(".ticket-card .card-line")!;
-    expect(line.text.trim()).toMatch(
-      /^The customer says it is not fixed, since \d{1,2} [A-Z][a-z]{2} \d{4}\.$/,
+    expect(line.querySelector("span")!.text.trim()).toMatch(
+      /^The customer said it is not fixed on \d{1,2} [A-Z][a-z]{2} \d{4}\.$/,
     );
     expect(page.querySelector(".ticket-card")!.text).not.toContain(reason);
     const href = line.querySelector("a")!.getAttribute("href")!;

@@ -46,8 +46,8 @@ describe("after the customer says No", () => {
     const html = parse((await as(app, teamActor).get("/tickets/SUP-1")).text);
     const card = html.querySelector(".ticket-card")!;
     const line = card.querySelector(".card-line")!;
-    expect(line.text.trim()).toMatch(
-      /^The customer says it is not fixed, since \d{1,2} [A-Z][a-z]{2} \d{4}\.$/,
+    expect(line.querySelector("span")!.text.trim()).toMatch(
+      /^The customer said it is not fixed on \d{1,2} [A-Z][a-z]{2} \d{4}\.$/,
     );
     // Their words stand once, in the conversation, and the line links to that message.
     expect(card.text).not.toContain(comment);
@@ -76,9 +76,10 @@ describe("after the customer says No", () => {
     const mine = parse((await as(app, customerOne).get("/tickets/SUP-1")).text).querySelector(
       ".ticket-card .card-line",
     );
-    expect(mine?.text.trim()).toMatch(
+    expect(mine?.querySelector("span")?.text.trim()).toMatch(
       /^You said it is not fixed on \d{1,2} [A-Z][a-z]{2} \d{4}\.$/,
     );
+    expect(mine?.querySelector("a.card-line-link")?.text).toBe("Read your message");
   });
 
   it("goes away once the team asks again, and after a Yes", async () => {

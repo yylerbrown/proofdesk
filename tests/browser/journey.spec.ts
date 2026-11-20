@@ -87,7 +87,9 @@ test("the short path: file, take, ask the customer, and their Yes resolves it", 
     .locator(".next-action")
     .getByRole("button", { name: "Mark fixed and tell the customer" })
     .click();
-  await expect(savedMessage(team)).toHaveText("Marked fixed. The customer has been told.");
+  await expect(savedMessage(team)).toHaveText(
+    "Marked fixed. The customer was asked: Did this fix it?",
+  );
   await expectTicketStatus(team, key, "Resolved");
 
   await customer.goto(`/tickets/${key}`);
@@ -249,9 +251,9 @@ test("the long path: a check, a change link and evidence, a No, then the custome
   await test.step("the ticket is back with the team member, with the customer's words", async () => {
     await team.goto(`/tickets/${key}`);
     await expectTicketStatus(team, key, "In Progress");
-    // The card says the customer said no, and links to their words in the conversation.
+    // The card says the customer said no, with a quiet link to their words in the conversation.
     const saidNo = team.locator(".ticket-card .card-line");
-    await expect(saidNo).toContainText("The customer says it is not fixed, since");
+    await expect(saidNo).toContainText("The customer said it is not fixed on");
     await saidNo.getByRole("link").click();
     await expect(team.locator("article.entry", { hasText: notFixedComment })).toBeVisible();
     await expect(team.locator(".ticket-facts .owner-menu summary")).toContainText("Team Member");
