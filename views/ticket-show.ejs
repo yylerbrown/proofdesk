@@ -138,6 +138,17 @@
 <p class="page-link">Page: <a href="<%= ticket.where_url %>" rel="noopener noreferrer nofollow" class="user-text"><%= ticket.where_url %></a></p>
 <% } %>
 
+<%# For the team: one other ticket that may report the same problem, and one quiet press that
+    resolves this one as its duplicate. The other ticket is not changed. %>
+<% if (staff && possibleDuplicate) { %>
+<form method="post" action="/tickets/<%= ticket.key %>/resolve" class="possible-duplicate">
+  <%- versionField %>
+  <input type="hidden" name="reason" value="duplicate" />
+  <input type="hidden" name="duplicate_of" value="<%= possibleDuplicate.key %>" />
+  <p><span>Possible duplicate: <a href="/tickets/<%= possibleDuplicate.key %>"><%= possibleDuplicate.key %> <span class="user-text"><%= possibleDuplicate.title %></span></a></span><% if (allowed.resolveWithReason) { %> <button type="submit" class="link">Close as a duplicate of <%= possibleDuplicate.key %></button><% } %></p>
+</form>
+<% } %>
+
 <%# What the customer said would prove it is fixed, where the ticket stands, and the one step this viewer
     can take: plain lines in the column, set apart by space. Once the team marks it fixed, or asks,
     the check's label becomes the customer's question, "Did this fix it?". %>
@@ -201,7 +212,7 @@
     <span><%= card.line.text %><% if (card.line.day) { %><time datetime="<%= card.line.day %>" data-day><%= formatDay(card.line.day) %></time><% } %><%= card.line.after %></span>
     <%# The customer's own message about it, when there is one: a quiet link after the line. %>
     <% if (card.lineHref) { %><a href="<%= card.lineHref %>" class="card-line-link"><%= staff ? "Read their message" : "Read your message" %></a><% } %>
-    <% if (staff && ticket.resolution?.duplicate_of) { %><a href="/tickets/<%= ticket.resolution.duplicate_of %>">Open <%= ticket.resolution.duplicate_of %></a><% } %>
+    <% if (card.otherHref) { %><a href="<%= card.otherHref %>">Open <%= ticket.resolution.duplicate_of %></a><% } %>
   </p>
   <% } %>
 
@@ -294,7 +305,7 @@
     <%# The stylesheet shows each of these only for the reason that needs it. %>
     <label class="resolve-duplicate">
       Duplicate of
-      <input type="text" name="duplicate_of" placeholder="SUP-3" maxlength="20" value="<%= resolving.duplicate_of ?? "" %>" <%= focusIf("resolve", "duplicate_of") %> />
+      <input type="text" name="duplicate_of" placeholder="SUP-3" maxlength="20" value="<%= resolving.duplicate_of ?? possibleDuplicate?.key ?? "" %>" <%= focusIf("resolve", "duplicate_of") %> />
     </label>
     <%# One box for a note: "Why?" for Other, which needs it, and an optional note for the
         customer with Won't fix or Cannot reproduce. Only the label for the chosen reason shows. %>
