@@ -1616,15 +1616,23 @@ article {
 }
 /*
  * Under the description: the customer's check, the one line saying where it stands, and the one
- * step. Plain lines on the page's own background, set apart from the description and the
- * conversation by space, with no box around them.
+ * step. One quiet card, a thin border with the radius of the other cards and no fill or shadow,
+ * so the step reads as the page's one next step and not as another paragraph. The space around
+ * it is larger than the space inside it, so the ticket, the step and the conversation read as
+ * three groups.
  */
 article.ticket-card {
-  margin: var(--pd-space-5) 0 var(--pd-space-6);
-  padding: 0;
-  border: 0;
-  border-radius: 0;
+  margin: var(--pd-space-6) 0;
+  padding: var(--pd-space-4) var(--pd-space-5);
+  border: var(--pd-hairline);
+  border-radius: var(--pd-radius-lg);
   background: none;
+  box-shadow: none;
+}
+@media (max-width: 639px) {
+  article.ticket-card {
+    padding: var(--pd-space-4);
+  }
 }
 .ticket-card > :first-child {
   margin-top: 0;
@@ -2447,15 +2455,26 @@ form.resolve:not(:has(input[value="fixed_no_reply"]:checked)) .resolve-fixed-in 
 .ticket-page > details.evidence-list {
   margin: var(--pd-space-6) 0 0;
 }
+/* Inside the step's card it is a part of that card, so it has a line above and no border. */
 .ticket-card .assistant-card {
-  margin: var(--pd-space-6) 0 0;
+  margin: var(--pd-space-5) 0 0;
+  padding: var(--pd-space-4) 0 0;
+  border: 0;
+  border-top: var(--pd-hairline);
+  border-radius: 0;
 }
 
-/* The page's one hairline, where the conversation begins. */
+/*
+ * The hairline where the conversation begins, above its messages or, when there are none yet,
+ * above the message box, so the step's card and the message box never read as one form.
+ */
 hr.thread-start {
   margin: var(--pd-space-6) 0 var(--pd-space-5);
   border: 0;
   border-top: var(--pd-hairline);
+}
+#conversation + .ticket-last-row {
+  margin-top: 0;
 }
 article.entry > p {
   max-width: none;

@@ -859,7 +859,10 @@ export function insertEntry(db: Db, entry: NewEntry): EntryRow {
   };
 }
 
-/** For each of these tickets, the latest note an agent wrote on it. */
+/**
+ * For each of these tickets, the latest note an agent wrote on it. evidence_after is 1 when the
+ * same agent attached evidence to the ticket at or after that note.
+ */
 export function latestAgentNotes(
   db: Db,
   ticketIds: number[],
@@ -869,10 +872,15 @@ export function latestAgentNotes(
   blocked: number;
   purpose: NotePurpose;
   author_name: string;
+  evidence_after: number;
 }[] {
   return db
     .prepare(
-      `SELECT e.ticket_id, e.body, e.blocked, e.purpose, e.author_name FROM ticket_entries e
+      `SELECT e.ticket_id, e.body, e.blocked, e.purpose, e.author_name,
+         EXISTS (SELECT 1 FROM ticket_evidence v
+                 WHERE v.ticket_id = e.ticket_id AND v.author = e.author
+                   AND v.created_at >= e.created_at) AS evidence_after
+       FROM ticket_entries e
        WHERE e.ticket_id IN (SELECT value FROM json_each(@ids))
          AND e.id = (SELECT MAX(x.id) FROM ticket_entries x
                      WHERE x.ticket_id = e.ticket_id AND x.kind = 'note' AND x.author_kind = 'agent')`,
@@ -883,6 +891,7 @@ export function latestAgentNotes(
     blocked: number;
     purpose: NotePurpose;
     author_name: string;
+    evidence_after: number;
   }[];
 }
 

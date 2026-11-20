@@ -20,7 +20,7 @@ export function noticesRouter(service: TicketService, db: Db, ticketPrefix: stri
     const notices = noticesNewestFirst(db, ticketId, viewer);
     const names = service.peopleNames(notices.map((notice) => notice.recipient_id));
     res.render("notices", {
-      title: `Email notices for ${ticket.key}`,
+      title: "Emails sent about this ticket",
       ticket,
       forTeam: viewer.role !== "customer",
       formatTime,

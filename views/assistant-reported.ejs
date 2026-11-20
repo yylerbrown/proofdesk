@@ -1,0 +1,3 @@
+<%# One grey line: the latest thing an assistant reported on this ticket, exactly as sent, linking
+    to the evidence where it sits, unfolded. Nothing when there is nothing to say. -%>
+<% if (reported) { %><p class="card-reported"><small>Reported by the assistant, not checked by Proofdesk: <a href="/tickets/<%= key %>?evidence=open#assistant-evidence" class="user-text"><%= reported %></a></small></p><% } %>

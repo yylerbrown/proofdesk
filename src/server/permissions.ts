@@ -122,16 +122,16 @@ export const CAPABILITIES: Record<Action, Capability> = {
   change_role: { people: "An admin, for someone else.", agent: "people_only" },
   suggest_checks: {
     people:
-      "Nobody: an assistant suggests, for a New ticket with no check, and the customer chooses.",
+      "A connection whose Suggestions setting is Automatic, for a New ticket with no check, never a person. The customer chooses.",
     agent: "suggest_automatic",
   },
   choose_check: { people: "Only the customer who filed it.", agent: "people_only" },
   wait_for_requests: {
-    people: "Nobody: an assistant listens for people asking it for ways to verify their ticket.",
+    people: "A connection whose Suggestions setting is When asked or Automatic, never a person.",
     agent: "suggest_when_asked",
   },
   answer_request: {
-    people: "Nobody: an assistant answers a person who asked for ways to verify their ticket.",
+    people: "A connection whose Suggestions setting is When asked or Automatic, never a person.",
     agent: "suggest_when_asked",
   },
   request_suggestions: { people: "Only the customer who filed it.", agent: "people_only" },

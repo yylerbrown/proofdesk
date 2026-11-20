@@ -16,10 +16,9 @@
   <% if (spec && spec.state === "accepted") { %><p class="card-outcome"><small>Test saved for the team to run.</small></p><% } %>
   <% if (card.discardedBy) { %><p class="card-outcome"><small>The suggested test was discarded by <%= card.discardedBy %>.</small></p><% } %>
   <% if (card.canDecide && spec && spec.state === "proposed") { %>
-  <%# What the assistant reported, before the decision: its first evidence's one-line result,
-      exactly as sent. %>
-  <% const reported = card.evidence.find((item) => item.reported_by.kind === "agent" && item.result); %>
-  <% if (reported) { %><p class="card-reported"><small>Reported by the assistant, not checked by Proofdesk: <span class="user-text"><%= reported.result %></span></small></p><% } %>
+  <%# What the assistant last reported, before the decision. Without a decision to make, the
+      same line sits above the ticket's next step instead. %>
+  <%- include("assistant-reported", { key: card.key, reported: card.reported }) %>
   <div class="card-decision">
     <form method="post" action="/tickets/<%= card.key %>/spec/decision">
       <input type="hidden" name="decision" value="accept" />
@@ -32,7 +31,7 @@
   </div>
   <% } %>
   <% if (spec || card.evidence.length > 0 || locals.changeUrl) { %>
-  <details class="card-details">
+  <details class="card-details" id="assistant-evidence" <% if (card.evidenceOpen) { %>open<% } %>>
     <summary>Details</summary>
     <% if (spec) { %>
     <p><small><%= spec.coverage.scenarios %> <%= spec.coverage.scenarios === 1 ? "scenario" : "scenarios" %>, proposed by <%= spec.proposed_by.name %><% if (spec.proposed_by.kind === "agent") { %> (AI assistant)<% } %>. Reported, not verified by Proofdesk.</small></p>

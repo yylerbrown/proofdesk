@@ -285,6 +285,9 @@
 
   <% if (reviewFirst) { %>
   <%- include("assistant-card", { card: assistantCard, changeUrl }) %>
+  <% } else if (assistantCard) { %>
+  <%# What the assistant reported, read before the step that resolves. %>
+  <%- include("assistant-reported", { key: ticket.key, reported: assistantCard.reported }) %>
   <% } %>
 
   <% if (resolveForm) { %>
@@ -394,6 +397,8 @@
 <%# Everything an assistant left on the ticket is one card. Evidence a person attached, with no
     assistant's work beside it, is one closed line. The customer sees the proof when asked. %>
 <% if (assistantCard && !reviewFirst) { %>
+<%# With no card above to hold it, the reported line comes first here. %>
+<% if (!showCard) { %><%- include("assistant-reported", { key: ticket.key, reported: assistantCard.reported }) %><% } %>
 <%- include("assistant-card", { card: assistantCard, changeUrl }) %>
 <% } else if (!assistantCard && staff && (evidence.length > 0 || changeUrl)) { %>
 <details class="evidence-list">
@@ -406,8 +411,9 @@
 </details>
 <% } %>
 
-<%# The page's one hairline, where the conversation begins, only when there is one. %>
-<% if (entries.length > 0) { %><hr class="thread-start" /><% } %>
+<%# The hairline where the conversation begins: above its messages, or above the message box
+    when there are none yet. %>
+<hr class="thread-start" />
 <h2 id="conversation" class="visually-hidden">Conversation</h2>
 <% for (const item of entries) { %>
 <article class="entry<% if (item.kind === "note") { %> note<% } %>" id="entry-<%= item.id %>">
@@ -592,7 +598,7 @@
         <% } %>
       </select>
     </label>
-    <p><small>It can work on this ticket only, within what its connection allows, until you stop it, hand the ticket on or ask the customer.</small></p>
+    <p><small>It can work on this ticket only, within what its connection allows, until you stop it, hand the ticket on, mark it fixed or ask the customer first.</small></p>
     <button type="submit" class="secondary compact">Hand to assistant</button>
   </form>
 </details>
