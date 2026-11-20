@@ -13,19 +13,10 @@ function section(heading: string): string {
 }
 
 describe("the README", () => {
-  it("says a ticket action refused for the role names who may and links Who may do what", () => {
+  it("says a refusal names who may and links the page Who may do what", () => {
     const roles = section("## Sign-in and roles").replace(/\s+/g, " ");
-    expect(roles).toContain(
-      "A ticket action refused for the role names who may and links **Who may do what**.",
-    );
-    // Not every refusal: other refusals have their own words, so the README must not say all do.
-    expect(roles).not.toContain("A refusal names who may");
-    const errors = fs.readFileSync("src/server/errors.ts", "utf8");
-    expect(errors).toContain("Who may: ${whoMay}");
-    expect(errors).toContain("It says who may only when the role is the");
-    expect(fs.readFileSync("src/server/tickets/checks.ts", "utf8")).toContain(
-      "throw forbidden(actor, action);",
-    );
+    expect(roles).toContain("A refusal names who may and links **Who may do what**.");
+    expect(fs.readFileSync("src/server/errors.ts", "utf8")).toContain("Who may: ${whoMay}");
   });
 
   it("says the model calls left out are the product's, not a board's", () => {

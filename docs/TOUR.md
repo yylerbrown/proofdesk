@@ -71,7 +71,7 @@ Each one takes under a minute on the demo, which opens on the ticket list as the
 
 - Start as: The production site, <https://proofdesk.fly.dev>
 - Press: **Sign in with GitHub**
-- You should see: Signed in as a customer, a team member or an admin, as [Sign-in and roles](../README.md#sign-in-and-roles) explains. Microsoft sign-in for one organization sits beside it once its settings are set. On the demo the three roles are in the menu at the top right, the admin as Demo Admin (read-only).
+- You should see: Signed in as a customer, a team member or an admin, as [Sign-in and roles](../README.md#sign-in-and-roles) explains. Microsoft sign-in for one organization sits beside it once its settings are set. On the demo the three roles are in the menu at the top right, the admin as Demo Admin (read-only), who changes nothing because every visitor shares the demo's data.
 
 **Who may do what**
 
@@ -79,7 +79,7 @@ Each one takes under a minute on the demo, which opens on the ticket list as the
 - Press: The menu at the top right, then **Who may do what** at its foot; then switch to **Demo Team Member** in the same menu
 - You should see: "This page uses the server's own permission check and adds who must own the ticket." Under four lines on who may say a ticket is fixed, one table: each action with its rule in small words, and a column each for Customer, Team member, Admin and AI assistant, grouped as The ticket, Proving it is fixed, Working it, and People and connections. Your column is marked, such as "Team member (you)", and the mark moves when you switch; the demo admin's reads "Admin (you, read-only on this demo)". Anyone can open the page at `/roles`, signed in or not, and People, Account and About this demo link it.
 
-<img src="img/who-may-do-what.png" width="720" alt="The page Who may do what, as Demo Team Member: its heading, the line saying it uses the server's own permission check and adds who must own the ticket, four lines under &quot;Who may say it is fixed&quot;, then the table's columns Action, Customer, &quot;Team member (you)&quot;, Admin and AI assistant, and the first rows of The ticket: File a ticket, See every ticket, See archived tickets and Read a ticket, each with Yes, No, Own tickets only, Never or the scope an assistant needs">
+<img src="img/who-may-do-what.png" width="720" alt="The page Who may do what, as Demo Team Member: its heading, one line on where the page's answers come from, four lines under &quot;Who may say it is fixed&quot;, then the table's columns Action, Customer, &quot;Team member (you)&quot;, Admin and AI assistant, and the first rows of The ticket: File a ticket, See every ticket, See archived tickets and Read a ticket, each with Yes, No, Own tickets only, Never or the scope an assistant needs">
 
 **Check a role change first**
 

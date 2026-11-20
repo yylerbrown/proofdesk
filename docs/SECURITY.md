@@ -18,8 +18,8 @@ named).
 - Rate limits: 20 new tickets per ten minutes per person, 10 sign-in starts a minute per
   address, and 120 writes per ten minutes across pages, API and tools, per person or connection
   (per address on the demo). The demo also has a hard row budget.
-- Answers to signed-in people are never cached. A request body over 100 KB is refused, except
-  the two picture forms (2 MB each, at most 4).
+- Answers to signed-in people are never cached, a ticket's pictures included. A request body over
+  100 KB is refused, except the two picture forms (2 MB each, at most 4).
 - The permission rules are tested on the real routes (`tests/roles.test.ts`,
   `tests/capabilities.test.ts`, `tests/connections.test.ts`).
 
@@ -31,7 +31,8 @@ What sign-in asks GitHub for, and how roles are given, is in the README under
 An admin opens a ticket, follows "Delete permanently" and types its key. In one transaction the
 ticket and every row that belongs to it are removed; only its number, the time and who deleted it
 are kept, and the number is never given to a new ticket. The deleted text is also wiped from the
-database files, and a test searches the raw files for it. Every table whose rows belong to a
+database files, and a test searches the raw files for it; a delete sent with an idempotency key
+leaves that wipe to the next checkpoint, and its answer says so. Every table whose rows belong to a
 ticket carries a `ticket_id` column, and a test fails if one is missing from the deletion.
 One exception: the answer kept for retrying a change to several tickets at once belongs to no
 single ticket, so it keeps that change's words, such as a resolution note, until a retry-safe
