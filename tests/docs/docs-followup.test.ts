@@ -42,11 +42,13 @@ describe("the proof step's grey lines", () => {
   it("are two on the demo, the hint and the sample note, in the view, the README and the tour", () => {
     const step = read("views/proof-step.ejs");
     expect(step).toMatch(/id="proof-hint" class="hint"/);
-    expect(step).toContain("Sample suggestions. On a real site the team's own AI assistant");
+    expect(step).toContain(
+      "Sample suggestions. Press one or more to add them to the box. On a real site the team's own AI assistant",
+    );
     expect(readme).toContain("&quot;What would prove it is fixed?&quot; two grey lines");
     expect(tour).toContain("two grey lines");
     expect(tour).toContain(
-      '"Sample suggestions. On a real site the team\'s own AI assistant writes these."',
+      '"Sample suggestions. Press one or more to add them to the box. On a real site the team\'s own AI assistant writes these."',
     );
     for (const text of [readme, tour]) expect(text).not.toContain("one grey line,");
   });
