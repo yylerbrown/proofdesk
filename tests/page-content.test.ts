@@ -53,10 +53,12 @@ describe("the welcome for a signed-out visitor", () => {
     );
   });
 
-  it("offers each demo person by name alone, in the role menu it lands under", async () => {
+  it("offers each demo person by name, in the role menu it lands under", async () => {
     const { app } = buildTestApp({ DEMO: "on", DEV_SIGN_IN: "off" });
     const html = await page(visitor(app), "/tickets");
-    const people = html.querySelectorAll("header .person-menu ul li.role");
+    const people = html.querySelectorAll(
+      "header .person-menu ul li.role :is(button, .role-current)",
+    );
     expect(people.map((li) => li.text.trim())).toEqual([
       "Demo Customer (you)",
       "Demo Team Member",
