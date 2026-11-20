@@ -11,17 +11,18 @@ import { createTicketService } from "./tickets/service.js";
 
 /**
  * Opens the database and brings it up to date, in a safe order: a database labelled for the
- * other purpose (demo or real) is refused before any migration can change it.
+ * other purpose (demo or real) is refused before any migration can change it. If the check or
+ * a migration fails, the database is closed again before the error goes on.
  */
 export function openAndMigrate(config: Config): { db: Db; applied: string[] } {
   const db = openDatabase(config.databasePath);
   try {
     checkPurposeBeforeMigrating(db, config.demo);
+    return { db, applied: runMigrations(db) };
   } catch (err) {
     db.close();
     throw err;
   }
-  return { db, applied: runMigrations(db) };
 }
 
 /** The app that answers requests, and the database it reads and writes. */

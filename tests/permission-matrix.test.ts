@@ -523,13 +523,6 @@ const TABLE: Record<string, Row> = {
   },
 };
 
-// Cells where the code answers differently from the table. The table keeps the rules'
-// answer; the test expects the code's answer here, and fails once the two agree, so that the
-// entry is removed. Keyed "action / who / state". Each one must be a request that changes
-// nothing, and the test checks that it changed nothing. There are none now: a request that
-// would change nothing is still refused when the rules refuse it.
-const KNOWN_DISAGREEMENTS: Record<string, { code: Cell; why: string }> = {};
-
 // ---- The ticket in each state, built once through the API ---------------------------------
 
 const TICKET = "SUP-1";
@@ -807,7 +800,9 @@ function send(address: string, who: Who, template: Template, call: Call) {
 }
 
 /** What the answer was, in the table's terms. */
-function outcome(status: number, body: unknown, action: string): Cell | number {
+// An outcome is a cell of the table, a status the table does not name, or a description of
+// an answer that fits no cell, such as an edit that erased the customer's check.
+function outcome(status: number, body: unknown, action: string): Cell | number | string {
   const isList = action === "list_tickets" || action === "list_archived";
   if (isList && status === 200) {
     const keys = (body as { key: string }[]).map((ticket) => ticket.key);
@@ -825,12 +820,17 @@ function outcome(status: number, body: unknown, action: string): Cell | number {
     return kinds.includes("note") ? NOTES : NO_NOTES;
   }
   if (action === "edit_ticket") {
-    return (body as { fix_check: string }).fix_check === NEW_CHECK ? OK : TEXT_ONLY;
+    // The check is either the new one or, untouched, the customer's first one. Anything else,
+    // an empty check included, fits no cell.
+    const check = (body as { fix_check: string | null }).fix_check;
+    if (check === NEW_CHECK) return OK;
+    if (check === FIRST_CHECK) return TEXT_ONLY;
+    return `an edit that left the check as ${JSON.stringify(check)}`;
   }
   return OK;
 }
 
-function matches(expected: Cell, got: Cell | number): boolean {
+function matches(expected: Cell, got: Cell | number | string): boolean {
   if (expected === REFUSED) return got === NO || got === NOT_NOW;
   return got === expected;
 }
@@ -887,19 +887,15 @@ describe("who may do what, in every ticket state", () => {
           const wrong: string[] = [];
           for (const [action, row] of Object.entries(TABLE)) {
             const name = `${action} / ${who} / ${state}`;
-            const ruled = row[who][STATES.indexOf(state)]!;
-            const known = KNOWN_DISAGREEMENTS[name];
-            const expected = known?.code ?? ruled;
+            const expected = row[who][STATES.indexOf(state)]!;
             const call = callFor(action, template, demo);
-            const changes = call.method !== "get" && (ruled === OK || ruled === TEXT_ONLY);
+            const changes = call.method !== "get" && (expected === OK || expected === TEXT_ONLY);
             const { address, db } = changes ? await serverFrom(template, demo) : shared;
             const before = snapshot(db);
             const res = await send(address, who, template, call);
             const got = outcome(res.status, res.body, action);
             if (!matches(expected, got)) {
               wrong.push(`${name}: expected ${expected}, got ${got} ${res.text.slice(0, 120)}`);
-            } else if (known !== undefined && matches(ruled, got)) {
-              wrong.push(`${name}: now agrees with the table; remove it from KNOWN_DISAGREEMENTS`);
             }
             if (!changes && snapshot(db) !== before) wrong.push(`${name}: changed the database`);
           }

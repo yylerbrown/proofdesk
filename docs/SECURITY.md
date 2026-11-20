@@ -33,6 +33,9 @@ ticket and every row that belongs to it are removed; only its number, the time a
 are kept, and the number is never given to a new ticket. The deleted text is also wiped from the
 database files, and a test searches the raw files for it. Every table whose rows belong to a
 ticket carries a `ticket_id` column, and a test fails if one is missing from the deletion.
+One exception: the answer kept for retrying a change to several tickets at once belongs to no
+single ticket, so it keeps that change's words, such as a resolution note, until a retry-safe
+write a day or more later forgets it.
 
 Permanent deletion does not reach backups, the host's snapshots of the disk until they expire, or
 anything already sent elsewhere.

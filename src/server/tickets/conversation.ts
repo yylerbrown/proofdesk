@@ -34,12 +34,19 @@ export function createConversation(shared: Shared) {
         "replies on this ticket",
       );
       const now = new Date().toISOString();
-      // Publishing from a note: it must be a note on this same ticket, published as a reply.
+      // Publishing from a note: it must be a note on this same ticket, published as a reply, by
+      // someone who may read notes. Anyone else gets the same refusal whatever the number.
       if (entry.based_on !== undefined) {
+        const mayReadNotes = can(actor, "read_notes", ticket);
         const source = repository
           .listEntries(db, ticket.id, true, THREAD_LIMIT)
           .find((e) => e.id === entry.based_on);
-        if (entry.kind !== "reply" || source === undefined || source.kind !== "note") {
+        if (
+          !mayReadNotes ||
+          entry.kind !== "reply" ||
+          source === undefined ||
+          source.kind !== "note"
+        ) {
           throw new ValidationError("A reply can be based only on a note on this ticket.", {
             based_on: ["A reply can be based only on a note on this ticket."],
           });

@@ -167,11 +167,19 @@ export function createEvidenceAndSpecs(shared: Shared) {
       const row = db.transaction(() => {
         const ticket = requireRow(key, actor);
         requirePermission(actor, "decide_spec", ticket);
-        const { decision } = parse(decideSpecSchema, input);
+        const { decision, spec_id } = parse(decideSpecSchema, input);
         requireNotArchived(key, ticket);
         const spec = repository.findActiveSpec(db, ticket.id);
         if (spec === undefined) {
           throw new HttpError(409, "no_spec", `Ticket ${key} has no test spec to decide on.`);
+        }
+        // A decision made on an older suggestion never lands on a newer one.
+        if (spec_id !== undefined && spec_id !== spec.id) {
+          throw new HttpError(
+            409,
+            "spec_changed",
+            `The suggested test on ${key} has changed. Reload the ticket and decide again.`,
+          );
         }
         if (decision === "accept" && spec.state === "accepted") return spec; // already
         const state = decision === "accept" ? "accepted" : "discarded";

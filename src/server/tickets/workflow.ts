@@ -50,14 +50,10 @@ export function createWorkflow(shared: Shared, teamMembers: () => { id: string; 
   /**
    * Sends an in-progress ticket back to New, with no owner, so anyone on the team can take it.
    * An open question to the customer is withdrawn first, with its own history entry, and any
-   * assistant's work on the ticket ends, as on a hand-off. Call it inside a transaction.
+   * assistant's work on the ticket ends, as on a hand-off. Call it inside a transaction, after
+   * checking that the actor is its owner or an admin.
    */
-  function returnToNew(
-    key: string,
-    before: repository.TicketRow,
-    actor: Actor,
-  ): repository.TicketRow {
-    requireOwnerOrAdminReturns(key, before, actor);
+  function returnToNew(before: repository.TicketRow, actor: Actor): repository.TicketRow {
     const now = new Date().toISOString();
     if (before.ready_at !== null) {
       repository.clearReady(db, before.id, now);
@@ -68,7 +64,8 @@ export function createWorkflow(shared: Shared, teamMembers: () => { id: string; 
     repository.updateTicketStatus(db, before.id, "new", now);
     const unowned = setOwner(before, null, null, actor);
     log(before.id, actor, "status_changed", { from: before.status, to: "new" }, now);
-    return { ...unowned, status: "new", ...noQuestion, updated_at: now };
+    // The owner change is the last write, so its updated_at is the one stored.
+    return { ...unowned, status: "new", ...noQuestion };
   }
 
   return {
@@ -110,10 +107,9 @@ export function createWorkflow(shared: Shared, teamMembers: () => { id: string; 
         }
         if (status === "new") {
           // Checked here so the owner rule answers before the version check.
-          // returnToNew checks it again for its other callers.
           requireOwnerOrAdminReturns(key, before, actor);
           requireVersion(key, before, expected_version);
-          return returnToNew(key, before, actor);
+          return returnToNew(before, actor);
         }
         requireOwnerStarts(key, before, actor);
         requireVersion(key, before, expected_version);

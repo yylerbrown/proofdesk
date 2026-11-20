@@ -37,4 +37,8 @@ export const proposeSpecSchema = z.object({
 export type Scenario = z.infer<typeof scenarioSchema>;
 
 /** What a person decides about a proposed spec. */
-export const decideSpecSchema = z.object({ decision: z.enum(["accept", "discard"]) });
+export const decideSpecSchema = z.object({
+  decision: z.enum(["accept", "discard"]),
+  // The suggested test the decision was made on, as the page showed it.
+  spec_id: z.coerce.number().int().positive().optional(),
+});
